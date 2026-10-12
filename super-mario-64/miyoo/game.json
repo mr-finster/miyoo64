@@ -1,0 +1,13 @@
+{
+  "id": "sm64",
+  "title": "Super Mario 64",
+  "folder": "SuperMario64",
+  "exe": "sm64",
+  "files": ["sm64", "recipes.bin"],
+  "icon": "icon.png",
+  "env": "SM64",
+  "data": ".",
+  "rom": {"name": "Super Mario 64 (USA)", "sha1": "9bef1128717f958171a4afac3ed78ee2bb4e86ce", "size": 8388608},
+  "system": "SUPERMARIO64",
+  "minui_tag": "SM64"
+}

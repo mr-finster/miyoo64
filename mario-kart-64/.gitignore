@@ -1,0 +1,41 @@
+# ALLOWLIST. This working directory accumulates things that must never be
+# published: the ROM input, extracted/derived game assets, rendered frame
+# dumps, recordings and build output. Only
+# source, scripts and docs are tracked -- everything else is ignored by the
+# leading "*" and has to be re-included explicitly below.
+*
+!.gitignore
+!README.md
+!build_miyoo.sh
+!README_MIYOO.md
+!course_sweep.sh
+!dev.sh
+!soak.sh
+!bitexact_sweep.sh
+!docker/
+!docker/Dockerfile
+!miyoo/
+!miyoo/game.json
+!miyoo/icon_release.png
+!miyoo/icon_release.svg
+!miyoo/templates/
+!miyoo/templates/*
+!miyoo/tools/
+!miyoo/tools/*.py
+!tools/
+!tools/*.py
+!tools/*.sh
+# The port itself (subtree of beckerd/psp_mk64_portable + our port
+# branch). base-psp/.gitignore keeps assets, baserom, build/ out.
+!base-psp/
+!base-psp/**
+*.z64
+*.n64
+*.v64
+*.mp4
+*.log
+*.core
+!.gitmodules
+
+# the Miyoo64 repository's docs
+!SETTINGS.md

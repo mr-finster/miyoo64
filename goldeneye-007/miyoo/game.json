@@ -1,0 +1,13 @@
+{
+  "id": "ge",
+  "title": "GoldenEye 007",
+  "folder": "GoldenEye",
+  "exe": "ge007",
+  "files": ["ge007", "recipes.bin"],
+  "icon": "icon.png",
+  "env": "GE",
+  "data": "data",
+  "rom": {"name": "GoldenEye 007 (USA)", "sha1": "abe01e4aeb033b6c0836819f549c791b26cfde83", "size": 12582912},
+  "system": "GOLDENEYE",
+  "minui_tag": "GE007"
+}

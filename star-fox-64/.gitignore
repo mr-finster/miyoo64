@@ -1,0 +1,47 @@
+# Allowlist: ignore everything at the top level, then re-include what we track.
+/*
+!/.gitignore
+!/README.md
+!/port/
+!/port/**
+!/tools/
+!/tools/**
+!/docker/
+!/docker/**
+!/dev.sh
+!/README_MIYOO.md
+!/miyoo/
+!/miyoo/**
+
+# Never tracked, anywhere, even inside allowlisted dirs: ROMs and ROM-derived output.
+*.z64
+*.n64
+*.v64
+*.rom
+*.bin
+*.o2r
+baserom*
+refs/
+build/
+# Decomp build products and everything Torch/splat generate from the ROM (port/.gitignore
+# covers the decomp's own list; restated here so a stray copy can never be staged).
+port/build/
+port/asm/
+port/bin/
+port/src/assets/
+port/include/assets/
+port/.splat/
+port/tools/splat/
+port/tools/asm-processor/
+port/tools/asm-differ/
+port/tools/m2c/
+port/tools/Torch/
+port/tools/ido-recomp/
+port/tools/mio0
+*.log
+*.core
+*.ppm
+*.png.frame
+.DS_Store
+# the Miyoo64 repository's docs
+!/SETTINGS.md

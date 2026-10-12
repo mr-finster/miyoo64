@@ -1,0 +1,106 @@
+#ifndef FZX_EXPANSION_KIT_H
+#define FZX_EXPANSION_KIT_H
+
+#define INVALID_OPTION -1
+
+typedef enum CreateOption {
+    /* 0 */ CREATE_OPTION_COURSE,
+    /* 1 */ CREATE_OPTION_POINT,
+    /* 2 */ CREATE_OPTION_DESIGN,
+    /* 3 */ CREATE_OPTION_PARTS,
+    /* 4 */ CREATE_OPTION_BACKGROUND,
+    /* 5 */ CREATE_OPTION_BGM,
+} CreateOption;
+
+typedef enum PointOption {
+    /* 0 */ POINT_OPTION_SET,
+    /* 1 */ POINT_OPTION_START,
+    /* 2 */ POINT_OPTION_CENTERING,
+    /* 3 */ POINT_OPTION_REVERSE,
+    /* 4 */ POINT_OPTION_CLEAR_ALL,
+} PointOption;
+
+typedef enum MoveOption {
+    /* 0 */ MOVE_OPTION_MOVE_XZ,
+    /* 1 */ MOVE_OPTION_MOVE_Y,
+    /* 2 */ MOVE_OPTION_WIDTH,
+    /* 3 */ MOVE_OPTION_BANK,
+    /* 4 */ MOVE_OPTION_CENTER,
+    /* 5 */ MOVE_OPTION_CLEAR,
+    /* 6 */ MOVE_OPTION_STRAIGHT,
+} MoveOption;
+
+typedef enum CourseEditFileOption {
+    /* 0 */ FILE_OPTION_LOAD,
+    /* 1 */ FILE_OPTION_SAVE,
+    /* 2 */ FILE_OPTION_RENAME,
+    /* 3 */ FILE_OPTION_ERASE,
+    /* 4 */ FILE_OPTION_COPY,
+} CourseEditFileOption;
+
+typedef enum CourseEditEntryOption {
+    /* 0 */ ENTRY_OPTION_REGISTER,
+    /* 1 */ ENTRY_OPTION_DEREGISTER,
+    /* 2 */ ENTRY_OPTION_DEREGISTER_ALL,
+} CourseEditEntryOption;
+
+typedef enum TrackDesignStyle {
+    /* 0 */ TRACK_DESIGN_STYLE_ROAD,
+    /* 1 */ TRACK_DESIGN_STYLE_H_ROAD,
+    /* 2 */ TRACK_DESIGN_STYLE_T_ROAD,
+    /* 3 */ TRACK_DESIGN_STYLE_TUNNEL,
+    /* 4 */ TRACK_DESIGN_STYLE_PIPE,
+    /* 5 */ TRACK_DESIGN_STYLE_HALF_PIPE,
+    /* 6 */ TRACK_DESIGN_STYLE_CYLINDER,
+    /* 7 */ TRACK_DESIGN_STYLE_SPACE,
+    /* 8 */ TRACK_DESIGN_STYLE_LOOP,
+} TrackDesignStyle;
+
+typedef enum TrackPartStyle {
+    /* 0 */ TRACK_PART_STYLE_PIT,
+    /* 1 */ TRACK_PART_STYLE_DASH,
+    /* 2 */ TRACK_PART_STYLE_DIRT,
+    /* 3 */ TRACK_PART_STYLE_SLIP,
+    /* 4 */ TRACK_PART_STYLE_JUMP,
+    /* 5 */ TRACK_PART_STYLE_TRAP,
+    /* 6 */ TRACK_PART_STYLE_GATE,
+    /* 7 */ TRACK_PART_STYLE_BUILDING,
+    /* 8 */ TRACK_PART_STYLE_SIGN,
+} TrackPartStyle;
+
+typedef enum CourseEditHighlightedIcon {
+    COURSE_EDIT_ICON_TEST_DRIVE,
+    COURSE_EDIT_ICON_LINE_DISPLAY,
+    COURSE_EDIT_ICON_ALIGN_POINTS,
+    COURSE_EDIT_ICON_TOOLTIPS,
+} CourseEditHighlightedIcon;
+
+typedef enum CourseEditOption {
+    COURSE_EDIT_OPTION_CONTROL_POINT_INFO,
+    COURSE_EDIT_OPTION_CONTROL_POINT_MOVE_POS,
+    COURSE_EDIT_OPTION_BGM,
+    COURSE_EDIT_OPTION_SFX,
+    COURSE_EDIT_OPTION_CURSOR_SPEED,
+    COURSE_EDIT_OPTION_HELP,
+} CourseEditOption;
+
+typedef enum CourseEditError {
+    COURSE_EDIT_ERROR_UNREASONABLE_POINTS,
+    COURSE_EDIT_ERROR_TOO_LONG,
+    COURSE_EDIT_ERROR_INVALID_PART_PLACEMENT,
+    COURSE_EDIT_ERROR_ROADS_OVERLAP,
+    COURSE_EDIT_ERROR_TOO_NARROW_FOR_JOINT,
+    COURSE_EDIT_ERROR_NO_MORE_PLACE,
+    COURSE_EDIT_ERROR_POINTS_TOO_CLOSE,
+    COURSE_EDIT_ERROR_TOO_MANY_EFFECTS,
+    COURSE_EDIT_ERROR_TOO_LOW,
+    COURSE_EDIT_ERROR_EXTENDS_OOB,
+    COURSE_EDIT_ERROR_TOO_MUCH_TO_DISPLAY,
+    COURSE_EDIT_ERROR_TOO_SHORT,
+} CourseEditError;
+
+#define EK_CHARSET_1(x) (x)
+#define EK_CHARSET_2(x) ((x) + 96)
+#define EK_CHARSET_3(x) ((x) + 96 * 2)
+
+#endif // FZX_EXPANSION_KIT_H

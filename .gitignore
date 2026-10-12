@@ -1,0 +1,10 @@
+# Never commit ROMs, game data or build output. Each game folder's own .gitignore is an
+# allowlist on top of this.
+*.z64
+*.v64
+*.n64
+assets.bin
+*-PERSONAL.zip
+*-miyoo.zip
+refs/
+.DS_Store

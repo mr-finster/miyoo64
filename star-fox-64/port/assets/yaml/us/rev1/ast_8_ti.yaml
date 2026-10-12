@@ -1,0 +1,78 @@
+:config:
+  segments:
+    - [0x08, 0x9EB5E0]
+  header:
+    code:
+      - '#include "assets/ast_7_ti_2.h"'
+      - '#include "assets/ast_8_ti.h"'
+      - '#include "assets/ast_9_ti.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+  external_files:
+    - "assets/yaml/us/rev1/ast_7_ti_2.yaml"
+    - "assets/yaml/us/rev1/ast_9_ti.yaml"
+
+aTiGorasAnim10: { type: SF64:ANIM, offset: 0x8000708, symbol: aTiGorasAnim10 }
+
+aTiGorasAnim11: { type: SF64:ANIM, offset: 0x8000D80, symbol: aTiGorasAnim11 }
+
+aTiGorasLaserDL: { type: GFX, offset: 0x8000D90, symbol: aTiGorasLaserDL }
+
+aTiGorasLaserTex: { type: TEXTURE, ctype: u16, format: IA16, width: 16, height: 16, offset: 0x8000FC0, symbol: aTiGorasLaserTex}
+
+aTiGorasHeartDL: { type: GFX, offset: 0x80011C0, symbol: aTiGorasHeartDL }
+
+aTiGorasHeartTex: { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x80012E8, symbol: aTiGorasHeartTex, tlut: 0x80013E8}
+
+aTiGorasHeartTexTLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 88, offset: 0x80013E8, symbol: aTiGorasHeartTexTLUT}
+
+aTiGorasSkelLimb81DL: { type: GFX, offset: 0x80014A0, symbol: aTiGorasSkelLimb81DL }
+
+aTiGorasSkelLimb80DL: { type: GFX, offset: 0x8001630, symbol: aTiGorasSkelLimb80DL }
+
+aTiGorasSkelLimb4DL: { type: GFX, offset: 0x80018D0, symbol: aTiGorasSkelLimb4DL }
+
+aTiGorasSkelLimb87DL: { type: GFX, offset: 0x8001A80, symbol: aTiGorasSkelLimb87DL }
+
+aTiGorasSkelLimb35DL: { type: GFX, offset: 0x8001D20, symbol: aTiGorasSkelLimb35DL }
+
+aTiGorasSkelLimb36DL: { type: GFX, offset: 0x8001E20, symbol: aTiGorasSkelLimb36DL }
+
+aTiGorasSkelLimb25DL: { type: GFX, offset: 0x8001FB0, symbol: aTiGorasSkelLimb25DL }
+
+aTiGorasSkelLimb33DL: { type: GFX, offset: 0x80020D0, symbol: aTiGorasSkelLimb33DL }
+
+aTiGorasSkelLimb66DL: { type: GFX, offset: 0x8002360, symbol: aTiGorasSkelLimb66DL }
+
+aTiGorasTex3: { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 32, offset: 0x8002858, symbol: aTiGorasTex3, tlut: 0x8002C58}
+
+aTiGorasTex3TLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 248, offset: 0x8002C58, symbol: aTiGorasTex3TLUT}
+
+aTiGorasTex4: { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x8002E48, symbol: aTiGorasTex4, tlut: 0x8002F48}
+
+aTiGorasTex4TLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 216, offset: 0x8002F48, symbol: aTiGorasTex4TLUT}
+
+aTiGorasTex5: { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x80030F8, symbol: aTiGorasTex5, tlut: 0x80031F8}
+
+aTiGorasTex5TLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 192, offset: 0x80031F8, symbol: aTiGorasTex5TLUT}
+
+aTiGorasTex6: { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x8003378, symbol: aTiGorasTex6, tlut: 0x8003478}
+
+aTiGorasTex6TLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 24, offset: 0x8003478, symbol: aTiGorasTex6TLUT}
+
+aTiGorasTex8: { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x80034A8, symbol: aTiGorasTex8, tlut: 0x80035A8}
+
+aTiGorasTex8TLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 72, offset: 0x80035A8, symbol: aTiGorasTex8TLUT}
+
+aTiGorasSkelLimb71DL: { type: GFX, offset: 0x8003640, symbol: aTiGorasSkelLimb71DL }
+
+aTiGorasTex7: { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 32, offset: 0x8004200, symbol: aTiGorasTex7, tlut: 0x8004600}
+
+aTiGorasTex7TLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 256, offset: 0x8004600, symbol: aTiGorasTex7TLUT}
+
+aTiGorasAnim12: { type: SF64:ANIM, offset: 0x8008FE8, symbol: aTiGorasAnim12 }
+
+aTiGorasSkelLimb10DL: { type: GFX, offset: 0x8009000, symbol: aTiGorasSkelLimb10DL }
+
+# size: 0x92A0

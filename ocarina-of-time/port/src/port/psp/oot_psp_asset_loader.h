@@ -1,0 +1,79 @@
+#ifndef OOT_PSP_ASSET_LOADER_H
+#define OOT_PSP_ASSET_LOADER_H
+
+#include "romfile.h"
+#include "ultra64.h"
+
+#include <stddef.h>
+#include <stdint.h>
+
+#define OOT_PSP_ASSET_READ_FAILED (-1)
+#define OOT_PSP_ASSET_READ_OK 0
+#define OOT_PSP_ASSET_READ_NOT_EXTERNAL 1
+#define OOT_PSP_EXTERNAL_ASSET_NATIVE 1
+#define OOT_PSP_EXTERNAL_ASSET_TEXTURE_WORDS 2
+
+typedef struct OotPspExternalAsset {
+    uintptr_t vromStart;
+    uintptr_t vromEnd;
+    uintptr_t originalVromStart;
+    uintptr_t originalVromEnd;
+    u32 flags;
+    uintptr_t fileOffset;
+    const char* name;
+} OotPspExternalAsset;
+
+typedef struct OotPspExternalAssetTextureRange {
+    uintptr_t vromStart;
+    uintptr_t vromEnd;
+} OotPspExternalAssetTextureRange;
+
+typedef struct OotPspMessageEntry {
+    u16 textId;
+    u8 typePos;
+    u8 pad;
+    uintptr_t vromStart;
+    uintptr_t vromEnd;
+} OotPspMessageEntry;
+
+extern const OotPspExternalAsset gOotPspExternalAssets[];
+extern const size_t gOotPspExternalAssetCount;
+extern const OotPspExternalAssetTextureRange gOotPspExternalAssetTextureRanges[];
+extern const size_t gOotPspExternalAssetTextureRangeCount;
+extern const OotPspMessageEntry gOotPspJpnMessageEntries[];
+extern const size_t gOotPspJpnMessageEntriesCount;
+extern const OotPspMessageEntry gOotPspNesMessageEntries[];
+extern const size_t gOotPspNesMessageEntriesCount;
+extern const OotPspMessageEntry gOotPspGerMessageEntries[];
+extern const size_t gOotPspGerMessageEntriesCount;
+extern const OotPspMessageEntry gOotPspFraMessageEntries[];
+extern const size_t gOotPspFraMessageEntriesCount;
+extern const OotPspMessageEntry gOotPspStaffMessageEntries[];
+extern const size_t gOotPspStaffMessageEntriesCount;
+
+s32 OotPsp_AssetInit(const char* executablePath);
+/* Callback-safe notification. The next asset transaction reopens the packed
+ * file without discarding any allocated cache storage. */
+void OotPsp_AssetNotifyResume(void);
+const char* OotPsp_ResolveRootPath(const char* path, char* buffer, size_t bufferSize);
+uintptr_t OotPsp_NormalizeVrom(uintptr_t vrom);
+void OotPsp_NormalizeRomFile(RomFile* file);
+s32 OotPsp_IsNativeExternalTextureRange(const void* ptr, size_t size);
+s32 OotPsp_IsLoadedNativeExternalAssetRange(const void* ptr, size_t size);
+s32 OotPsp_GetLoadedExternalAssetRangeFlags(const void* ptr, size_t size, u32* flags);
+/* Runtime patches first read original asset bytes, then transform selected
+ * ranges into the linked PSP representation. Record properties of that final
+ * representation so renderers do not interpret it as raw N64 data. */
+s32 OotPsp_MarkLoadedExternalAssetRangeFlags(const void* ptr, size_t size, u32 flags);
+u32 OotPsp_GetExternalAssetRangeSerial(const void* ptr, size_t size);
+s32 OotPsp_GetNativeExternalTextureMappingRange(const void* ptr, uintptr_t* ramStart, uintptr_t* ramEnd);
+s32 OotPsp_GetNativeExternalTextureRangeStart(const void* ptr, size_t size, uintptr_t* ramStart);
+s32 OotPsp_MapNativeExternalTextureByte(const void* ptr, const void** mapped);
+s32 OotPsp_AssetRead(void* ram, uintptr_t vrom, size_t size);
+s32 OotPsp_AssetReadAudio(void* ram, uintptr_t vrom, size_t size);
+s32 OotPsp_AssetReadAudioUrgent(void* ram, uintptr_t vrom, size_t size);
+s32 OotPsp_AssetReadHasForegroundPressure(void);
+const void* OotPsp_GetCachedAssetPointer(uintptr_t vrom, size_t size);
+const OotPspMessageEntry* OotPsp_FindMessageEntry(const OotPspMessageEntry* entries, size_t count, u16 textId);
+
+#endif

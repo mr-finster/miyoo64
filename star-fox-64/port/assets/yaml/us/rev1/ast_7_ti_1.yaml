@@ -1,0 +1,271 @@
+:config:
+  segments:
+    - [0x07, 0xA0E340]
+  header:
+    code:
+      - '#include "assets/ast_7_ti_1.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+
+# Duplicate of aTiTitleCardTex in ast_titania, might be used even though it's unreferenced in code, since both of them are in the same address.
+aTi1TitleCardTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 96, height: 28, offset: 0x07000000, symbol: aTi1TitleCardTex, tlut: 0x07001108 }
+
+aTi1Pillar2DL:
+  { type: GFX, offset: 0x7000A80, symbol: aTi1Pillar2DL }
+
+aTi1PillarTex1:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 32, offset: 0x07000D08, symbol: aTi1PillarTex1, tlut: 0x07001108 }
+
+aTi1PillarTex1TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 176, offset: 0x07001108, symbol: aTi1PillarTex1TLUT }
+
+aTi1PillarTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x7001268, symbol: aTi1PillarTex2 }
+
+aTi1Pillar1DL:
+  { type: GFX, offset: 0x7002270, symbol: aTi1Pillar1DL }
+
+aTi1DesertCrawlerHeadCoverDL:
+  { type: GFX, offset: 0x7002490, symbol: aTi1DesertCrawlerHeadCoverDL }
+
+aTi1DesertCrawlerTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x07002730, symbol: aTi1DesertCrawlerTex1 }
+
+aTi1DesertCrawlerSkelLimb13DL:
+  { type: GFX, offset: 0x7002930, symbol: aTi1DesertCrawlerSkelLimb13DL }
+
+aTi1DesertCrawlerTex3:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x7002C88, symbol: aTi1DesertCrawlerTex3 }
+
+aTi1DesertCrawlerTex2:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 32, offset: 0x07003488, symbol: aTi1DesertCrawlerTex2, tlut: 0x07003888 }
+
+aTi1DesertCrawlerTex2TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 256, offset: 0x07003888, symbol: aTi1DesertCrawlerTex2TLUT }
+
+aTi1DesertCrawlerSkelLimb6DL:
+  { type: GFX, offset: 0x7003A90, symbol: aTi1DesertCrawlerSkelLimb6DL }
+
+aTi1DesertCrawlerSkelLimb2DL:
+  { type: GFX, offset: 0x7003C50, symbol: aTi1DesertCrawlerSkelLimb2DL }
+
+aTi1DesertCrawlerSkelLimb3DL:
+  { type: GFX, offset: 0x7003E30, symbol: aTi1DesertCrawlerSkelLimb3DL }
+
+aTi1DesertCrawlerSkelLimb8DL:
+  { type: GFX, offset: 0x7003FC0, symbol: aTi1DesertCrawlerSkelLimb8DL }
+
+aTi1EnemyTex4:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x07004170, symbol: aTi1EnemyTex4 }
+
+aTi1DesertCrawlerSkelLimb4DL:
+  { type: GFX, offset: 0x7004370, symbol: aTi1DesertCrawlerSkelLimb4DL }
+
+aTi1DesertCrawlerSkelLimb5DL:
+  { type: GFX, offset: 0x7004560, symbol: aTi1DesertCrawlerSkelLimb5DL }
+
+aTi1DesertRoverSkelLimb1DL:
+  { type: GFX, offset: 0x7004780, symbol: aTi1DesertRoverSkelLimb1DL }
+
+aTi1DesertRoverTex3:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x070049A0, symbol: aTi1DesertRoverTex3 }
+
+aTi1BomberSkelLimb1DL:
+  { type: GFX, offset: 0x7004BA0, symbol: aTi1BomberSkelLimb1DL }
+
+aTi1BomberTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x07004E78, symbol: aTi1BomberTex1 }
+
+aTi1EnemyTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x07005078, symbol: aTi1EnemyTex1 }
+
+aTi1DesertCrawlerSkelLimb1DL:
+  { type: GFX, offset: 0x7005280, symbol: aTi1DesertCrawlerSkelLimb1DL }
+
+aTi1DesertCrawlerSkelLimb7DL:
+  { type: GFX, offset: 0x7005420, symbol: aTi1DesertCrawlerSkelLimb7DL }
+
+aTi1DesertCrawlerAnim3:
+  { type: SF64:ANIM, offset: 0x70067C4, symbol: aTi1DesertCrawlerAnim3 }
+
+aTi1DesertCrawlerSkel:
+  { type: SF64:SKELETON, offset: 0x7006990, symbol: aTi1DesertCrawlerSkel}
+
+aTi1DesertCrawlerAnim5:
+  { type: SF64:ANIM, offset: 0x7006F74, symbol: aTi1DesertCrawlerAnim5 }
+
+aTi1DesertCrawlerAnim4:
+  { type: SF64:ANIM, offset: 0x7007130, symbol: aTi1DesertCrawlerAnim4 }
+
+aTi1DesertCrawlerAnim2:
+  { type: SF64:ANIM, offset: 0x7007234, symbol: aTi1DesertCrawlerAnim2 }
+
+aTi1DesertCrawlerAnim1:
+  { type: SF64:ANIM, offset: 0x700733C, symbol: aTi1DesertCrawlerAnim1 }
+
+aTi1SkullDL:
+  { type: GFX, offset: 0x7007350, symbol: aTi1SkullDL }
+
+aTi1SkullTex1:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 32, offset: 0x7007AB0, symbol: aTi1SkullTex1, tlut: 0x07007EB0 }
+
+aTi1SkullTex1TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 240, offset: 0x07007EB0, symbol: aTi1SkullTex1TLUT }
+
+aTi1EnemyTex9:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 32, offset: 0x07008090, symbol: aTi1EnemyTex9, tlut: 0x07008490 }
+
+aTi1EnemyTex9TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 248, offset: 0x07008490, symbol: aTi1EnemyTex9TLUT }
+
+aTi1SkullTex2:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x07008680, symbol: aTi1SkullTex2, tlut: 0x07008490 }
+
+aTi1SkullTex2TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 216, offset: 0x07008780, symbol: aTi1SkullTex2TLUT }
+
+aTi1DelphorHeadDL:
+  { type: GFX, offset: 0x7008930, symbol: aTi1DelphorHeadDL }
+
+aTi1EnemyTex7:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x7008D10, symbol: aTi1EnemyTex7 }
+
+aTi1EnemyTex3:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x7008F10, symbol: aTi1EnemyTex3 }
+
+aTiDelphorTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x07009110, symbol: aTiDelphorTex1 }
+
+aTi1EnemyTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x07009310, symbol: aTi1EnemyTex2 }
+
+aTi1DelphorHeadCoverDL:
+  { type: GFX, offset: 0x7009510, symbol: aTi1DelphorHeadCoverDL }
+
+aTi1EnemyTex6:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x070096D8, symbol: aTi1EnemyTex6 }
+
+aTi1DelphorDL:
+  { type: GFX, offset: 0x70098E0, symbol: aTi1DelphorDL }
+
+aTi1DesertRoverTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x07009B58, symbol: aTi1DesertRoverTex1 }
+
+# Warning: aTi1Bomb1DL is using Texture aTi1BombTex with TLUT at address 0x0700AAF8 which is inside that texture, we can't extract that with torch so linking for that symbol is unavailable
+aTi1Bomb1DL:
+  { type: GFX, offset: 0x7009D60, symbol: aTi1Bomb1DL }
+
+aTi1EnemyTex5:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x0700A190, symbol: aTi1EnemyTex5 }
+
+aTi1Bomb2DL:
+  { type: GFX, offset: 0x700A990, symbol: aTi1Bomb2DL }
+
+aTi1BombTex:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 16, offset: 0x700AAD8, symbol: aTi1BombTex, tlut: 0x700AB58 }
+
+aTi1BombTexTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 8, offset: 0x700AB58, symbol: aTi1BombTexTLUT }
+
+aTi1LandmineDL:
+  { type: GFX, offset: 0x700AB70, symbol: aTi1LandmineDL }
+
+aTi1LandmineTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 8, height: 8, offset: 0x0700AEA8, symbol: aTi1LandmineTex }
+
+aTi1DesertRoverSkelLimb3DL:
+  { type: GFX, offset: 0x700AF30, symbol: aTi1DesertRoverSkelLimb3DL }
+
+aTi1DesertRoverTex4:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x0700B5B8, symbol: aTi1DesertRoverTex4 }
+
+aTi1DesertRoverTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x0700B7B8, symbol: aTi1DesertRoverTex2 }
+
+aTi1FekudaGun1DL:
+  { type: GFX, offset: 0x700B9C0, symbol: aTi1FekudaGun1DL }
+
+aTi1RibsDL:
+  { type: GFX, offset: 0x700BB10, symbol: aTi1RibsDL }
+
+aTi1BridgeDL:
+  { type: GFX, offset: 0x700BE00, symbol: aTi1BridgeDL }
+
+aTi1BridgeTex:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 32, offset: 0x0700BFB0, symbol: aTi1BridgeTex, tlut: 0x0700C3B0 }
+
+aTi1BridgeTexTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 128, offset: 0x0700C3B0, symbol: aTi1BridgeTexTLUT }
+
+aTi1FekudaDL:
+  { type: GFX, offset: 0x700C4B0, symbol: aTi1FekudaDL }
+
+aTi1DesertRoverAnim:
+  { type: SF64:ANIM, offset: 0x700C8D8, symbol: aTi1DesertRoverAnim }
+
+aTi1DesertRoverSkel:
+  { type: SF64:SKELETON, offset: 0x700C964, symbol: aTi1DesertRoverSkel }
+
+aTi1FekudaGun2DL:
+  { type: GFX, offset: 0x700C980, symbol: aTi1FekudaGun2DL }
+
+aTi1BomberAnim:
+  { type: SF64:ANIM, offset: 0x700CAF4, symbol: aTi1BomberAnim}
+
+aTi1BomberSkel:
+  {type: SF64:SKELETON, offset: 0x700CB60, symbol: aTi1BomberSkel}
+
+aTi1RascoAnim:
+  { type: SF64:ANIM, offset: 0x700D534, symbol: aTi1RascoAnim }
+
+aTi1RascoSkel:
+  {type: SF64:SKELETON, offset: 0x700D700, symbol: aTi1RascoSkel}
+
+aTi1RascoSkelLimb13DL:
+  { type: GFX, offset: 0x700D740, symbol: aTi1RascoSkelLimb13DL }
+
+aTi1RascoSkelLimb12DL:
+  { type: GFX, offset: 0x700D880, symbol: aTi1RascoSkelLimb12DL }
+
+aTi1RascoSkelLimb2DL:
+  { type: GFX, offset: 0x700D9B0, symbol: aTi1RascoSkelLimb2DL }
+
+aTi1RascoSkelLimb6DL:
+  { type: GFX, offset: 0x700DAD0, symbol: aTi1RascoSkelLimb6DL }
+
+aTi1RascoSkelLimb7DL:
+  { type: GFX, offset: 0x700DBB0, symbol: aTi1RascoSkelLimb7DL }
+
+aTi1RascoSkelLimb4DL:
+  { type: GFX, offset: 0x700DC50, symbol: aTi1RascoSkelLimb4DL }
+
+aTi1EnemyTex8:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 8, height: 8, offset: 0x0700DD68, symbol: aTi1EnemyTex8 }
+
+aTi1RascoSkelLimb1DL:
+  { type: GFX, offset: 0x700DDF0, symbol: aTi1RascoSkelLimb1DL }
+
+aTi1RascoSkelLimb5DL:
+  { type: GFX, offset: 0x700DED0, symbol: aTi1RascoSkelLimb5DL }
+
+aTi1RascoSkelLimb3DL:
+  { type: GFX, offset: 0x700DF70, symbol: aTi1RascoSkelLimb3DL }
+
+aTi1RascoSkelLimb10DL:
+  { type: GFX, offset: 0x700E030, symbol: aTi1RascoSkelLimb10DL }
+
+aTi1RascoTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x0700E1E8, symbol: aTi1RascoTex }
+
+aTi1BoulderDL:
+  { type: GFX, offset: 0x700E3F0, symbol: aTi1BoulderDL }
+
+aTi1BoulderTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x0700E858, symbol: aTi1BoulderTex }
+
+aTi1BomberSkelLimb2DL:
+  { type: GFX, offset: 0x700EA60, symbol: aTi1BomberSkelLimb2DL }
+
+# size = 0xEDB0

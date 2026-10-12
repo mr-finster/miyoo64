@@ -1,0 +1,58 @@
+# ALLOWLIST. This working directory will hold things that must never be
+# published: the ROM input, ROM-extracted/derived game data, rendered frame
+# dumps, recordings, build output and reference clones (refs/).
+# Only source, scripts and docs are tracked -- everything else is ignored by
+# the leading "*" and has to be re-included explicitly below.
+*
+!.gitignore
+!README.md
+!README_MIYOO.md
+!dev.sh
+!docker/
+!docker/Dockerfile.miyoo
+!tools/
+!tools/*.py
+!tools/*.sh
+!tools/*.txt
+!tools/*.json
+# The Miyoo Mini release (tools/build_miyoo.sh): the packer and its launch templates (the shared
+# miyoo/), the game's game.json and its icon (miyoo/icon.png, drawn as miyoo/icon.svg); the developer-only bench Apps entry (miyoo/bench, not in the zip).
+!miyoo/
+!miyoo/game.json
+!miyoo/icon.svg
+!miyoo/templates/
+!miyoo/templates/*
+!miyoo/tools/
+!miyoo/tools/*.py
+!miyoo/bench/
+!miyoo/bench/launch.sh
+!miyoo/bench/config.json
+# The port tree: n64decomp/007 @ c4356466 code (src/, include/) + our layer (hh/).
+# port/assets = approved decomp metadata, copied by tools/port_assets.sh, never tracked.
+!port/
+!port/**
+port/assets/
+port/build/
+port/**/*.o
+port/**/*.log
+port/ge_save/
+# Never tracked anywhere (last, so they also win inside port/): ROMs, builds, dumps.
+*.z64
+*.n64
+*.v64
+*.mp4
+*.log
+*.core
+core
+core.*
+*.ppm
+*.png
+# ...except the drawn launcher icon (ours, not from the ROM)
+!/miyoo/icon.png
+*.wav
+*.bin
+.DS_Store
+# the old release icon, cut from the player's ROM (tools/make_icon_game.py, unused since 2026-10-06): never in git
+/miyoo/icon_game.png
+# the Miyoo64 repository's docs
+!SETTINGS.md

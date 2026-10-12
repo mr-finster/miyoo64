@@ -1,0 +1,209 @@
+# Documented
+:config:
+  segments:
+    - [0x6, 0xACF960]
+  header:
+    code:
+      - '#include "assets/ast_venom_2.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+      - '#include "sf64level.h"'
+      - '#include "sf64event.h"'
+      - '#include "sf64player.h"'
+      - '#include "sf64audio_external.h"'
+
+# ~Planet Venom, the Root of Evil~
+aVe2TitleCardJPTex1:
+  { type: TEXTURE, format: IA8, width: 96, height: 28, offset: 0x6000000, ctype: u8, symbol: aVe2TitleCardJPTex1 }
+
+# Final battle!!
+aVe2TitleCardJPTex2:
+  { type: TEXTURE, format: IA8, width: 112, height: 19, offset: 0x6000A80, ctype: u8, symbol: aVe2TitleCardJPTex2 }
+
+aVe2StatusTitleCardTex:
+  { type: TEXTURE, format: IA8, width: 128, height: 28, offset: 0x60012D0, ctype: u8, symbol: aVe2StatusTitleCardTex }
+
+aVe2TitleCardTex:
+  { type: TEXTURE, format: IA8, width: 104, height: 19, offset: 0x60020D0, ctype: u8, symbol: aVe2TitleCardTex }
+
+aVe2EntranceRadarMarkTex:
+  { type: TEXTURE, format: IA8, width: 16, height: 16, offset: 0x6002890, ctype: u8, symbol: aVe2EntranceRadarMarkTex }
+
+aAndPathExitDL:
+  { type: GFX, offset: 0x6002990, symbol: aAndPathExitDL }
+
+aAndPathIntersectionDL:
+  { type: GFX, offset: 0x6003000, symbol: aAndPathIntersectionDL }
+
+aVe2AndBrainBackdropDL:
+  { type: GFX, offset: 0x60038E0, symbol: aVe2AndBrainBackdropDL }
+
+aVe2AndBrainBackdropTex:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x6003970, ctype: u16, symbol: aVe2AndBrainBackdropTex }
+
+aAndPathEntranceDL:
+  { type: GFX, offset: 0x6004170, symbol: aAndPathEntranceDL }
+
+aVe2GenTex1:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x6004888, ctype: u16, symbol: aVe2GenTex1 }
+
+aVe2GenTex2:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x6005088, ctype: u16, symbol: aVe2GenTex2 }
+
+aVe2GenTex3:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x6005888, ctype: u16, symbol: aVe2GenTex3 }
+
+aVe2GenTex4:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x6006088, ctype: u16, symbol: aVe2GenTex4 }
+
+aVe2GenTex5:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x60030D8, ctype: u16, symbol: aVe2GenTex5 }
+
+aAndPathWallsDL:
+  { type: GFX, offset: 0x6006890, symbol: aAndPathWallsDL }
+
+# Unused
+aVe2PathDividerDL:
+  { type: GFX, offset: 0x6006E20, symbol: aVe2PathDividerDL, comment: "unused" }
+
+aVe2AndrossGateSkelLimb13DL:
+  { type: GFX, offset: 0x6007650, symbol: aVe2AndrossGateSkelLimb13DL }
+
+aAndLaserEmitterDL:
+  { type: GFX, offset: 0x6007E20, symbol: aAndLaserEmitterDL }
+
+aVe2GenTex6:
+  { type: TEXTURE, format: RGBA16, width: 16, height: 16, offset: 0x6008170, ctype: u16, symbol: aVe2GenTex6 }
+
+aVe2TowerDL:
+  { type: GFX, offset: 0x6008370, symbol: aVe2TowerDL }
+
+aVe2TowerTex:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x6008AF8, ctype: u16, symbol: aVe2TowerTex }
+
+aAndBrainWasteDL:
+  { type: GFX, offset: 0x6009300, symbol: aAndBrainWasteDL }
+
+aAndBrainWasteTex:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x6009390, ctype: u16, symbol: aAndBrainWasteTex }
+
+aVe2AndBrainSkelLimb2DL:
+  { type: GFX, offset: 0x6009B90, symbol: aVe2AndBrainSkelLimb2DL }
+
+aVe2AndBrainSkelLimb2Tex:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x6009E80, ctype: u16, symbol: aVe2AndBrainSkelLimb2Tex }
+
+aVe2AndBrainSkelLimb1DL:
+  { type: GFX, offset: 0x600A680, symbol: aVe2AndBrainSkelLimb1DL }
+
+aVe2AndBrainSkelLimb1Tex:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x600B708, ctype: u16, symbol: aVe2AndBrainSkelLimb1Tex }
+
+aVe2AndBrainThrobAnim:
+  { type: SF64:ANIM, offset: 0x600C038, symbol: aVe2AndBrainThrobAnim }
+
+aVe2AndBrainSkel:
+  { type: SF64:SKELETON, offset: 0x600C0A4, symbol: aVe2AndBrainSkel }
+
+aAndBrainEyeAnim:
+  { type: SF64:ANIM, offset: 0x600C200, symbol: aAndBrainEyeAnim }
+
+aAndBrainEyeSkel:
+  { type: SF64:SKELETON, offset: 0x600C2AC, symbol: aAndBrainEyeSkel }
+
+aVe2AndBrainTentacleTipDL:
+  { type: GFX, offset: 0x600C2D0, symbol: aVe2AndBrainTentacleTipDL }
+
+aVe2AndBrainTentacleTipTex:
+  { type: TEXTURE, format: RGBA16, width: 16, height: 16, offset: 0x600C360, ctype: u16, symbol: aVe2AndBrainTentacleTipTex }
+
+aVe2AndBrainTentacleDL:
+  { type: GFX, offset: 0x600C560, symbol: aVe2AndBrainTentacleDL }
+
+aVe2AndBrainTentacleTex:
+  { type: TEXTURE, format: RGBA16, width: 16, height: 16, offset: 0x600C5F0, ctype: u16, symbol: aVe2AndBrainTentacleTex }
+
+aAndBrainEyeSkelLimb1DL:
+  { type: GFX, offset: 0x600C7F0, symbol: aAndBrainEyeSkelLimb1DL }
+
+aAndBrainEyeSkelLimb2DL:
+  { type: GFX, offset: 0x600C8F0, symbol: aAndBrainEyeSkelLimb2DL }
+
+aAndBrainEyeSkelLimb3DL:
+  { type: GFX, offset: 0x600CA50, symbol: aAndBrainEyeSkelLimb3DL }
+
+aAndBrainEyeSkelLimb4DL:
+  { type: GFX, offset: 0x600CBB0, symbol: aAndBrainEyeSkelLimb4DL }
+
+aAndBrainEyeSkelLimbTex:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x600D7F0, ctype: u16, symbol: aAndBrainEyeSkelLimbTex }
+
+aVe2AndrossGateSkelLimb2DL:
+  { type: GFX, offset: 0x600DFF0, symbol: aVe2AndrossGateSkelLimb2DL }
+
+aVe2AndrossGateSkelLimb1DL:
+  { type: GFX, offset: 0x600E3E0, symbol: aVe2AndrossGateSkelLimb1DL }
+
+aVe2AndrossGateSkelLimb6DL:
+  { type: GFX, offset: 0x600E780, symbol: aVe2AndrossGateSkelLimb6DL }
+
+aVe2AndrossGateSkelLimb5DL:
+  { type: GFX, offset: 0x600EB40, symbol: aVe2AndrossGateSkelLimb5DL }
+
+aVe2AndrossGateSkelLimb4DL:
+  { type: GFX, offset: 0x600EEF0, symbol: aVe2AndrossGateSkelLimb4DL }
+
+aVe2AndrossGateSkelLimb3DL:
+  { type: GFX, offset: 0x600F290, symbol: aVe2AndrossGateSkelLimb3DL }
+
+aVe2BackdropDL:
+  { type: GFX, offset: 0x600F670, symbol: aVe2BackdropDL }
+
+aVe2BackdropTex:
+  { type: TEXTURE, format: RGBA16, width: 64, height: 32, offset: 0x600F700, ctype: u16, symbol: aVe2BackdropTex }
+
+aVe2GroundDL:
+  { type: GFX, offset: 0x6010700, symbol: aVe2GroundDL }
+
+aVe2MountainDL:
+  { type: GFX, offset: 0x6010960, symbol: aVe2MountainDL }
+
+aVe2MountainTex:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x6010CA0, ctype: u16, symbol: aVe2MountainTex }
+
+aVe2GroundTex:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x60114A0, ctype: u16, symbol: aVe2GroundTex }
+
+aVe2BaseSkelLimb5Tex:
+  { type: TEXTURE, format: RGBA16, width: 16, height: 16, offset: 0x6013AF8, ctype: u16, symbol: aVe2BaseSkelLimb5Tex }
+
+aVe2AndrossGateAnim:
+  { type: SF64:ANIM, offset: 0x6014658, symbol: aVe2AndrossGateAnim }
+
+aVe2AndrossGateSkel:
+  { type: SF64:SKELETON, offset: 0x6014844, symbol: aVe2AndrossGateSkel }
+
+aVe2BaseAnim:
+  { type: SF64:ANIM, offset: 0x6014904, symbol: aVe2BaseAnim }
+
+aVe2BaseSkel:
+  { type: SF64:SKELETON, offset: 0x60149D0, symbol: aVe2BaseSkel }
+
+aVe2EnvSetup:
+  { type: SF64:ENVIRONMENT, offset: 0x6014D50, symbol: aVe2EnvSetup }
+
+aVe2LevelObjects:
+  { type: SF64:OBJECT_INIT, offset: 0x6014D94, symbol: aVe2LevelObjects }
+
+aVe2ColPoly:
+  { type: SF64:COLPOLY, count: 250, offset: 0x6014FEC, symbol: aVe2ColPoly, mesh_symbol: aVe2ColPolyMesh }
+
+aVe2TowerHitbox:
+  { type: SF64:HITBOX, offset: 0x601668C, symbol: aVe2TowerHitbox }
+
+aVe2BaseHitbox:
+  { type: SF64:HITBOX, offset: 0x60166F4, symbol: aVe2BaseHitbox }
+
+aVe2MountainHitbox:
+  { type: SF64:HITBOX, offset: 0x6016714, symbol: aVe2MountainHitbox }

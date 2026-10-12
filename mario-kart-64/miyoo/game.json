@@ -1,0 +1,13 @@
+{
+  "id": "mk64",
+  "title": "Mario Kart 64",
+  "folder": "MarioKart64",
+  "exe": "mk64",
+  "files": ["mk64", "recipes.bin"],
+  "icon": "icon_release.png",
+  "env": "MK64",
+  "data": ".",
+  "rom": {"name": "Mario Kart 64 (USA)", "sha1": "579c48e211ae952530ffc8738709f078d5dd215e", "size": 12582912},
+  "system": "MARIOKART64",
+  "minui_tag": "MK64"
+}

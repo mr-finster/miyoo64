@@ -1,0 +1,10 @@
+# SM64 build environment: the MK64 image (mk64hh:build, from
+# ../mario-kart-64/docker/Dockerfile): Debian bookworm x86_64 with MIPS binutils,
+# build-essential/python3/capstone/audiofile (enough for the sm64 decomp's tools; its
+# IDO 5.3 is statically recompiled to x86-64 on first `make -C tools`, no qemu-irix),
+# the -m32 SDL2 desktop-proxy toolchain, and the Miyoo Mini toolchain.
+# Added here: qemu-user (ARM runs, qprof) and procps (pgrep).
+# Decomp commands run with /usr/bin first on PATH.
+FROM --platform=linux/amd64 mk64hh:build
+RUN apt-get update && apt-get install -y --no-install-recommends qemu-user procps \
+    && rm -rf /var/lib/apt/lists/*

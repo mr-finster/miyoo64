@@ -1,0 +1,249 @@
+# Documented
+:config:
+  segments:
+    - [0x08, 0xCA9DE0]
+  header:
+    code:
+      - '#include "assets/ast_option.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+
+# Invoice
+aOptInvoiceTex:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 128, height: 26, offset: 0x8000000, symbol: aOptInvoiceTex, tlut: 0x8000680 }
+
+aOptInvoiceTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x8000680, symbol: aOptInvoiceTLUT }
+
+# Cornerian army attn:
+aOptCornerianArmyAttnTex:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 256, height: 34, offset: 0x80006A0, symbol: aOptCornerianArmyAttnTex, tlut: 0x80017A0 }
+
+aOptCornerianArmyAttnTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x80017A0, symbol: aOptCornerianArmyAttnTLUT }
+
+# Venomian units destroyed
+aOptEnemyHitCountTex:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 256, height: 66, offset: 0x80017C0, symbol: aOptEnemyHitCountTex, tlut: 0x80038C0 }
+
+aOptEnemyHitCountTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x80038C0, symbol: aOptEnemyHitCountTLUT }
+
+# nd
+aNdTex:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 10, offset: 0x80038E0, symbol: aNdTex, tlut: 0x8003930 }
+
+aNdTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x8003930, symbol: aNdTLUT }
+
+# rd
+aRdTex:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 11, offset: 0x8003950, symbol: aRdTex, tlut: 0x80039A8 }
+
+aRdTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x80039A8, symbol: aRdTLUT }
+
+#
+aSpeakerCenterTex:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 16, offset: 0x80039D0 , symbol: aSpeakerCenterTex, tlut: 0x8003A50 }
+
+aSpeakerCenterTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x8003A50, symbol: aSpeakerCenterTLUT }
+
+# st
+aStTex:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 9, offset: 0x8003A70, symbol: aStTex, tlut: 0x8003AB8 }
+
+aStTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x8003AB8, symbol: aStTLUT }
+
+# th
+aThTex:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 9, offset: 0x8003AE0, symbol: aThTex, tlut: 0x8003B28 }
+
+aThTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x8003B28, symbol: aThTLUT }
+
+# Option Title Cards
+
+# Main Game
+aMainGameCardTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 72, height: 12, offset: 0x8003B50, symbol: aMainGameCardTex }
+
+# Training
+aTrainingCardTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 80, height: 12, offset: 0x8003EB0, symbol: aTrainingCardTex }
+
+# Vs.
+aVsCardTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 32, height: 10, offset: 0x8004270, symbol: aVsCardTex }
+
+# Ranking
+aRankingCardTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 64, height: 12, offset: 0x80043B0, symbol: aRankingCardTex }
+
+# Sound
+aSoundCardTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 64, height: 10, offset: 0x80046B0, symbol: aSoundCardTex }
+
+# Data
+aDataCardTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 80, height: 10, offset: 0x8004930, symbol: aDataCardTex }
+
+aExpertCardTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 80, height: 12, offset: 0x8004C50, symbol: aExpertCardTex }
+
+# Option VS Cards
+
+# Point Match
+aVsPointMatchCardTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 96, height: 13, offset: 0x8005010, symbol: aVsPointMatchCardTex }
+
+# Battle Royal
+aVsBattleRoyalCardTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 96, height: 11, offset: 0x80054F0, symbol: aVsBattleRoyalCardTex }
+
+# Time Trial
+aVsTimeTrialCardTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 96, height: 10, offset: 0x8005910, symbol: aVsTimeTrialCardTex }
+
+# Sound Options
+
+# Press R to test
+aOptPressRToTestTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 112, height: 13, offset: 0x8005CD0, symbol: aOptPressRToTestTex }
+
+# Mode
+aOptSoundModeTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 48, height: 13, offset: 0x8006280, symbol: aOptSoundModeTex }
+
+# Music
+aOptMusicVolumeTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 88, height: 14, offset: 0x80064F0, symbol: aOptMusicVolumeTex }
+
+# Voice
+aOptVoiceVolumeTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 56, height: 15, offset: 0x80069C0, symbol: aOptVoiceVolumeTex }
+
+# SE
+aOptSfxVolumeTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 24, height: 13, offset: 0x8006D10, symbol: aOptSfxVolumeTex }
+
+# B to cancel
+aBtoCancelTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 96, height: 10, offset: 0x8006E50, symbol: aBtoCancelTex }
+
+# Headphone
+aOptHeadphoneTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 88, height: 14, offset: 0x8007210, symbol: aOptHeadphoneTex }
+
+# Mono
+aOptMonoTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 56, height: 14, offset: 0x80076E0, symbol: aOptMonoTex }
+
+# Soundtrack
+aOptSoundtrackTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 128, height: 14, offset: 0x80079F0, symbol: aOptSoundtrackTex }
+
+# A to confirm
+aAtoConfirmTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 96, height: 10, offset: 0x80080F0, symbol: aAtoConfirmTex }
+
+# Clear Saved Data
+aOptClearSaveDataTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 176, height: 13, offset: 0x80084B0, symbol: aOptClearSaveDataTex }
+
+# Are you sure?
+aOptAreYouSureTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 160, height: 19, offset: 0x8008DA0, symbol: aOptAreYouSureTex }
+
+# Yes
+aOptYesTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 32, height: 12, offset: 0x8009980, symbol: aOptYesTex }
+
+# No
+aOptNoTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 40, height: 12, offset: 0x8009B00, symbol: aOptNoTex }
+
+# Are you REALLY sure?
+aOptAreYouREALLYSureTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 160, height: 41, offset: 0x8009CE0, symbol: aOptAreYouREALLYSureTex }
+
+# Data erased
+aOptDataErasedTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 144, height: 41, offset: 0x800B680, symbol: aOptDataErasedTex }
+
+# Stereo
+aOptStereoTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 56, height: 13, offset: 0x800CD90, symbol: aOptStereoTex }
+
+aOptArrowTex1:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 16, height: 16, offset: 0x800D070, symbol: aOptArrowTex1 }
+
+aOptRankingFadeBandTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 8, height: 16, offset: 0x800D170, symbol: aOptRankingFadeBandTex }
+
+# Seal
+aOptInvoiceSealTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 80, height: 48, offset: 0x800D1F0, symbol: aOptInvoiceSealTex }
+
+# Unused
+aOptUnusedTex1:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 8, height: 8, offset: 0x800E0F0, symbol: aOptUnusedTex1 }
+
+aOptArrowTex2:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 8, height: 8, offset: 0x800E130, symbol: aOptArrowTex2 }
+
+# Mercenary Unit STARFOX Fox Mccloud
+aOptSignatureTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 188, height: 60, offset: 0x800E170, symbol: aOptSignatureTex }
+
+# ScrollBar
+aSliderFrameTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 104, height: 10, offset: 0x8013990, symbol: aSliderFrameTex }
+
+# ScrollBar Indicator
+aSliderTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x80141B0, symbol: aSliderTex }
+
+# Speaker
+aSpeakerTex:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 32, offset: 0x80143B0, symbol: aSpeakerTex, tlut: 0x80147B0 }
+
+aSpeakerTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 32, offset: 0x80147B0, symbol: aSpeakerTLUT }
+
+# Unused Arwing model
+aOptArwingDL:
+  { type: GFX, offset: 0x80147F0, symbol: aOptArwingDL }
+
+aOptArwingVTX:
+  { type: VTX, count: 124, offset: 0x8014B50, symbol: aOptArwingVTX }
+
+aOptArwingTex3:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 16, offset: 0x8015310, symbol: aOptArwingTex3, tlut: 0x08015390 }
+
+aOptArwingTex3TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x8015390, symbol: aOptArwingTex3TLUT }
+
+aOptArwingTex2:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 16, offset: 0x80153B0, symbol: aOptArwingTex2, tlut: 0x08015430 }
+
+aOptArwingTex2TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x8015430, symbol: aOptArwingTex2TLUT }
+
+aOptArwingTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 8, height: 16, offset: 0x08015450, symbol: aOptArwingTex1 }
+
+aOptMenuCardDL:
+  { type: GFX, offset: 0x8015550, symbol: aOptMenuCardDL }
+
+aOptMenuCardTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x080155E8, symbol: aOptMenuCardTex }
+
+aLightningDL:
+  { type: GFX, offset: 0x8015DF0, symbol: aLightningDL }
+
+aLightningTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x08015E88, symbol: aLightningTex }

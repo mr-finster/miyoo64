@@ -1,0 +1,12 @@
+<Root>
+    <File Name="code">
+        <Texture Name="sTransCircleNormalTex" Format="i8" Width="16" Height="64" Offset="0x0"/>
+        <Texture Name="sTransCircleWaveTex" Format="i8" Width="16" Height="64" Offset="0x400"/>
+        <Texture Name="sTransCircleRippleTex" Format="i8" Width="16" Height="64" Offset="0x800"/>
+        <Texture Name="sTransCircleStarburstTex" Format="i8" Width="16" Height="64" Offset="0xC00"/>
+        <Array Name="sTransCircleVtx" Count="34" Offset="0x1000">
+            <Vtx/>
+        </Array>
+        <DList Name="sTransCircleDL" Offset="0x1220"/>
+    </File>
+</Root>

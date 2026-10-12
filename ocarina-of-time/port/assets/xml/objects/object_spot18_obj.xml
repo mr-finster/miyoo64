@@ -1,0 +1,53 @@
+<Root>
+    <File Name="object_spot18_obj" Segment="6">
+        <!-- DisplayLists -->
+        <DList Name="gGoronCityVaseLidDL" Offset="0x150"/>
+        <DList Name="gGoronCityDoorDL" Offset="0x420"/>
+        <DList Name="gGoronCityVaseDL" Offset="0x18B0"/>
+        <DList Name="gGoronCityStatueSpearDL" Offset="0x2370"/>
+        <DList Name="gGoronCityStatueDL" Offset="0x2BC0"/>
+
+        <!-- Palettes -->
+        <Texture Name="gGoronCityVaseTLUT" Format="rgba16" Width="4" Height="4" Offset="0x560"/>
+
+        <!-- Textures -->
+        <Texture Name="gGoronCityVaseTex_580" Format="ci4" Width="64" Height="64" Offset="0x580" TlutOffset="0x560"/>
+        <Texture Name="gGoronCityVaseTex_D80" Format="ci4" Width="32" Height="32" Offset="0xD80" TlutOffset="0x560"/>
+        <Texture Name="gGoronCitySpearLeafTex" Format="rgba16" Width="32" Height="64" Offset="0x3010"/>
+        <Texture Name="gGoronCitySpearTipTex" Format="rgba16" Width="32" Height="32" Offset="0x4010"/>
+        <Texture Name="gGoronCitySpearHandleTex" Format="rgba16" Width="32" Height="32" Offset="0x4810"/>
+        <Texture Name="gGoronCityStatuePattern1Tex" Format="rgba16" Width="32" Height="64" Offset="0x5010"/>
+        <Texture Name="gGoronCityStatuePattern2Tex" Format="rgba16" Width="32" Height="64" Offset="0x6010"/>
+        <Texture Name="gGoronCityStatueTex_7010" Format="rgba16" Width="64" Height="32" Offset="0x7010"/>
+        <Texture Name="gGoronCityStatueAngryFaceTex" Format="rgba16" Width="32" Height="64" Offset="0x8010"/>
+        <Texture Name="gGoronCityStatueNeutralFaceTex" Format="rgba16" Width="32" Height="64" Offset="0x9010"/>
+        <Texture Name="gGoronCityStatueHappyFaceTex" Format="rgba16" Width="32" Height="64" Offset="0xA010"/>
+        <Texture Name="gGoronCityVaseLidTex" Format="rgba16" Width="32" Height="32" Offset="0xB010"/>
+        <Texture Name="gGoronCityVaseLidHandleTex" Format="rgba16" Width="16" Height="16" Offset="0xB810"/>
+        <Texture Name="gGoronCityDoorTex" Format="rgba16" Width="32" Height="64" Offset="0xBA10"/>
+
+        <!-- Collision -->
+        <Collision Name="gGoronCityVaseLidCol" Offset="0x368"/>
+        <Collision Name="gGoronCityDoorCol" Offset="0x534"/>
+        <Collision Name="gGoronCityVaseCol" Offset="0x2154"/>
+        <Collision Name="gGoronCityStatueSpearCol" Offset="0x261C"/>
+        <Collision Name="gGoronCityStatueCol" Offset="0x2FE4"/>
+
+        <!-- Vertices -->
+        <Array Name="gGoronCityVaseLidVtx" Count="21" Offset="0x0">
+            <Vtx/>
+        </Array>
+        <Array Name="gGoronCityDoorVtx" Count="8" Offset="0x3A0">
+            <Vtx/>
+        </Array>
+        <Array Name="gGoronCityVaseVtx" Count="147" Offset="0xF80">
+            <Vtx/>
+        </Array>
+        <Array Name="gGoronCityStatueSpearVtx" Count="31" Offset="0x2180">
+            <Vtx/>
+        </Array>
+        <Array Name="gGoronCityStatueVtx" Count="87" Offset="0x2650">
+            <Vtx/>
+        </Array>
+    </File>
+</Root>

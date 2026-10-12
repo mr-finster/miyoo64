@@ -1,0 +1,178 @@
+<Root>
+    <File Name="object_haka_objects" Segment="6">
+        <Array Name="gShadowTempleMetalGateVtx" Count="4" Offset="0x0">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleMetalGateDL" Offset="0x40"/>
+        <Collision Name="gShadowTempleMetalGateCol" Offset="0x118"/>
+        <Array Name="gShadowTempleRoom3HiddenPlatformsVtx" Count="253" Offset="0x150">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleRoom3HiddenPlatformsDL" Offset="0x1120"/>
+        <Array Name="gShadowTempleRoom9HiddenPlatformsVtx" Count="74" Offset="0x1450">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleRoom9HiddenPlatformsDL" Offset="0x18F0"/>
+        <Array Name="gShadowTempleRoom11HiddenObjectsVtx" Count="318" Offset="0x1AF0">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleRoom11HiddenObjectsDL" Offset="0x2ED0"/>
+        <Array Name="gShadowTempleRoom15HiddenWallsVtx" Count="160" Offset="0x32F0">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleRoom15HiddenWallsDL" Offset="0x3CF0"/>
+        <Array Name="gShadowTempleFakeCryptWallGlowingSkullVtx" Count="24" Offset="0x3F70">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleFakeCryptWallGlowingSkullDL" Offset="0x40F0"/>
+        <Collision Name="gShadowTempleFakeCryptWallGlowingSkullCol" Offset="0x4330"/>
+        <Array Name="gShadowTempleFakeWallStrangeFaceVtx" Count="5" Offset="0x4360">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleFakeWallStrangeFaceDL" Offset="0x43B0"/>
+        <Collision Name="gShadowTempleFakeWallStrangeFaceCol" Offset="0x44D0"/>
+        <Array Name="gShadowTempleRoom5FakeWallsVtx" Count="10" Offset="0x4500">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleRoom5FakeWallsDL" Offset="0x45A0"/>
+        <Collision Name="gShadowTempleRoom5FakeWallsCol" Offset="0x4780"/>
+        <Array Name="gShadowTempleRoom6FakeFloorVtx" Count="4" Offset="0x47B0">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleRoom6FakeFloorDL" Offset="0x47F0"/>
+        <Collision Name="gShadowTempleRoom6FakeFloorCol" Offset="0x4940"/>
+        <Array Name="gShadowTempleRoom10FakeWallVtx" Count="4" Offset="0x4970">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleRoom10FakeWallDL" Offset="0x49B0"/>
+        <Collision Name="gShadowTempleRoom10FakeWallCol" Offset="0x4B00"/>
+        <Array Name="gShadowTempleRoom18FakeWallVtx" Count="4" Offset="0x4B30">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleRoom18FakeWallDL" Offset="0x4B70"/>
+        <Collision Name="gShadowTempleRoom18FakeWallCol" Offset="0x4CC0"/>
+        <Array Name="gShadowTempleBlackPlatformWithScrewColumnVtx" Count="49" Offset="0x4CF0">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleBlackPlatformWithScrewColumnDL" Offset="0x5000"/>
+        <Collision Name="gShadowTempleBlackPlatformWithScrewColumnCol" Offset="0x5334"/>
+        <Array Name="object_haka_objects_Vtx_005360" Count="113" Offset="0x5360">
+            <Vtx/>
+        </Array>
+        <DList Name="object_haka_objects_DL_005A70" Offset="0x5A70"/>
+        <Array Name="gShadowTempleSkullWallVtx" Count="5" Offset="0x5C90">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleSkullWallDL" Offset="0x5CE0"/>
+        <Collision Name="gShadowTempleSkullWallCol" Offset="0x5E30"/>
+        <Array Name="gShadowTempleBirdStatueVtx" Count="104" Offset="0x5E60">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleBirdStatueDL" Offset="0x64E0"/>
+        <Collision Name="gShadowTempleBirdStatueCol" Offset="0x6F70"/>
+        <Array Name="gShadowTempleFanBladeVtx" Count="50" Offset="0x6FA0">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleFanBladeDL" Offset="0x72C0"/>
+        <Array Name="gShadowTempleGuillotineVtx" Count="22" Offset="0x74B0">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleGuillotineDL" Offset="0x7610"/>
+        <Array Name="gShadowTempleSpikedWallEastVtx" Count="120" Offset="0x7770">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleSpikedWallEastDL" Offset="0x7EF0"/>
+        <Collision Name="gShadowTempleSpikedWallEastCol" Offset="0x81D0"/>
+        <Array Name="gShadowTempleSpikedWallWestVtx" Count="130" Offset="0x8200">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleSpikedWallWestDL" Offset="0x8A20"/>
+        <Collision Name="gShadowTempleSpikedWallWestCol" Offset="0x8D10"/>
+        <Array Name="gShadowTempleHiddenBlockPlatformVtx" Count="23" Offset="0x8D40">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleHiddenBlockPlatformDL" Offset="0x8EB0"/>
+        <Collision Name="gShadowTempleHiddenBlockPlatformCol" Offset="0x9168"/>
+        <Array Name="gShadowTempleSpikedCrusherVtx" Count="108" Offset="0x91A0">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleSpikedCrusherDL" Offset="0x9860"/>
+        <Collision Name="gShadowTempleSpikedCrusherCol" Offset="0x9CD0"/>
+        <Array Name="gShadowTempleChainedElevatorPlatformVtx" Count="74" Offset="0x9D00">
+            <Vtx/>
+        </Array>
+        <DList Name="gShadowTempleChainedElevatorPlatformDL" Offset="0xA1A0"/>
+        <Collision Name="gShadowTempleChainedElevatorPlatformCol" Offset="0xA7F4"/>
+        <Array Name="object_haka_objects_Vtx_00A820" Count="4" Offset="0xA820">
+            <Vtx/>
+        </Array>
+        <DList Name="object_haka_objects_DL_00A860" Offset="0xA860"/>
+        <Collision Name="object_haka_objects_Col_00A938" Offset="0xA938"/>
+        <Array Name="object_haka_objects_Vtx_00A970" Count="347" Offset="0xA970">
+            <Vtx/>
+        </Array>
+        <DList Name="object_haka_objects_DL_00BF20" Offset="0xBF20"/>
+        <Array Name="object_haka_objects_Vtx_00C400" Count="243" Offset="0xC400">
+            <Vtx/>
+        </Array>
+        <DList Name="object_haka_objects_DL_00D330" Offset="0xD330"/>
+        <Collision Name="object_haka_objects_Col_00E408" Offset="0xE408"/>
+        <Array Name="object_haka_objects_Vtx_00E440" Count="77" Offset="0xE440">
+            <Vtx/>
+        </Array>
+        <DList Name="object_haka_objects_DL_00E910" Offset="0xE910"/>
+        <Collision Name="object_haka_objects_Col_00ED7C" Offset="0xED7C"/>
+        <Array Name="object_haka_objects_Vtx_00EDB0" Count="64" Offset="0xEDB0">
+            <Vtx/>
+        </Array>
+        <DList Name="object_haka_objects_DL_00F1B0" Offset="0xF1B0"/>
+        <Array Name="object_haka_objects_Vtx_00F3C0" Count="168" Offset="0xF3C0">
+            <Vtx/>
+        </Array>
+        <DList Name="object_haka_objects_DL_00FE40" Offset="0xFE40"/>
+        <Collision Name="object_haka_objects_Col_0108B8" Offset="0x108B8"/>
+        <Array Name="object_haka_objects_Vtx_0108F0" Count="18" Offset="0x108F0">
+            <Vtx/>
+        </Array>
+        <DList Name="object_haka_objects_DL_010A10" Offset="0x10A10"/>
+        <Array Name="object_haka_objects_Vtx_010AF0" Count="18" Offset="0x10AF0">
+            <Vtx/>
+        </Array>
+        <DList Name="object_haka_objects_DL_010C10" Offset="0x10C10"/>
+        <Collision Name="object_haka_objects_Col_010E10" Offset="0x10E10"/>
+        <Array Name="object_haka_objects_Vtx_010E40" Count="323" Offset="0x10E40">
+            <Vtx/>
+        </Array>
+        <DList Name="object_haka_objects_DL_012270" Offset="0x12270"/>
+        <Collision Name="object_haka_objects_Col_0131C4" Offset="0x131C4"/>
+        <Texture Name="object_haka_objects_Tex_0131F0" Format="ia8" Width="32" Height="32" Offset="0x131F0"/>
+        <Texture Name="object_haka_objects_Tex_0135F0" Format="rgba16" Width="32" Height="32" Offset="0x135F0"/>
+        <Texture Name="object_haka_objects_Tex_013DF0" Format="rgba16" Width="32" Height="32" Offset="0x13DF0"/>
+        <Texture Name="gShadowTempleCryptWallTex" Format="rgba16" Width="32" Height="64" Offset="0x145F0"/>
+        <Texture Name="object_haka_objects_Tex_0155F0" Format="rgba16" Width="32" Height="64" Offset="0x155F0"/>
+        <Texture Name="object_haka_objects_Tex_0165F0" Format="rgba16" Width="32" Height="8" Offset="0x165F0"/>
+        <Texture Name="object_haka_objects_Tex_0167F0" Format="rgba16" Width="32" Height="16" Offset="0x167F0"/>
+        <Texture Name="object_haka_objects_Tex_016BF0" Format="i4" Width="32" Height="32" Offset="0x16BF0"/>
+        <Texture Name="object_haka_objects_Tex_016DF0" Format="i4" Width="32" Height="32" Offset="0x16DF0"/>
+        <Texture Name="object_haka_objects_Tex_016FF0" Format="i4" Width="32" Height="32" Offset="0x16FF0"/>
+        <Texture Name="object_haka_objects_Tex_0171F0" Format="i4" Width="32" Height="32" Offset="0x171F0"/>
+        <Texture Name="object_haka_objects_Tex_0173F0" Format="i4" Width="32" Height="32" Offset="0x173F0"/>
+        <Texture Name="object_haka_objects_Tex_0175F0" Format="i4" Width="32" Height="32" Offset="0x175F0"/>
+        <Texture Name="object_haka_objects_Tex_0177F0" Format="rgba16" Width="32" Height="32" Offset="0x177F0"/>
+        <Texture Name="object_haka_objects_Tex_017FF0" Format="rgba16" Width="32" Height="32" Offset="0x17FF0"/>
+        <Texture Name="object_haka_objects_Tex_0187F0" Format="rgba16" Width="16" Height="64" Offset="0x187F0"/>
+        <Texture Name="object_haka_objects_Tex_018FF0" Format="rgba16" Width="32" Height="32" Offset="0x18FF0"/>
+        <Texture Name="object_haka_objects_Tex_0197F0" Format="i4" Width="16" Height="16" Offset="0x197F0"/>
+        <Texture Name="object_haka_objects_Tex_019870" Format="rgba16" Width="32" Height="32" Offset="0x19870"/>
+        <Texture Name="object_haka_objects_Tex_01A070" Format="rgba16" Width="16" Height="32" Offset="0x1A070"/>
+        <Texture Name="object_haka_objects_Tex_01A470" Format="i4" Width="32" Height="32" Offset="0x1A470"/>
+        <Texture Name="object_haka_objects_Tex_01A670" Format="rgba16" Width="32" Height="32" Offset="0x1A670"/>
+        <Texture Name="object_haka_objects_Tex_01AE70" Format="ia4" Width="64" Height="32" Offset="0x1AE70"/>
+        <Texture Name="object_haka_objects_Tex_01B270" Format="rgba16" Width="64" Height="16" Offset="0x1B270"/>
+        <Texture Name="object_haka_objects_Tex_01BA70" Format="rgba16" Width="64" Height="16" Offset="0x1BA70"/>
+        <Texture Name="object_haka_objects_Tex_01C270" Format="i4" Width="32" Height="32" Offset="0x1C270"/>
+        <Texture Name="object_haka_objects_Tex_01C470" Format="i4" Width="32" Height="32" Offset="0x1C470"/>
+        <Texture Name="object_haka_objects_Tex_01C670" Format="rgba16" Width="32" Height="33" Offset="0x1C670"/>
+        <Texture Name="object_haka_objects_Tex_01CEB0" Format="i4" Width="64" Height="64" Offset="0x1CEB0"/>
+    </File>
+</Root>

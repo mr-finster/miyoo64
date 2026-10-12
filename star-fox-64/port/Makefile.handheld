@@ -1,0 +1,312 @@
+# Star Fox 64 port build: the Miyoo Mini (PLAT=miyoo) plus the -m32 desktop proxy (PLAT=pc).
+#
+#   make -f Makefile.handheld PLAT=pc      -j$(nproc)   # desktop SDL2, 32-bit x86
+#   make -f Makefile.handheld PLAT=miyoo   -j$(nproc)   # Miyoo Mini family (ARM, glibc, SDL 1.2; notes/miyoo.md)
+#
+# Needs a prior `make init` (the decomp's own N64 build from the player's ROM):
+# it provides the Torch asset sources (src/assets, include/assets), the splat
+# linker script and the N64 ELF whose segment offsets the port reuses.
+#
+# Layout (see src/port/sf64/*.c):
+#  - Game code (src/engine, src/overlays, src/sys, src/audio, libultra gu) +
+#    the MK64 handheld kit (src/port/{gfx,sdl,audio}) + SF64 glue (src/port/sf64).
+#  - Asset banks: each ast_*.c compiled with the ARM compiler for BOTH
+#    platforms and linked at its N64 segment base, so symbols and sizes equal
+#    the N64 bank's; the main link only takes their symbol addresses. The bank
+#    bytes go into the port ROM image (build/<plat>/sf64.rom, local only:
+#    tools/handheld/make_portrom.py) that the game DMAs from at run time.
+#  - Overlays: linked in; each overlay object's .data/.bss moved into its own
+#    section so port_overlay.c can emulate the N64 reload (fresh data, zero bss).
+#  - ast_radio (the message bank, a RAM-linked bank on the N64): aligned like IDO,
+#    linked into a NOLOAD region (no bytes in the ELF), refilled at every start.
+
+PLAT ?= pc
+SHELL := /bin/bash
+# A buildroot toolchain-wrapper may run every compile through ccache, whose
+# direct mode reuses an object when the include files it saw last time are
+# unchanged -- it misses a newly generated file that now shadows one of them
+# (the swapped texture copies under build/banks/swapped: the RGBA32 fix never
+# reached the banks until this was set). Always compile for real.
+export BR_NO_CCACHE := 1
+# UBSAN=1 (desktop only) builds in its own dir, so build/pc stays the release proxy.
+BUILD_DIR := build/$(PLAT)$(if $(filter pc1,$(PLAT)$(UBSAN)),-ubsan)
+ELF       := $(BUILD_DIR)/sf64
+GEN       := $(BUILD_DIR)/gen
+N64_ELF   := build/starfox64.us.rev1.elf
+N64_LD    := linker_scripts/us/rev1/starfox64.ld
+BASEROM_U := baserom.us.rev1.uncompressed.z64
+
+V := @
+ifeq ($(VERBOSE),1)
+  V :=
+endif
+
+#==============================================================================#
+# Toolchains                                                                   #
+#==============================================================================#
+# The ARM compiler (HH) also compiles the asset banks for the desktop proxy: their bytes are data.
+MIYOO_TOOLCHAIN ?= /opt/miyoomini-toolchain
+HH         := $(MIYOO_TOOLCHAIN)/usr/bin/arm-linux-gnueabihf-
+
+ifeq ($(PLAT),miyoo)
+  # Miyoo Mini / Mini Plus / v4 / Flip (SigmaStar SSD202D: two Cortex-A7s, NEON-VFPv4, hardware divide) with
+  # shauninman's union-miyoomini-toolchain (gcc 8.3, glibc 2.28, the device's SDL 1.2 in the sysroot), as the
+  # MK64, DKR, OoT and GoldenEye Miyoo ports. The handheld's CPU flags; HANDHELD stays defined (the soft renderer,
+  # SDL 1.2, save states), MIYOO for the differences: the 640x480 panel, keys, paths, power, the menu, the second
+  # core (notes/miyoo.md). The asset banks are compiled with this compiler too (HH below): their bytes are data.
+  MM_SYSROOT := $(MIYOO_TOOLCHAIN)/usr/arm-linux-gnueabihf/sysroot
+  CC      := $(HH)gcc
+  OBJCOPY := $(HH)objcopy
+  OBJDUMP := $(HH)objdump
+  MARCH   := -march=armv7ve+neon-vfpv4 -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -fsingle-precision-constant
+  OPT_FLAGS = -O2 -fno-math-errno -fomit-frame-pointer -ffp-contract=off $(EXTRA_CFLAGS)
+  # 64-bit file offsets: 32-bit glibc's readdir/stat otherwise fail (EOVERFLOW) on 64-bit inodes and directory
+  # offsets, and the ROM search saw an empty folder (the MK64 Miyoo port).
+  SDL_CFLAGS := -I$(MM_SYSROOT)/usr/include -D_REENTRANT -D_FILE_OFFSET_BITS=64
+  # no SDL_ttf/SDL_image: the Miyoo menu and first-start screens draw with a built-in font
+  SDL_LIBS   := -L$(MM_SYSROOT)/usr/lib -Wl,-rpath-link,$(MM_SYSROOT)/usr/lib -lSDL
+  PLAT_DEFINES := TARGET_HANDHELD=1 HANDHELD=1 TARGET_MIYOO=1 MIYOO=1
+  PLAT_SRC := src/port/sdl/gfx_sdl12.c src/port/sdl/miyoo_panel.c src/port/sdl/miyoo_menu.c \
+              src/port/sdl/miyoo_worker.c src/port/sdl/miyoo_clock.c
+else
+  CC      := gcc
+  OBJCOPY := objcopy
+  OBJDUMP := objdump
+  # -m32: pointer/size_t widths of the 32-bit device. SSE float: strict 32-bit
+  # like the device's VFP. -malign-data=abi: no 32-byte array padding (MK64).
+  # -fsingle-precision-constant as on the device, so an unsuffixed constant is a
+  # float in both builds and the proxy computes what the device computes
+  # (mario-kart-64 977e5a2, the lead's B8; round 10: 0 of 500 state lines differed
+  # before, over 5000 frames, but only by luck).
+  MARCH   := -m32 -fno-pie -malign-data=abi -fsingle-precision-constant
+  OPT_FLAGS = -O2 -g -fno-math-errno -msse2 -mfpmath=sse -ffp-contract=off $(EXTRA_CFLAGS)
+  SDL_CFLAGS := $(shell PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig pkg-config --cflags sdl2)
+  SDL_LIBS   := $(shell PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig pkg-config --libs sdl2)
+  PLAT_DEFINES := TARGET_HANDHELD=1 TARGET_PC=1
+  PLAT_SRC := src/port/sdl/gfx_sdl.c
+endif
+
+#==============================================================================#
+# Sources                                                                      #
+#==============================================================================#
+OVERLAYS := ovl_i1 ovl_i2 ovl_i3 ovl_i4 ovl_i5 ovl_i6 ovl_menu ovl_ending ovl_unused
+
+GAME_C := $(wildcard src/engine/*.c) $(wildcard src/sys/*.c) $(wildcard src/audio/*.c) \
+          $(foreach o,$(OVERLAYS),$(wildcard src/overlays/$(o)/*.c)) \
+          src/buffers.c src/dmatable.c src/libc_math64.c \
+          src/libultra/gu/lookat.c src/libultra/gu/mtxutil.c src/libultra/gu/ortho.c \
+          src/libultra/gu/perspective.c src/libultra/gu/sinf.c src/libultra/gu/cosf.c src/libultra/gu/sqrtf.c
+# Included by other files (fox_load_inits.c by fox_load.c, *_data by their owner):
+GAME_C := $(filter-out src/engine/fox_load_inits.c src/engine/fox_edata_info.c src/engine/fox_rcp_setup.c \
+            src/engine/fox_colheaders.c src/overlays/ovl_ending/fox_end2_data.c %object_ram_info.c,$(GAME_C))
+PORT_C := $(wildcard src/port/*.c) $(wildcard src/port/gfx/*.c) $(wildcard src/port/audio/*.c) \
+          $(wildcard src/port/sf64/*.c) \
+          src/port/sdl/gfx_soft.c src/port/sdl/main.c src/port/sdl/controller_sdl.c \
+          src/port/sdl/savestate.c src/port/sdl/pmu.c src/port/sdl/audio_sdl.c \
+          src/port/sdl/hh_priority.c $(PLAT_SRC)
+C_FILES := $(GAME_C) $(PORT_C)
+O_FILES := $(foreach f,$(C_FILES),$(BUILD_DIR)/$(f:.c=.o))
+DEP_FILES := $(O_FILES:.o=.d)
+OVL_OBJS = $(filter $(foreach o,$(OVERLAYS),$(BUILD_DIR)/src/overlays/$(o)/%),$(O_FILES))
+
+DEFINES := F3DEX_GBI=1 _LANGUAGE_C=1 VERSION_US=1 NON_MATCHING=1 AVOID_UB=1 NDEBUG=1 \
+           _MIPS_SZLONG=32 PORT_PROFILE=1 $(PLAT_DEFINES)
+INCLUDES := -Iinclude -Iinclude/libultra -I. -Isrc/port -Isrc/port/gfx -Isrc/port/sdl -Isrc/port/audio
+WARN := -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function \
+        -Wno-unused-parameter -Wno-missing-braces -Wno-char-subscripts -Wno-sign-compare \
+        -Wno-int-in-bool-context -Wno-unknown-pragmas -Wno-parentheses -Wno-comment \
+        -Wno-multichar -Wno-pointer-sign -Wno-address -Wno-array-bounds \
+        -Wno-error=incompatible-pointer-types -Wno-error=int-conversion
+# -fno-toplevel-reorder: decomp tables are walked past their ends into their
+# neighbours. -fno-zero-initialized-in-bss: zeroed data stays where the N64 had it.
+# -fdata-sections: every data symbol its own section, so the ROM data compiled
+# into the game code can be moved out one symbol at a time (.hhasset, below).
+# -fno-merge-constants: string literals in plain per-object .rodata, not in
+# linker-merged string pools, so they can move out too.
+CFLAGS := $(OPT_FLAGS) $(MARCH) -std=gnu99 -fsigned-char -fno-strict-aliasing -fwrapv -fno-common \
+          -fno-toplevel-reorder -fno-zero-initialized-in-bss -fdata-sections -fno-merge-constants $(WARN) \
+          $(foreach d,$(DEFINES),-D$(d)) $(INCLUDES) $(SDL_CFLAGS)
+LDFLAGS := $(MARCH) -no-pie -Wl,-Ttext-segment=0x10000000 \
+           -Wl,--defsym=_ftext=__executable_start -Wl,--defsym=_fbss=__bss_start $(EXTRA_LDFLAGS)
+# `make ... PLAT=pc UBSAN=1` -> report shift counts that are negative or >= the width at run
+# time (mario-kart-64 1a4bbf7). MIPS and x86 mask the count to 5 bits, ARM uses its low byte
+# (x >> 32 is 0 on the device, x on the desktop), so the desktop hides what the device gets
+# wrong (ocarina-of-time 33d8a76). Likewise a float converted to an int it doesn't fit: x86 gives
+# INT_MIN, ARM saturates (float-cast-overflow; mario-kart-64 b2dff40). Output goes to build/pc-ubsan.
+ifeq ($(PLAT)$(UBSAN),pc1)
+  CFLAGS  += -fsanitize=shift-exponent,float-cast-overflow -g
+  LDFLAGS += -fsanitize=shift-exponent,float-cast-overflow
+endif
+
+LIBS := $(SDL_LIBS) -lm -lpthread
+
+#==============================================================================#
+# Segment tables and asset banks (ARM objects, both platforms)                 #
+#==============================================================================#
+$(shell mkdir -p $(GEN))
+$(GEN)/banks.mk $(GEN)/rom_syms.ld $(GEN)/n64_asset_syms.ld: tools/handheld/gen_segments.py $(N64_LD) $(N64_ELF)
+	$(V)python3 tools/handheld/gen_segments.py $(N64_LD) $(N64_ELF) mips-linux-gnu-nm $(GEN)
+-include $(GEN)/banks.mk
+
+BANK_DIR  := build/banks$(if $(filter miyoo,$(PLAT)),-miyoo)
+BANK_CFLAGS := -O2 -march=armv7ve -fno-common -fno-toplevel-reorder -fno-zero-initialized-in-bss \
+               -fsigned-char -w $(foreach d,$(DEFINES),-D$(d)) -I$(BANK_DIR)/swapped $(INCLUDES)
+BANK_BINS := $(foreach b,$(BANKS),$(BANK_DIR)/$(b).bin)
+
+# RGBA16/IA16/TLUT texel literals: byte-swapped copies searched first, so the
+# bank bytes are in ROM order like every texture the renderer reads.
+U16_TEX_INCS := $(sort $(shell grep -rhA1 -E '^u16 [A-Za-z0-9_]+\[' src/assets 2>/dev/null | grep -oE '"src/assets/[^"]+\.(rgba16|ia16|tlut)\.inc\.c"' | tr -d '"')) \
+                $(sort $(shell grep -rhA1 -E '^u32 [A-Za-z0-9_]+\[' src/assets 2>/dev/null | grep -oE '"src/assets/[^"]+\.rgba32\.inc\.c"' | tr -d '"'))
+SWAPPED_INCS := $(addprefix $(BANK_DIR)/swapped/,$(U16_TEX_INCS))
+$(BANK_DIR)/swapped/%.inc.c: %.inc.c tools/handheld/swap_u16_inc.py
+	@mkdir -p $(dir $@)
+	$(V)python3 tools/handheld/swap_u16_inc.py $< $@
+
+# (one rule per bank: a pattern rule cannot repeat the stem in src/assets/X/X.c)
+define BANK_O_RULE
+$(BANK_DIR)/$(1).o: src/assets/$(1)/$(1).c $(SWAPPED_INCS)
+	@mkdir -p $(BANK_DIR)
+	$(V)$(HH)gcc -c $(BANK_CFLAGS) -MMD -MP -MF $(BANK_DIR)/$(1).d -o $$@ $$<
+endef
+$(foreach b,$(BANKS),$(eval $(call BANK_O_RULE,$(b))))
+-include $(wildcard $(BANK_DIR)/*.d)
+# Linked at the bank's segment base: every symbol lands at the N64 address.
+$(BANK_DIR)/%.elf: $(BANK_DIR)/%.o $(GEN)/banks.mk $(GEN)/n64_asset_syms.ld
+	$(V)$(HH)ld -EL -e 0 --section-start=.data=$(BANK_VRAM_$*) -o $@ $< $(GEN)/n64_asset_syms.ld
+# Exactly the N64 bank's size, or the ROM layout (and every offset) breaks.
+$(BANK_DIR)/%.bin: $(BANK_DIR)/%.elf
+	$(V)$(HH)objcopy -O binary --only-section=.data $< $@
+	$(V)sz=$$(stat -c %s $@); want=$(BANK_SIZE_$*); \
+	  if [ $$sz -gt $$want ]; then echo "BANK $*: $$sz bytes > N64 $$want"; rm -f $@; exit 1; fi; \
+	  truncate -s $$want $@
+
+# Every bank symbol as an absolute address for the main link.
+$(GEN)/asset_syms.ld: $(foreach b,$(BANKS),$(BANK_DIR)/$(b).elf)
+	$(V)for e in $^; do $(HH)nm $$e | awk '$$2 ~ /^[DdBbRr]$$/ && $$3 !~ /^\./ { printf "%s = 0x%s;\n", $$3, $$1 }'; done | sort -u -t= -k1,1 > $@
+
+# The local ROM image the game DMAs from (never shipped).
+$(BUILD_DIR)/sf64.rom: $(BANK_BINS) $(GEN)/banks.mk tools/handheld/make_portrom.py $(BASEROM_U)
+	$(V)python3 tools/handheld/make_portrom.py $(BASEROM_U) $(N64_ELF) $(BANK_DIR) $(GEN)/banks.mk $@
+
+#==============================================================================#
+# ast_radio (RAM-linked message bank): compiled for PLAT, in the executable     #
+#==============================================================================#
+# Every array aligned to 4 like IDO (align_radio.py), so each symbol sits at
+# the N64's offset and the bank can be rebuilt from the ROM at boot.
+RADIO_C := $(BUILD_DIR)/radio/ast_radio.c
+RADIO_O := $(BUILD_DIR)/ast_radio.o
+$(RADIO_C): src/assets/ast_radio/ast_radio.c tools/handheld/align_radio.py
+	@mkdir -p $(dir $@)
+	$(V)python3 tools/handheld/align_radio.py $< $@
+$(RADIO_O): $(RADIO_C)
+	$(V)$(CC) -c $(filter-out -fdata-sections,$(CFLAGS)) -w $(if $(findstring -flto,$(EXTRA_CFLAGS)),-fno-lto) -o $@ $<
+	$(V)$(OBJCOPY) --rename-section .data=.ast_radio.data --rename-section .bss=.ast_radio.bss $@
+
+#==============================================================================#
+# Overlay sections                                                             #
+#==============================================================================#
+# Overlay .data/.bss grouped by object path (INSERT BEFORE so these patterns
+# win over the default rules); .hhasset (the game data rebuilt from the ROM,
+# inside the save-state range: the game writes some of it) and the message
+# bank after .bss. hh_noload.ld / hh_progbits.ld differ only in NOLOAD, so the
+# shipped link and the recipe link have the same addresses (checked below).
+define OVL_LD
+	$(V){ echo 'SECTIONS {'; echo '  .ovldata : ALIGN(16) {'; \
+	  for o in $(OVERLAYS); do echo "    . = ALIGN(16); $${o}_DATA_START = .; */overlays/$$o/*.o(.data .data.*) $${o}_DATA_END = .; $${o}_RODATA_END = .;"; done; \
+	  echo '  }'; echo '} INSERT BEFORE .data;'; \
+	  echo 'SECTIONS {'; echo '  .ovlbss (NOLOAD) : ALIGN(16) {'; \
+	  echo '    *(.ast_radio.bss)'; \
+	  for o in $(OVERLAYS); do echo "    . = ALIGN(16); $${o}_BSS_START = .; */overlays/$$o/*.o(.bss .bss.*) $${o}_BSS_END = .;"; done; \
+	  echo '  }'; echo '} INSERT BEFORE .bss;'; \
+	  echo 'SECTIONS {'; echo "  .hhasset $(1) : ALIGN(16) {"; \
+	  echo '    __hhasset_start = .; *(.hhasset.*) __hhasset_end = .;'; \
+	  echo '  }'; echo '} INSERT AFTER .bss;'; \
+	  echo 'SECTIONS {'; echo '  .ast_radio (NOLOAD) : ALIGN(4096) {'; \
+	  echo '    __assets_start = .; ast_radio_VRAM = .; *(.ast_radio.data) *(.ast_radio.bss) ast_radio_VRAM_END = .;'; \
+	  echo '    . = ALIGN(4096); __assets_end = .;'; \
+	  echo '  }'; echo '} INSERT AFTER .hhasset;'; \
+	  for o in $(OVERLAYS); do echo "$${o}_TEXT_START = 0; $${o}_TEXT_END = 0;"; done; } > $@
+endef
+$(GEN)/hh_noload.ld: Makefile.handheld
+	$(call OVL_LD,(NOLOAD))
+$(GEN)/hh_progbits.ld: Makefile.handheld
+	$(call OVL_LD,)
+
+#==============================================================================#
+# Compile + link                                                               #
+#==============================================================================#
+CFLAGS_STAMP := $(BUILD_DIR)/cflags.stamp
+$(shell mkdir -p $(BUILD_DIR); [ -f $(CFLAGS_STAMP) ] && [ "$$(cat $(CFLAGS_STAMP))" = "$(CFLAGS)" ] || echo "$(CFLAGS)" > $(CFLAGS_STAMP))
+
+$(BUILD_DIR)/%.o: %.c $(CFLAGS_STAMP)
+	@mkdir -p $(dir $@)
+	$(V)$(CC) -c $(CFLAGS) -MMD -MP -MF $(BUILD_DIR)/$*.d -o $@ $<
+# Per-link build stamp (save states and the device's image cache are tied to it).
+STAMP_C := $(BUILD_DIR)/build_stamp.c
+$(STAMP_C): $(O_FILES) $(RADIO_O)
+	$(V)printf '#include <stdint.h>\nconst uint32_t port_build_stamp = 0x%s;\n' "$$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')" > $@
+$(STAMP_C:.c=.o): $(STAMP_C)
+	$(V)$(CC) -c $(CFLAGS) -o $@ $<
+
+LINK_SYMS := -Wl,$(GEN)/rom_syms.ld -Wl,$(GEN)/asset_syms.ld
+# Phase A: every object as compiled (nothing in .hhasset) -> the map that
+# derive_embedded.py select reads.
+ELF_A := $(BUILD_DIR)/sf64_a
+$(ELF_A): $(O_FILES) $(RADIO_O) $(STAMP_C:.c=.o) $(GEN)/rom_syms.ld $(GEN)/asset_syms.ld $(GEN)/hh_noload.ld
+	$(V)$(CC) $(LDFLAGS) -Wl,-Map,$@.map -o $@ $(O_FILES) $(RADIO_O) $(STAMP_C:.c=.o) -Wl,-T,$(GEN)/hh_noload.ld $(LINK_SYMS) $(LIBS)
+HHLIST := $(GEN)/hhasset.txt
+$(HHLIST): $(ELF_A) tools/handheld/derive_embedded.py tools/handheld/elf32.py $(N64_ELF) $(BUILD_DIR)/sf64.rom
+	$(V)python3 tools/handheld/derive_embedded.py select $(ELF_A).map $(ELF_A) $(N64_ELF) $(BUILD_DIR)/sf64.rom $@
+# The selected sections renamed to .hhasset.* in copies of their objects;
+# objects.rsp lists what the final links take (copies where renamed).
+HH_RSP := $(BUILD_DIR)/hh/objects.rsp
+$(HH_RSP): $(HHLIST) $(O_FILES) tools/handheld/hh_objects.py
+	$(V)python3 tools/handheld/hh_objects.py $(HHLIST) $(BUILD_DIR)/hh $(OBJCOPY) $@ $(O_FILES)
+# Phase B (region PROGBITS: the recipe source) and the shipped link (NOLOAD).
+ELF_B := $(BUILD_DIR)/sf64_b
+$(ELF_B): $(HH_RSP) $(RADIO_O) $(STAMP_C:.c=.o) $(GEN)/rom_syms.ld $(GEN)/asset_syms.ld $(GEN)/hh_progbits.ld
+	$(V)$(CC) $(LDFLAGS) -Wl,-Map,$@.map -o $@ @$(HH_RSP) $(RADIO_O) $(STAMP_C:.c=.o) -Wl,-T,$(GEN)/hh_progbits.ld $(LINK_SYMS) $(LIBS)
+$(ELF): $(HH_RSP) $(RADIO_O) $(STAMP_C:.c=.o) $(GEN)/rom_syms.ld $(GEN)/asset_syms.ld $(GEN)/hh_noload.ld $(ELF_B)
+	$(V)$(CC) $(LDFLAGS) -Wl,-Map,$@.map -o $@ @$(HH_RSP) $(RADIO_O) $(STAMP_C:.c=.o) -Wl,-T,$(GEN)/hh_noload.ld $(LINK_SYMS) $(LIBS)
+	$(V)if ! cmp -s <(nm $@ | awk '$$3 !~ /^\$$/ {print $$1, $$3}' | sort) <(nm $(ELF_B) | awk '$$3 !~ /^\$$/ {print $$1, $$3}' | sort); then echo "ERROR: shipped and recipe links disagree on addresses (kept as $@.bad)"; mv -f $@ $@.bad; exit 1; fi
+	@ls -lh $@
+EMBEDDED := $(BUILD_DIR)/embedded.bin
+$(EMBEDDED): $(ELF_B) tools/handheld/derive_embedded.py $(BASEROM_U) $(BUILD_DIR)/sf64.rom
+	$(V)python3 tools/handheld/derive_embedded.py recipes $(ELF_B).map $(ELF_B) $(N64_ELF) $(BASEROM_U) $(BUILD_DIR)/sf64.rom $@
+
+# The game folder's recipes: how the device rebuilds every asset bank from the ROM
+# (numbers only; derive_recipes.py verifies each bank replays exactly).
+# The radio bank's port bytes, as the device must rebuild them: the bank
+# linked alone at the region address the main link gave it (pointers are
+# real addresses in this bank). Local only, like the banks.
+ifeq ($(PLAT),miyoo)
+  PLAT_LD := $(HH)ld -EL
+else
+  PLAT_LD := ld -m elf_i386
+endif
+RADIO_BIN := $(BUILD_DIR)/radio/ast_radio_port.bin
+$(RADIO_BIN): $(RADIO_O) $(ELF)
+	$(V)addr=$$(nm $(ELF) | awk '$$3 == "ast_radio_VRAM" {print $$1}'); \
+	  $(PLAT_LD) -e 0 --section-start=.ast_radio.data=0x$$addr -o $(BUILD_DIR)/radio/ast_radio.elf $(RADIO_O) && \
+	  $(OBJCOPY) -O binary --only-section=.ast_radio.data $(BUILD_DIR)/radio/ast_radio.elf $@
+
+RECIPES := $(BUILD_DIR)/recipes.bin
+$(RECIPES): $(BANK_BINS) $(RADIO_BIN) $(GEN)/banks.mk tools/handheld/derive_recipes.py $(BASEROM_U)
+	$(V)python3 tools/handheld/derive_recipes.py $(BASEROM_U) $(N64_ELF) $(BANK_DIR) $(GEN)/banks.mk $@ \
+	  --radio $(RADIO_BIN) $$(nm $(ELF) | awk '$$3 == "ast_radio_VRAM" {print "0x" $$1}')
+
+all: $(ELF) $(BUILD_DIR)/sf64.rom $(RECIPES) $(EMBEDDED)
+
+# Every source whose bytes end up in the executable (release gate 1 checks
+# each is tracked in git; the message bank is NOLOAD and not listed, the
+# per-link build stamp is a random number).
+print-code-sources:
+	@printf '%s\n' $(C_FILES)
+objs: $(O_FILES)
+banks: $(BANK_BINS) $(GEN)/asset_syms.ld
+clean:
+	rm -rf $(BUILD_DIR) $(BANK_DIR)
+.PHONY: all objs banks clean print-code-sources
+.DEFAULT_GOAL := all
+
+-include $(DEP_FILES)

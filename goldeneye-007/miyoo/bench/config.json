@@ -1,0 +1,6 @@
+{
+    "label": "GoldenEye Bench",
+    "icon": "icon.png",
+    "launch": "launch.sh",
+    "description": "GoldenEye 007 speed test (~30-40 min, nothing to press)"
+}

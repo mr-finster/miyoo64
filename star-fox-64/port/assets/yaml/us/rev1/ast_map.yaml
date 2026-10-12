@@ -1,0 +1,579 @@
+# Documented
+:config:
+  segments:
+    - [0x06, 0xC48F40]
+  header:
+    code:
+      - '#include "assets/ast_map.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+
+# Restart Game (Game Over)
+aMapRetryCourseGameOverTex:
+  { type: TEXTURE, format: IA8, offset: 0x6000000, width: 96, height: 22, ctype: u8, symbol: aMapRetryCourseGameOverTex }
+
+# Proceed to Next Course
+aMapProceedNextCourseTex:
+  { type: TEXTURE, format: IA8, offset: 0x6000840, width: 96, height: 22, ctype: u8, symbol: aMapProceedNextCourseTex }
+
+# Retry Course (Lose 1 Arwing)
+aMapRetryCourseLose1UPTex:
+  { type: TEXTURE, format: IA8, offset: 0x6001080, width: 96, height: 22, ctype: u8, symbol: aMapRetryCourseLose1UPTex }
+
+# Change Course
+aMapChangeCourseTex:
+  { type: TEXTURE, format: IA8, offset: 0x60018C0, width: 96, height: 10, ctype: u8, symbol: aMapChangeCourseTex }
+
+# Aquas Ocean
+aMapAqNameCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6001C80, width: 96, height: 13, ctype: u8, symbol: aMapAqNameCardTex }
+
+# Terror of the Deep
+aMapAqTitleCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6002160, width: 208, height: 19, ctype: u8, symbol: aMapAqTitleCardTex }
+
+# Meteo
+# Asteroid Field
+aMapMeNameCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x60030D0, width: 96, height: 28, ctype: u8, symbol: aMapMeNameCardTex }
+
+# Into the Asteroid Field
+aMapMeTitleCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6003B50, width: 208, height: 19, ctype: u8, symbol: aMapMeTitleCardTex }
+
+# Bolse Defense Outpost
+aMapBoNameCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6004AC0, width: 168, height: 19, ctype: u8, symbol: aMapBoNameCardTex }
+
+# The Last Hurrah
+aMapBoTitleCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6005740, width: 160, height: 19, ctype: u8, symbol: aMapBoTitleCardTex }
+
+# Area 6
+# Defense Station
+aMapA6NameCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6006320, width: 104, height: 28, ctype: u8, symbol: aMapA6NameCardTex }
+
+# Through the Middle
+aMapA6TitleCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6006E80, width: 176, height: 19, ctype: u8, symbol: aMapA6TitleCardTex }
+
+# Corneria
+# Former Army Base
+aMapCoNameCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6007B90, width: 128, height: 28, ctype: u8, symbol: aMapCoNameCardTex }
+
+# Enter Star Fox
+aMapCoTitleCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6008990, width: 232, height: 19, ctype: u8, symbol: aMapCoTitleCardTex }
+
+# Fortuna
+# Former Defense Post
+aMapFoNameCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6009AD0, width: 168, height: 28, ctype: u8, symbol: aMapFoNameCardTex }
+
+# Enter Star Wolf
+aMapFoTitleCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x600AD30, width: 168, height: 19, ctype: u8, symbol: aMapFoTitleCardTex }
+
+# Katina
+# Frontline Base
+aMapKaNameCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x600B9B0, width: 168, height: 28, ctype: u8, symbol: aMapKaNameCardTex }
+
+# Reunion
+aMapKaTitleCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x600CC10, width: 128, height: 19, ctype: u8, symbol: aMapKaTitleCardTex }
+
+# The Lylat System
+aMapLylatSystemCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x600D590, width: 168, height: 19, ctype: u8, symbol: aMapLylatSystemCardTex }
+
+# Macbeth
+# Venom Army Supply Base
+aMapMaNameCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x600E210, width: 160, height: 28, ctype: u8, symbol: aMapMaNameCardTex }
+
+# The Forever Train
+aMapMaTitleCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x600F390, width: 168, height: 19, ctype: u8, symbol: aMapMaTitleCardTex }
+
+# Solar
+aMapSoNameCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6010010, width: 112, height: 13, ctype: u8, symbol: aMapSoNameCardTex }
+
+# Out of the Frying Pan.
+aMapSoTitleCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x60105C0, width: 224, height: 19, ctype: u8, symbol: aMapSoTitleCardTex }
+
+# Sector X Combat Zone
+aMapSxNameCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6011660, width: 176, height: 12, ctype: u8, symbol: aMapSxNameCardTex }
+
+# Mystery of the Space Base
+aMapSxTitleCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6011EA0, width: 256, height: 19, ctype: u8, symbol: aMapSxTitleCardTex }
+
+# Sector Y Combat Zone
+aMapSyNameCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x60131A0, width: 176, height: 12, ctype: u8, symbol: aMapSyNameCardTex }
+
+# Fierce Melee
+aMapSyTitleCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x60139E0, width: 128, height: 19, ctype: u8, symbol: aMapSyTitleCardTex }
+
+# Sector Z Combat Zone
+aMapSzNameCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6014360, width: 176, height: 12, ctype: u8, symbol: aMapSzNameCardTex }
+
+# The Ambush of Great Fox
+aMapSzTitleCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6014BA0, width: 232, height: 19, ctype: u8, symbol: aMapSzTitleCardTex }
+
+# Titania
+# Arid Desert
+aMapTiNameCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6015CE0, width: 96, height: 28, ctype: u8, symbol: aMapTiNameCardTex }
+
+# The Search for Slippy
+aMapTiTitleCardTex:
+  { type: TEXTURE, format: IA8, offset: 0x6016760, width: 200, height: 19, ctype: u8, symbol: aMapTiTitleCardTex }
+
+# Zones
+# Toxic Waste Area
+aMapZoNameCardTex: 
+  { type: TEXTURE, format: IA8, offset: 0x6017640, width: 112, height: 28, ctype: u8, symbol: aMapZoNameCardTex }
+
+# Invasion Aftermath
+aMapZoTitleCardTex: 
+  { type: TEXTURE, format: IA8, offset: 0x6018280, width: 184, height: 19, ctype: u8, symbol: aMapZoTitleCardTex }
+
+aMapPrologueTextFadeTex: 
+  { type: TEXTURE, format: IA8, offset: 0x6019030, width: 8, height: 16, ctype: u8, symbol: aMapPrologueTextFadeTex }
+
+# Clouds ?
+aMapVenomCloudTex: 
+  { type: TEXTURE, format: IA8, offset: 0x60190B0, width: 96, height: 96, ctype: u8, symbol: aMapVenomCloudTex }
+
+aMapOptionBgTex: 
+  { type: TEXTURE, format: IA8, offset: 0x601B4B0, width: 32, height: 32, ctype: u8, symbol: aMapOptionBgTex }
+
+# Some text in japanese
+aMapJpTex1: 
+  { type: TEXTURE, format: IA8, offset: 0x601B8B0, width: 80, height: 26, ctype: u8, symbol: aMapJpTex1 }
+
+aMapSectorXDL:
+  { type: GFX, offset: 0x601C0D0, symbol: aMapSectorXDL }
+
+aMapSectorXTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x0601C160, width: 32, height: 32, ctype: u16, symbol: aMapSectorXTex }
+
+aMapSectorYDL:
+  { type: GFX, offset: 0x601C960, symbol: aMapSectorYDL }
+
+aMapSectorYTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x0601C9F0, width: 32, height: 32, ctype: u16, symbol: aMapSectorYTex }
+
+aMapMedalDL:
+  { type: GFX, offset: 0x601D1F0, symbol: aMapMedalDL }
+
+aMapMedalTex:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 64, offset: 0x0601D2F0, symbol: aMapMedalTex, tlut: 0x0601DAF0 }
+
+aMapMedalTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 144, offset: 0x0601DAF0, symbol: aMapMedalTLUT }
+
+aMapArwingIconTex:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 16, offset: 0x0601DC10, symbol: aMapArwingIconTex, tlut: 0x0601DC90 }
+
+aMapArwingIconTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 8, offset: 0x0601DC90, symbol: aMapArwingIconTLUT }
+
+aMapXTex:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 7, offset: 0x0601DCA0, symbol: aMapXTex, tlut: 0x0601DCD8 }
+
+aMapXTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 5, offset: 0x0601DCD8, symbol: aMapXTLUT }
+
+aMapCursorDL:
+  { type: GFX, offset: 0x601DCF0, symbol: aMapCursorDL }
+
+aMapCursorTex:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 16, offset: 0x0601DDE8, symbol: aMapCursorTex, tlut: 0x0601DE68 }
+
+aMapCursorTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 12, offset: 0x0601DE68, symbol: aMapCursorTLUT }
+
+aMapArea6DL:
+  { type: GFX, offset: 0x601DE80, symbol: aMapArea6DL }
+
+aMapArea6Tex1:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 32, height: 32, offset: 0x0601F2B0, symbol: aMapArea6Tex1, tlut: 0x0601F4B0 }
+
+aMapArea6Tex1TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x0601F4B0, symbol: aMapArea6Tex1TLUT }
+
+aMapArea6Tex2:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 16, offset: 0x0601E8F8, symbol: aMapArea6Tex2, tlut: 0x0601E978 }
+
+aMapArea6Tex2TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x0601E978, symbol: aMapArea6Tex2TLUT }
+
+aMapArea6ShipDL:
+  { type: GFX, offset: 0x601E9A0, symbol: aMapArea6ShipDL }
+
+aMapArea6Tex3:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 16, offset: 0x0601F4D0, symbol: aMapArea6Tex3, tlut: 0x0601F550 }
+
+aMapArea6Tex3TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x0601F550, symbol: aMapArea6Tex3TLUT }
+
+aMapArea6Tex4:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 16, offset: 0x0601F570, symbol: aMapArea6Tex4, tlut: 0x0601F5F0 }
+
+aMapArea6Tex4TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x0601F5F0, symbol: aMapArea6Tex4TLUT }
+
+aMapArea6Tex5:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 16, offset: 0x0601F610, symbol: aMapArea6Tex5, tlut: 0x0601F690 }
+
+aMapArea6Tex5TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x0601F690, symbol: aMapArea6Tex5TLUT }
+
+aMapSectorZDL:
+  { type: GFX, offset: 0x601F6B0, symbol: aMapSectorZDL }
+
+aMapSectorZTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x0601F740, width: 32, height: 32, ctype: u16, symbol: aMapSectorZTex }
+
+# Looks like Aquas
+aMapAquasTex:
+  { type: TEXTURE, format: CI8, offset: 0x601FF40, width: 96, height: 96, ctype: u8, symbol: aMapAquasTex, tlut: 0x06022340 }
+
+aMapAquasTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 80, offset: 0x06022340, symbol: aMapAquasTLUT }
+
+# Looks like Venom
+aMapVenomTex:
+  { type: TEXTURE, format: CI8, offset: 0x60223E0, width: 96, height: 96, ctype: u8, symbol: aMapVenomTex, tlut: 0x060247E0 }
+
+aMapVenomTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 88, offset: 0x060247E0, symbol: aMapVenomTLUT }
+
+# Looks like Corneria
+aMapCorneriaTex:
+  { type: TEXTURE, format: CI8, offset: 0x6024890, width: 96, height: 96, ctype: u8, symbol: aMapCorneriaTex, tlut: 0x06026C90 }
+
+aMapCorneriaTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 112, offset: 0x06026C90, symbol: aMapCorneriaTLUT }
+
+# Looks like Zones
+aMapFortunaTex:
+  { type: TEXTURE, format: CI8, offset: 0x6026D70, width: 96, height: 96, ctype: u8, symbol: aMapFortunaTex, tlut: 0x06029170 }
+
+aMapFortunaTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 88, offset: 0x06029170, symbol: aMapFortunaTLUT }
+
+# Looks like Solar
+aMapKatinaTex:
+  { type: TEXTURE, format: CI8, offset: 0x6029220, width: 96, height: 96, ctype: u8, symbol: aMapKatinaTex, tlut: 0x0602B620 }
+
+aMapKatinaTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 88, offset: 0x0602B620, symbol: aMapKatinaTLUT }
+
+# Looks like Macbeth
+aMapMacbethTex:
+  { type: TEXTURE, format: CI8, offset: 0x602B6D0, width: 96, height: 96, ctype: u8, symbol: aMapMacbethTex, tlut: 0x0602DAD0 }
+
+aMapMacbethTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 72, offset: 0x0602DAD0, symbol: aMapMacbethTLUT }
+
+# Looks like Sector Z
+aMapTitaniaTex:
+  { type: TEXTURE, format: CI8, offset: 0x602DB60, width: 96, height: 96, ctype: u8, symbol: aMapTitaniaTex, tlut: 0x0602FF60 }
+
+aMapTitaniaTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 56, offset: 0x0602FF60, symbol: aMapTitaniaTLUT }
+
+aMapZonessTex:
+  { type: TEXTURE, format: CI8, offset: 0x602FFD0, width: 96, height: 96, ctype: u8, symbol: aMapZonessTex, tlut: 0x060323D0 }
+
+aMapZonessTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 56, offset: 0x060323D0, symbol: aMapZonessTLUT }
+
+# Portrait of Falco
+aMapRadioCharFalcoTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06032440, width: 28, height: 28, ctype: u16, symbol: aMapRadioCharFalcoTex }
+
+# Portrait of Peppy
+aMapRadioCharPeppyTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06032A60, width: 28, height: 28, ctype: u16, symbol: aMapRadioCharPeppyTex }
+
+# Picture of Peppy, James and Pigma used in the narrated intro.
+aMapPrologue3Tex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06033080, width: 96, height: 52, ctype: u16, symbol: aMapPrologue3Tex }
+
+# Picture of Andross, General Pepper and Venom in the background, used in the narrated intro.
+aMapPrologue2Tex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06035780, width: 96, height: 52, ctype: u16, symbol: aMapPrologue2Tex }
+
+# Picture of Andross, hands open, Corneria in the middle, used in the narrated intro.
+aMapPrologue6Tex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06037E80, width: 96, height: 52, ctype: u16, symbol: aMapPrologue6Tex }
+
+# Picture of an Arwing dodging attacks from enemies, used in the narrated intro.
+aMapPrologue4Tex:
+  { type: TEXTURE, format: RGBA16, offset: 0x0603A580, width: 96, height: 52, ctype: u16, symbol: aMapPrologue4Tex }
+
+# Picture of Slippy, Peppy, Fox and Falco, used in the narrated intro.
+aMapPrologue7Tex:
+  { type: TEXTURE, format: RGBA16, offset: 0x0603CC80, width: 96, height: 52, ctype: u16, symbol: aMapPrologue7Tex }
+
+# Picture of Peppy returning from Vemon, used in the narrated intro.
+aMapPrologue5Tex:
+  { type: TEXTURE, format: RGBA16, offset: 0x0603F380, width: 96, height: 52, ctype: u16, symbol: aMapPrologue5Tex }
+
+# Picture of Corneria, used in the narrated intro.
+aMapPrologue1Tex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06041A80, width: 96, height: 52, ctype: u16, symbol: aMapPrologue1Tex }
+
+# Portrait of Slippy
+aMapRadioCharSlippyTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06044180, width: 28, height: 28, ctype: u16, symbol: aMapRadioCharSlippyTex }
+
+# White Square ?
+aMapWhiteSquareTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x060447A0, width: 8, height: 8, ctype: u16, symbol: aMapWhiteSquareTex }
+
+# Picture of Fox receiving orders from General Pepper, used in the map (briefing)
+aMapBriefingFoxTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06044820, width: 92, height: 51, ctype: u16, symbol: aMapBriefingFoxTex }
+
+# Fox face talking during briefing.
+aMapBriefingFoxTalkTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06046CD0, width: 32, height: 34, ctype: u16, symbol: aMapBriefingFoxTalkTex }
+
+# Black Square with borders.
+aMapPathBoxTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06047550, width: 24, height: 24, ctype: u16, symbol: aMapPathBoxTex }
+
+aMapPlanetExplosionDL:
+  { type: GFX, offset: 0x60479D0, symbol: aMapPlanetExplosionDL }
+
+aMapPlanetExplosionTex:
+  { type: TEXTURE, format: IA8, offset: 0x06047A68, width: 32, height: 32, ctype: u8, symbol: aMapPlanetExplosionTex }
+
+aMapVenomCloudDL:
+  { type: GFX, offset: 0x6047E70, symbol: aMapVenomCloudDL }
+
+# These two should be one whole 64 x 64 texture but Torch can't handle a texture call with a custom offset.
+aMapVenomCloud1DestTex:
+  { type: TEXTURE, format: IA8, offset: 0x06047F80, width: 64, height: 32, ctype: u8, symbol: aMapVenomCloud1DestTex }
+
+aMapVenomCloud2DestTex:
+  { type: TEXTURE, format: IA8, offset: 0x06048780, width: 64, height: 32, ctype: u8, symbol: aMapVenomCloud2DestTex }
+
+aMapVenomCloud1SrcTex:
+  { type: TEXTURE, format: IA8, offset: 0x06048F80, width: 64, height: 64, ctype: u8, symbol: aMapVenomCloud1SrcTex }
+  
+aMapExplosion4DL:
+  { type: GFX, offset: 0x6049F80, symbol: aMapExplosion4DL }
+
+aMapExplosion4Tex:
+  { type: TEXTURE, format: CI8, offset: 0x0604A048, width: 16, height: 16, ctype: u8, symbol: aMapExplosion4Tex, tlut: 0x0602FF60 }
+
+aMapExplosion4TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 32, offset: 0x0604A148, symbol: aMapExplosion4TLUT }
+
+aMapExplosion3DL:
+  { type: GFX, offset: 0x604A190, symbol: aMapExplosion3DL }
+
+aMapExplosion3Tex:
+  { type: TEXTURE, format: CI8, offset: 0x0604A258, width: 16, height: 16, ctype: u8, symbol: aMapExplosion3Tex, tlut: 0x0604A358 }
+
+aMapExplosion3TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 80, offset: 0x0604A358, symbol: aMapExplosion3TLUT }
+
+aMapExplosion2DL:
+  { type: GFX, offset: 0x604A400, symbol: aMapExplosion2DL }
+
+aMapExplosion2Tex:
+  { type: TEXTURE, format: CI8, offset: 0x0604A4C8, width: 16, height: 16, ctype: u8, symbol: aMapExplosion2Tex, tlut: 0x0604A5C8 }
+
+aMapExplosion2TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 160, offset: 0x0604A5C8, symbol: aMapExplosion2TLUT }
+
+aMapExplosion1DL:
+  { type: GFX, offset: 0x604A710, symbol: aMapExplosion1DL }
+
+aMapExplosion1Tex:
+  { type: TEXTURE, format: CI8, offset: 0x0604A7D8, width: 16, height: 16, ctype: u8, symbol: aMapExplosion1Tex, tlut: 0x0604A8D8 }
+
+aMapExplosion1TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 136, offset: 0x0604A8D8, symbol: aMapExplosion1TLUT }
+
+# Arwing Model, used in the map.
+aMapArwingDL:
+  { type: GFX, offset: 0x604A9F0, symbol: aMapArwingDL }
+
+ast_map_seg6_vtx_4AD50:
+  { type: VTX, offset: 0x604AD50, count: 124, symbol: ast_map_seg6_vtx_4AD50 }
+
+aMapArwingTex2:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 16, offset: 0x0604B510, symbol: aMapArwingTex2, tlut: 0x0604B590 }
+
+aMapArwingTex2TLUT: 
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x0604B590, symbol: aMapArwingTex2TLUT }
+
+aMapArwingTex3:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 16, offset: 0x0604B5B0, symbol: aMapArwingTex3, tlut: 0x0604B630 }
+
+aMapArwingTex3TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x0604B630, symbol: aMapArwingTex3TLUT }
+
+aMapArwingTex1:
+  { type: TEXTURE, format: RGBA16, offset: 0x0604B650, width: 8, height: 16, ctype: u16, symbol: aMapArwingTex1 }
+
+# Model of Bolse
+aMapBolseDL:
+  { type: GFX, offset: 0x604B750, symbol: aMapBolseDL }
+
+aMapBolseTex1:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 32, height: 32, offset: 0x0604BC48, symbol: aMapBolseTex1, tlut: 0x0604BC48 }
+
+aMapBolseTex1TLUT: 
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x0604BE48, symbol: aMapBolseTex1TLUT }
+
+aMapBolseTex2:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 32, height: 32, offset: 0x0604BE68, symbol: aMapBolseTex2, tlut: 0x0604C068 }
+
+aMapBolseTex2TLUT: 
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x0604C068, symbol: aMapBolseTex2TLUT }
+
+aMapBolseTex3:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 32, height: 32, offset: 0x0604C088, symbol: aMapBolseTex3, tlut: 0x0604C288 }
+
+aMapBolseTex3TLUT: 
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x0604C288, symbol: aMapBolseTex3TLUT }
+
+aMapBolseTex4:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 16, offset: 0x0604C2A8, symbol: aMapBolseTex4, tlut: 0x0604C328 }
+
+aMapBolseTex4TLUT: 
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x0604C328, symbol: aMapBolseTex4TLUT }
+
+# Television outcoming light Model, used during briefing.
+aMapTvScreenGlowDL:
+  { type: GFX, offset: 0x604C350, symbol: aMapTvScreenGlowDL }
+
+aMapTvScreenGlowTex:
+  { type: TEXTURE, format: IA8, offset: 0x0604C4C0, width: 8, height: 16, ctype: u8, symbol: aMapTvScreenGlowTex }
+
+aMapTitaniaRings1DL:
+  { type: GFX, offset: 0x604C540, symbol: aMapTitaniaRings1DL }
+
+aMapTitaniaRings1Tex:
+  { type: TEXTURE, format: IA8, offset: 0x0604C5D8, width: 32, height: 64, ctype: u8, symbol: aMapTitaniaRings1Tex }
+
+aMapTitaniaRings2DL:
+  { type: GFX, offset: 0x604CDE0, symbol: aMapTitaniaRings2DL }
+
+aMapTitaniaRings2Tex:
+  { type: TEXTURE, format: IA8, offset: 0x0604CE78, width: 32, height: 64, ctype: u8, symbol: aMapTitaniaRings2Tex }
+
+aMapPlanetClearStarDL:
+  { type: GFX, offset: 0x604D680, symbol: aMapPlanetClearStarDL }
+
+aMapPlanetClearStarTex:
+  { type: TEXTURE, format: IA8, offset: 0x0604D708, width: 32, height: 32, ctype: u8, symbol: aMapPlanetClearStarTex }
+
+# Solar Rays
+aMapSolarDL:
+  { type: GFX, offset: 0x604DB10, symbol: aMapSolarDL }
+
+aMapSolarTex1:
+  { type: TEXTURE, format: IA8, offset: 0x0604DD20, width: 128, height: 32, ctype: u8, symbol: aMapSolarTex1 }
+
+aMapSolarTex2:
+  { type: TEXTURE, format: IA8, offset: 0x0604ED20, width: 128, height: 32, ctype: u8, symbol: aMapSolarTex2 }
+
+aMapSolarTex3:
+  { type: TEXTURE, format: IA8, offset: 0x0604FD20, width: 128, height: 32, ctype: u8, symbol: aMapSolarTex3 }
+
+aMapSolarTex4:
+  { type: TEXTURE, format: IA8, offset: 0x06050D20, width: 128, height: 32, ctype: u8, symbol: aMapSolarTex4 }
+
+aMapGralPepperFace2DL:
+  { type: GFX, offset: 0x6051D20, symbol: aMapGralPepperFace2DL }
+
+aMapGralPepperFace2Tex4:
+  { type: TEXTURE, format: RGBA16, offset: 0x06051F20, width: 64, height: 32, ctype: u16, symbol: aMapGralPepperFace2Tex4 }
+
+aMapGralPepperFace2Tex1:
+  { type: TEXTURE, format: RGBA16, offset: 0x06052F20, width: 64, height: 32, ctype: u16, symbol: aMapGralPepperFace2Tex1 }
+
+aMapGralPepperFace2Tex2:
+  { type: TEXTURE, format: RGBA16, offset: 0x06053F20, width: 64, height: 32, ctype: u16, symbol: aMapGralPepperFace2Tex2 }
+
+aMapGralPepperFace2Tex3:
+  { type: TEXTURE, format: RGBA16, offset: 0x06054F20, width: 64, height: 32, ctype: u16, symbol: aMapGralPepperFace2Tex3 }
+
+aMapGralPepperFace1DL:
+  { type: GFX, offset: 0x6055F20, symbol: aMapGralPepperFace1DL }
+
+aMapGralPepperFace1Tex1:
+  { type: TEXTURE, format: RGBA16, offset: 0x06056120, width: 64, height: 32, ctype: u16, symbol: aMapGralPepperFace1Tex1 }
+
+aMapGralPepperFace1Tex2:
+  { type: TEXTURE, format: RGBA16, offset: 0x06057120, width: 64, height: 32, ctype: u16, symbol: aMapGralPepperFace1Tex2 }
+
+aMapGralPepperFace1Tex3:
+  { type: TEXTURE, format: RGBA16, offset: 0x06058120, width: 64, height: 32, ctype: u16, symbol: aMapGralPepperFace1Tex3 }
+
+aMapGralPepperFace1Tex4:
+  { type: TEXTURE, format: RGBA16, offset: 0x06059120, width: 64, height: 32, ctype: u16, symbol: aMapGralPepperFace1Tex4 }
+
+aMapGralPepperFaceBottomDL:
+  { type: GFX, offset: 0x605A120, symbol: aMapGralPepperFaceBottomDL }
+
+aMapGralPepperFaceBottomTex1:
+  { type: TEXTURE, format: RGBA16, offset: 0x0605A230, width: 64, height: 32, ctype: u16, symbol: aMapGralPepperFaceBottomTex1 }
+
+aMapGralPepperFaceBottomTex2:
+  { type: TEXTURE, format: RGBA16, offset: 0x0605B230, width: 64, height: 32, ctype: u16, symbol: aMapGralPepperFaceBottomTex2 }
+
+aMapPlanetShadowDL:
+  { type: GFX, offset: 0x605C230, symbol: aMapPlanetShadowDL }
+
+aMapPlanetShadowTex1:
+  { type: TEXTURE, format: IA8, offset: 0x0605C610, width: 64, height: 32, ctype: u8, symbol: aMapPlanetShadowTex1 }
+
+aMapPlanetShadowTex2:
+  { type: TEXTURE, format: IA8, offset: 0x0605CE10, width: 64, height: 32, ctype: u8, symbol: aMapPlanetShadowTex2 }
+
+aMapPlanetShadowTex3:
+  { type: TEXTURE, format: IA8, offset: 0x0605D610, width: 64, height: 32, ctype: u8, symbol: aMapPlanetShadowTex3 }
+
+aMapPlanetShadowTex4:
+  { type: TEXTURE, format: IA8, offset: 0x0605DE10, width: 64, height: 32, ctype: u8, symbol: aMapPlanetShadowTex4 }
+
+aMapPlanetShadowTex5:
+  { type: TEXTURE, format: IA8, offset: 0x0605E610, width: 64, height: 32, ctype: u8, symbol: aMapPlanetShadowTex5 }
+
+aMapPlanetShadowTex6:
+  { type: TEXTURE, format: IA8, offset: 0x0605EE10, width: 64, height: 32, ctype: u8, symbol: aMapPlanetShadowTex6 }
+
+aMapPlanetShadowTex7:
+  { type: TEXTURE, format: IA8, offset: 0x0605F610, width: 64, height: 32, ctype: u8, symbol: aMapPlanetShadowTex7 }
+
+aMapPlanetShadowTex8:
+  { type: TEXTURE, format: IA8, offset: 0x0605FE10, width: 64, height: 32, ctype: u8, symbol: aMapPlanetShadowTex8 }
+
+aMapMeteorDL:
+  { type: GFX, offset: 0x6060610, symbol: aMapMeteorDL }
+
+aMapMeteorTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06060698, width: 32, height: 32, ctype: u16, symbol: aMapMeteorTex }
+
+# size = 0x60EA0

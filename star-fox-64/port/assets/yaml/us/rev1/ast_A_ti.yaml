@@ -1,0 +1,68 @@
+:config:
+  segments:
+    - [0x0A, 0xA049A0]
+  header:
+    code:
+      - '#include "assets/ast_7_ti_2.h"'
+      - '#include "assets/ast_8_ti.h"'
+      - '#include "assets/ast_9_ti.h"'
+      - '#include "assets/ast_A_ti.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+  external_files:
+    - "assets/yaml/us/rev1/ast_7_ti_2.yaml"
+    - "assets/yaml/us/rev1/ast_8_ti.yaml"
+    - "assets/yaml/us/rev1/ast_9_ti.yaml"
+
+aTiEffect394DL:
+  {type: GFX, offset: 0xA000000, symbol: aTiEffect394DL}
+
+aTiEffect394Tex:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x0A0000C8, symbol: aTiEffect394Tex, tlut: 0x0A0001C8 }
+
+aTiEffect394TexTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 60, offset: 0x0A0001C8, symbol: aTiEffect394TexTLUT }
+
+aTiGorasAnim1:
+  {type: SF64:ANIM, offset: 0xA0002BC, symbol: aTiGorasAnim1}
+
+aTiGorasAnim2:
+  {type: SF64:ANIM, offset: 0xA00047C, symbol: aTiGorasAnim2}
+
+aTi2GorasUndergroundClawSkel:
+  {type: SF64:SKELETON, offset: 0xA000568, symbol: aTi2GorasUndergroundClawSkel}
+
+aTiGorasAnim3:
+  {type: SF64:ANIM, offset: 0xA000858, symbol: aTiGorasAnim3}
+
+aTiGorasAnim4:
+  {type: SF64:ANIM, offset: 0xA000934, symbol: aTiGorasAnim4}
+
+aTiGorasAnim5:
+  {type: SF64:ANIM, offset: 0xA000D50, symbol: aTiGorasAnim5}
+
+aTi2GorasUndergroundArmSlippySkel:
+  {type: SF64:SKELETON, offset: 0xA000EDC, symbol: aTi2GorasUndergroundArmSlippySkel}
+
+aTi2GorasSkel:
+  {type: SF64:SKELETON, offset: 0xA001A70, symbol: aTi2GorasSkel}
+
+aTiGorasSkelLimb11DL:
+  {type: GFX, offset: 0xA001BE0, symbol: aTiGorasSkelLimb11DL}
+
+aTiGorasSkelLimb88DL:
+  {type: GFX, offset: 0xA001DB0, symbol: aTiGorasSkelLimb88DL}
+
+aTiGorasSkelLimb89DL:
+  {type: GFX, offset: 0xA001EC0, symbol: aTiGorasSkelLimb89DL}
+
+aTiGorasSkelLimb1DL:
+  {type: GFX, offset: 0xA001FA0, symbol: aTiGorasSkelLimb1DL}
+
+aTiGorasSkelLimb7DL:
+  {type: GFX, offset: 0xA002170, symbol: aTiGorasSkelLimb7DL}
+
+aTiGorasTailAttackAnim:
+  {type: SF64:ANIM, offset: 0xA009990, symbol: aTiGorasTailAttackAnim}
+

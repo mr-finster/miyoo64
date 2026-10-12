@@ -1,0 +1,156 @@
+# Documented
+:config:
+  segments:
+    - [0x06, 0xA4FBB0]
+  header:
+    code:
+      - '#include "assets/ast_sector_z.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+      - '#include "sf64level.h"'
+      - '#include "sf64event.h"'
+      - '#include "sf64player.h"'
+      - '#include "sf64audio_external.h"'
+      - '#include "sf64mesg.h"'
+
+# Sector Z: Combat Zone
+aSzTitleCardTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 176, height: 12, offset: 0x6000000, symbol: aSzTitleCardTex }
+
+# One of the so called "Boss titles", unused in the game. A version of the same thing
+# seems to have been implemented in the 3DS version.
+# The text in japanese translates to:
+
+# Interspace anti-ship missile
+# Macbeth B
+aSzBossTitleTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 104, height: 26, offset: 0x6000840, symbol: aSzBossTitleTex }
+
+aSzGreatFoxRadarMark:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 16, height: 9, offset: 0x60012D0, symbol: aSzGreatFoxRadarMark }
+
+aSzSpaceJunk1DL:
+  { type: GFX, offset: 0x6001360, symbol: aSzSpaceJunk1DL }
+
+aSzSpaceJunk2DL:
+  { type: GFX, offset: 0x6001A10, symbol: aSzSpaceJunk2DL }
+
+aSzSpaceJunk2Tex:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x06001C80, symbol: aSzSpaceJunk2Tex, tlut: 0x06001D80 }
+
+aSzSpaceJunk2TexTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x06001D80, symbol: aSzSpaceJunk2TexTLUT }
+
+aSzSpaceJunk3DL:
+  { type: GFX, offset: 0x6001DA0, symbol: aSzSpaceJunk3DL }
+
+aSzSpaceJunkTex1:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 32, offset: 0x60025F0, symbol: aSzSpaceJunkTex1, tlut: 0x060029F0 }
+
+aSzSpaceJunkTex1TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 240, offset: 0x060029F0, symbol: aSzSpaceJunkTex1TLUT }
+
+aSzSpaceJunkTex3:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 8, height: 8, offset: 0x06002BD0, symbol: aSzSpaceJunkTex3, tlut: 0x06002C10 }
+
+aSzSpaceJunkTex3TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x06002C10, symbol: aSzSpaceJunkTex3TLUT }
+
+aSzSpaceJunkTex4:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x06002C30, symbol: aSzSpaceJunkTex4, tlut: 0x06002D30 }
+
+aSzSpaceJunkTex4TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 88, offset: 0x06002D30, symbol: aSzSpaceJunkTex4TLUT }
+
+aSzSpaceJunkTex2:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x06002DE0, symbol: aSzSpaceJunkTex2, tlut: 0x06002EE0 }
+
+aSzSpaceJunkTex2TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 80, offset: 0x06002EE0, symbol: aSzSpaceJunkTex2TLUT }
+
+aSzBackgroundDL:
+  { type: GFX, offset: 0x6002F80, symbol: aSzBackgroundDL }
+
+aSzBackgroundTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x06003010, symbol: aSzBackgroundTex }
+
+aSzMissileTex1:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x060041F8, symbol: aSzMissileTex1, tlut: 0x060042F8 }
+
+aSzMissileTex1TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 24, offset: 0x060042F8, symbol: aSzMissileTex1TLUT }
+
+aSzMissileMarkDL:
+  { type: GFX, offset: 0x6004330, symbol: aSzMissileMarkDL }
+
+aSzMissileMarkTex:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 8, offset: 0x06004458, symbol: aSzMissileMarkTex, tlut: 0x06004558 }
+
+aSzMissileMarkTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 8, offset: 0x06004558, symbol: aSzMissileMarkTLUT }
+
+aSzMissileRadarMarkDL:
+  { type: GFX, offset: 0x6004570, symbol: aSzMissileRadarMarkDL }
+
+aSzSpaceJunk4DL:
+  { type: GFX, offset: 0x60045E0, symbol: aSzSpaceJunk4DL }
+
+aSzSpaceJunk4Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x60047E0, symbol: aSzSpaceJunk4Tex }
+
+aSzInvaderIIIDL:
+  { type: GFX, offset: 0x6004FE0, symbol: aSzInvaderIIIDL }
+
+aSzInvaderIIITex2:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 32, offset: 0x060054E0, symbol: aSzInvaderIIITex2, tlut: 0x060058E0 }
+
+aSzInvaderIIITex2TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 240, offset: 0x060058E0, symbol: aSzInvaderIIITex2TLUT }
+
+aSzInvaderIIITex1:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x06005AC0, symbol: aSzInvaderIIITex1, tlut: 0x06005BC0 }
+
+aSzInvaderIIITex1TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 24, offset: 0x06005BC0, symbol: aSzInvaderIIITex1TLUT }
+
+aSzMissileTex2:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 32, offset: 0x06006090, symbol: aSzMissileTex2, tlut: 0x06006490 }
+
+aSzMissileTex2TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 232, offset: 0x06006490, symbol: aSzMissileTex2TLUT }
+
+aSzMissileTex3:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x06006BD8, symbol: aSzMissileTex3, tlut: 0x06006CD8 }
+
+aSzMissileTex3TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x06006CD8, symbol: aSzMissileTex3TLUT }
+
+aSzMissileAnim:
+  { type: SF64:ANIM, offset: 0x6006D64, symbol: aSzMissileAnim }
+
+aSzMissileSkel: 
+  { type: SF64:SKELETON, offset: 0x6006E50, symbol: aSzMissileSkel }
+
+aSzEnvSetup:
+  { type: SF64:ENVIRONMENT, offset: 0x6006E70, symbol: aSzEnvSetup }
+
+aSzLevelObjects:
+  { type: SF64:OBJECT_INIT, offset: 0x6006EB4, symbol: aSzLevelObjects }
+
+aSzColPoly:
+  {type: SF64:COLPOLY, count: 316, offset: 0x6007558, symbol: aSzColPoly, mesh_symbol: aSzColPolyMesh }
+
+aSZMissileHitbox:
+  { type: SF64:HITBOX, offset: 0x6009230, symbol: aSZMissileHitbox }
+
+aSzSpaceJunk3Hitbox:
+  { type: SF64:HITBOX, offset: 0x600924C, symbol: aSzSpaceJunk3Hitbox }
+
+aSzSpaceJunk1Hitbox:
+  { type: SF64:HITBOX, offset: 0x60092E8, symbol: aSzSpaceJunk1Hitbox }
+
+aSzGreatFoxHitbox:
+  { type: SF64:HITBOX, offset: 0x6009388, symbol: aSzGreatFoxHitbox }
+
+# size = 0x93B0

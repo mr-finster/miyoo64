@@ -1,0 +1,13 @@
+{
+  "id": "fzx",
+  "title": "F-Zero X",
+  "folder": "FZeroX",
+  "exe": "fzerox",
+  "files": ["fzerox"],
+  "icon": "icon.png",
+  "env": "FZX",
+  "data": "data",
+  "rom": {"name": "F-Zero X (USA)", "sha1": "5f658e88ffa9de23cba6986a8fd3d3a90d7b4340", "size": 16777216},
+  "system": "FZEROX",
+  "minui_tag": "FZX"
+}

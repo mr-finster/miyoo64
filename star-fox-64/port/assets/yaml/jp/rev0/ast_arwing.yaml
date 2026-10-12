@@ -1,0 +1,208 @@
+:config:
+  segments:
+    - [0x3, 0x88F730]
+  header:
+    code:
+      - '#include "assets/ast_arwing.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+
+aAwArwingLifeIconTex:
+  { type: TEXTURE, format: CI4, offset: 0x3000000, width: 16, height: 16, ctype: u8, tlut: 0x3000080, symbol: aAwArwingLifeIconTex }
+
+aAwArwingLifeIconTLUT:
+  { type: TEXTURE, format: TLUT, offset: 0x3000080, colors: 8, ctype: u16, symbol: aAwArwingLifeIconTLUT }
+
+aAwFoxHeadDL:
+  { type: GFX, offset: 0x3000090, symbol: aAwFoxHeadDL }
+
+aAwJamesHeadDL:
+  { type: GFX, offset: 0x3001C90, symbol: aAwJamesHeadDL }
+
+aAwJamesHeadSunglassesTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x3003960, width: 8, height: 8, ctype: u16, symbol: aAwJamesHeadSunglassesTex }
+
+aAwTeamHeadTex1:
+  { type: TEXTURE, format: RGBA16, offset: 0x30039E0, width: 8, height: 8, ctype: u16, symbol: aAwTeamHeadTex1 }
+
+aAwTeamHeadTex6:
+  { type: TEXTURE, format: RGBA16, offset: 0x3003A60, width: 8, height: 8, ctype: u16, symbol: aAwTeamHeadTex6 }
+
+aAwTeamHeadTex7:
+  { type: TEXTURE, format: RGBA16, offset: 0x3003AE0, width: 8, height: 8, ctype: u16, symbol: aAwTeamHeadTex7 }
+
+aAwTeamHeadTex2:
+  { type: TEXTURE, format: RGBA16, offset: 0x3003B60, width: 8, height: 8, ctype: u16, symbol: aAwTeamHeadTex2 }
+
+aAwTeamHeadTex3:
+  { type: TEXTURE, format: RGBA16, offset: 0x3003BE0, width: 8, height: 8, ctype: u16, symbol: aAwTeamHeadTex3 }
+
+aAwTeamHeadTex8:
+  { type: TEXTURE, format: RGBA16, offset: 0x3003C60, width: 8, height: 8, ctype: u16, symbol: aAwTeamHeadTex8 }
+
+aAwPeppyHeadDL:
+  { type: GFX, offset: 0x3003CE0, symbol: aAwPeppyHeadDL }
+
+aAwSlippyHeadDL:
+  { type: GFX, offset: 0x3005AB0, symbol: aAwSlippyHeadDL }
+
+aAwTeamHeadTex4:
+  { type: TEXTURE, format: RGBA16, offset: 0x30074D0, width: 8, height: 8, ctype: u16, symbol: aAwTeamHeadTex4 }
+
+aAwSlippyHeadTex1:
+  { type: TEXTURE, format: RGBA16, offset: 0x3007550, width: 8, height: 8, ctype: u16, symbol: aAwSlippyHeadTex1 }
+
+aAwTeamHeadTex5:
+  { type: TEXTURE, format: RGBA16, offset: 0x30075D0, width: 8, height: 8, ctype: u16, symbol: aAwTeamHeadTex5 }
+
+aAwItemLasersDL:
+  { type: GFX, offset: 0x3007650, symbol: aAwItemLasersDL }
+
+aAwItemLasersVtx:
+  { type: VTX, offset: 0x3007A20, count: 244, symbol: aAwItemLasersVtx }
+
+aAwArwingItemLasersTex2:
+  { type: TEXTURE, format: RGBA16, offset: 0x3008960, width: 64, height: 32, ctype: u16, symbol: aAwArwingItemLasersTex2 }
+
+aAwArwingItemLasersTex1:
+  { type: TEXTURE, format: RGBA16, offset: 0x3009960, width: 16, height: 16, ctype: u16, symbol: aAwArwingItemLasersTex1 }
+
+aAwBodyDL:
+  { type: GFX, offset: 0x3009B60, symbol: aAwBodyDL }
+
+aAwArwingTex2:
+  { type: TEXTURE, format: RGBA16, offset: 0x300AC48, width: 32, height: 32, ctype: u16, symbol: aAwArwingTex2 }
+
+aAwArwingTex1:
+  { type: TEXTURE, format: RGBA16, offset: 0x300B448, width: 32, height: 32, ctype: u16, symbol: aAwArwingTex1 }
+
+aAwArwingTex3:
+  { type: TEXTURE, format: RGBA16, offset: 0x300BC48, width: 32, height: 32, ctype: u16, symbol: aAwArwingTex3 }
+
+aAwArwingTex5:
+  { type: TEXTURE, format: RGBA16, offset: 0x300C448, width: 32, height: 32, ctype: u16, symbol: aAwArwingTex5 }
+
+aAwArwingTex6:
+  { type: TEXTURE, format: RGBA16, offset: 0x300CC48, width: 32, height: 32, ctype: u16, symbol: aAwArwingTex6 }
+
+aAwArwingTex7:
+  { type: TEXTURE, format: RGBA16, offset: 0x300D448, width: 32, height: 32, ctype: u16, symbol: aAwArwingTex7 }
+
+aAwArwingTex9:
+  { type: TEXTURE, format: RGBA16, offset: 0x300DC48, width: 32, height: 32, ctype: u16, symbol: aAwArwingTex9 }
+
+aAwArwingTex4:
+  { type: TEXTURE, format: RGBA16, offset: 0x300E448, width: 32, height: 32, ctype: u16, symbol: aAwArwingTex4 }
+
+aAwArwingTex8:
+  { type: TEXTURE, format: RGBA16, offset: 0x300EC48, width: 32, height: 32, ctype: u16, symbol: aAwArwingTex8 }
+
+aAwArwingTex11:
+  { type: TEXTURE, format: RGBA16, offset: 0x300F448, width: 64, height: 32, ctype: u16, symbol: aAwArwingTex11 }
+
+aAwArwingTex12:
+  { type: TEXTURE, format: RGBA16, offset: 0x3010448, width: 64, height: 32, ctype: u16, symbol: aAwArwingTex12 }
+
+aAwLaserGun1DL:
+  { type: GFX, offset: 0x3011720, symbol: aAwLaserGun1DL }
+
+aAwLaserGun2L:
+  { type: GFX, offset: 0x3011450, symbol: aAwLaserGun2L }
+
+aAwArwingTex10:
+  { type: TEXTURE, format: RGBA16, offset: 0x30119F0, width: 32, height: 32, ctype: u16, symbol: aAwArwingTex10 }
+
+aAwArwingTex14:
+  { type: TEXTURE, format: RGBA16, offset: 0x30121F0, width: 32, height: 32, ctype: u16, symbol: aAwArwingTex14 }
+
+aAwArwingTex13:
+  { type: TEXTURE, format: RGBA16, offset: 0x30129F0, width: 32, height: 32, ctype: u16, symbol: aAwArwingTex13 }
+
+aAwCockpitViewDL:
+  { type: GFX, offset: 0x30131F0, symbol: aAwCockpitViewDL }
+
+aAwCockpitScreenTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x30137E8, width: 32, height: 32, ctype: u16, symbol: aAwCockpitScreenTex }
+
+aAwCockpitTex1:
+  { type: TEXTURE, format: RGBA16, offset: 0x3013FE8, width: 32, height: 32, ctype: u16, symbol: aAwCockpitTex1 }
+
+aAwCockpitTex2:
+  { type: TEXTURE, format: RGBA16, offset: 0x30147E8, width: 16, height: 32, ctype: u16, symbol: aAwCockpitTex2 }
+
+aAwRightWingBrokenDL:
+  { type: GFX, offset: 0x3014BF0, symbol: aAwRightWingBrokenDL }
+
+aAwWingBrokenTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x3014F20, width: 16, height: 16, ctype: u16, symbol: aAwWingBrokenTex }
+
+aAwLeftWingBrokenDL:
+  { type: GFX, offset: 0x3015120, symbol: aAwLeftWingBrokenDL }
+
+aAwFlap1DL:
+  { type: GFX, offset: 0x30155E0, symbol: aAwFlap1DL }
+
+aAwFlap2DL:
+  { type: GFX, offset: 0x30154A0, symbol: aAwFlap2DL }
+
+aAwFlap3DL:
+  { type: GFX, offset: 0x3015730, symbol: aAwFlap3DL }
+
+aAwFlap4DL:
+  { type: GFX, offset: 0x3015880, symbol: aAwFlap4DL }
+
+aAwWingsHalfOpenAnim:
+  { type: SF64:ANIM, offset: 0x3015AF4, symbol: aAwWingsHalfOpenAnim }
+
+aAwWingsClosedAnim:
+  { type: SF64:ANIM, offset: 0x3015C28, symbol: aAwWingsClosedAnim }
+
+aAwUnusedAnim:
+  { type: SF64:ANIM, offset: 0x3015D68, symbol: aAwUnusedAnim, comment: Unused }
+
+aAwRightWingDL:
+  { type: GFX, offset: 0x3015D80, symbol: aAwRightWingDL }
+
+aAwWingsOpenAnim:
+  { type: SF64:ANIM, offset: 0x30163C4, symbol: aAwWingsOpenAnim }
+
+aAwArwingSkel:
+  { type: SF64:SKELETON, offset: 0x3016610, symbol: aAwArwingSkel }
+
+aAwLeftWingDL:
+  { type: GFX, offset: 0x3016660, symbol: aAwLeftWingDL}
+
+aAwBeamWaterSplashDL:
+  { type: GFX, offset: 0x3016B30, symbol: aAwBeamWaterSplashDL }
+
+aAwBeamWaterSplashTex:
+  { type: TEXTURE, format: IA8, offset: 0x3016BB8, width: 16, height: 16, ctype: u8, symbol: aAwBeamWaterSplashTex }
+
+aAwFalcoHeadDL:
+  { type: GFX, offset: 0x3016CC0, symbol: aAwFalcoHeadDL }
+
+aAwFalcoHeadTex6:
+  { type: TEXTURE, format: RGBA16, offset: 0x30182C8, width: 8, height: 8, ctype: u16, symbol: aAwFalcoHeadTex6 }
+
+aAwFalcoHeadTex7:
+  { type: TEXTURE, format: RGBA16, offset: 0x3018348, width: 8, height: 8, ctype: u16, symbol: aAwFalcoHeadTex7 }
+
+# Cockpit Glass used in corneria cutscenes
+aAwCockpitGlassCsDL:
+  { type: GFX, offset: 0x30183D0, symbol: aAwCockpitGlassCsDL }
+
+aAwCockpitGlassClouldReflextionTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x30184D8, width: 64, height: 32, ctype: u16, symbol: aAwCockpitGlassClouldReflextionTex }
+
+# TODO:
+# This isn't needed, but removing it causes BSS reordering in fox_andross.c
+D_ARWING_BLOB_1:
+  { type: BLOB, offset: 0x30194D8, size: 8, symbol: D_ARWING_BLOB_1 }
+
+# Cockpit Glass
+aAwCockpitGlassDL:
+  { type: GFX, offset: 0x30194E0, symbol: aAwCockpitGlassDL }
+
+aAwCockpitGlassTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x30195E8, width: 32, height: 32, ctype: u16, symbol: aAwCockpitGlassTex }

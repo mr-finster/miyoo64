@@ -1,0 +1,47 @@
+# Allowlist: ignore everything, then opt files in explicitly.
+# ROMs, extracted assets, build output and refs/ must never be committed.
+*
+!.gitignore
+!README.md
+!README_MIYOO.md
+!tools/
+!tools/*.sh
+!tools/*.py
+!tools/*.c
+!dev.sh
+# site/screenshots.png stay untracked
+!docker/
+!docker/Dockerfile
+# miyoo/: the Miyoo Mini release's packer inputs (from the shared Miyoo kit): game.json, the packer, its templates
+!miyoo/
+!miyoo/game.json
+!miyoo/icon.png
+!miyoo/icon.svg
+!miyoo/tools/
+!miyoo/tools/*.py
+!miyoo/templates/
+!miyoo/templates/*
+# The port tree: code only. port/decomp = JRickey/ssb-decomp-re @ 2898d4d9
+# minus src/relocData (the ROM's data as C), ovl8 and db code; port/hh = our
+# layer (MK64/OoT kit + C from BattleShip, MIT). build/ is never tracked.
+!port/
+!port/**
+port/build/
+port/**/*.o
+port/**/*.d
+# Belt and braces: never track ROM images or extracted data even if allowlisted above.
+*.z64
+*.n64
+*.v64
+*.rom
+*.bin
+*.o2r
+*.otr
+*.zip
+
+# desktop save dir (holds the ROM slice): never commit
+port/ssb64_data/
+# macOS Finder files (the port/** allowlist above would otherwise pick them up)
+.DS_Store
+# the Miyoo64 repository's docs
+!SETTINGS.md

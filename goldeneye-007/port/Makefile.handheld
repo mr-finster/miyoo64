@@ -1,0 +1,208 @@
+# GoldenEye 007 -> Miyoo Mini port build (plus a 32-bit desktop proxy).
+#
+#   ./dev.sh make -C port -f Makefile.handheld PLAT=pc     -j6   # -m32 SDL2 proxy
+#   make -C port -f Makefile.handheld PLAT=miyoo -j6              # Miyoo Mini (ARM, SDL 1.2; notes/miyoo.md)
+#
+# Game code: n64decomp/007 (src/, include/) built natively with -DPORT; the port layer is
+# hh/ (+ the port kit's renderer and platform code). Needs port/assets (the approved
+# decomp metadata: tools/port_assets.sh). ROM-layout symbols: hh/romsyms_u.s
+# (tools/gen_romsyms.py from the M1 map). See notes/m2-design.md.
+
+PLAT    ?= pc
+.DEFAULT_GOAL := all
+SHELL := /bin/bash
+BUILD_DIR := build/$(PLAT)$(if $(filter 1,$(UBSAN)),_ubsan)$(if $(filter 1,$(SSP)),_ssp)
+ELF       := $(BUILD_DIR)/ge007
+
+VERBOSE ?= 0
+ifeq ($(VERBOSE),0)
+  V := @
+endif
+
+#------------------------------------------------------------------------------
+# Toolchain
+#------------------------------------------------------------------------------
+ifeq ($(PLAT),miyoo)
+  # Miyoo Mini / Mini Plus (SigmaStar SSD202D: two Cortex-A7s, NEON, hardware divide), built
+  # with shauninman's union-miyoomini-toolchain (gcc 8.3, glibc, the device's SDL 1.2). The
+  # shared code paths (TARGET_HANDHELD / HANDHELD: the soft renderer, SDL 1.2, the kit) plus
+  # MIYOO for the differences: 640x480 panel, keys, paths, the menu (notes/miyoo.md).
+  MIYOO_TOOLCHAIN ?= /opt/miyoomini-toolchain
+  MM_SYSROOT := $(MIYOO_TOOLCHAIN)/usr/arm-linux-gnueabihf/sysroot
+  CC      := $(MIYOO_TOOLCHAIN)/usr/bin/arm-linux-gnueabihf-gcc
+  AS      := $(CC)
+  MARCH   := -march=armv7ve+neon-vfpv4 -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+  OPT     := -O2
+  # no -D_GNU_SOURCE (sdl-config's): glibc's pthread.h then wants <sched.h>'s cpu_set_t, and -I src
+  # finds the game's sched.h first
+  SDL_CFLAGS := -I$(MM_SYSROOT)/usr/include -I$(MM_SYSROOT)/usr/include/SDL -D_REENTRANT
+  SDL_LIBS   := -L$(MM_SYSROOT)/usr/lib -Wl,-rpath-link,$(MM_SYSROOT)/usr/lib -lSDL -lrt  # rt: timer_create (glibc 2.28)
+  # _FILE_OFFSET_BITS=64: glibc's 32-bit readdir fails with EOVERFLOW on the card's exFAT/FAT32
+  # (64-bit inode numbers), and the ROM search then finds nothing
+  PLAT_DEFS  := -DTARGET_HANDHELD=1 -DHANDHELD=1 -DTARGET_MIYOO=1 -DMIYOO=1 -D_FILE_OFFSET_BITS=64
+else
+  # 32-bit x86 so pointer/long widths match the device and the N64; SSE (not x87) and
+  # no contraction so float results match ARM VFP (MK64 rounds 12-13).
+  CC      := gcc
+  AS      := $(CC)
+  MARCH   := -m32 -msse2 -mfpmath=sse -malign-data=abi
+  OPT     := -O1
+  SDL_CFLAGS := $(shell PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig pkg-config --cflags sdl2)
+  SDL_LIBS   := $(shell PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig pkg-config --libs sdl2)
+  PLAT_DEFS  := -DTARGET_PC=1
+endif
+
+#------------------------------------------------------------------------------
+# Sources
+#------------------------------------------------------------------------------
+# Game code: all of src/game except hand-written assembly (hh/ provides C) and the
+# unreferenced sub_GAME_7F01D1C0.
+GAME_C   := $(sort $(wildcard src/game/*.c))
+# Engine files that are plain C (drivers, boot, TLB, crash/rmon/usb are replaced by hh/).
+ENGINE_C := src/init.c src/sched.c src/audi.c src/snd.c src/music.c src/joy.c src/fr.c \
+            src/cfb.c src/stacks.c src/boss.c src/mema.c src/memp.c src/deb.c \
+            src/debugmenu.c src/speed_graph.c src/token.c src/str.c src/sprintf.c \
+            src/ramrom.c src/vi.c src/pi.c src/rmon.c
+# gu/sinf.c and cosf.c only define weak sinf/cosf, which the N64 link overrides with
+# Rare's (hh/ge_math.c): never used, not built.
+ULTRA_C  := $(sort $(wildcard src/libultra/audio/*.c) $(wildcard src/libultrare/audio/*.c) \
+                   $(filter-out src/libultra/gu/sinf.c src/libultra/gu/cosf.c,$(wildcard src/libultra/gu/*.c))) \
+            src/libultrare/io/vitbl.c src/libultrare/libc/xprintf.c \
+            src/libultra/libc/xlitob.c src/libultra/libc/xldtob.c
+HH_C     := $(sort $(wildcard hh/*.c))
+# The handheld kit renderer (from the OoT port 0921936): interpreter + soft rasterizer +
+# the window/present backend (SDL2 on the desktop proxy, SDL 1.2 on the device).
+GFX_C    := hh/gfx/gfx_pc.c hh/gfx/gfx_cc.c hh/gfx/gfx_soft.c \
+            $(if $(filter miyoo,$(PLAT)),hh/gfx/gfx_sdl12.c,hh/gfx/gfx_sdl.c)
+# Audio: the RSP audio microcode on the CPU (DKR's acmd_mixer.c) + the SDL output ring.
+AUDIO_C  := hh/audio/acmd_mixer.c hh/audio/hh_audio_sdl.c
+HH_S     := hh/romsyms_u.s
+HH_SS    := hh/hh_ctx.S
+
+# the port kit (port/kit, a git subtree of the shared kit): the in-game menu and save states.
+# The Miyoo Mini has its own menu (a built-in font, no OS resources), and its second core
+# (miyoo_worker.c, the shared miyoo/kit: the renderer splits big triangles' rows across both), and its
+# CPU clock (miyoo_clock.c: Onion's PLL setting).
+KIT_C    := $(if $(filter miyoo,$(PLAT)),kit/platform/miyoo_menu.c kit/platform/miyoo_worker.c kit/platform/miyoo_clock.c,) \
+            kit/platform/savestate.c kit/platform/hh_priority.c
+
+C_FILES  := $(GAME_C) $(ENGINE_C) $(ULTRA_C) $(HH_C) $(GFX_C) $(AUDIO_C) $(KIT_C)
+O_FILES  := $(patsubst %.c,$(BUILD_DIR)/%.o,$(C_FILES)) $(patsubst %.s,$(BUILD_DIR)/%.o,$(HH_S)) \
+            $(patsubst %.S,$(BUILD_DIR)/%.o,$(HH_SS))
+DEP_FILES := $(O_FILES:.o=.d)
+
+#------------------------------------------------------------------------------
+# Flags
+#------------------------------------------------------------------------------
+# NTSC-U retail = the decomp's VERSION=US defines (Makefile:74) + PORT.
+GAME_DEFS := -DVERSION_US -DLANG_US -DREFRESH_NTSC -DLEFTOVERDEBUG -DLEFTOVERSPECTRUM \
+             -DBUGFIX_R0 -DBYTEMATCH -DPORT=1 -D_LANGUAGE_C $(PLAT_DEFS)
+# hh/include (port shims) first; the decomp's include/ goes AFTER the system headers so its
+# IDO-era stdarg.h/stddef.h/string.h/stdlib.h/math.h never shadow the host's.
+INCLUDES  := -I hh/include -I kit/platform -I . -I src -I src/game -I src/inflate -I src/libultra \
+             -I src/libultrare -idirafter include -idirafter include/ultra64 -idirafter include/PR
+# IDO semantics: unsigned plain char; anonymous struct members ("inheritance", woff 838);
+# wrapping signed math; no strict aliasing. Never -fsingle-precision-constant (game float
+# math must match the N64's).
+# Variable layout as IDO's: each file's variables contiguous, in source order, `= 0` ones
+# in .data. The decomp names some regions as runs of small "labels" that only form one
+# object in that layout (objecthandler.c's 600-entry ModelHitEntry pool is
+# `char g_ModelHitEntries[0xC]` + 700 more labels).
+CFLAGS    := -std=gnu89 $(MARCH) $(OPT) -g -funsigned-char -fplan9-extensions \
+             -fno-common -fno-toplevel-reorder -fno-zero-initialized-in-bss \
+             -fwrapv -fno-strict-aliasing -fno-pie -ffp-contract=off -fno-math-errno \
+             $(GAME_DEFS) $(INCLUDES) $(SDL_CFLAGS) -MMD -MP \
+             -include hh/include/hh_enum.h -w $(EXTRA_CFLAGS)
+# The kit is C99 and was written for signed plain char (as in the OoT/MK64 builds); no FMA
+# contraction on either target, so the proxy's frames match the device's.
+GFX_CFLAGS := -std=gnu11 $(MARCH) -O2 -g -fsigned-char -fno-strict-aliasing -fwrapv -fno-common \
+              -ffp-contract=off -fno-pie -D_LANGUAGE_C -DHH_PORT_LAYER=1 -DTARGET_HANDHELD=1 -DPORT_GE_RAWCC=1 $(PLAT_DEFS) \
+              -I hh/include -I hh/gfx -I kit/platform -I . -idirafter include -idirafter include/ultra64 \
+              -idirafter include/PR $(SDL_CFLAGS) -include hh/include/hh_enum.h -MMD -MP -w $(EXTRA_CFLAGS)
+# Every game-visible address in KSEG0 (0x80000000 DRAM block + this binary).
+# The kit's "static texture memory" ranges are empty: every GoldenEye texture lives in a
+# pool the game reuses, so the texture cache always keys by content.
+LDFLAGS   := $(MARCH) -no-pie -Wl,-Ttext-segment=0x80400000 -Wl,-Map,$(BUILD_DIR)/ge007.map \
+             -Wl,--defsym=_ftext=0 -Wl,--defsym=_fbss=0 \
+             -Wl,--defsym=__assets_start=0 -Wl,--defsym=__assets_end=0 -Wl,-T,hh/romtables.ld
+LIBS      := $(SDL_LIBS) -lm -lpthread
+
+# UBSAN=1 (desktop): report shift counts outside 0..31. MIPS and x86 use the count's low 5
+# bits, ARM its low byte (a shift by 32+ gives 0 on the device only). mk64 1a4bbf7.
+# SSP=1: stack canaries in every game function; hh_boot.c's __stack_chk_fail names the
+# function whose frame was overrun (IDO-era code writes past its small stack arrays).
+ifeq ($(SSP),1)
+  CFLAGS     += -fstack-protector-all
+endif
+
+ifeq ($(UBSAN),1)
+  CFLAGS     += -fsanitize=shift-exponent
+  GFX_CFLAGS += -fsanitize=shift-exponent
+  LDFLAGS    += -fsanitize=shift-exponent
+endif
+
+#------------------------------------------------------------------------------
+# Rules
+#------------------------------------------------------------------------------
+all: $(ELF)
+
+# Per-link build stamp: a save state loads only into the exact binary that wrote it (the kit's
+# savestate.c; .data holds function pointers). Random per link, as SF64's.
+STAMP_C := $(BUILD_DIR)/build_stamp.c
+$(STAMP_C): $(O_FILES)
+	$(V)printf '#include <stdint.h>\nconst uint32_t port_build_stamp = 0x%s;\n' "$$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')" > $@
+$(STAMP_C:.c=.o): $(STAMP_C)
+	$(V)$(CC) -c $(GFX_CFLAGS) -o $@ $<
+
+$(ELF): $(O_FILES) $(STAMP_C:.c=.o) hh/romtables.ld
+	@echo "LD  $@"
+	$(V)$(CC) $(LDFLAGS) -o $@ $(O_FILES) $(STAMP_C:.c=.o) $(LIBS)
+
+# Game TUs get the ge_libc renames force-included; the port layer (hh/) is plain C.
+$(BUILD_DIR)/src/%.o: src/%.c
+	@mkdir -p $(dir $@)
+	@echo "CC  $<"
+	$(V)$(CC) $(CFLAGS) -fno-builtin-sinf -fno-builtin-cosf -include hh/include/ge_libc.h -c -o $@ $<
+
+# chraidata.c: the N64 build pipes it through ConvertAIPRINT first (PRINT strings -> bytes).
+$(BUILD_DIR)/src/game/chraidata.o: src/game/chraidata.c hh/tools/aiprint.sh
+	@mkdir -p $(dir $@) $(BUILD_DIR)/gen
+	@echo "CC  $< (AI PRINT conversion)"
+	$(V)hh/tools/aiprint.sh $< > $(BUILD_DIR)/gen/chraidata.c
+	$(V)$(CC) $(CFLAGS) -fno-builtin-sinf -fno-builtin-cosf -include hh/include/ge_libc.h -iquote src/game -c -o $@ $(BUILD_DIR)/gen/chraidata.c
+
+$(BUILD_DIR)/hh/gfx/%.o: hh/gfx/%.c
+	@mkdir -p $(dir $@)
+	@echo "CC  $<"
+	$(V)$(CC) $(GFX_CFLAGS) -c -o $@ $<
+
+$(BUILD_DIR)/kit/%.o: kit/%.c
+	@mkdir -p $(dir $@)
+	@echo "CC  $<"
+	$(V)$(CC) $(GFX_CFLAGS) -O2 -c -o $@ $<
+
+$(BUILD_DIR)/hh/audio/%.o: hh/audio/%.c
+	@mkdir -p $(dir $@)
+	@echo "CC  $<"
+	$(V)$(CC) $(GFX_CFLAGS) -O2 -c -o $@ $<
+
+$(BUILD_DIR)/hh/%.o: hh/%.c
+	@mkdir -p $(dir $@)
+	@echo "CC  $<"
+	$(V)$(CC) $(CFLAGS) -DHH_PORT_LAYER=1 -c -o $@ $<
+
+$(BUILD_DIR)/%.o: %.s
+	@mkdir -p $(dir $@)
+	$(V)$(AS) $(MARCH) -c -o $@ $<
+
+$(BUILD_DIR)/%.o: %.S
+	@mkdir -p $(dir $@)
+	@echo "AS  $<"
+	$(V)$(CC) $(MARCH) -c -o $@ $<
+
+clean:
+	rm -rf $(BUILD_DIR)
+
+-include $(DEP_FILES)
+
+.PHONY: all clean

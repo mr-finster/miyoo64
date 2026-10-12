@@ -1,0 +1,262 @@
+# Documented
+:config:
+  segments:
+    - [0x06, 0xBFC510]
+  header:
+    code:
+      - '#include "assets/ast_title.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+
+aTitleStarfoxLogoTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 236, height: 60, offset: 0x6000000, symbol: aTitleStarfoxLogoTex }
+
+aTitleN64LogoTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 128, height: 88, offset: 0x6006EA0, symbol: aTitleN64LogoTex }
+
+aTitleRadioStatic: { type: TEXTURE, ctype: u16, format: RGBA16, width: 44, height: 44, offset: 0x600C6A0, symbol: aTitleRadioStatic }
+
+aTitleSunGlareTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x600D5C0, symbol: aTitleSunGlareTex }
+
+aTitle1997NintendoTex: { type: TEXTURE, ctype: u8, format: IA8, width: 120, height: 12, offset: 0x600DDC0, symbol: aTitle1997NintendoTex }
+
+aTitlePressStartTex: { type: TEXTURE, ctype: u8, format: IA8, width: 120, height: 13, offset: 0x600E360, symbol: aTitlePressStartTex }
+
+aTitleGreatFoxCardTex: { type: TEXTURE, ctype: u8, format: IA8, width: 144, height: 28, offset: 0x600E980, symbol: aTitleGreatFoxCardTex }
+
+aTitleSlippyCard: { type: TEXTURE, ctype: u8, format: IA8, width: 144, height: 13, offset: 0x600F940, symbol: aTitleSlippyCard }
+
+aTitlePeppyCard: { type: TEXTURE, ctype: u8, format: IA8, width: 120, height: 13, offset: 0x6010090, symbol: aTitlePeppyCard }
+
+aTitleFalcoCard: { type: TEXTURE, ctype: u8, format: IA8, width: 176, height: 13, offset: 0x60106B0, symbol: aTitleFalcoCard }
+
+aTitleFoxCard: { type: TEXTURE, ctype: u8, format: IA8, width: 176, height: 13, offset: 0x6010FA0, symbol: aTitleFoxCard }
+
+aTitleArwingCardTex: { type: TEXTURE, ctype: u8, format: IA8, width: 112, height: 26, offset: 0x6011890, symbol: aTitleArwingCardTex }
+
+aTitleNoControllerTex: { type: TEXTURE, ctype: u8, format: IA8, width: 176, height: 24, offset: 0x60123F0, symbol: aTitleNoControllerTex }
+
+aTitleCopyrightTex: { type: TEXTURE, ctype: u8, format: IA8, width: 16, height: 16, offset: 0x6013470, symbol: aTitleCopyrightTex }
+
+aTitleUnusedNintendoCopyright: { type: TEXTURE, ctype: u8, format: IA8, width: 168, height: 18, offset: 0x6013570, symbol: aTitleUnusedNintendoCopyright }
+
+aIntroStarfoxLogoTex: { type: TEXTURE, ctype: u8, format: CI4, width: 256, height: 13, offset: 0x6014140, tlut: 0x60147C0, symbol: aIntroStarfoxLogoTex }
+
+aIntroStarfoxLogoTLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x60147C0, symbol: aIntroStarfoxLogoTLUT }
+
+aTitleIntroInTex: { type: TEXTURE, ctype: u8, format: CI4, width: 32, height: 13, offset: 0x60147E0, tlut: 0x60147C0, symbol: aTitleIntroInTex }
+
+aTitleIntroInTLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x60148B0, symbol: aTitleIntroInTLUT }
+
+aTitle64LogoDL: { type: GFX, offset: 0x60148D0, symbol: aTitle64LogoDL }
+
+aTitle64Logo1Tex: { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 64, offset: 0x6014DE8, tlut: 0x60155E8, symbol: aTitle64Logo1Tex }
+
+aTitle64Logo1TLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 152, offset: 0x60155E8, symbol: aTitle64Logo1TLUT }
+
+aTitle64Logo2Tex: { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 63, offset: 0x6015718, tlut: 0x6015EF8, symbol: aTitle64Logo2Tex }
+
+aTitle64Logo2TLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 64, offset: 0x6015EF8, symbol: aTitle64Logo2TLUT }
+
+aTitle64Logo3Tex: { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 64, offset: 0x6015F78, tlut: 0x6016778, symbol: aTitle64Logo3Tex }
+
+aTitle64Logo3TLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 200, offset: 0x6016778, symbol: aTitle64Logo3TLUT }
+
+aTitle64Logo4Tex: { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 63, offset: 0x6016908, tlut: 0x60170E8, symbol: aTitle64Logo4Tex }
+
+aTitle64Logo4TLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 144, offset: 0x60170E8, symbol: aTitle64Logo4TLUT }
+
+aTitle64Logo5Tex: { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 64, offset: 0x6017208, tlut: 0x6017A08, symbol: aTitle64Logo5Tex }
+
+aTitle64Logo5TLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 136, offset: 0x6017A08, symbol: aTitle64Logo5TLUT }
+
+aTitle64Logo6Tex: { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 64, offset: 0x6017B18, tlut: 0x6018318, symbol: aTitle64Logo6Tex }
+
+aTitle64Logo6TLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 200, offset: 0x6018318, symbol: aTitle64Logo6TLUT }
+
+aTitle64Logo7Tex: { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 64, offset: 0x60184A8, tlut: 0x6018CA8, symbol: aTitle64Logo7Tex }
+
+aTitle64Logo7TLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 76, offset: 0x6018CA8, symbol: aTitle64Logo7TLUT }
+
+aTitleGreatFoxDeckDL: { type: GFX, offset: 0x6018D40, symbol: aTitleGreatFoxDeckDL }
+
+aTitleGreatFoxDeckTex1: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x60195C0, symbol: aTitleGreatFoxDeckTex1 }
+
+aTitleGreatFoxDeckTex2: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6019DC0, symbol: aTitleGreatFoxDeckTex2 }
+
+aTitleGreatFoxDeckTex3: { type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x601A5C0, symbol: aTitleGreatFoxDeckTex3 }
+
+aTitleGreatFoxDeckTex4: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x601B5C0, symbol: aTitleGreatFoxDeckTex4 }
+
+aTitleGreatFoxDeckTex5: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x601B7C0, symbol: aTitleGreatFoxDeckTex5 }
+
+aTitleCsPassageWayWallTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x601BFC0, symbol: aTitleCsPassageWayWallTex }
+
+aTitleGreatFoxDeckLauncherDL: { type: GFX, offset: 0x601C7C0, symbol: aTitleGreatFoxDeckLauncherDL }
+
+aTitleGreatFoxDeckLauncherTex1: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x601CCD0, symbol: aTitleGreatFoxDeckLauncherTex1 }
+
+aTitleGreatFoxDeckLauncherTex2: { type: TEXTURE, ctype: u16, format: RGBA16, width: 8, height: 8, offset: 0x601CED0, symbol: aTitleGreatFoxDeckLauncherTex2 }
+
+aTitleGreatFoxDeckTex6: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x601CF50, symbol: aTitleGreatFoxDeckTex6 }
+
+aTitleNoControllerBgTex: { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 32, offset: 0x601D750, tlut: 0x601DB50, symbol: aTitleNoControllerBgTex }
+
+aTitleNoControllerBgTLUT: { type: TEXTURE, ctype: u16, format: TLUT, colors: 8, offset: 0x601DB50, symbol: aTitleNoControllerBgTLUT }
+
+aTitleFalcoAnim: { type: SF64:ANIM, offset: 0x601E424, symbol: aTitleFalcoAnim }
+
+aTitleFoxHandTex3: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x601EA00, symbol: aTitleFoxHandTex3 }
+
+aTitleFoxHandTex1: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x601F200, symbol: aTitleFoxHandTex1 }
+
+aTitleFoxHandTex2: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x601F400, symbol: aTitleFoxHandTex2 }
+
+aTitleFoxAnswerMsgAnim: { type: SF64:ANIM, offset: 0x601F8E0, symbol: aTitleFoxAnswerMsgAnim }
+
+aTitleSlippyAnim: { type: SF64:ANIM, offset: 0x6020058, symbol: aTitleSlippyAnim }
+
+aTitleTeamSkinTex1: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x60214F8, symbol: aTitleTeamSkinTex1 }
+
+aTitlePeppyClothingTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x6021D10, symbol: aTitlePeppyClothingTex }
+
+aTitleTeamClothingTex1: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x6021F10, symbol: aTitleTeamClothingTex1 }
+
+aTitleFoxTShirtTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6022B40, symbol: aTitleFoxTShirtTex }
+
+aTitleTeamScarfTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6023340, symbol: aTitleTeamScarfTex }
+
+aTitleTeamClothingTex2: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6023B40, symbol: aTitleTeamClothingTex2 }
+
+aTitleTeamShineTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x6024340, symbol: aTitleTeamShineTex }
+
+aTitleFoxSpeakAnim: { type: SF64:ANIM, offset: 0x60246F8, symbol: aTitleFoxSpeakAnim }
+
+aTitleFalcoSkinTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x60257A8, symbol: aTitleFalcoSkinTex }
+
+aTitleFalcoClothingTex1: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x60259A8, symbol: aTitleFalcoClothingTex1 }
+
+aTitleFalcoClothingTex2: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x6025BA8, symbol: aTitleFalcoClothingTex2 }
+
+aTitleFalcoNoseTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x6025DA8, symbol: aTitleFalcoNoseTex }
+
+aTitleTeamEyeTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6025FA8, symbol: aTitleTeamEyeTex }
+
+aTitleTeamBeltTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x6026D28, symbol: aTitleTeamBeltTex }
+
+aTitleSlippyClothingTex1: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x6026F28, symbol: aTitleSlippyClothingTex1 }
+
+aTitleSlippyHatLogoTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x6028508, symbol: aTitleSlippyHatLogoTex }
+
+aTitleSlippySkinTex1: { type: TEXTURE, ctype: u16, format: RGBA16, width: 8, height: 8, offset: 0x6028708, symbol: aTitleSlippySkinTex1 }
+
+aTitleSlippySkinShineTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x6028788, symbol: aTitleSlippySkinShineTex }
+
+aTitleTeamTex1: { type: TEXTURE, ctype: u16, format: RGBA16, width: 8, height: 8, offset: 0x6028988, symbol: aTitleTeamTex1 }
+
+aTitleTeamTex2: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x6028A08, symbol: aTitleTeamTex2 }
+
+aTitleSlippyEyeTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6028C08, symbol: aTitleSlippyEyeTex }
+
+aTitlePeppyAnim: { type: SF64:ANIM, offset: 0x6029BE4, symbol: aTitlePeppyAnim }
+
+aTitleFoxAnim: { type: SF64:ANIM, offset: 0x602A710, symbol: aTitleFoxAnim }
+
+aTitleGreatFoxDeckPlatformDL: { type: GFX, offset: 0x602A720, symbol: aTitleGreatFoxDeckPlatformDL }
+
+aTitleCsPassageWayCeilingTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x602A8C0, symbol: aTitleCsPassageWayCeilingTex }
+
+aTitlePeppyFurTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x602D930, symbol: aTitlePeppyFurTex }
+
+aTitleTeamSkinTex2: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x602DB30, symbol: aTitleTeamSkinTex2 }
+
+aTitlePeppyNoseTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x602DD30, symbol: aTitlePeppyNoseTex }
+
+aTitleTeamMouthTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x602DF30, symbol: aTitleTeamMouthTex }
+
+aTitleCsPassageWayDL: { type: GFX, offset: 0x602E380, symbol: aTitleCsPassageWayDL }
+
+aTitleCsPassageWayFloorTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x602E550, symbol: aTitleCsPassageWayFloorTex }
+
+aTitleFoxRunningAnim: { type: SF64:ANIM, offset: 0x602F8E0, symbol: aTitleFoxRunningAnim }
+
+aTitleFoxSkel: {type: SF64:SKELETON, offset: 0x602FBAC, symbol: aTitleFoxSkel}
+
+aTitleFalcoRunningAnim: { type: SF64:ANIM, offset: 0x60305C0, symbol: aTitleFalcoRunningAnim }
+
+aTitleFalcoSkel: {type: SF64:SKELETON, offset: 0x603088C, symbol: aTitleFalcoSkel}
+
+aTitleSlippyRunningAnim: { type: SF64:ANIM, offset: 0x6031120, symbol: aTitleSlippyRunningAnim }
+
+aTitleSlippySkel: {type: SF64:SKELETON, offset: 0x60313AC, symbol: aTitleSlippySkel}
+
+aTitlePeppyRunningAnim: { type: SF64:ANIM, offset: 0x6031DB8, symbol: aTitlePeppyRunningAnim }
+
+aTitlePeppySkel: {type: SF64:SKELETON, offset: 0x6032084, symbol: aTitlePeppySkel}
+
+aTitleArwingEngineGlowDL: { type: GFX, offset: 0x60320E0, symbol: aTitleArwingEngineGlowDL }
+
+aTitleArwingEngineGlowTex: {type: TEXTURE, ctype: u8, format: IA8, width: 32, height: 32, offset: 0x6032178, symbol: aTitleArwingEngineGlowTex}
+
+aTitleArwingShadowDL: { type: GFX, offset: 0x6032580, symbol: aTitleArwingShadowDL }
+
+aTitleArwingShadowTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6032608, symbol: aTitleArwingShadowTex }
+
+aTitleFalcoSpeakAnim: { type: SF64:ANIM, offset: 0x60338DC, symbol: aTitleFalcoSpeakAnim }
+
+aTitleFoxSpeakAnim2: { type: SF64:ANIM, offset: 0x6035024, symbol: aTitleFoxSpeakAnim2 }
+
+aTitlePeppySpeakAnim: { type: SF64:ANIM, offset: 0x603531C, symbol: aTitlePeppySpeakAnim }
+
+aTitleSlippySpeakAnim: { type: SF64:ANIM, offset: 0x6036278, symbol: aTitleSlippySpeakAnim }
+
+aTitleSunGlare1DL: { type: GFX, offset: 0x6036290, symbol: aTitleSunGlare1DL }
+
+aTitleSunGlare1Tex: { type: TEXTURE, ctype: u16, format: IA16, width: 32, height: 32, offset: 0x6036328, symbol: aTitleSunGlare1Tex }
+
+aTitleSunGlare2DL: { type: GFX, offset: 0x6036B30, symbol: aTitleSunGlare2DL }
+
+aTitleSunGlare2Tex: { type: TEXTURE, ctype: u16, format: IA16, width: 32, height: 32, offset: 0x6036BC8, symbol: aTitleSunGlare2Tex }
+
+aTitlePlanetCorneriaDL: { type: GFX, offset: 0x6037CF0, symbol: aTitlePlanetCorneriaDL }
+
+aTitlePlanetCorneriaTex1: {type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x60380D0, symbol: aTitlePlanetCorneriaTex1}
+
+aTitlePlanetCorneriaTex2: {type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x60390D0, symbol: aTitlePlanetCorneriaTex2}
+
+aTitlePlanetCorneriaTex3: {type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x603A0D0, symbol: aTitlePlanetCorneriaTex3}
+
+aTitlePlanetCorneriaTex4: {type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x603B0D0, symbol: aTitlePlanetCorneriaTex4}
+
+aTitlePlanetCorneriaTex5: {type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x603C0D0, symbol: aTitlePlanetCorneriaTex5}
+
+aTitlePlanetCorneriaTex6: {type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x603D0D0, symbol: aTitlePlanetCorneriaTex6}
+
+aTitlePlanetCorneriaTex7: {type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x603E0D0, symbol: aTitlePlanetCorneriaTex7}
+
+aTitlePlanetCorneriaTex8: {type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x603F0D0, symbol: aTitlePlanetCorneriaTex8}
+
+aTitleTeamShadowDL: { type: GFX, offset: 0x6041070, symbol: aTitleTeamShadowDL }
+
+aTitleTeamShadowTex: {type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x60410F8, symbol: aTitleTeamShadowTex}
+
+aTitleSlippySkinTex2: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6041CF0, symbol: aTitleSlippySkinTex2 }
+
+aTitleFoxSkinShineTex: { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x60426E0, symbol: aTitleFoxSkinShineTex }
+
+aTitleFalcoClothingTex3: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6043F68, symbol: aTitleFalcoClothingTex3 }
+
+aTitle64LogoJpDL: { type: GFX, offset: 0x60456C0, symbol: aTitle64LogoJpDL }
+
+aTitle64LogoJpTex1: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x6045A28, symbol: aTitle64LogoJpTex1}
+
+aTitle64LogoJpTex2: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x6046A28, symbol: aTitle64LogoJpTex2}
+
+aTitle64LogoJpTex3: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x6047A28, symbol: aTitle64LogoJpTex3}
+
+aTitle64LogoJpTex4: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x6048A28, symbol: aTitle64LogoJpTex4}
+
+aTitle64LogoJpTex5: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x6049A28, symbol: aTitle64LogoJpTex5}
+
+aTitle64LogoJpTex6: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x604AA28, symbol: aTitle64LogoJpTex6}
+
+aTitle64LogoJpTex7: { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x604BA28, symbol: aTitle64LogoJpTex7}

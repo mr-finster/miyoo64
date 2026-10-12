@@ -1,0 +1,308 @@
+# Ocarina of Time port build: the Miyoo Mini (PLAT=miyoo) plus a 32-bit desktop proxy (PLAT=pc).
+#
+#   make -f Makefile.handheld PLAT=pc     -j6   # desktop -m32 SDL2 proxy (debug, frame dumps)
+#   make -f Makefile.handheld PLAT=miyoo  -j6   # Miyoo Mini cross build (ARM, SDL 1.2; notes/miyoo.md)
+#
+# Game code: the zeldaret/oot decomp as modified by z2442/oot-PSP (overlays linked
+# statically, port semantics behind PLATFORM_PSP). We define PLATFORM_PSP=1 and
+# TARGET_HANDHELD=1 but NOT TARGET_PSP (the PSP hardware: VFPU, Media Engine, sceKernel).
+# The port layer is src/port/hh (+ the MK64 handheld kit's renderer, SDL and audio).
+#
+# Needs, from the normal decomp build of this tree (make VERSION=ntsc-1.0 REGION=US):
+# extracted/ntsc-1.0 (make setup) and the generated headers/.inc.c in build/ntsc-1.0.
+# See notes/m2-design.md.
+
+PLAT    ?= pc
+.DEFAULT_GOAL := all
+SHELL := /bin/bash
+VERSION := ntsc-1.0
+REGION  := US
+N64_BUILD_DIR := build/$(VERSION)
+EXTRACTED_DIR := extracted/$(VERSION)
+BUILD_DIR     := build/hh-$(PLAT)
+ELF           := $(BUILD_DIR)/oot
+PYTHON        ?= .venv/bin/python3
+
+VERBOSE ?= 0
+ifeq ($(VERBOSE),0)
+  V := @
+endif
+
+#==============================================================================#
+# Toolchain                                                                    #
+#==============================================================================#
+MIYOO_TOOLCHAIN ?= /opt/miyoomini-toolchain
+
+ifeq ($(PLAT),miyoo)
+  # Miyoo Mini / Mini Plus (SigmaStar SSD202D: two Cortex-A7s, NEON, hardware divide) with
+  # shauninman's union-miyoomini-toolchain (gcc 8.3, glibc 2.28, the device's SDL 1.2), as the
+  # GoldenEye and MK64 Miyoo ports. HANDHELD stays defined (the soft renderer, SDL 1.2, the kit);
+  # MIYOO for the differences: the 640x480 panel, keys, paths, the menu (notes/miyoo.md).
+  MM_SYSROOT := $(MIYOO_TOOLCHAIN)/usr/arm-linux-gnueabihf/sysroot
+  MM_CROSS   := $(MIYOO_TOOLCHAIN)/usr/bin/arm-linux-gnueabihf-
+  CC      := $(MM_CROSS)gcc
+  OBJCOPY := $(MM_CROSS)objcopy
+  OBJDUMP := $(MM_CROSS)objdump
+  NM      := $(MM_CROSS)nm
+  READELF := $(MM_CROSS)readelf
+  MARCH   := -march=armv7ve+neon-vfpv4 -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+  OPT_FLAGS = -O2 -g -fno-math-errno -ffp-contract=off $(EXTRA_CFLAGS)
+  # 64-bit file offsets: 32-bit glibc's readdir/stat otherwise fail (EOVERFLOW) on 64-bit inodes
+  # and directory offsets, and the ROM search saw an empty folder (the MK64 Miyoo port).
+  SDL_CFLAGS := -I$(MM_SYSROOT)/usr/include -I$(MM_SYSROOT)/usr/include/SDL -D_REENTRANT -D_FILE_OFFSET_BITS=64
+  # no SDL_ttf/SDL_image: the Miyoo menu and first-start screens draw with a built-in font
+  SDL_LIBS   := -L$(MM_SYSROOT)/usr/lib -Wl,-rpath-link,$(MM_SYSROOT)/usr/lib -lSDL -lrt
+  PLAT_DEFINES := -DTARGET_HANDHELD=1 -DHANDHELD=1 -DTARGET_MIYOO=1 -DMIYOO=1
+else
+  # 32-bit x86 so pointer/size_t widths match the device; SSE (not x87) and no
+  # contraction so float results match the device's VFP (MK64 rounds 12-13).
+  CC      := gcc
+  OBJCOPY := objcopy
+  OBJDUMP := objdump
+  NM      := nm
+  READELF := readelf
+  MARCH   := -m32 -fno-pie -malign-data=abi
+  OPT_FLAGS = -O1 -g -fno-math-errno -msse2 -mfpmath=sse -ffp-contract=off $(EXTRA_CFLAGS)
+  SDL_CFLAGS := $(shell PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig pkg-config --cflags sdl2)
+  SDL_LIBS   := $(shell PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig pkg-config --libs sdl2)
+  PLAT_DEFINES := -DTARGET_HANDHELD=1 -DTARGET_PC=1
+  # UBSAN=1: shift counts checked at run time (negative or >= the width), which
+  # x86 masks like MIPS and ARM does not (JPEG's `>> -len`, round 14; MK64's
+  # tip), into its own build dir: make -f Makefile.handheld PLAT=pc UBSAN=1
+  # Likewise a float converted to an int it doesn't fit: x86 gives INT_MIN, ARM
+  # saturates (float-cast-overflow; MK64 b2dff40, the lead's R31).
+  ifeq ($(UBSAN),1)
+    MARCH     += -fsanitize=shift-exponent,float-cast-overflow
+    BUILD_DIR := build/hh-ubsan
+    ELF       := $(BUILD_DIR)/oot
+  endif
+endif
+
+#==============================================================================#
+# Sources                                                                      #
+#==============================================================================#
+include handheld_game_sources.mk
+
+HH_PORT_SOURCES := $(sort $(wildcard src/port/hh/*.c)) src/port/hh/gfx/gfx_pc.c src/port/hh/gfx/gfx_cc.c src/port/hh/gfx/gfx_soft.c \
+                   $(if $(filter miyoo,$(PLAT)),src/port/hh/gfx/gfx_sdl12.c,src/port/hh/gfx/gfx_sdl.c)
+# handheld-kit (port/kit, a git subtree at a tagged version): save states, the Miyoo menu, the second core
+# and the CPU clock.
+HH_KIT_SOURCES := kit/platform/savestate.c kit/platform/hh_priority.c \
+                  $(if $(filter miyoo,$(PLAT)),kit/platform/miyoo_menu.c kit/platform/miyoo_worker.c kit/platform/miyoo_clock.c)
+HH_PORT_SOURCES += $(HH_KIT_SOURCES)
+
+C_FILES := $(HH_GAME_SOURCES) $(HH_PORT_SOURCES)
+O_FILES := $(patsubst %.c,$(BUILD_DIR)/%.o,$(C_FILES))
+DEP_FILES := $(O_FILES:.o=.d)
+
+#==============================================================================#
+# Flags                                                                        #
+#==============================================================================#
+DEFINES := -D_LANGUAGE_C -DNON_MATCHING -DAVOID_UB -DDEBUG_FEATURES=0 \
+           -DOOT_VERSION=NTSC_1_0 -DOOT_REVISION=0 -DOOT_REGION=REGION_US \
+           -DLIBULTRA_VERSION=LIBULTRA_VERSION_L -DLIBULTRA_PATCH=0 \
+           -DPLATFORM_PSP=1 -DPLATFORM_N64=0 -DPLATFORM_GC=0 -DPLATFORM_IQUE=0 \
+           -DF3DEX_GBI_2 -DF3DEX_GBI_PL -DGBI_DOWHILE \
+           -DOOT_PSP_GFX_DIAGNOSTICS=0 -DOOT_PSP_AUDIO_DIAGNOSTICS=0 -DMML_VERSION=MML_VERSION_OOT \
+           $(PLAT_DEFINES)
+
+# Code-embedded textures (actor overlays, transitions) byte-swapped so they compile to
+# N64 byte order (tools/handheld/texbe.py); searched before build/ntsc-1.0.
+TEXBE_DIR := build/hh-texbe
+INCLUDES := -I$(TEXBE_DIR) -Iinclude -Iinclude/libc -Isrc -isystem $(N64_BUILD_DIR) -I. -I$(EXTRACTED_DIR) \
+            -Isrc/port/hh -Isrc/port/hh/shim -Isrc/port/psp
+
+# -fsigned-char: the decomp assumes signed char (ARM defaults to unsigned).
+# -fno-common / -fwrapv / -fno-strict-aliasing: as oot-PSP and the MK64 port.
+# -fno-builtin-sinf/-cosf: every sinf/cosf call reaches the N64's (hh_trig.c) -- no host-libm
+#   folding, no sinf+cosf -> sincosf merge -- so x86 and ARM compute the same trig.
+CFLAGS := $(OPT_FLAGS) $(MARCH) -std=gnu11 -fsigned-char -fno-strict-aliasing -fwrapv -fno-common \
+          -ffunction-sections -fdata-sections \
+          -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function \
+          -Wno-unused-parameter -Wno-missing-braces -Wno-format-security -Wno-int-to-pointer-cast \
+          -Wno-pointer-to-int-cast -Wno-array-bounds -Wno-stringop-overflow \
+          -Werror=implicit-function-declaration \
+          -fno-builtin-sinf -fno-builtin-cosf \
+          -include src/port/hh/hh_compat.h \
+          $(DEFINES) $(INCLUDES) $(SDL_CFLAGS)
+
+# -Ttext-segment=0x40000000: real pointers stay above the N64 segment window
+# (0x01000000-0x0FFFFFFF) AND the packed-asset handles (0x20000000+).
+# gamestate.ld: the save-state include list (the .game_data/.game_bss ranges).
+LDFLAGS := $(MARCH) -no-pie -Wl,--gc-sections -Wl,-Ttext-segment=0x40000000 -Wl,-T,gamestate.ld \
+           -Wl,--defsym=_ftext=__executable_start -Wl,--defsym=_fbss=__bss_start \
+           -Wl,--defsym=__assets_start=__bss_start -Wl,--defsym=__assets_end=__bss_start
+LIBS    := $(SDL_LIBS) -lz -lm -lpthread -ldl
+ifneq ($(PLAT),miyoo)
+  LDFLAGS += -rdynamic
+endif
+
+#==============================================================================#
+# Assets (M2: baked on the host)                                               #
+#==============================================================================#
+# Every ROM file the game DMAs is served from a packed file laid out by
+# tools/psp_port_asset_segments.py: NATIVE files are these asset sources compiled
+# for ARM (always ARM, for both PLATs: the proxy reads the device's bytes), placed
+# at their N64 offsets with segmented in-file pointers; the rest are raw ROM bytes.
+# It also emits the asset symbol table (.S: every asset symbol = its segmented
+# address) and the file/message tables (.c). Local and ROM-derived: build/ only.
+ASSET_BUILD_DIR := build/hh-assets
+HH_ASSET_SOURCES := \
+	$(sort $(filter-out %.inc.c,$(wildcard assets/objects/*/*.c))) \
+	assets/textures/do_action_static/do_action_static.c \
+	assets/textures/icon_item_24_static/icon_item_24_static.c \
+	assets/textures/icon_item_jpn_static/icon_item_jpn_static.c \
+	assets/textures/icon_item_nes_static/icon_item_nes_static.c \
+	$(sort $(filter-out %.inc.c,$(wildcard assets/text/*message_data_static.c))) \
+	$(sort $(filter-out %.inc.c,$(wildcard $(EXTRACTED_DIR)/assets/objects/*/*.c))) \
+	$(sort $(filter-out %.inc.c,$(wildcard $(EXTRACTED_DIR)/assets/scenes/*/*/*.c))) \
+	$(sort $(filter-out %.inc.c,$(wildcard $(EXTRACTED_DIR)/assets/textures/*/*.c))) \
+	$(sort $(filter-out %.inc.c,$(wildcard $(EXTRACTED_DIR)/assets/misc/*/*.c)))
+HH_ASSET_O := $(patsubst %.c,$(ASSET_BUILD_DIR)/%.o,$(HH_ASSET_SOURCES))
+# the asset sources are compiled for ARM with the Miyoo toolchain (for every PLAT: their bytes are data)
+ARM_CC ?= $(MIYOO_TOOLCHAIN)/usr/bin/arm-linux-gnueabihf-gcc
+ASSET_CFLAGS := -O2 -march=armv7ve+neon-vfpv4 -mfpu=neon-vfpv4 -std=gnu11 -fsigned-char -fno-common \
+                -fwrapv -fdata-sections -ffunction-sections -w -include src/port/hh/hh_compat.h \
+                $(DEFINES:-DTARGET_PC=1=) $(INCLUDES)
+
+$(ASSET_BUILD_DIR)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(V)$(ARM_CC) -c $(ASSET_CFLAGS) -MMD -MP -MF $(@:.o=.d) -o $@ $<
+
+GEN_DIR        := build/hh-gen
+ASSET_SEG_S    := $(GEN_DIR)/oot_psp_asset_segments.S
+ASSET_SEG_C    := $(GEN_DIR)/oot_psp_asset_segments.c
+ASSET_TABLES_C := $(GEN_DIR)/oot_psp_asset_tables.c
+AUDIO_TABLES_C := $(GEN_DIR)/oot_psp_audio_tables.c
+PACKED_DIR     := $(GEN_DIR)/data/segments
+
+hh-assets: $(HH_ASSET_O)
+
+$(ASSET_SEG_S) $(ASSET_SEG_C): $(HH_ASSET_O) tools/psp_port_asset_segments.py
+	@mkdir -p $(GEN_DIR)
+	$(PYTHON) tools/psp_port_asset_segments.py $(VERSION) $(ASSET_SEG_S) $(ASSET_SEG_C) $(PACKED_DIR) --build-root $(ASSET_BUILD_DIR)
+$(ASSET_TABLES_C): tools/psp_port_asset_tables.py
+	@mkdir -p $(GEN_DIR)
+	$(PYTHON) tools/psp_port_asset_tables.py $(VERSION) $@
+$(AUDIO_TABLES_C): tools/psp_port_audio_tables.py
+	@mkdir -p $(GEN_DIR)
+	$(PYTHON) tools/psp_port_audio_tables.py $(VERSION) $@
+
+GEN_C := $(ASSET_SEG_C) $(ASSET_TABLES_C) $(AUDIO_TABLES_C)
+GEN_O := $(patsubst $(GEN_DIR)/%.c,$(BUILD_DIR)/gen/%.o,$(GEN_C)) $(BUILD_DIR)/gen/oot_psp_asset_segments_sym.o
+$(BUILD_DIR)/gen/%.o: $(GEN_DIR)/%.c
+	@mkdir -p $(dir $@)
+	$(V)$(CC) -c $(CFLAGS) -o $@ $<
+$(BUILD_DIR)/gen/oot_psp_asset_segments_sym.o: $(ASSET_SEG_S)
+	@mkdir -p $(dir $@)
+	$(V)$(CC) -c $(MARCH) -x assembler-with-cpp -o $@ $<
+
+#==============================================================================#
+# Targets                                                                      #
+#==============================================================================#
+all: $(ELF)
+
+# Compile everything, do not link: the porting-phase workhorse.
+objs: $(O_FILES)
+
+# ---- Embedded ROM data (see tools/handheld/embedded_assets.py) ------------------
+# Game sources that #include asset DATA (not just headers): their asset symbols'
+# sections become .hhasset.* at compile time and are linked into one region after
+# .bss. The shipped link makes it NOLOAD (addresses, no bytes); an otherwise
+# identical PROGBITS link yields the bytes (build/hh-<plat>/embedded.bin, local
+# only), which the game loads into the region at boot (hh_embedded.c).
+EMBED_SRCS := $(shell grep -rlE '\#include "assets/[^"]+\.c"' src --include='*.c' | grep -v '^src/port/')
+define EMBED_LD_SCRIPT
+SECTIONS\n{\n  .hhassets $(1) : ALIGN(4096) { __hhassets_start = .; KEEP(*(.hhasset .hhasset.*)) . = ALIGN(4096); __hhassets_end = .; }\n}\nINSERT AFTER .bss;\n
+endef
+LD_NOLOAD   := $(BUILD_DIR)/hhassets_noload.ld
+LD_PROGBITS := $(BUILD_DIR)/hhassets_progbits.ld
+ELF_EMBED   := $(BUILD_DIR)/oot_embedded.elf
+EMBED_BIN   := $(BUILD_DIR)/embedded.bin
+# Per-link random build stamp: the embedded blob and (later) save states must come
+# from this exact executable (mario-kart-64 rounds 19-22).
+STAMP_C := $(BUILD_DIR)/build_stamp.c
+STAMP_O := $(STAMP_C:.c=.o)
+
+$(LD_NOLOAD): Makefile.handheld
+	@mkdir -p $(dir $@)
+	$(V)printf '$(call EMBED_LD_SCRIPT,(NOLOAD))' > $@
+$(LD_PROGBITS): Makefile.handheld
+	@mkdir -p $(dir $@)
+	$(V)printf '$(call EMBED_LD_SCRIPT,)' > $@
+# port_build_stamp: the same value under the name handheld-kit's savestate.c reads.
+$(STAMP_C): $(O_FILES) $(GEN_O) $(LD_NOLOAD) gamestate.ld
+	$(V)S=$$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n'); printf '/* generated per link */\n#include <stdint.h>\nconst uint32_t hh_build_stamp = 0x%s;\nconst uint32_t port_build_stamp = 0x%s;\n' "$$S" "$$S" > $@
+$(STAMP_O): $(STAMP_C)
+	$(V)$(CC) -c $(MARCH) -o $@ $<
+
+$(ELF): $(O_FILES) $(GEN_O) $(STAMP_O) $(LD_NOLOAD) gamestate.ld
+	$(V)$(CC) $(LDFLAGS) -Wl,-T,$(LD_NOLOAD) -o $@ $(O_FILES) $(GEN_O) $(STAMP_O) $(LIBS)
+	@ls -lh $@
+
+$(ELF_EMBED): $(O_FILES) $(GEN_O) $(STAMP_O) $(LD_PROGBITS) $(ELF) gamestate.ld
+	$(V)$(CC) $(LDFLAGS) -Wl,-T,$(LD_PROGBITS) -o $@ $(O_FILES) $(GEN_O) $(STAMP_O) $(LIBS)
+
+$(EMBED_BIN): $(ELF_EMBED) $(ELF)
+	$(V)$(OBJCOPY) -O binary -j .hhassets $(ELF_EMBED) $@.tmp
+	$(V)cmp -s <($(OBJDUMP) -h $(ELF) | grep -E ' \.hhassets ' | awk '{print $$3,$$4}') <($(OBJDUMP) -h $(ELF_EMBED) | grep -E ' \.hhassets ' | awk '{print $$3,$$4}') || { echo "embedded region differs between the two links"; exit 1; }
+	$(V)printf "$$(printf '%08x' 0x$$(sed -n 's/.*hh_build_stamp = 0x\([0-9a-fA-F]*\);.*/\1/p' $(STAMP_C)) | sed 's/\(..\)\(..\)\(..\)\(..\)/\\x\4\\x\3\\x\2\\x\1/')HHEB" >> $@.tmp
+	$(V)mv $@.tmp $@
+	@ls -l $@
+
+all: $(EMBED_BIN)
+
+# ---- First-start recipes (M3b; hh_convert.c replays them on the device) -------
+# How the pack and embedded.bin come from the player's ROM, derived here by comparing
+# this build's files with the ROM (tools/handheld/hh_recipes.c), shipped in the zip as
+# oot_recipes.bin next to the executable. Numbers only; tools/build_miyoo.sh leak-scans it.
+RECIPES_TOOL := build/hh_recipes
+RECIPES_BIN  := $(BUILD_DIR)/oot_recipes.bin
+$(RECIPES_TOOL): tools/handheld/hh_recipes.c src/port/hh/hh_recipe_ops.h
+	$(V)gcc -O2 -Wall -Wno-unused-function -o $@ $< -lz
+$(RECIPES_BIN): $(EMBED_BIN) $(RECIPES_TOOL) tools/handheld/recipes.sh $(ASSET_SEG_C)
+	$(V)tools/handheld/recipes.sh $(NM) $(READELF) $(ELF_EMBED) $(STAMP_C) $(ASSET_SEG_C) $(EXTRACTED_DIR)/baserom \
+	    $(PACKED_DIR)/oot_psp_assets.bin $(EMBED_BIN) $(RECIPES_TOOL) $@
+all: $(RECIPES_BIN)
+
+# Port-layer files use POSIX/SDL headers: the game's include dirs (which hold a
+# sched.h, a libc/ and ultra64 headers) must not shadow <system> headers there,
+# so they see them through -iquote only.
+HH_PORT_INCLUDES := -Isrc/port/hh/gfx -Ikit/platform $(patsubst -I%,-iquote %,$(filter -I%,$(INCLUDES))) -Isrc/port/hh/shim -iquote $(N64_BUILD_DIR)
+$(BUILD_DIR)/src/port/hh/%.o: CFLAGS := $(filter-out $(INCLUDES) -isystem $(N64_BUILD_DIR),$(CFLAGS)) $(HH_PORT_INCLUDES)
+$(BUILD_DIR)/kit/%.o: CFLAGS := $(filter-out $(INCLUDES) -isystem $(N64_BUILD_DIR),$(CFLAGS)) $(HH_PORT_INCLUDES)
+# The ROM search's stat/readdir on the -m32 proxy: 64-bit inodes (musl on the device always is).
+$(BUILD_DIR)/src/port/hh/hh_convert.o: CFLAGS += -D_FILE_OFFSET_BITS=64
+# glibc (the Miyoo build) shows RTLD_NEXT only under _GNU_SOURCE, and hh_trig.c's own #define comes
+# after the forced hh_compat.h has already read <features.h> (musl always shows it)
+ifeq ($(PLAT),miyoo)
+  $(BUILD_DIR)/src/port/hh/hh_trig.o: CFLAGS += -D_GNU_SOURCE
+  # the second core (OOT_THREADS=1 / debug.cfg threads=1 keeps one core: HH_ENV through savestate.h): _GNU_SOURCE
+  # before the forced hh_compat.h reads <features.h>, for glibc's CPU_SET / sched_setaffinity
+  $(BUILD_DIR)/kit/platform/miyoo_worker.o: CFLAGS += -D_GNU_SOURCE=
+endif
+
+TEXBE_SRCS := $(patsubst $(N64_BUILD_DIR)/%,%,$(shell find $(N64_BUILD_DIR)/assets/overlays $(N64_BUILD_DIR)/assets/code $(N64_BUILD_DIR)/assets/n64dd -name '*.inc.c' 2>/dev/null | grep -E '\.(i4|i8|ia4|ia8|ia16|rgba16|rgba32|ci4|ci8|tlut)\.inc\.c$$'))
+TEXBE_STAMP := $(TEXBE_DIR)/.stamp
+# An empty list means the N64 build's generated .inc.c files were not there yet when make read
+# this file: the stamp would then stand for a stage that swapped nothing, and every code-embedded
+# texture would compile little-endian (the Miyoo branch's first build, 2026-10-02: ~19k recipe
+# literals, blamed on gcc 8). Refuse instead.
+$(TEXBE_STAMP): tools/handheld/texbe.py
+	$(if $(TEXBE_SRCS),,$(error no texture .inc.c under $(N64_BUILD_DIR)/assets: generate the headers first (notes/miyoo.md)))
+	@mkdir -p $(TEXBE_DIR)
+	$(V)$(PYTHON) tools/handheld/texbe.py $(N64_BUILD_DIR) $(TEXBE_DIR) $(TEXBE_SRCS)
+	@touch $@
+
+$(BUILD_DIR)/%.o: %.c | $(TEXBE_STAMP)
+	@mkdir -p $(dir $@)
+	$(V)$(CC) -c $(CFLAGS) -MMD -MP -MF $(@:.o=.d) -o $@ $<
+	$(V)$(if $(filter $<,$(EMBED_SRCS)),$(PYTHON) tools/handheld/embedded_assets.py split $(OBJCOPY) $@)
+
+clean:
+	$(RM) -r $(BUILD_DIR)
+
+print-%: ; @echo '$*=$($*)'
+
+.PHONY: all objs clean hh-assets
+-include $(DEP_FILES)

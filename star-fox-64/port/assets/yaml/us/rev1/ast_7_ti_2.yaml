@@ -1,0 +1,78 @@
+:config:
+  segments:
+    - [0x07, 0x9DD390]
+  header:
+    code:
+      - '#include "assets/ast_7_ti_2.h"'
+      - '#include "assets/ast_8_ti.h"'
+      - '#include "assets/ast_9_ti.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+  external_files:
+    - "assets/yaml/us/rev1/ast_8_ti.yaml"
+    - "assets/yaml/us/rev1/ast_9_ti.yaml"
+
+aTiGorasAnim9:
+  { type: SF64:ANIM, offset: 0x7003EE8, symbol: aTiGorasAnim9 }
+
+aTiGorasSkelLimb34DL:
+  { type: GFX, offset: 0x7003F00, symbol: aTiGorasSkelLimb34DL }
+
+aTiGorasSkelLimb90DL:
+  { type: GFX, offset: 0x7004270, symbol: aTiGorasSkelLimb90DL }
+
+aTiGorasSkelLimb85DL:
+  { type: GFX, offset: 0x7004400, symbol: aTiGorasSkelLimb85DL }
+
+aTiGorasSkelLimb3DL:
+  { type: GFX, offset: 0x70045D0, symbol: aTiGorasSkelLimb3DL }
+
+aTiGorasTex1:
+  { type: TEXTURE, ctype: u8, format: CI8, height: 16, width: 16, offset: 0x70047B0, symbol: aTiGorasTex1 }
+
+aTiGorasTex1TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 136, offset: 0x70048B0, symbol: aTiGorasTex1TLUT }
+
+aTiGorasSkelLimb56DL:
+  { type: GFX, offset: 0x70049C0, symbol: aTiGorasSkelLimb56DL }
+
+aTiGorasTex2:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 16, offset: 0x7004AB0, symbol: aTiGorasTex2 }
+
+aTiGorasTex2TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 232 , offset: 0x7004CB0, symbol: aTiGorasTex2TLUT }
+
+aTi2GorasSkelLimb7DL:
+  { type: GFX, offset: 0x7004E80, symbol: aTi2GorasSkelLimb7DL }
+
+aTiGorasLaserChargeDL:
+  { type: GFX, offset: 0x7005300, symbol: aTiGorasLaserChargeDL }
+
+aTiGorasLaserChargeTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 8, height: 8, offset: 0x70054C0, symbol: aTiGorasLaserChargeTex }
+
+aTiGorasAnim6:
+  { type: SF64:ANIM, offset: 0x70084CC, symbol: aTiGorasAnim6 }
+
+aTiGorasAnim7:
+  { type: SF64:ANIM, offset: 0x70096EC, symbol: aTiGorasAnim7 }
+
+aTiGorasSkelLimb27DL:
+  { type: GFX, offset: 0x7009700, symbol: aTiGorasSkelLimb27DL }
+
+aTiGorasSkelLimb86DL:
+  { type: GFX, offset: 0x7009890, symbol: aTiGorasSkelLimb86DL }
+
+aTi2Effect394DL:
+  { type: GFX, offset: 0x7009A80, symbol: aTi2Effect394DL }
+
+aTi2Effect394Tex:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 32, offset: 0x7009B48, symbol: aTi2Effect394Tex }
+aTi2Effect394TexTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 56, offset: 0x7009D48, symbol: aTi2Effect394TexTLUT }
+
+aTiGorasAnim8:
+  { type: SF64:ANIM, offset: 0x700E244, symbol: aTiGorasAnim8 }
+
+# size = 0xE250

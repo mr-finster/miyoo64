@@ -1,0 +1,130 @@
+# Documented
+:config:
+  segments:
+    - [0x02, 0x8AE0A0]
+  header:
+    code:
+      - '#include "assets/ast_bg_planet.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+
+aPlFireSmokeFrame13DL:
+  { type: GFX, offset: 0x2000000, symbol: aPlFireSmokeFrame13DL }
+
+aPlFireSmokeFrame13Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x2000088, symbol: aPlFireSmokeFrame13Tex }
+
+aPlFireSmokeFrame12DL:
+  { type: GFX, offset: 0x2001090, symbol: aPlFireSmokeFrame12DL }
+
+aPlFireSmokeFrame12Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x02001118, symbol: aPlFireSmokeFrame12Tex }
+
+aPlFireSmokeFrame11DL:
+  { type: GFX, offset: 0x2002120, symbol: aPlFireSmokeFrame11DL }
+
+aPlFireSmokeFrame11Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x020021A8, symbol: aPlFireSmokeFrame11Tex }
+
+aPlFireSmokeFrame10DL:
+  { type: GFX, offset: 0x20031B0, symbol: aPlFireSmokeFrame10DL }
+
+aPlFireSmokeFrame10Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x02003238, symbol: aPlFireSmokeFrame10Tex }
+
+aPlFireSmokeFrame9DL:
+  { type: GFX, offset: 0x2004240, symbol: aPlFireSmokeFrame9DL }
+
+aPlFireSmokeFrame9Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x020042C8, symbol: aPlFireSmokeFrame9Tex }
+
+aPlFireSmokeFrame8DL:
+  { type: GFX, offset: 0x20052D0, symbol: aPlFireSmokeFrame8DL }
+
+aPlFireSmokeFrame8Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x02005358, symbol: aPlFireSmokeFrame8Tex }
+
+aPlFireSmokeFrame6DL:
+  { type: GFX, offset: 0x2006360, symbol: aPlFireSmokeFrame6DL }
+
+aPlFireSmokeFrame6Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x020063E8, symbol: aPlFireSmokeFrame6Tex }
+
+aPlFireSmokeFrame5DL:
+  { type: GFX, offset: 0x20073F0, symbol: aPlFireSmokeFrame5DL }
+
+aPlFireSmokeFrame5Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x02007478, symbol: aPlFireSmokeFrame5Tex }
+
+aPlFireSmokeFrame4DL:
+  { type: GFX, offset: 0x2008480, symbol: aPlFireSmokeFrame4DL }
+
+aPlFireSmokeFrame4Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x02008508, symbol: aPlFireSmokeFrame4Tex }
+
+aPlFireSmokeFrame3DL:
+  { type: GFX, offset: 0x2009510, symbol: aPlFireSmokeFrame3DL }
+
+aPlFireSmokeFrame3Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x02009598, symbol: aPlFireSmokeFrame3Tex }
+
+aPlFireSmokeFrame2DL:
+  { type: GFX, offset: 0x200A5A0, symbol: aPlFireSmokeFrame2DL }
+
+aPlFireSmokeFrame2Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x0200A628, symbol: aPlFireSmokeFrame2Tex }
+
+aPlFireSmokeFrame1DL:
+  { type: GFX, offset: 0x200B630, symbol: aPlFireSmokeFrame1DL }
+
+aPlFireSmokeFrame1Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x0200B6B8, symbol: aPlFireSmokeFrame1Tex }
+
+aPlFireSmokeFrame7DL:
+  { type: GFX, offset: 0x200C6C0, symbol: aPlFireSmokeFrame7DL }
+
+aPlFireSmokeFrame7Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x0200C748, symbol: aPlFireSmokeFrame7Tex }
+
+aPlCloudsDL:
+  { type: GFX, offset: 0x200D750, symbol: aPlCloudsDL }
+
+aPlCloudsTex:
+  { type: TEXTURE, ctype: u16, format: IA16, width: 64, height: 32, offset: 0x0200D7E8, symbol: aPlCloudsTex }
+
+aPlFireSmokeFrame18DL:
+  { type: GFX, offset: 0x200E7F0, symbol: aPlFireSmokeFrame18DL }
+
+aPlFireSmokeFrame18Tex:
+  { type: TEXTURE, ctype: u16, format: IA16, width: 32, height: 32, offset: 0x0200E878, symbol: aPlFireSmokeFrame18Tex }
+
+aPlFireSmokeFrame17DL:
+  { type: GFX, offset: 0x200F080, symbol: aPlFireSmokeFrame17DL }
+
+aPlFireSmokeFrame17Tex:
+  { type: TEXTURE, ctype: u16, format: IA16, width: 32, height: 32, offset: 0x0200F108, symbol: aPlFireSmokeFrame17Tex }
+
+aPlFireSmokeFrame16DL:
+  { type: GFX, offset: 0x200F910, symbol: aPlFireSmokeFrame16DL }
+
+aPlFireSmokeFrame16Tex:
+  { type: TEXTURE, ctype: u16, format: IA16, width: 32, height: 32, offset: 0x0200F998, symbol: aPlFireSmokeFrame16Tex }
+
+aPlFireSmokeFrame15DL:
+  { type: GFX, offset: 0x20101A0, symbol: aPlFireSmokeFrame15DL }
+
+aPlFireSmokeFrame15Tex:
+  { type: TEXTURE, ctype: u16, format: IA16, width: 32, height: 32, offset: 0x02010228, symbol: aPlFireSmokeFrame15Tex }
+
+aPlFireSmokeFrame14DL:
+  { type: GFX, offset: 0x2010A30, symbol: aPlFireSmokeFrame14DL }
+
+aPlFireSmokeFrame14Tex:
+  { type: TEXTURE, ctype: u16, format: IA16, width: 32, height: 32, offset: 0x02010AB8, symbol: aPlFireSmokeFrame14Tex }
+
+aPlCircleDL:
+  { type: GFX, offset: 0x20112C0, symbol: aPlCircleDL }
+
+aPlCircleTex:
+  { type: TEXTURE, ctype: u16, format: IA16, width: 32, height: 32, offset: 0x02011358, symbol: aPlCircleTex }

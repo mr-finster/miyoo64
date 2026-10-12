@@ -1,0 +1,13 @@
+{
+  "id": "oot",
+  "title": "Ocarina of Time",
+  "folder": "OcarinaOfTime",
+  "exe": "oot",
+  "files": ["oot", "oot_recipes.bin"],
+  "icon": "icon.png",
+  "env": "OOT",
+  "data": "data",
+  "rom": {"name": "The Legend of Zelda: Ocarina of Time (USA 1.0)", "sha1": "ad69c91157f6705e8ab06c79fe08aad47bb57ba7", "size": 33554432},
+  "system": "OCARINA",
+  "minui_tag": "OOT"
+}

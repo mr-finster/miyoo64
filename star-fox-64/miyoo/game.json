@@ -1,0 +1,13 @@
+{
+  "id": "sf64",
+  "title": "Star Fox 64",
+  "folder": "StarFox64",
+  "exe": "sf64",
+  "files": ["sf64", "recipes.bin", "embedded.bin"],
+  "icon": "icon.png",
+  "env": "SF64",
+  "data": ".",
+  "rom": {"name": "Star Fox 64 (USA) (Rev 1)", "sha1": "09f0d105f476b00efa5303a3ebc42e60a7753b7a", "size": 12582912},
+  "system": "STARFOX64",
+  "minui_tag": "SF64"
+}

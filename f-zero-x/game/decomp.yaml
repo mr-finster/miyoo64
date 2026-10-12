@@ -1,0 +1,275 @@
+name: F-Zero X
+repo: https://github.com/inspectredc/fzerox
+platform: n64
+build_system: make
+versions:
+  - name: us
+    fullname: us
+    sha1: 5f658e88ffa9de23cba6986a8fd3d3a90d7b4340
+    paths:
+      target: "baserom.us.rev0.z64"
+
+      build_dir: "build/us/rev0"
+      map: "build/us/rev0/fzerox.us.rev0.map"
+      compiled_target: "build/us/rev0/fzerox.us.rev0.z64"
+      elf: "build/us/rev0/fzerox.us.rev0.elf"
+
+      expected_dir: "expected/"
+
+      asm: "asm/us/rev0"
+      nonmatchings: "asm/us/rev0/nonmatchings"
+
+  - name: jp
+    fullname: jp
+    sha1: a418b0151521b76691fa03f8658c8b567c69498b
+    paths:
+      target: "baserom.jp.rev0.z64"
+
+      build_dir: "build/jp/rev0"
+      map: "build/jp/rev0/fzerox.jp.rev0.map"
+      compiled_target: "build/jp/rev0/fzerox.jp.rev0.z64"
+      elf: "build/jp/rev0/fzerox.jp.rev0.elf"
+
+      expected_dir: "expected/"
+
+      asm: "asm/jp/rev0"
+      nonmatchings: "asm/jp/rev0/nonmatchings"
+
+  - name: pal
+    fullname: pal
+    sha1: af9038bcb543a2b4faaab876dbdab4663859e092
+    paths:
+      target: "baserom.pal.rev0.z64"
+
+      build_dir: "build/pal/rev0"
+      map: "build/pal/rev0/fzerox.pal.rev0.map"
+      compiled_target: "build/pal/rev0/fzerox.pal.rev0.z64"
+      elf: "build/pal/rev0/fzerox.pal.rev0.elf"
+
+      expected_dir: "expected/"
+
+      asm: "asm/pal/rev0"
+      nonmatchings: "asm/pal/rev0/nonmatchings"
+
+  - name: ek
+    fullname: ek
+    sha1: a418b0151521b76691fa03f8658c8b567c69498b
+    paths:
+      target: "baserom.jp.ek.z64dd"
+
+      build_dir: "build/jp/ek"
+      map: "build/jp/ek/fzerox-expansion.jp.ek.map"
+      compiled_target: "build/jp/ek/fzerox-expansion.jp.ek.z64dd"
+      elf: "build/jp/ek/fzerox-expansion.jp.ek.elf"
+
+      expected_dir: "expected/"
+
+      asm: "asm/jp/ek"
+      nonmatchings: "asm/jp/ek/nonmatchings"
+
+tools:
+  mapfile_parser:
+    progress_report:
+      check_asm_paths: False
+      path_index: 4
+      prefixes_to_trim:
+        - build/us/rev0/lib/
+        - build/us/rev0/src/
+        - build/us/rev0/asm/us/rev0/data
+        - build/us/rev0/asm/us/rev0
+        - build/us/rev0/
+        - build/jp/rev0/lib/
+        - build/jp/rev0/src/
+        - build/jp/rev0/asm/jp/rev0/data
+        - build/jp/rev0/asm/jp/rev0
+        - build/jp/rev0/
+        - build/pal/rev0/lib/
+        - build/pal/rev0/src/
+        - build/pal/rev0/asm/pal/rev0/data
+        - build/pal/rev0/asm/pal/rev0
+        - build/pal/rev0/
+        - build/jp/ek/lib/
+        - build/jp/ek/src/
+        - build/jp/ek/asm/jp/ek/data
+        - build/jp/ek/asm/jp/ek
+        - build/jp/ek/
+      categories:
+        # Categories by segment
+        - id: main
+          name: main
+          paths:
+            - game
+            - sys
+            - audio
+            - leo/leo_bootdisk
+            - leo/leo_bootstrap
+            - libultra
+        - id: main.game
+          name: main.game
+          paths:
+            - game
+        - id: main.sys
+          name: main.sys
+          paths:
+            - sys
+        - id: main.audio
+          name: main.audio
+          paths:
+            - audio
+        - id: main.libultra
+          name: main.libultra
+          paths:
+            - libultra
+        - id: unk_nmi
+          name: unk_nmi
+          paths:
+            - unk_nmi
+        - id: leo
+          name: leo
+          paths:
+            - leo/72120
+            - leo
+        - id: ovl_i2
+          name: ovl_i2
+          paths:
+            - overlays/ovl_i2
+        - id: ovl_i3
+          name: ovl_i3
+          paths:
+            - overlays/ovl_i3
+        - id: ovl_i4
+          name: ovl_i4
+          paths:
+            - overlays/ovl_i4
+        - id: course_select
+          name: course_select
+          paths:
+            - overlays/course_select
+        - id: ovl_i6
+          name: ovl_i6
+          paths:
+            - overlays/ovl_i6
+        - id: ovl_i7
+          name: ending
+          paths:
+            - overlays/ending/ending
+        - id: ovl_i8
+          name: records
+          paths:
+            - overlays/records/records
+        - id: ovl_i9
+          name: ovl_i9
+          paths:
+            - overlays/ovl_i9/machine_draw
+        - id: ovl_i10
+          name: ovl_i10
+          paths:
+            - overlays/ovl_i10/1459A0
+        - id: expansion_kit_textures_beta
+          name: expansion_kit_textures_beta
+          paths:
+            - assets/expansion_kit_textures_beta/expansion_kit_textures_beta
+        - id: course_edit_textures_beta
+          name: course_edit_textures_beta
+          paths:
+            - assets/course_edit_textures_beta/course_edit_textures_beta
+        - id: create_machine_textures
+          name: create_machine_textures
+          paths:
+            - assets/create_machine_textures/create_machine_textures
+        - id: course_track_gfx
+          name: course_track_gfx
+          paths:
+            - assets/course_track_gfx/course_track_gfx
+        - id: setup_gfx
+          name: setup_gfx
+          paths:
+            - assets/setup_gfx/setup_gfx
+        - id: machine_custom_gfx
+          name: machine_custom_gfx
+          paths:
+            - assets/machine_custom_gfx/machine_custom_gfx
+        - id: hud_gfx
+          name: hud_gfx
+          paths:
+            - assets/hud_gfx/hud_gfx
+        - id: machine_global_gfx
+          name: machine_global_gfx
+          paths:
+            - assets/machine_global_gfx/machine_global_gfx
+        - id: machine_models
+          name: machine_models
+          paths:
+            - assets/machine_models/machine_models
+        - id: mute_city_textures
+          name: mute_city_textures
+          paths:
+            - assets/mute_city_textures/mute_city_textures
+        - id: port_town_textures
+          name: port_town_textures
+          paths:
+            - assets/port_town_textures/port_town_textures
+        - id: big_blue_textures
+          name: big_blue_textures
+          paths:
+            - assets/big_blue_textures/big_blue_textures
+        - id: sand_ocean_textures
+          name: sand_ocean_textures
+          paths:
+            - assets/sand_ocean_textures/sand_ocean_textures
+        - id: devils_forest_textures
+          name: devils_forest_textures
+          paths:
+            - assets/devils_forest_textures/devils_forest_textures
+        - id: white_land_textures
+          name: white_land_textures
+          paths:
+            - assets/white_land_textures/white_land_textures
+        - id: sector_textures
+          name: sector_textures
+          paths:
+            - assets/sector_textures/sector_textures
+        - id: red_canyon_textures
+          name: red_canyon_textures
+          paths:
+            - assets/red_canyon_textures/red_canyon_textures
+        - id: fire_field_textures
+          name: fire_field_textures
+          paths:
+            - assets/fire_field_textures/fire_field_textures
+        - id: silence_textures
+          name: silence_textures
+          paths:
+            - assets/silence_textures/silence_textures
+        - id: ending_venue_textures
+          name: ending_venue_textures
+          paths:
+            - assets/ending_venue_textures/ending_venue_textures
+        - id: podium_gfx
+          name: podium_gfx
+          paths:
+            - assets/podium_gfx/podium_gfx
+        - id: super_textures
+          name: super_textures
+          paths:
+            - assets/super_textures/super_textures
+        - id: boot_textures
+          name: boot_textures
+          paths:
+            - assets/boot_textures/boot_textures
+        - id: staff_ghost_records
+          name: staff_ghost_records
+          paths:
+            - assets/staff_ghost_records/staff_ghost_records
+        - id: course_data
+          name: course_data
+          paths:
+            - assets/course_data/course_data
+        - id: common_assets_compressed
+          name: common_assets_compressed
+          paths:
+            - assets/common_assets_compressed/common_assets_compressed
+        - id: ovl_i11
+          name: ovl_i11
+          paths:
+            - overlays/ovl_i11/524920

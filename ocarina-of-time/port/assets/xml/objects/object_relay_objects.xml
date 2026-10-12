@@ -1,0 +1,25 @@
+<Root>
+    <File Name="object_relay_objects" Segment="6">
+        <!-- Vertices and DisplayLists -->
+        <Array Name="gDampeRaceDoorVtx" Count="26" Offset="0x0">
+            <Vtx/>
+        </Array>
+        <DList Name="gDampeRaceDoorDL" Offset="0x1A0"/>
+        <Array Name="gWindmillRotatingPlatformVtx" Count="170" Offset="0x1010">
+            <Vtx/>
+        </Array>
+        <DList Name="gWindmillRotatingPlatformDL" Offset="0x1AB0"/>
+
+        <!-- Palettes -->
+        <Texture Name="gWindmillRotatingPlatformTLUT" Format="rgba16" Width="4" Height="4" Offset="0x3F0"/>
+
+        <!-- Textures -->
+        <Texture Name="gWindmillRotatingPlatform1Tex" Format="ci4" Width="64" Height="64" Offset="0x410" TlutOffset="0x3F0"/>
+        <Texture Name="gWindmillRotatingPlatform2Tex" Format="rgba16" Width="32" Height="16" Offset="0xC10"/>
+        <Texture Name="gDampeRaceDoorTex" Format="i4" Width="64" Height="128" Offset="0x2630"/>
+
+        <!-- Collision -->
+        <Collision Name="gDampeRaceDoorCol" Offset="0x3C4"/>
+        <Collision Name="gWindmillRotatingPlatformCol" Offset="0x25FC"/>
+    </File>
+</Root>

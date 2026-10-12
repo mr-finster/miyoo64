@@ -1,0 +1,65 @@
+# Allowlist: ignore everything, then un-ignore what we track.
+# Reference clones (refs/), ROMs, extracted assets and build output never get committed.
+*
+!*/
+!.gitignore
+!.gitmodules
+!README.md
+!dev.sh
+!scripts/
+!scripts/*.sh
+!tools/
+!tools/*.py
+!tools/*.sh
+!tools/*.c
+!docker/
+!docker/Dockerfile
+!docker/qemu-plugin.h
+# the Miyoo Mini release: game.json, the launch templates, the packer, its README
+!README_MIYOO.md
+!miyoo/
+!miyoo/*.json
+!miyoo/templates/
+!miyoo/templates/*
+!miyoo/tools/
+!miyoo/tools/*.py
+# the launcher icon, our own drawing (miyoo/icon.svg -> miyoo/icon.png; the PNG is allowed again below *.png)
+!miyoo/icon.svg
+# The port itself: subtree of inspectredc/fzerox + our port changes.
+# game/.gitignore (the decomp's own) keeps ROM-derived output out; the lines
+# at the bottom repeat the important ones as a second fence.
+!game/
+!game/**
+# Never, even if allowlisted above:
+refs/
+*.z64
+*.n64
+*.v64
+*.ndd
+*.o2r
+*.otr
+# Second fence for the game tree (ROM-derived output, build products, tools).
+game/baserom*
+game/asm/
+game/bin/
+game/build/
+game/src/assets/
+game/include/assets/
+game/.splat/
+game/.venv/
+game/tools/ido-recomp/
+game/linker_scripts/*/*/auto/
+game/linker_scripts/*/*/*.ld
+game/*.yaml
+!game/decomp.yaml
+!game/config.yml
+game/torch.hash.yml
+*.mio0
+*.bin
+*.o2r
+*.ppm
+*.png
+# ...except the drawn launcher icon (ours, not from the ROM)
+!/miyoo/icon.png
+# the Miyoo64 repository's docs
+!SETTINGS.md

@@ -1,0 +1,13 @@
+# Star Fox 64 build environment: the MK64 image (../mario-kart-64/docker/Dockerfile, tag
+# mk64hh:build: the Miyoo Mini toolchain, mips binutils, gcc-multilib, i386 SDL2) plus what the sf64
+# decomp and the qemu checks need.
+#   docker build -t sf64hh:build -f docker/Dockerfile.sf64 docker
+FROM --platform=linux/amd64 mk64hh:build
+RUN apt-get update && apt-get install -y --no-install-recommends qemu-user \
+    && rm -rf /var/lib/apt/lists/*
+# The decomp's Python tools (port/tools/requirements-python.txt) in a venv on Debian's Python
+# 3.11, first on PATH. Makefile.handheld calls the cross tools by absolute path.
+RUN /usr/bin/python3 -m venv /opt/sf64-venv && /opt/sf64-venv/bin/pip install --no-cache-dir \
+      spimdisasm==1.25.1 rabbitizer==1.10.0 PyYAML pylibyaml tqdm intervaltree colorama \
+      pygfxd 'n64img>=0.1.4' GitPython colour requests crunch64
+ENV PATH="/opt/sf64-venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"

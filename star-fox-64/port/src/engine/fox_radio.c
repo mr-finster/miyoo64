@@ -1,0 +1,1182 @@
+/*
+ * File: fox_title.c
+ * System: Radio
+ * Description: Starfox Radio Handler
+ */
+
+#include "prevent_bss_reordering.h"
+#include "global.h"
+#include "assets/ast_allies.h"
+#include "assets/ast_corneria.h"
+#include "assets/ast_meteo.h"
+#include "assets/ast_training.h"
+#include "assets/ast_sector_x.h"
+#include "assets/ast_sector_y.h"
+#include "assets/ast_macbeth.h"
+#include "assets/ast_star_wolf.h"
+#include "assets/ast_great_fox.h"
+#include "assets/ast_area_6.h"
+#include "assets/ast_title.h"
+#include "assets/ast_zoness.h"
+
+u16** gRadioMsgList;
+s32 gRadioMsgListIndex;
+s32 gRadioPrintPosX;
+s32 gRadioPrintPosY;
+f32 gRadioTextBoxPosX;
+f32 gRadioTextBoxPosY;
+f32 gRadioTextBoxScaleX;
+f32 gRadioPortraitPosX;
+f32 gRadioPortraitPosY;
+
+s32 gRadioMsgPri = 0;
+
+void Radio_Hide(void) {
+    RCP_SetupDL_36();
+    if (gRadioTextBoxScaleY == 1.3f) {
+        gMsgCharIsPrinting = Message_IsPrintingChar(gRadioMsg, gRadioMsgCharIndex);
+    }
+}
+
+s32 Radio_CheckMesgPriority(u16* msg, s32 priority) {
+    if (priority == gRadioMsgPri) {
+        return 0;
+    }
+
+    if (priority < gRadioMsgPri) {
+        return 1;
+    }
+
+    if (gRadioMsgPri < priority) {
+        gRadioMsgPri = priority;
+        return 2;
+    }
+}
+
+void Radio_PlayMessage(u16* msg, RadioCharacterId character) {
+    TeamId teamId;
+    s32 pad;
+    s32 priority;
+
+    switch (msg[0]) {
+        default:
+        case MSGCHAR_PRI0:
+            priority = 0;
+            break;
+        case MSGCHAR_PRI1:
+            priority = 1;
+            break;
+        case MSGCHAR_PRI2:
+            priority = 2;
+            break;
+        case MSGCHAR_PRI3:
+            priority = 3;
+            break;
+    }
+
+    if (gGameState == GSTATE_PLAY) {
+        if ((character == RCID_FALCO) || (character == RCID_SLIPPY) || (character == RCID_PEPPY)) {
+            if (character == RCID_FALCO) {
+                teamId = TEAM_ID_FALCO;
+            }
+            if (character == RCID_SLIPPY) {
+                teamId = TEAM_ID_SLIPPY;
+            }
+            if (character == RCID_PEPPY) {
+                teamId = TEAM_ID_PEPPY;
+            }
+            if ((gTeamShields[teamId] <= 0) && (gTeamShields[teamId] != -2)) {
+                return;
+            }
+        }
+    }
+
+    if ((gRadioState != 0) && (Radio_CheckMesgPriority(msg, priority) == 1)) {
+        return;
+    }
+
+    gRadioMsgPri = priority;
+    gRadioMsgRadioId = character;
+
+    if (gExpertMode && ((character == RCID_FOX) || (character == RCID_FOX_RED))) {
+        gRadioMsgRadioId = RCID_FOX_EXPERT;
+    }
+
+    if (gCurrentLevel == LEVEL_VENOM_2) {
+        switch (character) {
+            case RCID_WOLF:
+                gRadioMsgRadioId = RCID_WOLF_2;
+                break;
+            case RCID_PIGMA:
+                gRadioMsgRadioId = RCID_PIGMA_2;
+                break;
+            case RCID_LEON:
+                gRadioMsgRadioId = RCID_LEON_2;
+                break;
+            case RCID_ANDREW:
+                gRadioMsgRadioId = RCID_ANDREW_2;
+                break;
+        }
+    }
+
+    gRadioMsg = msg;
+    gRadioState = 100;
+
+    switch (gGameState) {
+        case GSTATE_TITLE:
+        case GSTATE_ENDING:
+            gRadioPrintPosY = 176;
+            gRadioPrintPosX = 85;
+            gRadioTextBoxPosX = 80.0f;
+            gRadioTextBoxPosY = 174.0f;
+            gRadioTextBoxScaleX = 4.63f;
+            gRadioPortraitPosX = 32.0f;
+            gRadioPortraitPosY = 174.0f;
+            break;
+
+        case GSTATE_PLAY:
+#ifdef VERSION_JP
+            gRadioPrintPosY = 184;
+            gRadioPrintPosX = 76;
+#else
+            gRadioPrintPosY = 180;
+            gRadioPrintPosX = 79;
+#endif
+            gRadioTextBoxPosX = 74.0f;
+            gRadioTextBoxPosY = 178.0f;
+            gRadioTextBoxScaleX = 4.53f;
+            gRadioPortraitPosX = 26.0f;
+            gRadioPortraitPosY = 178.0f;
+            break;
+    }
+
+    gRadioMsgId = Message_IdFromPtr(msg);
+    Audio_PlayVoice(gRadioMsgId);
+}
+
+s32 sRadioUseRedBox;
+
+void Radio_Portrait_Draw(void) {
+    static f32 sRadioPortraitScaleNeg = -1.0f;
+    u16* radioPortraitTex;
+    s32 mirror;
+    s32 i;
+    f32 sp38;
+    f32 temp_fa0;
+    s32 j;
+
+    sRadioUseRedBox = false;
+
+    mirror = false;
+
+    switch (gCurrentRadioPortrait) {
+        case RCID_FOX_RED:
+            sRadioUseRedBox = true;
+            /* fallthrough */
+        case RCID_FOX:
+            radioPortraitTex = aFoxPortrait1Tex;
+            break;
+        case RCID_FOX_RED + 1:
+            sRadioUseRedBox = true;
+            /* fallthrough */
+        case RCID_FOX + 1:
+            radioPortraitTex = aFoxPortrait2Tex;
+            break;
+        case RCID_FOX_EXPERT:
+            radioPortraitTex = aFoxExpertPortrait1Tex;
+            break;
+        case RCID_FOX_EXPERT + 1:
+            radioPortraitTex = aFoxExpertPortrait2Tex;
+            break;
+        case RCID_FALCO_RED:
+            sRadioUseRedBox = true;
+            /* fallthrough */
+        case RCID_FALCO:
+            radioPortraitTex = aFalcoPortrait1Tex;
+            break;
+        case RCID_FALCO_RED + 1:
+            sRadioUseRedBox = true;
+            /* fallthrough */
+        case RCID_FALCO + 1:
+            radioPortraitTex = aFalcoPortrait2Tex;
+            break;
+        case RCID_SLIPPY_RED:
+            sRadioUseRedBox = true;
+            /* fallthrough */
+        case RCID_SLIPPY:
+            radioPortraitTex = aSlippyPortrait1Tex;
+            break;
+        case RCID_SLIPPY_RED + 1:
+            sRadioUseRedBox = true;
+            /* fallthrough */
+        case RCID_SLIPPY + 1:
+            radioPortraitTex = aSlippyPortrait2Tex;
+            break;
+        case RCID_PEPPY_RED:
+            sRadioUseRedBox = true;
+            /* fallthrough */
+        case RCID_PEPPY:
+            radioPortraitTex = aPeppyPortrait1Tex;
+            break;
+        case RCID_PEPPY_RED + 1:
+            sRadioUseRedBox = true;
+            /* fallthrough */
+        case RCID_PEPPY + 1:
+            radioPortraitTex = aPeppyPortrait2Tex;
+            break;
+        case RCID_WOLF:
+            radioPortraitTex = aStarWolfWolfPortrait1Tex;
+            break;
+        case RCID_WOLF + 1:
+            radioPortraitTex = aStarWolfWolfPortrait2Tex;
+            break;
+        case RCID_PIGMA:
+            radioPortraitTex = aStarWolfPigmaPortrait1Tex;
+            break;
+        case RCID_PIGMA + 1:
+            radioPortraitTex = aStarWolfPigmaPortrait2Tex;
+            break;
+        case RCID_LEON:
+            radioPortraitTex = aStarWolfLeonPortrait1Tex;
+            break;
+        case RCID_LEON + 1:
+            radioPortraitTex = aStarWolfLeonPortrait2Tex;
+            break;
+        case RCID_ANDREW:
+            radioPortraitTex = aStarWolfAndrewPortrait1Tex;
+            break;
+        case RCID_ANDREW + 1:
+            radioPortraitTex = aStarWolfAndrewPortrait2Tex;
+            break;
+        case RCID_WOLF_2:
+            radioPortraitTex = aStarWolfWolf2Portrait1Tex;
+            break;
+        case RCID_WOLF_2 + 1:
+            radioPortraitTex = aStarWolfWolf2Portrait2Tex;
+            break;
+        case RCID_PIGMA_2:
+            radioPortraitTex = aStarWolfPigma2Portrait1Tex;
+            break;
+        case RCID_PIGMA_2 + 1:
+            radioPortraitTex = aStarWolfPigma2Portrait2Tex;
+            break;
+        case RCID_LEON_2:
+            radioPortraitTex = aStarWolfLeon2Portrait1Tex;
+            break;
+        case RCID_LEON_2 + 1:
+            radioPortraitTex = aStarWolfLeon2Portrait2Tex;
+            break;
+        case RCID_ANDREW_2:
+            radioPortraitTex = aStarWolfAndrew2Portrait1Tex;
+            break;
+        case RCID_ANDREW_2 + 1:
+            radioPortraitTex = aStarWolfAndrew2Portrait2Tex;
+            break;
+        case RCID_BOSS_CORNERIA:
+            radioPortraitTex = aCoCorneriaBoss1Portrait1Tex;
+            break;
+        case RCID_BOSS_CORNERIA + 1:
+            radioPortraitTex = aCoCorneriaBoss1Portrait2Tex;
+            break;
+        case RCID_BOSS_CORNERIA2:
+            radioPortraitTex = aCoCorneriaBoss2Portrait1Tex;
+            break;
+        case RCID_BOSS_CORNERIA2 + 1:
+            radioPortraitTex = aCoCorneriaBoss2Portrait2Tex;
+            break;
+        case RCID_BOSS_METEO:
+            radioPortraitTex = aMeBossPortrait1Tex;
+            break;
+        case RCID_BOSS_METEO + 1:
+            radioPortraitTex = aMeBossPortrait2Tex;
+            break;
+        case RCID_BOSS_AREA6:
+            radioPortraitTex = aA6BossPortrait1Tex;
+            break;
+        case RCID_BOSS_AREA6 + 1:
+            radioPortraitTex = aA6BossPortrait2Tex;
+            break;
+        case RCID_CAIMAN_AREA6:
+            radioPortraitTex = aA6CaimanPortrait1Tex;
+            break;
+        case RCID_CAIMAN_AREA6 + 1:
+            radioPortraitTex = aA6CaimanPortrait2Tex;
+            break;
+        case RCID_BOSS_ZONESS:
+            radioPortraitTex = D_ZO_6014510;
+            break;
+        case RCID_BOSS_ZONESS + 1:
+            radioPortraitTex = D_ZO_6015430;
+            break;
+        case RCID_BOSS_SECTORX:
+            radioPortraitTex = aSxSpyborgPortrait1Tex;
+            break;
+        case RCID_BOSS_SECTORX + 1:
+            radioPortraitTex = aSxSpyborgPortrait2Tex;
+            break;
+        case RCID_BOSS_SECTORY:
+            radioPortraitTex = aSyShogunPortrait1Tex;
+            break;
+        case RCID_BOSS_SECTORY + 1:
+            radioPortraitTex = aSyShogunPortrait2Tex;
+            break;
+        case RCID_BOSS_MACBETH:
+            radioPortraitTex = D_MA_6010C20;
+            break;
+        case RCID_BOSS_MACBETH + 1:
+            radioPortraitTex = D_MA_6011B40;
+            break;
+        case RCID_ROB64_RED:
+            sRadioUseRedBox = true;
+            /* fallthrough */
+        case RCID_ROB64:
+        case RCID_ROB64_2:
+            radioPortraitTex = aRob64Portrait1Tex;
+            break;
+        case RCID_ROB64_RED + 1:
+            sRadioUseRedBox = true;
+            /* fallthrough */
+        case RCID_ROB64 + 1:
+        case RCID_ROB64_2 + 1:
+            radioPortraitTex = aRob64Portrait2Tex;
+            break;
+        case RCID_KATT:
+            radioPortraitTex = aKattPortrait1Tex;
+            break;
+        case RCID_KATT + 1:
+            radioPortraitTex = aKattPortrait2Tex;
+            break;
+        case RCID_ANDROSS_RED:
+        case RCID_ANDROSS:
+            radioPortraitTex = aAndPortrait1Tex;
+            if ((gGameState == GSTATE_PLAY) && (gCurrentLevel == LEVEL_AREA_6)) {
+                radioPortraitTex = aA6AndPortrait1Tex;
+            }
+            sRadioUseRedBox = true;
+            break;
+        case RCID_ANDROSS_RED + 1:
+        case RCID_ANDROSS + 1:
+            radioPortraitTex = aAndPortrait2Tex;
+            if ((gGameState == GSTATE_PLAY) && (gCurrentLevel == LEVEL_AREA_6)) {
+                radioPortraitTex = aA6AndPortrait2Tex;
+            }
+            sRadioUseRedBox = true;
+            break;
+        case RCID_JAMES:
+            radioPortraitTex = aJamesPortrait1Tex;
+            break;
+        case RCID_JAMES + 1:
+            radioPortraitTex = aJamesPortrait2Tex;
+            break;
+        case RCID_BILL:
+            radioPortraitTex = aBillPortrait1Tex;
+            break;
+        case RCID_BILL + 1:
+            radioPortraitTex = aBillPortrait2Tex;
+            break;
+        case RCID_GEN_PEPPER:
+            radioPortraitTex = aPepperPortrait1Tex;
+            break;
+        case RCID_GEN_PEPPER + 1:
+            radioPortraitTex = aPepperPortrait2Tex;
+            break;
+        case RCID_ROB64_TITLE:
+            radioPortraitTex = aGreatFoxRob64Portrait1Tex;
+            break;
+        case RCID_ROB64_TITLE + 1:
+            radioPortraitTex = aGreatFoxRob64Portrait2Tex;
+            break;
+        case RCID_GEN_PEPPER_TITLE:
+            radioPortraitTex = aGreatFoxGralPepperPortrait1Tex;
+            break;
+        case RCID_GEN_PEPPER_TITLE + 1:
+            radioPortraitTex = aGreatFoxGralPepperPortrait2Tex;
+            break;
+        case RCID_TR:
+            radioPortraitTex = aTrYaruDePonFace1Tex;
+            break;
+        case RCID_TR + 1:
+            radioPortraitTex = aTrYaruDePonFace2Tex;
+            break;
+        case RCID_STATIC + 1:
+            mirror = true;
+            /* fallthrough */
+        case RCID_STATIC:
+            switch (gGameState) {
+                default:
+                    radioPortraitTex = NULL;
+                    break;
+                case GSTATE_PLAY:
+                    radioPortraitTex = aRadioStaticPortraitTex;
+                    break;
+                case GSTATE_TITLE:
+                case GSTATE_ENDING:
+                    radioPortraitTex = aTitleRadioStatic;
+                    break;
+            }
+            if (((s32) gRadioMsgRadioId == RCID_ANDROSS) || ((s32) gRadioMsgRadioId == RCID_ANDROSS_RED)) {
+                sRadioUseRedBox = true;
+            }
+            break;
+    }
+
+    if ((radioPortraitTex != NULL) && (gRadioPortraitScaleY != 0.0f)) {
+        temp_fa0 = (2.0f * gRadioPortraitScaleY) + gRadioPortraitPosY;
+        if ((gRadioPortraitPosY + 20.0f) <= temp_fa0) {
+            sRadioPortraitScaleNeg = 1.0f;
+        }
+        if (temp_fa0 <= gRadioPortraitPosY) {
+            sRadioPortraitScaleNeg = -1.0f;
+        }
+        sp38 = gRadioPortraitScaleY * 20.0f * sRadioPortraitScaleNeg;
+        RCP_SetupDL_76();
+        gDPSetPrimColor(gMasterDisp++, 0x00, 0x00, 255, 255, 255, 255);
+
+        if (mirror) {
+            for (i = 0, j = 0; i < 2; i++, j += 44 * 20) {
+                Lib_TextureRect_RGBA16_MirX(&gMasterDisp, &radioPortraitTex[j], 44, 20, gRadioPortraitPosX,
+                                            gRadioPortraitPosY + 20.0f + sp38 + (i * 20.0f * gRadioPortraitScaleY),
+                                            1.0f, gRadioPortraitScaleY);
+            }
+            Lib_TextureRect_RGBA16_MirX(&gMasterDisp, &radioPortraitTex[44 * 20 * 2], 44, 4, gRadioPortraitPosX,
+                                        gRadioPortraitPosY + 20.0f + sp38 + (40.0f * gRadioPortraitScaleY), 1.0f,
+                                        gRadioPortraitScaleY);
+        } else {
+            for (i = 0, j = 0; i < 2; i++, j += 44 * 20) {
+                Lib_TextureRect_RGBA16(&gMasterDisp, &radioPortraitTex[j], 44, 20, gRadioPortraitPosX,
+                                       gRadioPortraitPosY + 20.0f + sp38 + (i * 20.0f * gRadioPortraitScaleY), 1.0f,
+                                       gRadioPortraitScaleY);
+            }
+            Lib_TextureRect_RGBA16(&gMasterDisp, &radioPortraitTex[44 * 20 * 2], 44, 4, gRadioPortraitPosX,
+                                   gRadioPortraitPosY + 20.0f + sp38 + (40.0f * gRadioPortraitScaleY), 1.0f,
+                                   gRadioPortraitScaleY);
+        }
+    }
+}
+
+void Radio_TextBox_Draw(void) {
+    static f32 D_800D4A78 = -1.0f;
+    f32 temp_fa0;
+    u8* texture;
+    u16* palette;
+    f32 sp30;
+
+    if ((gGameState != GSTATE_MAP) && (gRadioTextBoxScaleY != 0.0f)) {
+        temp_fa0 = (gRadioTextBoxScaleY / 0.26f) * 3.0f;
+        if ((gRadioTextBoxPosY + 16.0f) <= (temp_fa0 + gRadioTextBoxPosY)) {
+            D_800D4A78 = 1.0f;
+        }
+        if (temp_fa0 + gRadioTextBoxPosY <= gRadioTextBoxPosY) {
+            D_800D4A78 = -1.0f;
+        }
+
+        sp30 = temp_fa0 * D_800D4A78;
+
+        RCP_SetupDL(&gMasterDisp, SETUPDL_85);
+
+        switch (gGameState) {
+            case GSTATE_TITLE:
+            case GSTATE_ENDING:
+                texture = aTitleNoControllerBgTex;
+                palette = aTitleNoControllerBgTLUT;
+                break;
+
+            case GSTATE_PLAY:
+                texture = aMsgWindowBgTex;
+                palette = aMsgWindowBgTLUT;
+                break;
+        }
+
+        if (sRadioUseRedBox == true) {
+            gDPSetPrimColor(gMasterDisp++, 0x00, 0x00, 255, 25, 25, 170);
+        } else {
+            gDPSetPrimColor(gMasterDisp++, 0x00, 0x00, 60, 60, 255, 170);
+        }
+
+        Lib_TextureRect_CI8(&gMasterDisp, texture, palette, 32, 32, gRadioTextBoxPosX, gRadioTextBoxPosY + 16.0f + sp30,
+                            gRadioTextBoxScaleX, gRadioTextBoxScaleY);
+    }
+
+    if (gRadioTextBoxScaleY == 1.3f) {
+        RCP_SetupDL(&gMasterDisp, SETUPDL_85);
+        gMsgCharIsPrinting =
+            Message_DisplayText(&gMasterDisp, gRadioMsg, gRadioPrintPosX, gRadioPrintPosY, gRadioMsgCharIndex);
+    }
+}
+
+s32 D_radio_80178748; // set to 1, never used
+s32 sRadioCheckMouthFlag;
+
+#ifdef VERSION_US
+void Radio_Draw(void) {
+    s32 idx;
+    RadioCharacterId radioCharId;
+    u32 ret;
+    s32 fakeTemp;
+
+    if ((gPlayState == PLAY_PAUSE) && (gGameState != GSTATE_ENDING)) {
+        return;
+    }
+
+    if (gRadioStateTimer > 0) {
+        gRadioStateTimer--;
+    }
+
+    if (gRadioMouthTimer > 0) {
+        gRadioMouthTimer--;
+    }
+
+    switch (gRadioState) {
+        case 100:
+            D_radio_80178748 = 1;
+            gCurrentRadioPortrait = RCID_1000;
+            gRadioState = 1;
+            gRadioMsgCharIndex = 0;
+            gRadioPortraitScaleY = 0.0f;
+            gRadioTextBoxScaleY = 0.0f;
+            sRadioCheckMouthFlag = 0;
+            if (gCamCount != 1) {
+                gRadioState = 0;
+            }
+            break;
+
+        case 1:
+            gRadioPortraitScaleY += 0.25f;
+            if (gRadioPortraitScaleY == 1.0f) {
+                gRadioState++;
+                gRadioStateTimer = 10;
+            }
+            gCurrentRadioPortrait = RCID_STATIC;
+            if ((gGameFrameCount % 2) != 0) {
+                gCurrentRadioPortrait = RCID_STATIC + 1;
+            }
+            break;
+
+        case 2:
+            if (gRadioStateTimer == 0) {
+                gRadioState++;
+                gRadioStateTimer = 10;
+            }
+            gCurrentRadioPortrait = RCID_STATIC;
+            if ((gGameFrameCount % 2) != 0) {
+                gCurrentRadioPortrait = RCID_STATIC + 1;
+            }
+            break;
+
+        case 3:
+            if (gRadioStateTimer == 0) {
+                gRadioState++;
+                ret = Message_GetWidth(gRadioMsg);
+                if (gVIsPerFrame == 3) {
+                    gRadioStateTimer = ret + 16;
+                } else {
+                    gRadioStateTimer = (2 * ret) + 16;
+                }
+                if ((gGameState == GSTATE_TITLE) || (gGameState == GSTATE_ENDING)) {
+                    gRadioStateTimer = ret * 2;
+                }
+            }
+            gCurrentRadioPortrait = (s32) gRadioMsgRadioId;
+            gRadioTextBoxScaleY += 0.26f;
+            if (gRadioTextBoxScaleY > 1.3f) {
+                gRadioTextBoxScaleY = 1.3f;
+            }
+            break;
+
+        case 31:
+            gRadioState++;
+            gRadioStateTimer = 80 - gRadioStateTimer;
+            break;
+
+        case 32:
+            if (Audio_GetCurrentVoice() == 0) {
+                gRadioMsgListIndex++;
+                gRadioMsg = gRadioMsgList[gRadioMsgListIndex];
+                Audio_PlayVoice(Message_IdFromPtr(gRadioMsg));
+                gRadioMsgCharIndex = 0;
+                sRadioCheckMouthFlag = 0;
+                gRadioStateTimer = 80;
+                gRadioStateTimer = Message_GetWidth(gRadioMsg) * 2;
+                gRadioState = 4;
+            }
+            break;
+
+        case 4:
+            if ((Audio_GetCurrentVoice() == 0) && (gRadioStateTimer == 0)) {
+                gRadioStateTimer = 10;
+                gCurrentRadioPortrait = (s32) gRadioMsgRadioId;
+                gRadioState = 6;
+            }
+            gCurrentRadioPortrait = (s32) gRadioMsgRadioId;
+            if (gRadioMouthTimer > 0) {
+                gCurrentRadioPortrait = (s32) gRadioMsgRadioId + 1;
+            }
+
+            if (!gVIsPerFrame) {}
+
+            if (1) {
+                fakeTemp = 0;
+            }
+
+            if (!(fakeTemp)) {
+                ret = Audio_GetCurrentVoiceStatus();
+
+                if (gRadioMsgCharIndex < 60) {
+                    if (gRadioMsg[gRadioMsgCharIndex + 1] == MSGCHAR_NXT) {
+                        if (ret == 0) {
+                            gRadioState = 31;
+                        }
+                    } else {
+                        gRadioMsgCharIndex++;
+                    }
+                }
+
+                if (sRadioCheckMouthFlag) {
+                    if ((gRadioMsgId >= 23000) && (gRadioMsgId < 23033)) {
+                        if (gMsgCharIsPrinting) {
+                            gRadioMouthTimer = 2;
+                            AUDIO_PLAY_SFX(NA_SE_MESSAGE_MOVE, gDefaultSfxSource, 4);
+                        }
+                    } else if (ret == 1) {
+                        gRadioMouthTimer = 2;
+                    } else {
+                        gRadioMouthTimer = 0;
+                    }
+                }
+            }
+            sRadioCheckMouthFlag ^= 1;
+            break;
+
+        case 5:
+            if (gRadioStateTimer == 0) {
+                gRadioState++;
+                gRadioStateTimer = 10;
+            }
+            gCurrentRadioPortrait = (s32) gRadioMsgRadioId;
+            break;
+
+        case 6:
+            if (gRadioStateTimer == 0) {
+                if (gGameState == GSTATE_ENDING) {
+                    Audio_ClearVoice();
+                } else {
+                    Audio_PlayVoice(0);
+                }
+                gRadioState++;
+            }
+            gCurrentRadioPortrait = RCID_STATIC;
+            if ((gGameFrameCount % 2) != 0) {
+                gCurrentRadioPortrait = RCID_STATIC + 1;
+            }
+            gRadioTextBoxScaleY -= 0.26f;
+            if (gRadioTextBoxScaleY < 0.0f) {
+                gRadioTextBoxScaleY = 0.0f;
+            }
+            break;
+
+        case 7:
+            gRadioPortraitScaleY -= 0.25f;
+            if (gRadioPortraitScaleY == 0) {
+                gHideRadio = false;
+                gRadioMsgPri = 0;
+                gRadioState = 0;
+            }
+            gCurrentRadioPortrait = RCID_STATIC;
+            if ((gGameFrameCount % 2) != 0) {
+                gCurrentRadioPortrait = RCID_STATIC + 1;
+            }
+            break;
+
+        case 8:
+            gCurrentRadioPortrait = (s32) gRadioMsgRadioId;
+            gRadioTextBoxScaleY = 1.3f;
+            gRadioPortraitScaleY = 1.0f;
+            break;
+
+        case 0:
+            break;
+    }
+
+    if (((gRadioState > 0) && (gRadioState != 100)) && !gHideRadio) {
+        Radio_Portrait_Draw();
+        Radio_TextBox_Draw();
+
+        radioCharId = (s32) gRadioMsgRadioId;
+
+        if (((radioCharId == RCID_FALCO) || (radioCharId == RCID_SLIPPY)) || (radioCharId == RCID_PEPPY)) {
+            if (radioCharId == RCID_FALCO) {
+                idx = TEAM_ID_FALCO;
+            }
+            if (radioCharId == RCID_SLIPPY) {
+                idx = TEAM_ID_SLIPPY;
+            }
+            if (radioCharId == RCID_PEPPY) {
+                idx = TEAM_ID_PEPPY;
+            }
+            if ((gTeamShields[idx] <= 0) && (gGameFrameCount & 4) && (gTeamShields[idx] != -2) &&
+                (gCurrentRadioPortrait != RCID_STATIC) && (gCurrentRadioPortrait != RCID_STATIC + 1) &&
+                (gCurrentRadioPortrait != RCID_1000)) {
+                RCP_SetupDL(&gMasterDisp, SETUPDL_76);
+                gDPSetPrimColor(gMasterDisp++, 0x00, 0x00, 255, 255, 0, 255);
+                Graphics_DisplaySmallText(31, 167, 1.0f, 1.0f, "DOWN");
+                HUD_TeamDownWrench_Draw(1);
+            }
+            if (((gCurrentRadioPortrait != RCID_STATIC) && (gCurrentRadioPortrait != RCID_STATIC + 1)) &&
+                (gCurrentRadioPortrait != RCID_1000)) {
+                HUD_TeamShields_Draw(22.0f, 165.0f, gTeamShields[idx]);
+            }
+        }
+
+        radioCharId = (s32) gRadioMsgRadioId;
+
+        if ((radioCharId == RCID_WOLF) || (radioCharId == RCID_PIGMA) || (radioCharId == RCID_LEON) ||
+            (radioCharId == RCID_ANDREW) || (radioCharId == RCID_WOLF_2) || (radioCharId == RCID_PIGMA_2) ||
+            (radioCharId == RCID_LEON_2) || (radioCharId == RCID_ANDREW_2)) {
+            switch (radioCharId) {
+                case RCID_WOLF:
+                case RCID_WOLF_2:
+                    idx = 4;
+                    break;
+
+                case RCID_LEON:
+                case RCID_LEON_2:
+                    idx = 5;
+                    break;
+
+                case RCID_PIGMA:
+                case RCID_PIGMA_2:
+                    idx = 6;
+                    break;
+
+                case RCID_ANDREW:
+                case RCID_ANDREW_2:
+                    idx = 7;
+                    break;
+
+                default:
+                    idx = 0;
+                    break;
+            }
+
+            if ((gActors[idx].obj.status != OBJ_ACTIVE) && (gGameFrameCount & 4) &&
+                (gPlayer[0].state == PLAYERSTATE_ACTIVE) && (gCurrentRadioPortrait != RCID_STATIC) &&
+                (gCurrentRadioPortrait != RCID_STATIC + 1) && (gCurrentRadioPortrait != RCID_1000)) {
+                RCP_SetupDL(&gMasterDisp, SETUPDL_76);
+                gDPSetPrimColor(gMasterDisp++, 0x00, 0x00, 255, 255, 0, 255);
+                Graphics_DisplaySmallText(31, 167, 1.0f, 1.0f, "DOWN");
+            }
+            if (((gCurrentRadioPortrait != RCID_STATIC) && (gCurrentRadioPortrait != RCID_STATIC + 1)) &&
+                (gCurrentRadioPortrait != RCID_1000)) {
+                HUD_TeamShields_Draw(22.0f, 165.0f, gActors[idx].health * 2.55f);
+            }
+        }
+        if (((gCurrentRadioPortrait != RCID_STATIC) && (gCurrentRadioPortrait != RCID_STATIC + 1)) &&
+            (gCurrentRadioPortrait != RCID_1000)) {
+            HUD_RadioCharacterName_Draw();
+        }
+    }
+
+    if (gHideRadio == true) {
+        Radio_Hide();
+    }
+}
+#endif
+
+#ifdef VERSION_JP
+void Radio_Draw(void) {
+    s32 idx;
+    s32 ret;
+    s32 mask;
+
+    if ((gPlayState == PLAY_PAUSE) && (gGameState != GSTATE_ENDING)) {
+        return;
+    }
+
+    if (gRadioStateTimer > 0) {
+        gRadioStateTimer--;
+    }
+    if (gRadioMouthTimer > 0) {
+        gRadioMouthTimer--;
+    }
+
+    switch (gRadioState) {
+        case 0:
+            break;
+
+        case 100:
+            D_radio_80178748 = 1;
+            gCurrentRadioPortrait = 1000;
+            gRadioState = 1;
+            gRadioPortraitScaleY = 0.0f;
+            gRadioTextBoxScaleY = 0.0f;
+            gRadioMsgCharIndex = 0;
+
+            if (gCamCount != 1) {
+                gRadioState = 0;
+            }
+            break;
+
+        case 1:
+            gRadioPortraitScaleY += 0.25f;
+            if (gRadioPortraitScaleY == 1.0f) {
+                gRadioState += 1;
+                gRadioStateTimer = 10;
+            }
+            gCurrentRadioPortrait = 2;
+            if ((gGameFrameCount % 2) != 0) {
+                gCurrentRadioPortrait = 3;
+            }
+            break;
+
+        case 2:
+            if (gRadioStateTimer == 0) {
+                gRadioState += 1;
+                gRadioStateTimer = 10;
+            }
+
+            gCurrentRadioPortrait = 2;
+
+            if ((gGameFrameCount % 2) != 0) {
+                gCurrentRadioPortrait = 3;
+            }
+            break;
+
+        case 3:
+            if (gRadioStateTimer == 0) {
+                gRadioState += 1;
+                ret = Message_GetWidth(gRadioMsg);
+
+                if (gVIsPerFrame == 3) {
+                    gRadioStateTimer = ret * 3;
+                } else {
+                    gRadioStateTimer = ret * 5;
+                }
+
+                if (gGameState == GSTATE_TITLE || gGameState == GSTATE_ENDING) {
+                    gRadioStateTimer = 100;
+                }
+            }
+
+            gCurrentRadioPortrait = (s32) gRadioMsgRadioId;
+
+            gRadioTextBoxScaleY += 0.26f;
+            if (gRadioTextBoxScaleY > 1.3f) {
+                gRadioTextBoxScaleY = 1.3f;
+            }
+            break;
+
+        case 31:
+            gRadioState += 1;
+            gRadioStateTimer = 85 - gRadioStateTimer;
+            break;
+
+        case 32:
+            if (gRadioStateTimer == 0) {
+                gRadioMsgListIndex++;
+                gRadioMsg = gRadioMsgList[gRadioMsgListIndex];
+
+                Audio_PlayVoice(Message_IdFromPtr(gRadioMsg));
+                gRadioMsgCharIndex = 0;
+                gRadioStateTimer = 85;
+                gRadioState = 4;
+            }
+            break;
+
+        case 4:
+            if ((Audio_GetCurrentVoice() == 0) && (gRadioStateTimer == 0)) {
+                gRadioState = 6;
+                gRadioStateTimer = 10;
+                gCurrentRadioPortrait = (s32) gRadioMsgRadioId;
+            }
+
+            gCurrentRadioPortrait = (s32) gRadioMsgRadioId;
+            if (gRadioMouthTimer > 0) {
+                gCurrentRadioPortrait = (s32) gRadioMsgRadioId + 1;
+            }
+
+            if (gVIsPerFrame == 3) {
+                mask = 0;
+            } else {
+                mask = 1;
+            }
+
+            if ((gGameFrameCount & mask) == 0) {
+                if (gRadioMsgCharIndex < 37) {
+                    if (gRadioMsg[gRadioMsgCharIndex + 1] == 15) {
+                        gRadioState = 31;
+                    } else {
+                        gRadioMsgCharIndex += 1;
+                    }
+                }
+                if ((gRadioMsgCharIndex & 1) == 1) {
+                    if (gMsgCharIsPrinting) {
+                        gRadioMouthTimer = 2;
+                        if ((gRadioMsgId >= 23000) && (gRadioMsgId <= 23032)) {
+                            AUDIO_PLAY_SFX(NA_SE_MESSAGE_MOVE, gDefaultSfxSource, 4);
+                        }
+                    }
+                }
+            }
+            break;
+
+        case 5:
+            if (gRadioStateTimer == 0) {
+                gRadioState += 1;
+                gRadioStateTimer = 10;
+            }
+            gCurrentRadioPortrait = (s32) gRadioMsgRadioId;
+            break;
+
+        case 6:
+            if (gRadioStateTimer == 0) {
+                if (gGameState == GSTATE_ENDING) {
+                    Audio_ClearVoice();
+                } else {
+                    Audio_PlayVoice(0);
+                }
+                gRadioState += 1;
+            }
+
+            gCurrentRadioPortrait = 2;
+            if ((gGameFrameCount % 2) != 0) {
+                gCurrentRadioPortrait = 3;
+            }
+
+            gRadioTextBoxScaleY -= 0.26f;
+            if (gRadioTextBoxScaleY < 0.0f) {
+                gRadioTextBoxScaleY = 0.0f;
+            }
+            break;
+
+        case 7:
+            gRadioPortraitScaleY -= 0.25f;
+            if (gRadioPortraitScaleY == 0.00f) {
+                gHideRadio = 0;
+                gRadioMsgPri = 0;
+                gRadioState = 0;
+            }
+
+            gCurrentRadioPortrait = 2;
+            if ((gGameFrameCount % 2) != 0) {
+                gCurrentRadioPortrait = 3;
+            }
+            break;
+
+        case 8:
+            gCurrentRadioPortrait = (s32) gRadioMsgRadioId;
+            gRadioTextBoxScaleY = 1.3f;
+            gRadioPortraitScaleY = 1.0f;
+            break;
+    }
+
+    if ((gRadioState > 0) && (gRadioState != 100) && (gHideRadio == 0)) {
+        Radio_Portrait_Draw();
+        Radio_TextBox_Draw();
+
+        if (((s32) gRadioMsgRadioId == RCID_FALCO) || ((s32) gRadioMsgRadioId == RCID_SLIPPY) ||
+            ((s32) gRadioMsgRadioId == RCID_PEPPY)) {
+
+            if ((s32) gRadioMsgRadioId == RCID_FALCO) {
+                idx = 1;
+            }
+            if ((s32) gRadioMsgRadioId == RCID_SLIPPY) {
+                idx = 2;
+            }
+            if ((s32) gRadioMsgRadioId == RCID_PEPPY) {
+                idx = 3;
+            }
+
+            if ((gTeamShields[idx] <= 0) && (gGameFrameCount & 0x04) && (gTeamShields[idx] != -2) &&
+                ((gCurrentRadioPortrait != 2) && (gCurrentRadioPortrait != 3) && (gCurrentRadioPortrait != 1000))) {
+                RCP_SetupDL(&gMasterDisp, SETUPDL_76);
+                gDPSetPrimColor(gMasterDisp++, 0x00, 0x00, 255, 255, 0, 255);
+                Graphics_DisplaySmallText(31.0f, 167.0f, 1.0f, 1.0f, "DOWN");
+                HUD_TeamDownWrench_Draw(1);
+            }
+            if ((gCurrentRadioPortrait != 2) && (gCurrentRadioPortrait != 3) && (gCurrentRadioPortrait != 1000)) {
+                HUD_TeamShields_Draw(22.0f, 165.0f, gTeamShields[idx]);
+            }
+        }
+
+        if (((s32) gRadioMsgRadioId == RCID_WOLF) || ((s32) gRadioMsgRadioId == RCID_PIGMA) ||
+            ((s32) gRadioMsgRadioId == RCID_LEON) || ((s32) gRadioMsgRadioId == RCID_ANDREW) ||
+
+            ((s32) gRadioMsgRadioId == RCID_WOLF_2) || ((s32) gRadioMsgRadioId == RCID_PIGMA_2) ||
+            ((s32) gRadioMsgRadioId == RCID_LEON_2) || ((s32) gRadioMsgRadioId == RCID_ANDREW_2)) {
+            switch ((s32) gRadioMsgRadioId) {
+                case RCID_WOLF_2:
+                case RCID_WOLF:
+                    idx = 4;
+                    break;
+
+                case RCID_LEON_2:
+                case RCID_LEON:
+                    idx = 5;
+                    break;
+
+                case RCID_PIGMA_2:
+                case RCID_PIGMA:
+                    idx = 6;
+                    break;
+
+                case RCID_ANDREW_2:
+                case RCID_ANDREW:
+                    idx = 7;
+                    break;
+
+                default:
+                    idx = 0;
+                    break;
+            }
+
+            if ((gActors[idx].obj.status != OBJ_ACTIVE) && (gGameFrameCount & 4) &&
+                (gPlayer[0].state == PLAYERSTATE_ACTIVE) && (gCurrentRadioPortrait != 2) &&
+                (gCurrentRadioPortrait != 3) && (gCurrentRadioPortrait != 1000)) {
+                RCP_SetupDL(&gMasterDisp, SETUPDL_76);
+                gDPSetPrimColor(gMasterDisp++, 0x00, 0x00, 255, 255, 0, 255);
+                Graphics_DisplaySmallText(31.0f, 167.0f, 1.0f, 1.0f, "DOWN");
+            }
+
+            if ((gCurrentRadioPortrait != 2) && (gCurrentRadioPortrait != 3) && (gCurrentRadioPortrait != 1000)) {
+                HUD_TeamShields_Draw(22.0f, 165.0f, (s32) ((f32) gActors[idx].health * 2.55f));
+            }
+        }
+        if ((gCurrentRadioPortrait != 2) && (gCurrentRadioPortrait != 3) && (gCurrentRadioPortrait != 1000)) {
+            HUD_RadioCharacterName_Draw();
+        }
+    }
+
+    if (gHideRadio == 1) {
+        Radio_Hide();
+    }
+}
+#endif
+
+// Seems to be an older/alternate version of Radio_Draw,
+// Unused in VERSION_US and VERSION_JP, absent in VERSION_EU
+void Radio_Draw_Alt(void) {
+    if (gPlayState != PLAY_PAUSE) {
+        if (gRadioStateTimer > 0) {
+            gRadioStateTimer--;
+        }
+        if (gRadioMouthTimer > 0) {
+            gRadioMouthTimer--;
+        }
+
+        switch (gRadioState) {
+            case 100:
+                gCurrentRadioPortrait = RCID_1000;
+                gRadioState = 1;
+                gRadioPortraitScaleY = 0.0f;
+                gRadioTextBoxScaleY = 0.0f;
+                gRadioMsgCharIndex = Message_GetWidth(gRadioMsg);
+                if (gCamCount != 1) {
+                    gRadioState = 0;
+                }
+                break;
+
+            case 1:
+                gRadioPortraitScaleY += 0.02f;
+                if (gRadioPortraitScaleY == 0.04f) {
+                    gRadioState++;
+                    gRadioStateTimer = 5;
+                }
+                break;
+
+            case 2:
+                if (gRadioStateTimer == 0) {
+                    gRadioState++;
+                    gRadioStateTimer = 5;
+                }
+
+                gCurrentRadioPortrait = RCID_STATIC;
+
+                if ((gGameFrameCount % 2) != 0) {
+                    gCurrentRadioPortrait = RCID_STATIC + 1;
+                }
+                break;
+
+            case 3:
+                if (gRadioStateTimer == 0) {
+                    gRadioState++;
+                    gRadioStateTimer = 5;
+
+                    if (gGameState == GSTATE_TITLE) {
+                        gRadioStateTimer = 30;
+                    }
+                }
+
+                gCurrentRadioPortrait = (s32) gRadioMsgRadioId;
+                gRadioTextBoxScaleY += 0.015f;
+
+                if (gRadioTextBoxScaleY > 0.07f) {
+                    gRadioTextBoxScaleY = 0.07f;
+                }
+                break;
+
+            case 4:
+                if (gRadioStateTimer == 0) {
+                    gRadioState++;
+                    gRadioStateTimer = 10;
+                }
+                break;
+
+            case 5:
+                if (gRadioStateTimer == 0) {
+                    gRadioState++;
+                    gRadioStateTimer = 5;
+                }
+                gCurrentRadioPortrait = (s32) gRadioMsgRadioId;
+                break;
+
+            case 6:
+                if (gRadioStateTimer == 0) {
+                    Audio_PlayVoice(0);
+                    gRadioState++;
+                }
+
+                gCurrentRadioPortrait = RCID_STATIC;
+
+                if ((gGameFrameCount % 2) != 0) {
+                    gCurrentRadioPortrait = RCID_STATIC + 1;
+                }
+
+                gRadioTextBoxScaleY -= 0.015f;
+
+                if (gRadioTextBoxScaleY < 0.0f) {
+                    gRadioTextBoxScaleY = 0.0f;
+                }
+                break;
+
+            case 7:
+                gRadioPortraitScaleY -= 0.02f;
+                if (gRadioPortraitScaleY == 0) {
+                    gRadioState = 0;
+                    gRadioStateTimer = 5;
+                }
+                gCurrentRadioPortrait = RCID_STATIC;
+                if ((gGameFrameCount % 2) != 0) {
+                    gCurrentRadioPortrait = RCID_STATIC + 1;
+                }
+                break;
+
+            case 0:
+                break;
+        }
+
+        if ((gRadioState > 0) && (gRadioState != 100)) {
+            Radio_Portrait_Draw();
+            Radio_TextBox_Draw();
+            if (((s32) gRadioMsgRadioId == RCID_FALCO) || ((s32) gRadioMsgRadioId == RCID_SLIPPY) ||
+                ((s32) gRadioMsgRadioId == RCID_PEPPY)) {
+                Matrix_Push(&gGfxMatrix);
+                RCP_SetupDL_36();
+                Matrix_Translate(gGfxMatrix, -150.0f, -115.0f, -443.0f, MTXF_APPLY);
+                Matrix_Scale(gGfxMatrix, 0.068f, 0.068f, 1.0f, MTXF_APPLY);
+                Matrix_SetGfxMtx(&gMasterDisp);
+                gPlayerNum = 0;
+                Matrix_Pop(&gGfxMatrix);
+            }
+        }
+    }
+}

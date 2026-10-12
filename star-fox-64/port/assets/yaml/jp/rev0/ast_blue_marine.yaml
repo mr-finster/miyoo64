@@ -1,0 +1,87 @@
+:config:
+  segments:
+    - [0x03, 0x8B1AB0]
+  header:
+    code:
+      - '#include "assets/ast_blue_marine.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+
+aBlueMarineLifeIconTex:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 16, offset: 0x3000000, symbol: aBlueMarineLifeIconTex, tlut: 0x3000080 }
+
+aBlueMarineLifeIconTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 8, offset: 0x3000080, symbol: aBlueMarineLifeIconTLUT }
+
+aBlueMarineBombCountTex:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 32, height: 9, offset: 0x3000090, symbol: aBlueMarineBombCountTex, tlut: 0x3000120 }
+
+aBlueMarineBombCountTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 8, offset: 0x3000120, symbol: aBlueMarineBombCountTLUT }
+
+aBlueMarineReticleTargetDL:
+  { type: GFX, offset: 0x3000130, symbol: aBlueMarineReticleTargetDL }
+
+aBlueMarineReticleDL:
+  { type: GFX, offset: 0x3000470, symbol: aBlueMarineReticleDL }
+
+D_blue_marine_30005E8:
+  { type: BLOB, size: 0x18, offset: 0x30005E8, symbol: D_blue_marine_30005E8 }
+
+aBlueMarineReticleTex:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 8, offset: 0x3000600, symbol: aBlueMarineReticleTex, tlut: 0x3000640 }
+
+aBlueMarineReticleTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 16, offset: 0x3000640, symbol: aBlueMarineReticleTLUT }
+
+aBlueMarineBubbleDL:
+  { type: GFX, offset: 0x3000660, symbol: aBlueMarineBubbleDL }
+
+aBlueMarineBubbleTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 32, height: 32, offset: 0x30006E8, symbol: aBlueMarineBubbleTex }
+
+aBlueMarineLeftRudderDL:
+  { type: GFX, offset: 0x3000AF0, symbol: aBlueMarineLeftRudderDL }
+
+aBlueMarineBodyDL:
+  { type: GFX, offset: 0x3000C70, symbol: aBlueMarineBodyDL }
+
+aBlueMarineTex6:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 8, height: 8, offset: 0x3001900, symbol: aBlueMarineTex6 }
+
+aBlueMarineTex8:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x3001980, symbol: aBlueMarineTex8 }
+
+aBlueMarineTex5:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x3002180, symbol: aBlueMarineTex5 }
+
+aBlueMarineTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x3002980, symbol: aBlueMarineTex1 }
+
+aBlueMarineTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x3003180, symbol: aBlueMarineTex2 }
+
+aBlueMarineTex3:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x3003980, symbol: aBlueMarineTex3 }
+
+aBlueMarineTex4:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x3004180, symbol: aBlueMarineTex4 }
+
+aBlueMarineTex7:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x3004980, symbol: aBlueMarineTex7 }
+
+aBlueMarineItemBombDL:
+  { type: GFX, offset: 0x3005980, symbol: aBlueMarineItemBombDL, comment: Unused since there are no bomb items in Aquas }
+
+aBlueMarineTex9:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x30062E8, symbol: aBlueMarineTex9 }
+
+aBlueMarineRightRudderDL:
+  { type: GFX, offset: 0x3006AF0, symbol: aBlueMarineRightRudderDL }
+
+aBlueMarineBackRudderDL:
+  { type: GFX, offset: 0x3006C70, symbol: aBlueMarineBackRudderDL }
+
+aBlueMarinePropellerDL:
+  { type: GFX, offset: 0x3006DE0, symbol: aBlueMarinePropellerDL }

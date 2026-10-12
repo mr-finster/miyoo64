@@ -1,0 +1,74 @@
+# Allowlist: ignore everything, then opt files in explicitly.
+# ROMs, ROM dumps, captures (*.pmc), scenes (*.pms), extracted assets, refs/ and
+# build output must never be committed.
+*
+!*/
+!.gitignore
+!dev.sh
+!docker/Dockerfile
+!README.md
+!tools/*.sh
+!tools/*.py
+!tools/cap/*.c
+!tools/cap/*.py
+!tools/cap/*.sh
+!tools/cap/*.txt
+!tools/cap/Makefile
+!tools/pms/*.c
+!bench/Makefile
+!bench/src/*.c
+!bench/kit/*.c
+!bench/kit/*.h
+!docker/Dockerfile.decomp
+!docker/decomp-requirements.txt
+!game/include/*.h
+!game/include/stdlib/*.h
+!game/include/gcc/*.h
+!game/port/*.c
+!game/port/*.h
+!game/patches/*.patch
+!kit/.gitignore
+!kit/*.md
+!kit/platform/*.c
+!kit/platform/*.h
+!kit/ports/*/*.h
+!tools/port/*.py
+!tools/port/*.sh
+!tools/port/debugcfg_test.c
+!tools/port/fill_test.c
+!tools/port/nearw_test.c
+!tools/port/clock_test.c
+!tools/assets/*.py
+!tools/assets/recipes_handheld.json
+!miyoo/icon.svg
+!miyoo/icon.png
+# site/screenshots.png stay untracked
+
+# Belt and braces: never track these even if a rule above matches.
+refs/
+build/
+**/*.z64
+**/*.n64
+**/*.v64
+**/*.rom
+**/*.bin
+**/*.o2r
+**/*.otr
+**/*.pmc
+**/*.pms
+**/baserom*
+**/*.sav
+**/*.ppm
+**/*.fla
+!tools/port/fps_*.c
+
+# The Miyoo Mini release (README_MIYOO.md): its package definition, the shared packer and templates (the shared
+# Miyoo kit), and the recipes when this machine's compile lays the asset region out differently
+!README_MIYOO.md
+!miyoo/game.json
+!miyoo/tools/*.py
+!miyoo/templates/*.sh
+!miyoo/templates/*.json
+!tools/assets/recipes_miyoo.json
+# the Miyoo64 repository's docs
+!SETTINGS.md

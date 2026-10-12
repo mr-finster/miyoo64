@@ -1,0 +1,1579 @@
+diff --git a/include/PR/R4300.h b/include/PR/R4300.h
+index 51fe7097a..371195b62 100644
+--- a/include/PR/R4300.h
++++ b/include/PR/R4300.h
+@@ -62,8 +62,13 @@
+ 
+ #define	K0_TO_K1(x)	((u32)(x)|0xA0000000)	/* kseg0 to kseg1 */
+ #define	K1_TO_K0(x)	((u32)(x)&0x9FFFFFFF)	/* kseg1 to kseg0 */
++#ifdef PM64_PORT /* the native port: host pointers pass through */
++#define	K0_TO_PHYS(x)	((u32)(x))
++#define	K1_TO_PHYS(x)	((u32)(x))
++#else
+ #define	K0_TO_PHYS(x)	((u32)(x)&0x1FFFFFFF)	/* kseg0 to physical */
+ #define	K1_TO_PHYS(x)	((u32)(x)&0x1FFFFFFF)	/* kseg1 to physical */
++#endif
+ #define	KDM_TO_PHYS(x)	((u32)(x)&0x1FFFFFFF)	/* direct mapped to physical */
+ #define	PHYS_TO_K0(x)	((u32)(x)|0x80000000)	/* physical to kseg0 */
+ #define	PHYS_TO_K1(x)	((u32)(x)|0xA0000000)	/* physical to kseg1 */
+diff --git a/include/PR/os_convert.h b/include/PR/os_convert.h
+index 3797d1b53..425e3b16c 100644
+--- a/include/PR/os_convert.h
++++ b/include/PR/os_convert.h
+@@ -71,7 +71,10 @@ extern "C" {
+ #define OS_CYCLES_TO_USEC(c)	(((u64)(c)*(1000000LL/15625LL))/(OS_CPU_COUNTER/15625LL))
+ 
+ /* OS_K?_TO_PHYSICAL macro bug fix for CodeWarrior */
+-#ifndef __MWERKS__
++#ifdef PM64_PORT /* the native port: host pointers are the RSP's addresses (osVirtualToPhysical is the identity) */
++#define	OS_K0_TO_PHYSICAL(x)	((u32)(x))
++#define	OS_K1_TO_PHYSICAL(x)	((u32)(x))
++#elif !defined(__MWERKS__)
+ #define	OS_K0_TO_PHYSICAL(x)	(u32)(((char *)(x)-0x80000000))
+ #define	OS_K1_TO_PHYSICAL(x)	(u32)(((char *)(x)-0xa0000000))
+ #else
+@@ -79,8 +82,13 @@ extern "C" {
+ #define	OS_K1_TO_PHYSICAL(x)	((char *)(x)-0xa0000000)
+ #endif
+ 
++#ifdef PM64_PORT
++#define	OS_PHYSICAL_TO_K0(x)	((void *)(x))
++#define	OS_PHYSICAL_TO_K1(x)	((void *)(x))
++#else
+ #define	OS_PHYSICAL_TO_K0(x)	(void *)(((u32)(x)+0x80000000))
+ #define	OS_PHYSICAL_TO_K1(x)	(void *)(((u32)(x)+0xa0000000))
++#endif
+ 
+ 
+ /**************************************************************************
+diff --git a/include/common_structs.h b/include/common_structs.h
+index 41eacf3e7..8475b7fce 100644
+--- a/include/common_structs.h
++++ b/include/common_structs.h
+@@ -1034,6 +1034,18 @@ typedef struct TextureHeader {
+     /* 0x26 */ u16 mainH;
+     /* 0x28 */ u8 isVariant;
+     /* 0x29 */ u8 extraTiles; // 0 - none, 1 - mipmap, 2 - ?, 3 - use aux tile
++#ifdef PM64_PORT /* read from the ROM: a little-endian compiler fills a byte's bit fields from the low bit */
++    /* 0x2A */ u8 auxCombineSubType : 2;
++    /* 0x2A */ u8 auxCombineType : 6;
++    /* 0x2B */ u8 mainFmt : 4;
++    /* 0x2B */ u8 auxFmt : 4;
++    /* 0x2C */ u8 mainBitDepth : 4;
++    /* 0x2C */ u8 auxBitDepth : 4;
++    /* 0x2D */ u8 mainWrapW : 4;
++    /* 0x2D */ u8 auxWrapW : 4;
++    /* 0x2E */ u8 mainWrapH : 4;
++    /* 0x2E */ u8 auxWrapH : 4;
++#else
+     /* 0x2A */ u8 auxCombineType : 6;
+     /* 0x2A */ u8 auxCombineSubType : 2;
+     /* 0x2B */ u8 auxFmt : 4;
+@@ -1044,6 +1056,7 @@ typedef struct TextureHeader {
+     /* 0x2D */ u8 mainWrapW : 4;
+     /* 0x2E */ u8 auxWrapH : 4;
+     /* 0x2E */ u8 mainWrapH : 4;
++#endif
+     /* 0x2F */ u8 filtering;
+ } TextureHeader; // size = 0x30
+ 
+@@ -2180,8 +2193,13 @@ typedef struct MenuPanel {
+ 
+ typedef struct WindowBackground {
+     /* 0x00 */ IMG_PTR imgData;
++#ifdef PM64_PORT // little-endian bitfields fill from the low bit: reversed so the byte matches the ROM
++    /* 0x04 */ u8 bitDepth : 4;
++    /* 0x04 */ u8 fmt : 4;
++#else
+     /* 0x04 */ u8 fmt : 4;
+     /* 0x04 */ u8 bitDepth : 4;
++#endif
+     /* 0x05 */ u8 width;
+     /* 0x06 */ u8 height;
+     /* 0x07 */ char unk_07[4];
+@@ -2190,8 +2208,13 @@ typedef struct WindowBackground {
+ 
+ typedef struct WindowCorners {
+     /* 0x00 */ IMG_PTR imgData;
++#ifdef PM64_PORT
++    /* 0x04 */ u8 bitDepth : 4;
++    /* 0x04 */ u8 fmt : 4;
++#else
+     /* 0x04 */ u8 fmt : 4;
+     /* 0x04 */ u8 bitDepth : 4;
++#endif
+     /* 0x05 */ Vec2bu size1;
+     /* 0x07 */ Vec2bu size2;
+     /* 0x09 */ Vec2bu size3;
+diff --git a/include/entity.h b/include/entity.h
+index 8b14bbc76..bf12a4fce 100644
+--- a/include/entity.h
++++ b/include/entity.h
+@@ -61,7 +61,12 @@ enum {
+         ems_End \
+     }
+ 
+-#define ENTITY_ADDR(entity, type, data) (type)((s32)(entity->gfxBaseAddr) + ((s32)(data) & 0xFFFF))
++// data once only: callers pass *gfx++ and matrices++ (a second evaluation stepped them twice: every other
++// boarded-floor fragment, then past the table)
++#define ENTITY_ADDR(entity, type, data) ({ \
++    s32 entityAddrData_ = (s32)(data); \
++    (type)(PORT_IS_HOST_PTR(entityAddrData_) ? entityAddrData_ \
++                                             : (s32)(entity->gfxBaseAddr) + (entityAddrData_ & 0xFFFF)); })
+ #define ENTITY_ROM(name) { entity_model_##name##_ROM_START, entity_model_##name##_ROM_END }
+ 
+ #define BLOCK_GRID_SIZE 25
+diff --git a/include/macros.h b/include/macros.h
+index 32afae551..600ca4377 100644
+--- a/include/macros.h
++++ b/include/macros.h
+@@ -62,8 +62,38 @@
+ #define MAP_RODATA_PAD(n,name) const s32 N(rodata_pad_##name)[n] = {};
+ #define MAP_STATIC_PAD(n,name) BSS s32 N(static_pad_##name)[n];
+ 
++/* The N64 copies some data into a buffer and moves its pointers there by their low bits (entity models, model
++ * animations). The native port links that data in, so a pointer that is already a host address (above 0x10000000)
++ * stays as it is. */
++#ifdef PM64_PORT
++#define PORT_IS_HOST_PTR(p) ((u32)(p) >= 0x10000000)
++#else
++#define PORT_IS_HOST_PTR(p) 0
++#endif
++
++/* A message argument is an ID (group << 16 | index) or a pointer to text: the N64 tells them apart by sign (RAM is at
++ * 0x80000000), the native port by size (its data is above 0x10000000). */
++#ifdef PM64_PORT
++#define MSG_IS_ID(msg) ((u32)(msg) < 0x10000000)
++#else
++#define MSG_IS_ID(msg) ((s32)(msg) >= 0)
++#endif
++// A script argument that is a pointer, not an ID or a script variable: on the N64 a pointer (0x80000000 and up) is
++// below EVT_LIMIT as an s32; a native one is positive, so it is told apart by range instead (above the small IDs,
++// below the variable encodings that start at EVT_LIMIT).
++#ifdef PM64_PORT
++#define EVT_PTR_ARG(v) ((u32)(v) - 0x10000000u < (u32)EVT_LIMIT - 0x10000000u)
++#else
++#define EVT_PTR_ARG(v) ((s32)(v) < EVT_LIMIT)
++#endif
++
++#ifdef PM64_PORT /* the native port: host pointers pass through */
++#define PHYSICAL_TO_VIRTUAL(addr) ((void*)(addr))
++#define VIRTUAL_TO_PHYSICAL(addr) ((u32)(addr))
++#else
+ #define PHYSICAL_TO_VIRTUAL(addr) (void*)((u32)(addr) + 0x80000000)
+ #define VIRTUAL_TO_PHYSICAL(addr) (u32)((u8*)(addr) - 0x80000000)
++#endif
+ 
+ #ifdef DEBUG
+ #define IS_DEBUG_PANIC(statement, file, line) is_debug_panic(statement, file, line)
+@@ -129,7 +159,11 @@ typedef s32 Difficulty2D[AC_DIFFICULTY_LEN][2];
+ #define WORLD_ENTITY_HEAP_SIZE 0x17FF0
+ #define COLLISION_HEAP_SIZE 0x18000
+ #define GENERAL_HEAP_SIZE 0x54000
++#ifdef PM64_PORT // twice the N64's: the prologue's Bowser battle and the ending parade leave it 1-30 KB spare there
++#define SPRITE_HEAP_SIZE 0x80000
++#else
+ #define SPRITE_HEAP_SIZE 0x40000
++#endif
+ #define BATTLE_HEAP_SIZE 0x25800
+ #define FRAME_BUFFER_SIZE 0x25800
+ 
+@@ -283,12 +317,19 @@ typedef s32 Difficulty2D[AC_DIFFICULTY_LEN][2];
+     } \
+ };
+ 
+-#define UNPACK_PAL_R(color) (((color) >> 11) & 0x1F)
+-#define UNPACK_PAL_G(color) (((color) >> 6) & 0x1F)
+-#define UNPACK_PAL_B(color) (((color) >> 1) & 0x1F)
+-#define UNPACK_PAL_A(color) ((color) & 1)
++// Palettes and RGBA16 pixels stay in the ROM's big-endian order natively (the renderer reads them so), and a packed
++// colour is always read from or stored to such memory: PAL_BE() swaps it on the way in and out.
++#ifdef PM64_PORT
++#define PAL_BE(color) ((u16) __builtin_bswap16((u16) (color)))
++#else
++#define PAL_BE(color) (color)
++#endif
++#define UNPACK_PAL_R(color) ((PAL_BE(color) >> 11) & 0x1F)
++#define UNPACK_PAL_G(color) ((PAL_BE(color) >> 6) & 0x1F)
++#define UNPACK_PAL_B(color) ((PAL_BE(color) >> 1) & 0x1F)
++#define UNPACK_PAL_A(color) (PAL_BE(color) & 1)
+ 
+-#define PACK_PAL_RGBA(r, g, b, a) (((r) << 11) | ((g) << 6) | ((b) << 1) | (a));
++#define PACK_PAL_RGBA(r, g, b, a) PAL_BE(((r) << 11) | ((g) << 6) | ((b) << 1) | (a));
+ 
+ #define PM_RM_SHROUD    GBL_c1(G_BL_CLR_BL, G_BL_A_FOG, G_BL_CLR_IN, G_BL_1MA)
+ 
+diff --git a/include/model.h b/include/model.h
+index b1455b10e..8d4ed2397 100644
+--- a/include/model.h
++++ b/include/model.h
+@@ -168,7 +168,11 @@ typedef enum ExtraTileTypes {
+     EXTRA_TILE_4                    = 4, // only use-case may be a mistake? unused and mostly unimplemented
+ } ExtraTileTypes;
+ 
++#ifdef PM64_PORT /* the N64's room for a shape: 0x80210000..0x80240000 (the map overlay) */
++#define SHAPE_SIZE_LIMIT 0x30000
++#else
+ #define SHAPE_SIZE_LIMIT 0x8000
++#endif
+ 
+ typedef struct ShapeFileHeader {
+     /* 0x00 */ ModelNode* root;
+diff --git a/src/101b90_len_8f0.c b/src/101b90_len_8f0.c
+index 20dd4afe4..34ccce000 100644
+--- a/src/101b90_len_8f0.c
++++ b/src/101b90_len_8f0.c
+@@ -3,6 +3,7 @@
+ #include "nu/nusys.h"
+ #include "ld_addrs.h"
+ #include "sprite/player.h"
++#include "port_fix.h"
+ 
+ #ifdef SHIFT
+ #define SPRITE_ROM_START (u32) sprites_ROM_START + 0x10
+@@ -88,6 +89,9 @@ SpriteAnimData* spr_load_sprite(s32 idx, s32 isPlayerSprite, s32 useTailAlloc) {
+ 
+     // read current and next sprite offsets, so we can find the difference
+     nuPiReadRom(base + idx * 4, &spr_asset_entry, sizeof(spr_asset_entry));
++#ifdef PM64_PORT
++    port_fix_words(spr_asset_entry, sizeof(spr_asset_entry));
++#endif
+ 
+     compressedSize = ALIGN8(spr_asset_entry[1] - spr_asset_entry[0]);
+     data = general_heap_malloc(compressedSize);
+@@ -97,13 +101,26 @@ SpriteAnimData* spr_load_sprite(s32 idx, s32 isPlayerSprite, s32 useTailAlloc) {
+     // skip 4 bytes: 'YAY0' signature
+     ptr1++;
+ 
++#ifdef PM64_PORT
++    s32 decodedSize = PORT_BE32(*ptr1);
++    ptr1 = &decodedSize;
++#endif
+     if (useTailAlloc) {
+         animData = _heap_malloc_tail(&heap_spriteHead, *ptr1);
+     } else {
+         animData = _heap_malloc(&heap_spriteHead, *ptr1);
+     }
++#ifdef PM64_PORT
++    if (animData == nullptr) {
++        void port_heap_report(const char* heap, void* head, u32 want); // game/port/port_debug.c
++        port_heap_report("sprite", &heap_spriteHead, *ptr1);
++    }
++#endif
+     decode_yay0(data, animData);
+     general_heap_free(data);
++#ifdef PM64_PORT
++    port_fix_sprite(animData, decodedSize);
++#endif
+ 
+     // swizzle raster array
+     data = (s32**)animData->rastersOffset;
+@@ -133,6 +150,9 @@ SpriteAnimData* spr_load_sprite(s32 idx, s32 isPlayerSprite, s32 useTailAlloc) {
+         // load a range of raster loading desciptors to a buffer and copy contents into PlayerRasterLoadDesc
+         nuPiReadRom(SpriteDataHeader[0] + PlayerRasterHeader.loadDescriptors + sizeof(u32) * PlayerSpriteRasterSets[idx],
+             PlayerRasterLoadDescBuffer, sizeof(PlayerRasterLoadDescBuffer));
++#ifdef PM64_PORT
++        port_fix_words(PlayerRasterLoadDescBuffer, sizeof(PlayerRasterLoadDescBuffer));
++#endif
+         for (i = 0; i < count; i++) {
+             PlayerRasterLoadDesc[PlayerRasterLoadDescNumLoaded++] = PlayerRasterLoadDescBuffer[i];
+         }
+@@ -160,6 +180,9 @@ void spr_init_player_raster_cache(s32 cacheSize, s32 maxRasterSize) {
+     s32 i;
+ 
+     nuPiReadRom(SPRITE_ROM_START, &SpriteDataHeader, sizeof(SpriteDataHeader));
++#ifdef PM64_PORT
++    port_fix_words(SpriteDataHeader, sizeof(SpriteDataHeader));
++#endif
+     PlayerRasterCacheSize = cacheSize;
+     PlayerRasterMaxSize = maxRasterSize;
+     SpriteDataHeader[0] += SPRITE_ROM_START;
+@@ -180,7 +203,13 @@ void spr_init_player_raster_cache(s32 cacheSize, s32 maxRasterSize) {
+     }
+     PlayerRasterLoadDescNumLoaded = 0;
+     nuPiReadRom(SpriteDataHeader[0], &PlayerRasterHeader, sizeof(PlayerRasterHeader));
++#ifdef PM64_PORT
++    port_fix_words(&PlayerRasterHeader, sizeof(PlayerRasterHeader));
++#endif
+     nuPiReadRom(SpriteDataHeader[0] + PlayerRasterHeader.indexRanges, PlayerSpriteRasterSets, sizeof(PlayerSpriteRasterSets));
++#ifdef PM64_PORT
++    port_fix_words(PlayerSpriteRasterSets, sizeof(PlayerSpriteRasterSets));
++#endif
+ }
+ 
+ IMG_PTR spr_get_player_raster(s32 rasterIndex, s32 playerSpriteID) {
+diff --git a/src/animator.c b/src/animator.c
+index a3ea4e571..037df7f05 100644
+--- a/src/animator.c
++++ b/src/animator.c
+@@ -79,7 +79,7 @@ Vtx* animator_copy_vertices_to_buffer(ModelAnimator* animator, AnimatorNode* nod
+     handle->ttl = 3;
+     nodeVtxList = &node->fcData.vtxList[startIdx];
+ 
+-    if (animator->baseAddr != nullptr) {
++    if (animator->baseAddr != nullptr && !PORT_IS_HOST_PTR(buffer)) {
+         i = ((s32)buffer & 0xFFFFFF); // needed to match
+         buffer = (Vec3s*)(i + (s32)animator->baseAddr);
+     }
+@@ -343,7 +343,9 @@ s32 create_mesh_animator(s16* animPos, s16* animBuffer) {
+     animator->animationBuffer = animBuffer;
+     animator->nextUpdateTime = 1.0f;
+     animator->timeScale = 1.0f;
+-    animPos = (s16*)(((s32)animPos & 0xFFFFFF) + (s32)animator->animationBuffer);
++    if (!PORT_IS_HOST_PTR(animPos)) {
++        animPos = (s16*)(((s32)animPos & 0xFFFFFF) + (s32)animator->animationBuffer);
++    }
+     animator->animReadPos = animPos;
+     animator->savedReadPos = animPos;
+ 
+@@ -1051,7 +1053,7 @@ void clear_animator_flags(s32 index, s32 bits) {
+ void play_model_animation(s32 index, s16* animPos) {
+     ModelAnimator* animator = (*gCurrentAnimMeshListPtr)[index & ~BATTLE_ID_BIT];
+ 
+-    if (animator->animationBuffer != nullptr) {
++    if (animator->animationBuffer != nullptr && !PORT_IS_HOST_PTR(animPos)) {
+         animPos = (s16*) (((s32)animPos & 0xFFFFFF) + (s32)animator->animationBuffer); // TODO: array access? / cleanup
+     }
+     animator->animReadPos = animPos;
+@@ -1065,7 +1067,7 @@ void play_model_animation_starting_from(s32 index, s16* animPos, s32 framesToSki
+     ModelAnimator* animator = (*gCurrentAnimMeshListPtr)[indexMasked];
+     s32 i;
+ 
+-    if (animator->animationBuffer != nullptr) {
++    if (animator->animationBuffer != nullptr && !PORT_IS_HOST_PTR(animPos)) {
+         animPos = (s16*) (((s32)animPos & 0xFFFFFF) + (s32)animator->animationBuffer); // TODO: array access? / cleanup
+     }
+ 
+diff --git a/src/audio/bgm_player.c b/src/audio/bgm_player.c
+index 3f780743f..53a13df15 100644
+--- a/src/audio/bgm_player.c
++++ b/src/audio/bgm_player.c
+@@ -13,6 +13,27 @@ extern u8 SeqCmdArgCounts[];
+ 
+ static void au_bgm_stop_player(BGMPlayer* player);
+ 
++#ifdef PM64_PORT
++/* A command's argument bytes land in SeqArgs.raw[] in stream order, and its 16- and 32-bit fields are then read as
++ * numbers: in host order on a little-endian host, or tempos, fade times and the Branch/Detour offsets come out
++ * byte-reversed (a song that branches jumped into garbage: the Toad Town Tunnels' music). */
++static void port_seq_args_to_host(s32 opcode, u8* raw) {
++    // a bit test, not a switch: a jump table would be data in the asset region, which the ROM rebuilds
++    const u32 u16First = 1u << (0xE0 - 0xE0) | 1u << (0xE4 - 0xE0) | 1u << (0xE5 - 0xE0) | 1u << (0xEF - 0xE0) |
++                         1u << (0xF6 - 0xE0) | 1u << (0xFC - 0xE0) | 1u << (0xFE - 0xE0);
++    u8 t;
++    if (opcode == 0xFD) { // EventTrigger: u32 eventInfo (three bytes read, the fourth left from before, as on the N64)
++        t = raw[0]; raw[0] = raw[3]; raw[3] = t;
++        t = raw[1]; raw[1] = raw[2]; raw[2] = t;
++    } else if (opcode >= 0xE0 && (u16First >> (opcode - 0xE0) & 1)) {
++        // MasterTempo, MasterTempoFade (then its u16 value), MasterVolumeFade, TrackDetune, TrackVolumeFade, Branch
++        // and Detour: a u16 first
++        t = raw[0]; raw[0] = raw[1]; raw[1] = t;
++        if (opcode == 0xE4) { t = raw[2]; raw[2] = raw[3]; raw[3] = t; }
++    }
++}
++#endif
++
+ static s32 au_bgm_bpm_to_tempo(BGMPlayer* player, u32 tempo);
+ 
+ static u8 au_bgm_get_random_pan(BGMPlayer* player, u8 arg1, u8 arg2);
+@@ -1380,6 +1401,9 @@ void au_bgm_player_update_playing(BGMPlayer *player) {
+                                 POST_BGM_READ();
+                             }
+                             bgm_args_done:
++#ifdef PM64_PORT
++                            port_seq_args_to_host(opcode, player->seqCmdArgs.raw);
++#endif
+                             CurrentSeqCmdHandler = SeqCmdHandlers[opcode - 0xE0];
+                             CurrentSeqCmdHandler(player, track);
+                         }
+diff --git a/src/audio/core/engine.c b/src/audio/core/engine.c
+index 0df57742c..2e4f4c0a7 100644
+--- a/src/audio/core/engine.c
++++ b/src/audio/core/engine.c
+@@ -1,4 +1,5 @@
+ #include "audio.h"
++#include "port_fix.h"
+ #include "audio/core.h"
+ #include "ld_addrs.h"
+ 
+@@ -130,6 +131,9 @@ void au_engine_init(s32 outputRate) {
+     au_load_BK_headers(globals, alHeap);
+     if (au_fetch_SBN_file(globals->extraFileList[0], AU_FMT_SEF, &fileEntry) == AU_RESULT_OK) {
+         au_read_rom(fileEntry.offset, globals->dataSEF, fileEntry.data & 0xFFFFFF);
++#ifdef PM64_PORT
++        port_fix_sef(globals->dataSEF, fileEntry.data & 0xFFFFFF);
++#endif
+     }
+     au_sfx_load_groups_from_SEF(gSoundManager);
+     if (au_fetch_SBN_file(globals->extraFileList[1], AU_FMT_PER, &fileEntry) == AU_RESULT_OK) {
+@@ -588,6 +592,9 @@ AuResult au_load_song_files(u32 songID, BGMHeader* bgmFile, BGMPlayer* player) {
+         }
+ 
+         au_read_rom(fileEntry.offset, fileCopy, fileEntry.data & 0xFFFFFF);
++#ifdef PM64_PORT
++        port_fix_bgm(fileCopy, fileEntry.data & 0xFFFFFF);
++#endif
+ 
+         for (i = 0; i < ARRAY_COUNT(songInfo->bkFileIndex); i++) {
+             bkFileIndex = songInfo->bkFileIndex[i];
+@@ -631,6 +638,9 @@ AuResult au_reload_song_files(s32 songID, BGMHeader* bgmFile) {
+     if (status == AU_RESULT_OK) {
+         // load BGM file
+         au_read_rom(sbnEntry.offset, bgmFile, sbnEntry.data & 0xFFFFFF);
++#ifdef PM64_PORT
++        port_fix_bgm(bgmFile, sbnEntry.data & 0xFFFFFF);
++#endif
+ 
+         // load any auxiliary banks required by this BGM
+         for (i = 0; i < ARRAY_COUNT(songInfo->bkFileIndex); i++) {
+@@ -675,6 +685,9 @@ AuResult au_ambient_load(u32 ambSoundID) {
+         if (manager->players[0].mseqName == 0) {
+             if (SBN_EXTRA_LOOKUP(ambSoundID, AU_FMT_MSEQ, fileEntry) == AU_RESULT_OK) {
+                 au_read_rom(fileEntry.offset, globals->dataMSEQ[0], fileEntry.data & 0xFFFFFF);
++#ifdef PM64_PORT
++                port_fix_mseq(globals->dataMSEQ[0]);
++#endif
+                 manager->mseqFiles[0] = globals->dataMSEQ[0];
+                 for (i = 1; i < ARRAY_COUNT(manager->mseqFiles); i++) {
+                     manager->mseqFiles[i] = nullptr;
+@@ -695,21 +708,33 @@ AuResult au_ambient_load(u32 ambSoundID) {
+         mseqFile = globals->dataMSEQ[1];
+         if (SBN_EXTRA_LOOKUP(ambSoundID, AU_FMT_MSEQ, fileEntry) == AU_RESULT_OK) {
+             au_read_rom(fileEntry.offset, mseqFile, fileEntry.data & 0xFFFFFF);
++#ifdef PM64_PORT
++            port_fix_mseq(mseqFile);
++#endif
+             manager->mseqFiles[0] = mseqFile;
+ 
+             mseqFile = AU_FILE_RELATIVE(mseqFile, (fileEntry.data + 0x40) & 0xFFFFFF);
+             if (SBN_EXTRA_LOOKUP(ambSoundID + 1, AU_FMT_MSEQ, fileEntry) == AU_RESULT_OK) {
+                 au_read_rom(fileEntry.offset, mseqFile, fileEntry.data & 0xFFFFFF);
++#ifdef PM64_PORT
++                port_fix_mseq(mseqFile);
++#endif
+                 manager->mseqFiles[1] = mseqFile;
+ 
+                 mseqFile = AU_FILE_RELATIVE(mseqFile, (fileEntry.data + 0x40) & 0xFFFFFF);
+                 if (SBN_EXTRA_LOOKUP(ambSoundID + 2, AU_FMT_MSEQ, fileEntry) == AU_RESULT_OK) {
+                     au_read_rom(fileEntry.offset, mseqFile, fileEntry.data & 0xFFFFFF);
++#ifdef PM64_PORT
++                    port_fix_mseq(mseqFile);
++#endif
+                     manager->mseqFiles[2] = mseqFile;
+ 
+                     mseqFile = AU_FILE_RELATIVE(mseqFile, (fileEntry.data + 0x40) & 0xFFFFFF);
+                     if (SBN_EXTRA_LOOKUP(ambSoundID + 3, AU_FMT_MSEQ, fileEntry) == AU_RESULT_OK) {
+                         au_read_rom(fileEntry.offset, mseqFile, fileEntry.data & 0xFFFFFF);
++#ifdef PM64_PORT
++                        port_fix_mseq(mseqFile);
++#endif
+                         manager->mseqFiles[3] = mseqFile;
+ 
+                         manager->numActivePlayers = 4;
+@@ -753,12 +778,18 @@ void au_load_INIT(AuGlobals* globals, s32 romAddr, ALHeap* heap) {
+     s32* romPtr = &globals->baseRomOffset;
+ 
+     au_read_rom(romAddr, &sbnHeader, sizeof(sbnHeader));
++#ifdef PM64_PORT
++    port_fix_audio_words(&sbnHeader, sizeof(sbnHeader));
++#endif
+     numEntries = sbnHeader.numEntries;
+     fileListSize = numEntries * sizeof(SBNFileEntry);
+     globals->baseRomOffset = romAddr;
+     globals->fileListLength = sbnHeader.numEntries;
+     globals->sbnFileList = alHeapAlloc(heap, 1, fileListSize);
+     au_read_rom(globals->baseRomOffset + sbnHeader.fileListOffset, globals->sbnFileList, fileListSize);
++#ifdef PM64_PORT
++    port_fix_audio_words(globals->sbnFileList, fileListSize);
++#endif
+ 
+     entry = globals->sbnFileList;
+     while (sbnHeader.numEntries--) {
+@@ -775,16 +806,25 @@ void au_load_INIT(AuGlobals* globals, s32 romAddr, ALHeap* heap) {
+     if (sbnHeader.INIToffset != 0) {
+         initBase = *romPtr + sbnHeader.INIToffset;
+         au_read_rom(initBase, &initHeader, sizeof(initHeader));
++#ifdef PM64_PORT
++        port_fix_init_header(&initHeader);
++#endif
+ 
+         songListOffset = initBase + initHeader.songListOffset;
+         size = ALIGN16_(initHeader.songListSize);
+         globals->songList = alHeapAlloc(heap, 1, size);
+         au_read_rom(songListOffset, globals->songList, size);
++#ifdef PM64_PORT
++        port_fix_audio_halves(globals->songList, size);
++#endif
+ 
+         mseqListOffset = initBase + initHeader.mseqListOffset;
+         size = ALIGN16_(initHeader.mseqListSize);
+         globals->extraFileList = alHeapAlloc(heap, 1, size);
+         au_read_rom(mseqListOffset, globals->extraFileList, size);
++#ifdef PM64_PORT
++        port_fix_audio_halves(globals->extraFileList, size);
++#endif
+ 
+         globals->bkFileListOffset = initBase + initHeader.bankListOffset;
+         globals->bkListLength = ALIGN16_(initHeader.bankListSize);
+@@ -823,8 +863,14 @@ void au_load_PER(AuGlobals* globals, s32 romAddr) {
+     void* end;
+ 
+     au_read_rom(romAddr, &header, sizeof(header));
++#ifdef PM64_PORT
++    port_fix_audio_words(&header, sizeof(header.mdata));
++#endif
+     size = header.mdata.size - sizeof(header);
+     au_read_rom(romAddr + sizeof(header), globals->dataPER, size);
++#ifdef PM64_PORT
++    port_fix_drums(globals->dataPER, size);
++#endif
+     numItems = size / sizeof(PEREntry);
+     numItemsLeft = 6 - numItems;
+     if (numItemsLeft > 0) {
+@@ -843,12 +889,18 @@ void au_load_PRG(AuGlobals* globals, s32 romAddr) {
+     void* end;
+ 
+     au_read_rom(romAddr, &header, sizeof(header));
++#ifdef PM64_PORT
++    port_fix_audio_words(&header, sizeof(header.mdata));
++#endif
+     dataRomAddr = romAddr + sizeof(header);
+     size = header.mdata.size - sizeof(header);
+     if (size > PRG_MAX_COUNT * sizeof(BGMInstrumentInfo)) {
+         size = PRG_MAX_COUNT * sizeof(BGMInstrumentInfo);
+     }
+     au_read_rom(dataRomAddr, globals->dataPRG, size);
++#ifdef PM64_PORT
++    port_fix_instruments(globals->dataPRG, size);
++#endif
+     numItems = size / sizeof(BGMInstrumentInfo);
+     numItemsLeft = PRG_MAX_COUNT - numItems;
+     if (numItemsLeft > 0) {
+@@ -957,6 +1009,9 @@ BKFileBuffer* au_load_BK_to_bank(s32 bkFileOffset, BKFileBuffer* bkFile, s32 ban
+     u32 i;
+ 
+     au_read_rom(bkFileOffset, header, sizeof(*header));
++#ifdef PM64_PORT
++    port_fix_bk_header(header);
++#endif
+     readState = BK_READ_FETCH_HEADER;
+     keepReading = true;
+ 
+@@ -996,6 +1051,9 @@ BKFileBuffer* au_load_BK_to_bank(s32 bkFileOffset, BKFileBuffer* bkFile, s32 ban
+                     bkFile = alHeapAlloc(heap, 1, size);
+                 }
+                 au_read_rom(bkFileOffset, bkFile, size);
++#ifdef PM64_PORT
++                port_fix_bk(bkFile, size);
++#endif
+ 
+                 group = au_get_BK_instruments(bankSet, bankIndex);
+                 inst = (*group);
+diff --git a/src/audio/load_banks.c b/src/audio/load_banks.c
+index e78212bbc..bc342372b 100644
+--- a/src/audio/load_banks.c
++++ b/src/audio/load_banks.c
+@@ -1,5 +1,6 @@
+ #include "audio.h"
+ #include "audio/core.h"
++#include "port_fix.h"
+ 
+ void au_load_BK_headers(AuGlobals* globals, ALHeap* heap) {
+     SBNFileEntry fileEntry;
+@@ -7,6 +8,9 @@ void au_load_BK_headers(AuGlobals* globals, ALHeap* heap) {
+     s32 i;
+ 
+     au_read_rom(globals->bkFileListOffset, &buffer, globals->bkListLength);
++#ifdef PM64_PORT
++    port_fix_bank_list(buffer, globals->bkListLength);
++#endif
+ 
+     for (i = 0; i < ARRAY_COUNT(buffer); i++) {
+         if (buffer[i].fileIndex == 0xFFFF) {
+diff --git a/src/background.c b/src/background.c
+index 946e39631..a29e01a80 100644
+--- a/src/background.c
++++ b/src/background.c
+@@ -1,4 +1,5 @@
+ #include "common.h"
++#include "port_fix.h"
+ #include "model.h"
+ #include "gcc/string.h"
+ 
+@@ -30,6 +31,9 @@ void load_map_bg(char* optAssetName) {
+ 
+         compressedData = load_asset_by_name(assetName, &assetSize);
+         decode_yay0(compressedData, &gBackgroundImage);
++#ifdef PM64_PORT
++        port_fix_background(&gBackgroundImage);
++#endif
+         general_heap_free(compressedData);
+     }
+ }
+@@ -150,7 +154,7 @@ void appendGfx_background_texture(void) {
+             case ENV_TINT_SHROUD:
+                 if (fogA == 255) {
+                     for (i = 0; i < ARRAY_COUNT(gBackgroundPalette); i++) {
+-                        gBackgroundPalette[i] = 1;
++                        gBackgroundPalette[i] = PAL_BE(1);
+                     }
+                 } else {
+                     // lerp from background palette color to fog color based on fog alpha
+@@ -160,7 +164,7 @@ void appendGfx_background_texture(void) {
+                         blendedB = blend_background_channel(UNPACK_PAL_B(palColor), fogB >> 3, fogA);
+                         blendedG = blend_background_channel(UNPACK_PAL_G(palColor), fogG >> 3, fogA);
+                         blendedR = blend_background_channel(UNPACK_PAL_R(palColor), fogR >> 3, fogA);
+-                        gBackgroundPalette[i] = blendedB << 1 | blendedG << 6 | blendedR << 11 | 1;
++                        gBackgroundPalette[i] = PAL_BE(blendedB << 1 | blendedG << 6 | blendedR << 11 | 1);
+                     }
+                 }
+                 break;
+@@ -184,7 +188,7 @@ void appendGfx_background_texture(void) {
+                     if (blendedR > 0x1F) {
+                         blendedR = 0x1F;
+                     }
+-                    gBackgroundPalette[i] = blendedB << 1 | blendedG << 6 | blendedR << 11 | 1;
++                    gBackgroundPalette[i] = PAL_BE(blendedB << 1 | blendedG << 6 | blendedR << 11 | 1);
+                 }
+                 break;
+         }
+diff --git a/src/background_gfx.c b/src/background_gfx.c
+index 9bd45ea8e..ba67cb9a0 100644
+--- a/src/background_gfx.c
++++ b/src/background_gfx.c
+@@ -1,9 +1,15 @@
+ #include "common.h"
++#ifdef PM64_PORT
++void port_capture_frame_rgba16(u16* dst);
++#endif
+ #include "nu/nusys.h"
+ #include "ld_addrs.h"
+ #include "hud_element.h"
+ #include "sprite.h"
+ #include "overlay.h"
++#ifdef PM64_PORT
++#include "port_fix.h"
++#endif
+ 
+ extern s32 gPauseBackgroundFade;
+ 
+@@ -39,7 +45,7 @@ void gfx_init_state(void) {
+ s32 gfx_frame_filter_pass_0(const u16* frameBuffer0, const u16* frameBuffer1, s32 y, s32 x, Color_RGBA8* out) {
+     s32 pixel = SCREEN_WIDTH * y + x;
+ 
+-    out->a = (frameBuffer1[pixel] >> 2) & 0xF;
++    out->a = (PAL_BE(frameBuffer1[pixel]) >> 2) & 0xF;
+     out->r = UNPACK_PAL_R(frameBuffer0[pixel]);
+     out->g = UNPACK_PAL_G(frameBuffer0[pixel]);
+     out->b = UNPACK_PAL_B(frameBuffer0[pixel]);
+@@ -152,7 +158,7 @@ void gfx_frame_filter_pass_1(Color_RGBA8* filterBuf0, Color_RGBA8 filterBuf1, u1
+     final.g = ((filterBuf1.g * filterBuf1.a) + (final.g * (8 - filterBuf1.a))) >> 3;
+     final.b = ((filterBuf1.b * filterBuf1.a) + (final.b * (8 - filterBuf1.a))) >> 3;
+ 
+-    *out = (final.r << 11) + (final.g << 6) + (final.b << 1) + 1;
++    *out = PAL_BE((final.r << 11) + (final.g << 6) + (final.b << 1) + 1);
+     #undef RGBA_BUF_SIZE
+ }
+ 
+@@ -204,7 +210,7 @@ void func_80027600(Color_RGBA8* arg0, s16* out) {
+     }
+     final.b = i;
+ 
+-    *out = (final.r << 11) + (final.g << 6) + (final.b << 1) + 1;
++    *out = PAL_BE((final.r << 11) + (final.g << 6) + (final.b << 1) + 1);
+     #undef RGBA_BUF_SIZE
+ }
+ 
+@@ -323,6 +329,7 @@ void gfx_draw_background(void) {
+ 
+     switch (bgRenderState) {
+         case BACKGROUND_RENDER_STATE_BEGIN_PAUSED:
++#ifndef PM64_PORT // the renderer keeps no coverage: the capture below takes its last frame as it is
+             // Save coverage to nunGfxCfb[1] using the VISCVG render mode
+             gDPPipeSync(gMainGfxPos++);
+             gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, nuGfxCfb[1]);
+@@ -334,17 +341,27 @@ void gfx_draw_background(void) {
+             gDPFillRectangle(gMainGfxPos++, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+             gDPPipeSync(gMainGfxPos++);
+             gDPSetDepthSource(gMainGfxPos++, G_ZS_PIXEL);
++#endif
+             gGameStatusPtr->backgroundFlags &= ~BACKGROUND_RENDER_STATE_MASK;
+             gGameStatusPtr->backgroundFlags |= BACKGROUND_RENDER_STATE_FILTER_PAUSED;
+             break;
+         case BACKGROUND_RENDER_STATE_FILTER_PAUSED:
+             // Save the framebuffer into the depth buffer and run a filter on it based on the saved coverage values
++#ifdef PM64_PORT
++            // the pause backdrop: the renderer's last frame (the N64 read it back from its framebuffer and smoothed
++            // the edges by coverage; ours is not in that memory)
++            port_capture_frame_rgba16(nuGfxZBuffer);
++#else
+             gfx_transfer_frame_to_depth(nuGfxCfb[0], nuGfxCfb[1], nuGfxZBuffer); // applies filters to the framebuffer
++#endif
+             gPauseBackgroundFade = 0;
+             gGameStatusPtr->backgroundFlags &= ~BACKGROUND_RENDER_STATE_MASK;
+             gGameStatusPtr->backgroundFlags |= BACKGROUND_RENDER_STATE_SHOW_PAUSED;
+             // fallthrough
+         case BACKGROUND_RENDER_STATE_SHOW_PAUSED:
++#ifdef PM64_PORT // the paused scene is the last frame, with its frame: keep its stretch
++            port_letterbox_keep();
++#endif
+             // Draw the saved framebuffer to the background, fading in at a rate of 16 opacity per frame until reaching 128 opacity
+             gPauseBackgroundFade += 16;
+             if (gPauseBackgroundFade > 128) {
+@@ -456,6 +473,9 @@ void gfx_draw_background(void) {
+                 backgroundMaxY = SCREEN_HEIGHT;
+             }
+ 
++#ifdef PM64_PORT // the black frame this draws around the scene: the panel stretches the scene over it (port_main.c)
++            port_letterbox_set(backgroundMinX, backgroundMinY, backgroundMaxX, backgroundMaxY);
++#endif
+             if (!(gGameStatusPtr->backgroundFlags & BACKGROUND_FLAG_TEXTURE)) {
+                 gDPFillRectangle(gMainGfxPos++, backgroundMinX, backgroundMinY, backgroundMaxX - 1, backgroundMaxY - 1);
+             } else {
+diff --git a/src/battle/16C8E0.c b/src/battle/16C8E0.c
+index 1cf11648f..91046b385 100644
+--- a/src/battle/16C8E0.c
++++ b/src/battle/16C8E0.c
+@@ -753,7 +753,7 @@ void tattle_cam_pre_render(Camera* camera) {
+         mdl_get_shroud_tint_params(&r1, &g1, &b1, &a1);
+         if (fogA == 255) {
+             for (i = 0; i < ARRAY_COUNT(gTattleBgPalette); i++) {
+-                gTattleBgPalette[i] = 1;
++                gTattleBgPalette[i] = PAL_BE(1);
+             }
+         } else {
+             for (i = 0; i < ARRAY_COUNT(gTattleBgPalette); i++) {
+@@ -761,7 +761,7 @@ void tattle_cam_pre_render(Camera* camera) {
+                 u16 blendedB = blend_tattle_background_channel(UNPACK_PAL_B(palColor), fogB >> 3, fogA);
+                 u16 blendedG = blend_tattle_background_channel(UNPACK_PAL_G(palColor), fogG >> 3, fogA);
+                 u16 blendedR = blend_tattle_background_channel(UNPACK_PAL_R(palColor), fogR >> 3, fogA);
+-                gTattleBgPalette[i] = blendedB << 1 | blendedG << 6 | blendedR << 11 | 1;
++                gTattleBgPalette[i] = PAL_BE(blendedB << 1 | blendedG << 6 | blendedR << 11 | 1);
+             }
+         }
+     }
+diff --git a/src/battle/190B20.c b/src/battle/190B20.c
+index c5fa2c849..51c8d2309 100644
+--- a/src/battle/190B20.c
++++ b/src/battle/190B20.c
+@@ -1759,7 +1759,7 @@ Actor* create_actor(Formation formation) {
+     DecorationTable* decorations;
+     s32 i, j, k;
+ 
+-    if (formation->home.index >= EVT_LIMIT) {
++    if (!EVT_PTR_ARG(formation->home.index)) {
+         x = StandardActorHomePositions[formation->home.index].x;
+         y = StandardActorHomePositions[formation->home.index].y;
+         z = StandardActorHomePositions[formation->home.index].z;
+diff --git a/src/battle/actor_rendering.c b/src/battle/actor_rendering.c
+index 86d6340df..19f8903ed 100644
+--- a/src/battle/actor_rendering.c
++++ b/src/battle/actor_rendering.c
+@@ -2050,7 +2050,11 @@ void make_flash_palettes(ActorPart* part) {
+             dest = decorations->copiedPalettes[1][i];
+ 
+             for (j = 0; j < SPR_PAL_SIZE; j++) {
++#ifdef PM64_PORT // the palette is kept in the N64's byte order: the white bits in that order, or the alpha bit went white too (the hit flash's white boxes)
++                *dest = *src | PAL_BE(0xFFFE); // pure white, not affecting alpha bit
++#else
+                 *dest = *src | 0xFFFE; // pure white, not affecting alpha bit
++#endif
+                 src++;
+                 dest++;
+ 
+diff --git a/src/battle/btl_states_actions.c b/src/battle/btl_states_actions.c
+index 22cbf2bb6..fdb7a712c 100644
+--- a/src/battle/btl_states_actions.c
++++ b/src/battle/btl_states_actions.c
+@@ -1,4 +1,5 @@
+ #include "common.h"
++#include "port_fix.h"
+ #include "audio.h"
+ #include "audio/public.h"
+ #include "script_api/battle.h"
+@@ -225,6 +226,9 @@ void btl_state_update_normal_start(void) {
+             set_screen_overlay_params_back(OVERLAY_NONE, -1.0f);
+             compressedAsset = load_asset_by_name(stage->shape, &size);
+             decode_yay0(compressedAsset, &gMapShapeData);
++#ifdef PM64_PORT
++            port_fix_shape(&gMapShapeData, size);
++#endif
+             general_heap_free(compressedAsset);
+ 
+             ASSERT(size <= 0x8000);
+diff --git a/src/collision.c b/src/collision.c
+index 481d03230..07548ec83 100644
+--- a/src/collision.c
++++ b/src/collision.c
+@@ -1,5 +1,6 @@
+ #include "common.h"
+ #include "model.h"
++#include "port_fix.h"
+ 
+ typedef struct HitFile {
+     /* 0x00 */ u32 collisionOffset;
+@@ -93,6 +94,44 @@ void func_8005AF84(void) {
+ void func_8005AF8C(void) {
+ }
+ 
++#ifdef PM64_PORT
++/* the native port: a hit file is big-endian (headers, colliders, packed triangles, bounding boxes, Vec3s vertices) */
++static void port_fix_hit_part(HitFile* hit, u32 offset) {
++    HitFileHeader* h;
++    HitAssetCollider* c;
++    s32 i;
++
++    if (offset == 0) {
++        return;
++    }
++    h = (HitFileHeader*)((u8*)hit + offset);
++    PORT_SWAP16(h->numColliders);
++    PORT_SWAP32(h->collidersOffset);
++    PORT_SWAP16(h->numVertices);
++    PORT_SWAP32(h->verticesOffset);
++    PORT_SWAP16(h->boundingBoxesDataSize);
++    PORT_SWAP32(h->boundingBoxesOffset);
++    port_fix_words((u8*)hit + h->boundingBoxesOffset, h->boundingBoxesDataSize * 4);
++    port_fix_audio_halves((u8*)hit + h->verticesOffset, h->numVertices * sizeof(Vec3s));
++    c = (HitAssetCollider*)((u8*)hit + h->collidersOffset);
++    for (i = 0; i < h->numColliders; i++) {
++        PORT_SWAP16(c[i].boundingBoxOffset);
++        PORT_SWAP16(c[i].nextSibling);
++        PORT_SWAP16(c[i].firstChild);
++        PORT_SWAP16(c[i].numTriangles);
++        PORT_SWAP32(c[i].trianglesOffset);
++        port_fix_words((u8*)hit + c[i].trianglesOffset, c[i].numTriangles * 4);
++    }
++}
++
++static void port_fix_hit(HitFile* hit) {
++    PORT_SWAP32(hit->collisionOffset);
++    PORT_SWAP32(hit->zoneOffset);
++    port_fix_hit_part(hit, hit->collisionOffset);
++    port_fix_hit_part(hit, hit->zoneOffset);
++}
++#endif
++
+ void initialize_collision(void) {
+     gCollisionData.numColliders = 0;
+     gZoneCollisionData.numColliders = 0;
+@@ -107,6 +146,9 @@ void load_map_hit_asset(void) {
+ 
+     decode_yay0(compressedData, uncompressedData);
+     general_heap_free(compressedData);
++#ifdef PM64_PORT
++    port_fix_hit(uncompressedData);
++#endif
+ 
+     map->hitAssetCollisionOffset = uncompressedData->collisionOffset;
+     map->hitAssetZoneOffset = uncompressedData->zoneOffset;
+@@ -159,6 +201,9 @@ void load_battle_hit_asset(const char* hitName) {
+ 
+         decode_yay0(compressedData, uncompressedData);
+         general_heap_free(compressedData);
++#ifdef PM64_PORT
++        port_fix_hit(uncompressedData);
++#endif
+ 
+         map->hitAssetCollisionOffset = uncompressedData->collisionOffset;
+ 
+diff --git a/src/encounter.c b/src/encounter.c
+index 821fc54ad..9507acccf 100644
+--- a/src/encounter.c
++++ b/src/encounter.c
+@@ -2532,7 +2532,7 @@ void create_encounters(void) {
+                         enemy->drops = &DefaultEnemyDrops;
+                     }
+                     enemy->encountered = 0;
+-                    if ((s32) npcData->init < EVT_LIMIT) {
++                    if (EVT_PTR_ARG(npcData->init)) {
+                         enemy->initBytecode = npcData->init;
+                     } else {
+                         enemy->initBytecode = nullptr;
+diff --git a/src/entity.c b/src/entity.c
+index 0be512c20..fca05d4d4 100644
+--- a/src/entity.c
++++ b/src/entity.c
+@@ -903,34 +903,57 @@ void entity_swizzle_anim_pointers(EntityBlueprint* entityData, void* baseAnim, v
+     StaticAnimatorNode* node;
+     s32* ptr = (s32*)((s32)baseAnim + (s32)entityData->modelAnimationNodes);
+ 
++#ifdef PM64_PORT
++    // the native port: the node list is the linked-in data itself, already swizzled on a second load (ends in 0)
++    if (PORT_IS_HOST_PTR(entityData->modelAnimationNodes)) {
++        ptr = (s32*)entityData->modelAnimationNodes;
++    }
++#endif
++#ifdef PM64_PORT
++    // Natively the list and its nodes are the linked-in data, swizzled IN PLACE: a second load (the script spring
++    // after Peach's letter, made twice) finds the list's end already turned from -1 into 0 and the unused fields
++    // already null. The N64 copies them fresh from the ROM each time. So 0 ends the list and a null field stays null
++    // (the list read on past its end and crashed, a freeze on the device). The test was PORT_IS_HOST_PTR(1): never.
++#define PORT_SWIZZLED_NULL(p) ((p) == 0)
++#else
++#define PORT_SWIZZLED_NULL(p) 0
++#endif
+     while (true) {
+-        if (*ptr == -1) {
++        if (*ptr == -1 || PORT_SWIZZLED_NULL(*ptr)) {
+             *ptr = 0;
+             return;
+         }
+-        node = (StaticAnimatorNode*)((s32)baseAnim + ((*ptr) & 0xFFFF));
++        node = (StaticAnimatorNode*)(PORT_IS_HOST_PTR(*ptr) ? *ptr : (s32)baseAnim + ((*ptr) & 0xFFFF));
+         *ptr++ = (s32)node;
+ 
+-        if ((s32)node->displayList != -1) {
+-            node->displayList = (Gfx*)((s32)baseGfx + ((s32)(node->displayList) & 0xFFFF));
++        if ((s32)node->displayList != -1 && !PORT_SWIZZLED_NULL(node->displayList)) {
++            if (!PORT_IS_HOST_PTR(node->displayList)) {
++                node->displayList = (Gfx*)((s32)baseGfx + ((s32)(node->displayList) & 0xFFFF));
++            }
+         } else {
+             node->displayList = nullptr;
+         }
+ 
+-        if ((s32)node->sibling != -1) {
+-            node->sibling = (StaticAnimatorNode*)((s32)baseAnim + ((s32)(node->sibling) & 0xFFFF));
++        if ((s32)node->sibling != -1 && !PORT_SWIZZLED_NULL(node->sibling)) {
++            if (!PORT_IS_HOST_PTR(node->sibling)) {
++                node->sibling = (StaticAnimatorNode*)((s32)baseAnim + ((s32)(node->sibling) & 0xFFFF));
++            }
+         } else {
+             node->sibling = nullptr;
+         }
+ 
+-        if ((s32)node->child != -1) {
+-            node->child = (StaticAnimatorNode*)((s32)baseAnim + ((s32)(node->child) & 0xFFFF));
++        if ((s32)node->child != -1 && !PORT_SWIZZLED_NULL(node->child)) {
++            if (!PORT_IS_HOST_PTR(node->child)) {
++                node->child = (StaticAnimatorNode*)((s32)baseAnim + ((s32)(node->child) & 0xFFFF));
++            }
+         } else {
+             node->child = nullptr;
+         }
+ 
+-        if ((s32)node->vtxList != -1) {
+-            node->vtxList = (Vtx*)((s32)baseGfx + ((s32)(node->vtxList) & 0xFFFFF));
++        if ((s32)node->vtxList != -1 && !PORT_SWIZZLED_NULL(node->vtxList)) {
++            if (!PORT_IS_HOST_PTR(node->vtxList)) {
++                node->vtxList = (Vtx*)((s32)baseGfx + ((s32)(node->vtxList) & 0xFFFFF));
++            }
+         } else {
+             node->vtxList = nullptr;
+         }
+@@ -1128,6 +1151,11 @@ void load_split_entity_data(Entity* entity, EntityBlueprint* entityData, s32 lis
+     }
+     animationScript = entityData->renderCommandList;
+     animationNodes = (StaticAnimatorNode**)((s32)animBaseAddr + (s32)entityData->modelAnimationNodes);
++#ifdef PM64_PORT
++    if (PORT_IS_HOST_PTR(entityData->modelAnimationNodes)) {
++        animationNodes = (StaticAnimatorNode**)entityData->modelAnimationNodes;
++    }
++#endif
+     if (swizzlePointers) {
+         entity_swizzle_anim_pointers(entityData, animBaseAddr, entity->gfxBaseAddr);
+     }
+diff --git a/src/evt/demo_api.c b/src/evt/demo_api.c
+index c9861224a..c76d4048c 100644
+--- a/src/evt/demo_api.c
++++ b/src/evt/demo_api.c
+@@ -1,4 +1,5 @@
+ #include "common.h"
++#include "port_fix.h"
+ #include "ld_addrs.h"
+ 
+ // TODO: not sure where these go
+@@ -33,11 +34,17 @@ API_CALLABLE(SetSpriteShading) {
+     romStart = (s32)sprite_shading_profiles_ROM_START;
+     romEnd = romStart + 8;
+     dma_copy((u8*) shadingGroupOffset + romStart, (u8*) shadingGroupOffset + romEnd, ShadingOffsetsBuffer);
++#ifdef PM64_PORT
++    port_fix_words(ShadingOffsetsBuffer, 8);
++#endif
+ 
+     // load offset to shading data
+     romStart = shadingProfileOffset + (s32)sprite_shading_profiles_ROM_START;
+     data = ShadingOffsetsBuffer[0];
+     dma_copy((u8*)ShadingOffsetsBuffer[1] + romStart, (u8*)ShadingOffsetsBuffer[1] + romStart + 4, ShadingOffsetsBuffer);
++#ifdef PM64_PORT
++    port_fix_words(ShadingOffsetsBuffer, 4);
++#endif
+ 
+     // load shading data
+     dataOffset = (s32)sprite_shading_profiles_data_ROM_START + data + ShadingOffsetsBuffer[0];
+diff --git a/src/evt/evt.c b/src/evt/evt.c
+index 348c585a0..5d2ffe9fa 100644
+--- a/src/evt/evt.c
++++ b/src/evt/evt.c
+@@ -975,6 +975,12 @@ ApiStatus evt_handle_exec_wait(Evt* script) {
+     Bytecode* args = script->ptrReadPos;
+     EvtScript* newSource = (EvtScript*)evt_get_variable(script, *args++);
+ 
++#ifdef PM64_PORT
++    if (!PORT_IS_HOST_PTR(newSource)) {
++        void port_evt_bad_exec(void* source, void* readPos, void* firstLine); // game/port/port_debug.c: no strings
++        port_evt_bad_exec(newSource, script->ptrReadPos, script->ptrFirstLine); // in the asset region
++    }
++#endif
+     start_child_script(script, newSource, 0);
+     script->curOpcode = EVT_OP_INTERNAL_FETCH;
+     return ApiStatus_FINISH;
+@@ -2036,7 +2042,7 @@ Bytecode* evt_find_label(Evt* script, s32 arg1) {
+     Bytecode* ret = script->ptrReadPos;
+     s32 i;
+ 
+-    if (arg1 < EVT_LIMIT) {
++    if (EVT_PTR_ARG(arg1)) {
+         return (Bytecode*) arg1;
+     }
+ 
+diff --git a/src/evt/npc_api.c b/src/evt/npc_api.c
+index ad4fc9a1b..4d42acffe 100644
+--- a/src/evt/npc_api.c
++++ b/src/evt/npc_api.c
+@@ -8,7 +8,7 @@ extern s32 wExtraPartnerNpcID;
+ Npc* resolve_npc(Evt* script, s32 npcIdOrPtr) {
+     if (npcIdOrPtr == NPC_SELF) {
+         return get_npc_safe(script->owner2.npcID);
+-    } else if (npcIdOrPtr >= EVT_LIMIT) {
++    } else if (!EVT_PTR_ARG(npcIdOrPtr)) {
+         return get_npc_safe(npcIdOrPtr);
+     } else {
+         return (Npc*) npcIdOrPtr;
+diff --git a/src/evt/player_api.c b/src/evt/player_api.c
+index 40bdb1ab5..b09142ec0 100644
+--- a/src/evt/player_api.c
++++ b/src/evt/player_api.c
+@@ -400,7 +400,7 @@ API_CALLABLE(PlayerFaceNpc) {
+ 
+         if (npcID == NPC_SELF) {
+             npc = get_npc_safe(script->owner2.npcID);
+-        } else if (npcID < EVT_LIMIT) {
++        } else if (EVT_PTR_ARG(npcID)) {
+             npc = (Npc*)npcID;
+         } else {
+             npc = get_npc_safe(npcID);
+diff --git a/src/filemenu/filemenu_msg.c b/src/filemenu/filemenu_msg.c
+index 018496fca..4ed8ff4e2 100644
+--- a/src/filemenu/filemenu_msg.c
++++ b/src/filemenu/filemenu_msg.c
+@@ -811,7 +811,7 @@ void filemenu_draw_message(u8* message, s32 x, s32 y, s32 alpha, s32 color, u32
+         }
+     }
+ 
+-    if ((s32) message < 0) {
++    if (!MSG_IS_ID(message)) {
+         u8* tmp;
+         filemenu_draw_char(0xF3, x, y, flag1, color, flag2);
+         tmp = message;
+diff --git a/src/heaps2.c b/src/heaps2.c
+index 4e4dbb121..b1b33d64b 100644
+--- a/src/heaps2.c
++++ b/src/heaps2.c
+@@ -1,7 +1,7 @@
+ #include "common.h"
+ 
+ #ifdef SHIFT
+-BSS u8 WorldEntityHeapBottom[WORLD_ENTITY_HEAP_SIZE];
++BSS u8 WorldEntityHeapBottom[WORLD_ENTITY_HEAP_SIZE] ALIGNED(16);
+ #endif
+-BSS u8 WorldEntityHeapBase[0x10];
+-BSS u8 heap_collisionHead[COLLISION_HEAP_SIZE];
++BSS u8 WorldEntityHeapBase[0x10] ALIGNED(16);
++BSS u8 heap_collisionHead[COLLISION_HEAP_SIZE] ALIGNED(16);
+diff --git a/src/heaps3.c b/src/heaps3.c
+index 3097275e6..63b83f151 100644
+--- a/src/heaps3.c
++++ b/src/heaps3.c
+@@ -1,7 +1,7 @@
+ #include "common.h"
+ 
+-BSS u8 heap_generalHead[GENERAL_HEAP_SIZE];
+-BSS u8 heap_spriteHead[SPRITE_HEAP_SIZE];
+-BSS u16 gFrameBuf0[FRAME_BUFFER_SIZE / 2];
+-BSS u16 gFrameBuf1[FRAME_BUFFER_SIZE / 2];
+-BSS u16 gFrameBuf2[FRAME_BUFFER_SIZE / 2];
++BSS u8 heap_generalHead[GENERAL_HEAP_SIZE] ALIGNED(16);
++BSS u8 heap_spriteHead[SPRITE_HEAP_SIZE] ALIGNED(16);
++BSS u16 gFrameBuf0[FRAME_BUFFER_SIZE / 2] ALIGNED(64);
++BSS u16 gFrameBuf1[FRAME_BUFFER_SIZE / 2] ALIGNED(64);
++BSS u16 gFrameBuf2[FRAME_BUFFER_SIZE / 2] ALIGNED(64);
+diff --git a/src/inventory.c b/src/inventory.c
+index 3e703abc2..2c1850d3b 100644
+--- a/src/inventory.c
++++ b/src/inventory.c
+@@ -1,7 +1,14 @@
+ #include "common.h"
+ #include "hud_element.h"
++#ifdef PM64_PORT
++#include "port_fix.h"
++#endif
+ 
++#ifdef PM64_PORT // 2 px lower when the panel stretches the scene over its black frame (the bar's top was at y 18)
++#define FULLY_EXTENDED_Y  (18 + port_hud_shift(2))
++#else
+ #define FULLY_EXTENDED_Y  18
++#endif
+ #define FULLY_RETRACTED_Y -100
+ 
+ enum BlinkModes {
+diff --git a/src/is_debug.c b/src/is_debug.c
+index 072e36068..991b88269 100644
+--- a/src/is_debug.c
++++ b/src/is_debug.c
+@@ -1,4 +1,5 @@
+ #include "common.h"
++#include "port_fix.h"
+ #include "stdlib/stdarg.h"
+ #include "nu/nusys.h"
+ 
+@@ -50,6 +51,11 @@ char* is_debug_print(char* arg0, const char* str, size_t count) {
+     s32 start;
+     s32 end;
+ 
++#ifdef PM64_PORT /* the native port: the game's debug output goes to the port's log, not an IS-Viewer cartridge */
++    port_log("%.*s", (int) count, str);
++    return (char*) 1;
++#endif
++
+     osEPiReadIo(nuPiCartHandle, (u32) &gISVDbgPrnAdrs->magic, &data);
+     if (data != ASCII_TO_U32('I', 'S', '6', '4')) {
+         return (char*) 1;
+diff --git a/src/model.c b/src/model.c
+index a68a06b44..fcb6266ac 100644
+--- a/src/model.c
++++ b/src/model.c
+@@ -1,4 +1,5 @@
+ #include "common.h"
++#include "port_fix.h"
+ #include "ld_addrs.h"
+ #include "model.h"
+ #include "effects.h"
+@@ -2062,6 +2063,9 @@ void load_texture_by_name(ModelNodeProperty* propertyName, s32 romOffset, s32 si
+ 
+     while (romOffset < startOffset + size) {
+         dma_copy((u8*)romOffset, (u8*)romOffset + sizeof(gCurrentTextureHeader), &gCurrentTextureHeader);
++#ifdef PM64_PORT
++        port_fix_audio_halves(&gCurrentTextureHeader.auxW, 4 * sizeof(u16)); /* auxW, mainW, auxH, mainH */
++#endif
+         header = &gCurrentTextureHeader;
+ 
+         rasterSize = header->mainW * header->mainH;
+@@ -2183,6 +2187,9 @@ void load_texture_variants(u32 romOffset, s32 textureID, s32 baseOffset, s32 siz
+ 
+     for (offset = romOffset; offset < baseOffset + size;) {
+         dma_copy((u8*)offset, (u8*)offset + sizeof(iterTextureHeader), &iterTextureHeader);
++#ifdef PM64_PORT
++        port_fix_audio_halves(&iterTextureHeader.auxW, 4 * sizeof(u16));
++#endif
+         header = &iterTextureHeader;
+ 
+         if (!header->isVariant) {
+@@ -3996,7 +4003,7 @@ void mdl_get_vertex_count(Gfx* gfx, s32* numVertices, Vtx** baseVtx, s32* gfxCou
+ 
+             if (cmd == G_VTX) {
+                 vtxStartAddr = w1;
+-                if (baseAddr != nullptr) {
++                if (baseAddr != nullptr && !PORT_IS_HOST_PTR(vtxStartAddr)) {
+                     vtxStartAddr = (vtxStartAddr & 0xFFFF) + (s32)baseAddr;
+                 }
+                 vtxCount = _SHIFTR(w0,12,8);
+@@ -4026,7 +4033,11 @@ void mdl_local_gfx_update_vtx_pointers(Gfx *nodeDlist, Vtx *baseVtx, Gfx *arg2,
+     u32 w0;
+     Vtx* w1;
+     do {
++#ifdef PM64_PORT
++        w0 = nodeDlist->words.w0; // the u64 read below takes w0 from the high half only on a big-endian host
++#else
+         w0 = (*((unsigned long long*)nodeDlist)) >> 0x20; // TODO required to match
++#endif
+         w1 = (Vtx*)nodeDlist->words.w1;
+         if (w0 >> 0x18 == G_VTX) {
+             w1 = arg3 + (w1 - baseVtx);
+diff --git a/src/msg.c b/src/msg.c
+index ba82fe8be..a49f46984 100644
+--- a/src/msg.c
++++ b/src/msg.c
+@@ -1,4 +1,5 @@
+ #include "common.h"
++#include "port_fix.h"
+ #include "ld_addrs.h"
+ #include "message_ids.h"
+ #include "sprite.h"
+@@ -1405,9 +1406,15 @@ void dma_load_msg(u32 msgID, void* dest) {
+     u8* offset[2]; // start, end
+ 
+     dma_copy(addr, addr + 4, &offset[0]); // Load section offset
++#ifdef PM64_PORT
++    port_fix_words(&offset[0], 4);
++#endif
+ 
+     addr = MSG_ROM_START + offset[0] + (msgID & 0xFFFF) * 4;
+     dma_copy(addr, addr + 8, &offset); // Load message start and end offsets
++#ifdef PM64_PORT
++    port_fix_words(offset, 8);
++#endif
+ 
+     // Load the msg data
+     dma_copy(MSG_ROM_START + offset[0], MSG_ROM_START + offset[1], dest);
+@@ -1447,7 +1454,7 @@ MessagePrintState* _msg_get_printer_for_msg(s32 msgID, bool* donePrintingWriteba
+     }
+ 
+     srcBuffer = (s8*) msgID;
+-    if (msgID >= 0) {
++    if (MSG_IS_ID(msgID)) {
+         srcBuffer = load_message_to_buffer((s32)srcBuffer);
+     }
+ 
+@@ -1481,7 +1488,7 @@ MessagePrintState* _msg_get_printer_for_msg(s32 msgID, bool* donePrintingWriteba
+ s32 msg_printer_load_msg(s32 msgID, MessagePrintState* printer) {
+     s8* buffer;
+ 
+-    if (msgID >= 0) {
++    if (MSG_IS_ID(msgID)) {
+         buffer = load_message_to_buffer(msgID);
+     } else {
+         buffer = (s8*) msgID;
+@@ -1529,7 +1536,7 @@ void set_message_text_var(s32 msgID, s32 index) {
+     s32 i;
+     u8* msgVars;
+ 
+-    if (msgID >= 0) {
++    if (MSG_IS_ID(msgID)) {
+         mallocSpace = general_heap_malloc(0x400);
+         dma_load_msg(msgID, mallocSpace);
+         msgID = (s32)mallocSpace;
+@@ -1722,7 +1729,7 @@ void get_msg_properties(s32 msgID, s32* height, s32* width, s32* maxLineChars, s
+         return;
+     }
+ 
+-    if (msgID >= 0) {
++    if (MSG_IS_ID(msgID)) {
+         buffer = general_heap_malloc(0x400);
+         dma_load_msg(msgID, buffer);
+         message = buffer;
+@@ -2018,7 +2025,7 @@ void draw_msg(s32 msgID, s32 posX, s32 posY, s32 opacity, s32 palette, u8 style)
+         printer = &stackPrinter;
+         initialize_printer(printer, 1, 0);
+ 
+-        if (msgID < 0) {
++        if (!MSG_IS_ID(msgID)) {
+             printer->srcBuffer = (u8*)msgID;
+         } else {
+             mallocSpace = general_heap_malloc(0x400);
+diff --git a/src/msg_draw.c b/src/msg_draw.c
+index 89b1656dc..074f2c523 100644
+--- a/src/msg_draw.c
++++ b/src/msg_draw.c
+@@ -6,6 +6,9 @@
+ #include "charset/charset.h"
+ #include "charset/postcard.png.h"
+ #include "charset/letter_content_1.png.h"
++#ifdef PM64_PORT
++#include "port_fix.h"
++#endif
+ 
+ extern IMG_BIN ui_msg_bubble_left_png[];
+ extern IMG_BIN ui_msg_bubble_mid_png[];
+@@ -417,7 +420,11 @@ void appendGfx_message(MessagePrintState* printer, s16 posX, s16 posY, u16 addit
+                         if (printer->style == MSG_STYLE_RIGHT || printer->style == MSG_STYLE_LEFT || printer->style == MSG_STYLE_CENTER) {
+                             straightWidth = MSG_NORMAL_WIDTH;
+                             printer->windowBasePos.x = MSG_NORMAL_X;
++#ifdef PM64_PORT // 4 px lower when the panel stretches the scene over its black frame (the bubble's top was at y 16)
++                            printer->windowBasePos.y = 13 + port_hud_shift(4);
++#else
+                             printer->windowBasePos.y = 13;
++#endif
+                             printer->windowSize.x = MSG_NORMAL_WIN_WIDTH;
+                             printer->windowSize.y = MSG_NORMAL_WIN_HEIGHT;
+                             msg_drawState->textStartPos[0] = 26;
+diff --git a/src/screen_render_util.c b/src/screen_render_util.c
+index 106932bca..e04ae7c08 100644
+--- a/src/screen_render_util.c
++++ b/src/screen_render_util.c
+@@ -26,6 +26,10 @@ Gfx Gfx_DarknessStencilQuad[] = {
+     gsSPEndDisplayList(),
+ };
+ 
++#ifdef PM64_PORT
++void port_capture_prev_rows(u16* dst, s32 x0, s32 y0, s32 x1, s32 y1);
++#endif
++
+ void appendGfx_draw_prev_frame_buffer(s32 x1, s32 y1, s32 x2, s32 y2, f32 alpha) {
+     s32 stripY, extraY;
+     s32 i;
+@@ -44,6 +48,9 @@ void appendGfx_draw_prev_frame_buffer(s32 x1, s32 y1, s32 x2, s32 y2, f32 alpha)
+             prevGfxCfb = nuGfxCfb[(i + nuGfxCfbNum - 1) % nuGfxCfbNum];
+         }
+     }
++#ifdef PM64_PORT
++    port_capture_prev_rows(prevGfxCfb, x1, y1, x2 - 1, y2 - 1); // the renderer never writes that memory: a copy (port_gfx.c)
++#endif
+ 
+     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
+     gDPSetCombineMode(gMainGfxPos++, PM_CC_10, PM_CC_10);
+diff --git a/src/state_battle.c b/src/state_battle.c
+index e3467a502..ad44bf416 100644
+--- a/src/state_battle.c
++++ b/src/state_battle.c
+@@ -1,4 +1,5 @@
+ #include "common.h"
++#include "port_fix.h"
+ #include "nu/nusys.h"
+ #include "hud_element.h"
+ #include "ld_addrs.h"
+@@ -180,6 +181,9 @@ void state_step_end_battle(void) {
+                 load_map_script_lib();
+                 mapShape = load_asset_by_name(wMapShapeName, &sizeTemp);
+                 decode_yay0(mapShape, &gMapShapeData);
++#ifdef PM64_PORT
++                port_fix_shape(&gMapShapeData, sizeTemp);
++#endif
+                 general_heap_free(mapShape);
+                 initialize_collision();
+                 restore_map_collision_data();
+diff --git a/src/state_file_select.c b/src/state_file_select.c
+index d4e7a20d3..f3299fe56 100644
+--- a/src/state_file_select.c
++++ b/src/state_file_select.c
+@@ -1,4 +1,5 @@
+ #include "common.h"
++#include "port_fix.h"
+ #include "audio.h"
+ #include "audio/public.h"
+ #include "ld_addrs.h"
+@@ -413,6 +414,9 @@ void state_step_exit_language_select(void) {
+                     init_trigger_list();
+                     mapShape = load_asset_by_name(wMapShapeName, &mapShapeSize);
+                     decode_yay0(mapShape, &gMapShapeData);
++#ifdef PM64_PORT
++                    port_fix_shape(&gMapShapeData, mapShapeSize);
++#endif
+                     general_heap_free(mapShape);
+                     initialize_collision();
+                     restore_map_collision_data();
+diff --git a/src/state_pause.c b/src/state_pause.c
+index 136c5bf28..fe44d025b 100644
+--- a/src/state_pause.c
++++ b/src/state_pause.c
+@@ -1,4 +1,5 @@
+ #include "common.h"
++#include "port_fix.h"
+ #include "ld_addrs.h"
+ #include "audio/public.h"
+ #include "npc.h"
+@@ -241,6 +242,9 @@ void state_step_unpause(void) {
+                     load_map_script_lib();
+                     mapShape = load_asset_by_name(wMapShapeName, &assetSize);
+                     decode_yay0(mapShape, &gMapShapeData);
++#ifdef PM64_PORT
++                    port_fix_shape(&gMapShapeData, assetSize);
++#endif
+                     general_heap_free(mapShape);
+                     initialize_collision();
+                     restore_map_collision_data();
+diff --git a/src/state_startup.c b/src/state_startup.c
+index 28dc6ea4e..3e03db308 100644
+--- a/src/state_startup.c
++++ b/src/state_startup.c
+@@ -4,6 +4,9 @@
+ #include "fio.h"
+ #include "sprite.h"
+ #include "game_modes.h"
++#ifdef PM64_PORT
++s32 port_debug_warp(void);
++#endif
+ 
+ void state_init_startup(void) {
+     gOverrideFlags |= GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME;
+@@ -89,6 +92,9 @@ void state_step_startup(void) {
+ #endif
+ 
+     gOverrideFlags &= ~GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME;
++#ifdef PM64_PORT
++    if (port_debug_warp()) return; /* PM64_MAP: the map sweep's direct entry (game/port/port_debug.c) */
++#endif
+     set_game_mode(GAME_MODE_LOGOS);
+ }
+ 
+diff --git a/src/state_title_screen.c b/src/state_title_screen.c
+index 464832287..281006b1c 100644
+--- a/src/state_title_screen.c
++++ b/src/state_title_screen.c
+@@ -1,4 +1,5 @@
+ #include "common.h"
++#include "port_fix.h"
+ #include "audio.h"
+ #include "audio/public.h"
+ #include "nu/nusys.h"
+@@ -178,6 +179,9 @@ void state_init_title_screen(void) {
+     titleDataDst = TitleScreen_ImgList = heap_malloc(titleDataSize);
+     decode_yay0(titleData, titleDataDst);
+     general_heap_free(titleData);
++#ifdef PM64_PORT
++    port_fix_words(titleDataDst, sizeof(TitleDataStruct));
++#endif
+ 
+     TitleScreen_ImgList_Logo = (s32*)(TitleScreen_ImgList->logo + (s32) TitleScreen_ImgList);
+     TitleScreen_ImgList_Copyright = (u8 (*)[COPYRIGHT_WIDTH]) ((s32*)(TitleScreen_ImgList->copyright + (s32) TitleScreen_ImgList));
+diff --git a/src/world/area_end/common/Credits.inc.c b/src/world/area_end/common/Credits.inc.c
+index a92b3ba3a..83c920126 100644
+--- a/src/world/area_end/common/Credits.inc.c
++++ b/src/world/area_end/common/Credits.inc.c
+@@ -778,7 +778,7 @@ void N(credits_load_message)(CreditsEntry* entry) {
+ 
+     line = &N(CreditsDataPtr)->lines[i];
+     if (entry->msgID != MSG_NONE) {
+-        if (entry->msgID >= 0) {
++        if (MSG_IS_ID(entry->msgID)) {
+             dma_load_msg(entry->msgID, N(CreditsMessageBuffers)[N(CreditsBufferIndex)]);
+             line->message = N(CreditsMessageBuffers)[N(CreditsBufferIndex)];
+             N(CreditsBufferIndex)++;
+diff --git a/src/world/area_hos/hos_05/intro.c b/src/world/area_hos/hos_05/intro.c
+index 7a969348b..5a15f5729 100644
+--- a/src/world/area_hos/hos_05/intro.c
++++ b/src/world/area_hos/hos_05/intro.c
+@@ -1496,7 +1496,11 @@ void N(load_story_image)(s32 loadBackImage, s32 imageIdx) {
+ 
+         // overwrite palette to fill entire frame with subtle off-white coloring
+         for (i = 0; i < 256; i++) {
++#ifdef PM64_PORT // the palette is kept in the N64's byte order: as written natively it read as 180,184,88 with alpha 0 (the yellow-green page)
++            *pal++ = PAL_BE(GPACK_RGBA5551(212, 212, 212, 1));
++#else
+             *pal++ = GPACK_RGBA5551(212, 212, 212, 1);
++#endif
+         }
+         return;
+     }
+diff --git a/src/world/area_kmr/kmr_21/main.c b/src/world/area_kmr/kmr_21/main.c
+index 03e3ffee0..440be7459 100644
+--- a/src/world/area_kmr/kmr_21/main.c
++++ b/src/world/area_kmr/kmr_21/main.c
+@@ -1,4 +1,7 @@
+ #include "kmr_21.h"
++#ifdef PM64_PORT
++#include "port_fix.h"
++#endif
+ 
+ typedef struct TitleDataFile {
+     /* 0x00 */ s32 img_offset_title;
+@@ -81,6 +84,9 @@ API_CALLABLE(N(LoadTitleImage)) {
+ 
+     decode_yay0(compressed, TitleData);
+     general_heap_free(compressed);
++#ifdef PM64_PORT
++    port_fix_words(TitleData, 0x10); // the header's image offsets (as the title screen's, state_title_screen.c)
++#endif
+     TitleImage = (IMG_PTR)(TitleData->img_offset_title + (s32)TitleData);
+     create_worker_frontUI(nullptr, worker_render_title_image);
+     return ApiStatus_DONE2;
+diff --git a/src/world/common/atomic/WhaleAnim.inc.c b/src/world/common/atomic/WhaleAnim.inc.c
+index c33ba3c71..6fea071f1 100644
+--- a/src/world/common/atomic/WhaleAnim.inc.c
++++ b/src/world/common/atomic/WhaleAnim.inc.c
+@@ -4,7 +4,7 @@
+ Npc* N(resolve_npc)(Evt* script, s32 npcIdOrPtr) {
+     if (npcIdOrPtr == NPC_SELF) {
+         return get_npc_safe(script->owner2.npcID);
+-    } else if (npcIdOrPtr >= EVT_LIMIT) {
++    } else if (!EVT_PTR_ARG(npcIdOrPtr)) {
+         return get_npc_safe(npcIdOrPtr);
+     } else {
+         return (Npc*) npcIdOrPtr;
+diff --git a/src/world/common/enemy/Bandit.inc.c b/src/world/common/enemy/Bandit.inc.c
+index dfa737305..b172d45b8 100644
+--- a/src/world/common/enemy/Bandit.inc.c
++++ b/src/world/common/enemy/Bandit.inc.c
+@@ -17,7 +17,7 @@ API_CALLABLE(N(Bandit_TetherStolenCoin)) {
+ 
+         if (npcID == -1) {
+             npc = get_npc_unsafe(script->owner2.npcID);
+-        } else if (npcID >= EVT_LIMIT) {
++        } else if (!EVT_PTR_ARG(npcID)) {
+             npc = get_npc_unsafe(npcID);
+         } else {
+             npc = (Npc*)npcID;
+diff --git a/src/world/partner/goombario.c b/src/world/partner/goombario.c
+index 1c2cb2775..f97f92760 100644
+--- a/src/world/partner/goombario.c
++++ b/src/world/partner/goombario.c
+@@ -376,7 +376,7 @@ API_CALLABLE(N(SelectTattleMsg)) {
+                 enemyTattleMsg = get_enemy(N(InteractNpc)->npcID)->tattleMsg;
+                 if (enemyTattleMsg != 0) {
+                     msgID = enemyTattleMsg;
+-                    if (msgID < EVT_LIMIT) {
++                    if (EVT_PTR_ARG(msgID)) {
+                         script->VAR_MSG = ((s32(*)(void))msgID)();
+                     } else {
+                         script->VAR_MSG = msgID;
+@@ -403,7 +403,7 @@ API_CALLABLE(N(SelectTattleMsg)) {
+             if (temp == MSG_NONE) {
+                 msgID = get_current_map_settings()->tattle.msgID;
+                 if (msgID != 0) {
+-                    if (msgID < EVT_LIMIT) {
++                    if (EVT_PTR_ARG(msgID)) {
+                         // map uses a get_tattle function
+                         script->VAR_MSG = ((s32(*)(void))msgID)();
+                     } else {
+@@ -422,7 +422,7 @@ API_CALLABLE(N(SelectTattleMsg)) {
+         case USE_TATTLE_FORCE_MAP:
+             msgID = get_current_map_settings()->tattle.msgID;
+             if (msgID != 0) {
+-                if (msgID < EVT_LIMIT) {
++                if (EVT_PTR_ARG(msgID)) {
+                     script->VAR_MSG = ((s32(*)(void))msgID)();
+                 } else {
+                     script->VAR_MSG = msgID;
+diff --git a/src/world/world.c b/src/world/world.c
+index b4289d6cf..0aa6cac8a 100644
+--- a/src/world/world.c
++++ b/src/world/world.c
+@@ -1,4 +1,5 @@
+ #include "common.h"
++#include "port_fix.h"
+ #include "ld_addrs.h"
+ #include "npc.h"
+ #include "camera.h"
+@@ -151,6 +152,9 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
+ 
+         decode_yay0(yay0Asset, shapeFile);
+         general_heap_free(yay0Asset);
++#ifdef PM64_PORT
++        port_fix_shape(shapeFile, decompressedSize);
++#endif
+ 
+         mapSettings->modelTreeRoot = shapeFile->header.root;
+         mapSettings->modelNameList = shapeFile->header.modelNames;
+@@ -272,9 +276,15 @@ void* load_asset_by_name(const char* assetName, u32* decompressedSize) {
+     void* ret;
+ 
+     dma_copy((u8*) ASSET_TABLE_FIRST_ENTRY, (u8*) ASSET_TABLE_FIRST_ENTRY + sizeof(AssetHeader), &firstHeader);
++#ifdef PM64_PORT
++    port_fix_asset_table(&firstHeader, sizeof(firstHeader));
++#endif
+     assetTableBuffer = heap_malloc(firstHeader.offset);
+     curAsset = &assetTableBuffer[0];
+     dma_copy((u8*) ASSET_TABLE_FIRST_ENTRY, (u8*) ASSET_TABLE_FIRST_ENTRY + firstHeader.offset, assetTableBuffer);
++#ifdef PM64_PORT
++    port_fix_asset_table(assetTableBuffer, firstHeader.offset);
++#endif
+     while (strcmp(curAsset->name, assetName) != 0) {
+         curAsset++;
+     }
+@@ -293,9 +303,15 @@ s32 get_asset_offset(char* assetName, s32* compressedSize) {
+     s32 ret;
+ 
+     dma_copy((u8*) ASSET_TABLE_FIRST_ENTRY, (u8*) ASSET_TABLE_FIRST_ENTRY + sizeof(AssetHeader), &firstHeader);
++#ifdef PM64_PORT
++    port_fix_asset_table(&firstHeader, sizeof(firstHeader));
++#endif
+     assetTableBuffer = heap_malloc(firstHeader.offset);
+     curAsset = &assetTableBuffer[0];
+     dma_copy((u8*) ASSET_TABLE_FIRST_ENTRY, (u8*) ASSET_TABLE_FIRST_ENTRY + firstHeader.offset, assetTableBuffer);
++#ifdef PM64_PORT
++    port_fix_asset_table(assetTableBuffer, firstHeader.offset);
++#endif
+     while (strcmp(curAsset->name, assetName) != 0) {
+         curAsset++;
+     }

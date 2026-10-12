@@ -1,0 +1,322 @@
+# Documented
+:config:
+  segments:
+    - [0x06, 0x9A1460]
+  header:
+    code:
+      - '#include "assets/ast_meteo.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+      - '#include "sf64level.h"'
+      - '#include "sf64event.h"'
+      - '#include "sf64player.h"'
+      - '#include "sf64audio_external.h"'
+      - '#include "sf64mesg.h"'
+
+# Meteo
+# Asteroid Field
+aMeTitleCardTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 96, height: 28, offset: 0x6000000, symbol: aMeTitleCardTex }
+  
+aMeFireballDL:
+  { type: GFX, offset: 0x6000A80, symbol: aMeFireballDL }
+
+aMeFireballTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06000B10, symbol: aMeFireballTex }
+
+aMeCrusherDL:
+  { type: GFX, offset: 0x6001310, symbol: aMeCrusherDL }
+
+aMeGenTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06004738, symbol: aMeGenTex1 }
+
+aMeGenTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06004F38, symbol: aMeGenTex2 }
+
+aMeGenTex3:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06005738, symbol: aMeGenTex3 }
+
+aMeGenTex4:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06005F38, symbol: aMeGenTex4 }
+
+aMeGenTex5:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06006738, symbol: aMeGenTex5 }
+
+aMeGenTex6:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 8, height: 8, offset: 0x06006F38, symbol: aMeGenTex6 }
+
+aMeCrusherTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 8, height: 8, offset: 0x06006FB8, symbol: aMeCrusherTex1 }
+
+aMeCrusherTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06007038, symbol: aMeCrusherTex2 }
+
+aMeGenTex7:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 8, height: 8, offset: 0x06007838, symbol: aMeGenTex7 }
+
+aMeGenTex8:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x060078B8, symbol: aMeGenTex8 }
+  
+aMeHopBotSkelLimb7DL: 
+  { type: GFX, offset: 0x60080C0, symbol: aMeHopBotSkelLimb7DL }
+
+aMeHopBotSkelLimb7Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 8, height: 8, offset: 0x06008A18, symbol: aMeHopBotSkelLimb7Tex }
+  
+aMeFlipBot1DL: 
+  { type: GFX, offset: 0x6008AA0, symbol: aMeFlipBot1DL }
+
+aMeFlipBot1Tex1: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06009228, symbol: aMeFlipBot1Tex1 }
+
+aMeGenTex10: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x06009A28, symbol: aMeGenTex10 }
+
+aMeGenTex9: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x06009C28, symbol: aMeGenTex9 }
+  
+aMeFlipBot2DL: 
+  { type: GFX, offset: 0x6009E30, symbol: aMeFlipBot2DL }
+  
+aMeBigMeteorDL: 
+  { type: GFX, offset: 0x6009F50, symbol: aMeBigMeteorDL }
+  
+aMeMeteor7DL: 
+  { type: GFX, offset: 0x600AC70, symbol: aMeMeteor7DL }
+
+aMeGenTex11: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x0600B540, symbol: aMeGenTex11 }
+
+aMeSecretMarker2DL: 
+  { type: GFX, offset: 0x600BD40, symbol: aMeSecretMarker2DL }
+
+aMeMeteor3Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x0600BF30, symbol: aMeMeteor3Tex }
+  
+aMeRockGull2DL:
+  { type: GFX, offset: 0x600C130, symbol: aMeRockGull2DL }
+  
+aMeMeteor6DL:
+  { type: GFX, offset: 0x600C2A0, symbol: aMeMeteor6DL }
+  
+aMeRockGull3DL:
+  { type: GFX, offset: 0x600C740, symbol: aMeRockGull3DL }
+  
+aMeRockGull1DL:
+  { type: GFX, offset: 0x600CAA0, symbol: aMeRockGull1DL }
+  
+aMeMeteorShower3DL:
+  { type: GFX, offset: 0x600CD60, symbol: aMeMeteorShower3DL }
+
+aMeMeteorShower3Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x0600CDE8, symbol: aMeMeteorShower3Tex }
+  
+aMeBackdropDL: 
+  { type: GFX, offset: 0x600DDF0, symbol: aMeBackdropDL }
+
+aMeBackdropTex1: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x0600E238, symbol: aMeBackdropTex1 }
+
+aMeBackdropTex2: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x0600F238, symbol: aMeBackdropTex2 }
+
+aMeBackdropTex3: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x06010238, symbol: aMeBackdropTex3 }
+
+aMeBackdropTex4: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x06011238, symbol: aMeBackdropTex4 }
+
+aMeBackdropTex5: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x06012238, symbol: aMeBackdropTex5 }
+
+aMeBackdropTex6: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x06013238, symbol: aMeBackdropTex6 }
+
+aMeBackdropTex7: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x06014238, symbol: aMeBackdropTex7 }
+
+aMeBackdropTex8: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x06015238, symbol: aMeBackdropTex8 }
+
+aMeMeteorShower2DL:
+  { type: GFX, offset: 0x6016240, symbol: aMeMeteorShower2DL }
+
+aMeMeteorShower2Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x060162C8, symbol: aMeMeteorShower2Tex }
+  
+aMeMeteorShower1Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x060172C8, symbol: aMeMeteorShower1Tex }
+
+aMeMeteorShower1DL:
+  { type: GFX, offset: 0x06017AD0, symbol: aMeMeteorShower1DL }
+
+aMeMeteor3DL:
+  { type: GFX, offset: 0x06017B60, symbol: aMeMeteor3DL }
+
+aMeLaserCannon2DL:
+  { type: GFX, offset: 0x06018450, symbol: aMeLaserCannon2DL }
+
+aMeMeteor5DL:
+  { type: GFX, offset: 0x06018960, symbol: aMeMeteor5DL }
+
+aMeMeteor1DL:
+  { type: GFX, offset: 0x06018C00, symbol: aMeMeteor1DL }
+
+aMeMeteor4DL:
+  { type: GFX, offset: 0x06019430, symbol: aMeMeteor4DL }
+
+aMeMeteorTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06019880, symbol: aMeMeteorTex1 }
+
+aMeLaserCannon1Tex: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x0601A080, symbol: aMeLaserCannon1Tex }
+
+aMeSecretMarker1DL:
+  { type: GFX, offset: 0x0601A880, symbol: aMeSecretMarker1DL }
+
+aMeMeteoTunnelDL:
+  { type: GFX, offset: 0x0601AE40, symbol: aMeMeteoTunnelDL }
+
+aMeBossPortrait1Tex: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 44, height: 44, offset: 0x0601C8E0, symbol: aMeBossPortrait1Tex }
+
+aMeBossPortrait2Tex: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 44, height: 44, offset: 0x0601D800, symbol: aMeBossPortrait2Tex }
+
+aMeHopBotAnim: 
+  { type: SF64:ANIM, offset: 0x601E8C4, symbol: aMeHopBotAnim }
+
+aMeHopBotSkel: 
+  { type: SF64:SKELETON, offset: 0x601E9D0, symbol: aMeHopBotSkel }
+
+# Beta Meteo background, unused
+aMeBetaBackgroundDL: 
+  { type: GFX, offset: 0x0601EA00, symbol: aMeBetaBackgroundDL }
+
+aMeBetaBackgroundTex: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x0601EA98, symbol: aMeBetaBackgroundTex }
+
+aMeMeteor2DL: 
+  { type: GFX, offset: 0x0601F2A0, symbol: aMeMeteor2DL }
+
+aMeMeteor2Tex:  
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x0601F778, symbol: aMeMeteor2Tex }
+
+aMeSmallRockDL:
+  { type: GFX, offset: 0x0601FF80, symbol: aMeSmallRockDL }
+
+aMeSmallRockTex:  
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06020008, symbol: aMeSmallRockTex }
+
+aMeCorneriaBgDL:
+  { type: GFX, offset: 0x06020810, symbol: aMeCorneriaBgDL }
+
+aMeCorneriaBg1Tex:  
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x06020920, symbol: aMeCorneriaBg1Tex }
+
+aMeCorneriaBg2Tex:  
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x06021920, symbol: aMeCorneriaBg2Tex }
+
+aMeLaserCannon1DL:
+  { type: GFX, offset: 0x06022920, symbol: aMeLaserCannon1DL }
+
+aMeHopBotSkelLimb1DL:
+  { type: GFX, offset: 0x06022E50, symbol: aMeHopBotSkelLimb1DL }
+
+aMeCrusherCoreSegment2DL:
+  { type: GFX, offset: 0x060236F0, symbol: aMeCrusherCoreSegment2DL }
+
+aMeCrusherCoreSegmentTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 8, height: 8, offset: 0x06023788, symbol: aMeCrusherCoreSegmentTex }
+
+aMeHopBotSkelLimb2DL:
+  { type: GFX, offset: 0x060231C0, symbol: aMeHopBotSkelLimb2DL }
+
+aMeHopBotSkelLimb4DL:
+  { type: GFX, offset: 0x06023290, symbol: aMeHopBotSkelLimb4DL }
+
+aMeHopBotSkelLimb3DL:
+  { type: GFX, offset: 0x06023360, symbol: aMeHopBotSkelLimb3DL }
+
+aMeCrusherRingLaserDL:
+  { type: GFX, offset: 0x06023810, symbol: aMeCrusherRingLaserDL }
+
+aMeCrusherRingLaserTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x060238A8, symbol: aMeCrusherRingLaserTex }
+
+aMeCrusherShieldDL:
+  { type: GFX, offset: 0x060240B0, symbol: aMeCrusherShieldDL }
+
+aMeCrusherCoreSegment1DL:
+  { type: GFX, offset: 0x06024AD0, symbol: aMeCrusherCoreSegment1DL }
+
+aMeMolarRockDL:
+  { type: GFX, offset: 0x06024B60, symbol: aMeMolarRockDL }
+
+# Unused Meteo Ball
+aMeMeteoBallDL:
+  { type: GFX, offset: 0x06025B50, symbol: aMeMeteoBallDL }
+
+aMeTunnelRockTex: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6025350, symbol: aMeTunnelRockTex }
+
+aMeMeteoBallTex: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06025BE8, symbol: aMeMeteoBallTex }
+
+aMeCrusherShieldChargeDL:
+  { type: GFX, offset: 0x060263F0, symbol: aMeCrusherShieldChargeDL }
+
+aMeCrusherShieldChargeTex: 
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06026478, symbol: aMeCrusherShieldChargeTex }
+
+aMeLevelObjects: 
+  { type: SF64:OBJECT_INIT, offset: 0x6026CC4, symbol: aMeLevelObjects }
+
+aMeEnvSetup:
+  { type: SF64:ENVIRONMENT, offset: 0x6026C80, symbol: aMeEnvSetup }
+
+aMeWarpZoneLevelObjects: 
+  { type: SF64:OBJECT_INIT, offset: 0x602B148, symbol: aMeWarpZoneLevelObjects }
+
+aMeEventScript:
+  { type: SF64:SCRIPT, offset: 0x602F3AC, symbol: aMeEventScript }
+
+aMeFlipBotHitbox:
+  { type: SF64:HITBOX, offset: 0x602F604, symbol: aMeFlipBotHitbox }
+
+aMeRockEyeOpenHitbox:
+  { type: SF64:HITBOX, offset: 0x602F638, symbol: aMeRockEyeOpenHitbox }
+
+aMeMeteoBallHitbox:
+  { type: SF64:HITBOX, offset: 0x602F684, symbol: aMeMeteoBallHitbox }
+
+aMeHopBotHitbox:
+  { type: SF64:HITBOX, offset: 0x602F6A0, symbol: aMeHopBotHitbox }
+
+aMeMeteor1Hitbox:
+  { type: SF64:HITBOX, offset: 0x602F6EC, symbol: aMeMeteor1Hitbox }
+
+aMeMeteor2Hitbox:
+  { type: SF64:HITBOX, offset: 0x602F708, symbol: aMeMeteor2Hitbox }
+
+aMeLaserCannon1Hitbox:
+  { type: SF64:HITBOX, offset: 0x602F724, symbol: aMeLaserCannon1Hitbox }
+
+aMeLaserCannon2Hitbox:
+  { type: SF64:HITBOX, offset: 0x602F740, symbol: aMeLaserCannon2Hitbox }
+
+aMeCrusherHitbox:
+  { type: SF64:HITBOX, offset: 0x602F75C, symbol: aMeCrusherHitbox }
+
+aMeCrusherShieldHitbox:
+  { type: SF64:HITBOX, offset: 0x602FA50, symbol: aMeCrusherShieldHitbox }
+
+aMeColPoly1:
+  {type: SF64:COLPOLY, count: 79, offset: 0x602FA9C, symbol: aMeColPoly1, mesh_symbol: aMeColPoly1Mesh }
+
+aMeColPoly2:
+  {type: SF64:COLPOLY, count: 42, offset: 0x6030208, symbol: aMeColPoly2, mesh_symbol: aMeColPoly2Mesh }
+
+aMeColPoly3:
+  {type: SF64:COLPOLY, count: 236, offset: 0x60305DC, symbol: aMeColPoly3, mesh_symbol: aMeColPoly3Mesh }

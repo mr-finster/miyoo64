@@ -1,0 +1,113 @@
+#ifndef MACROS_H
+#define MACROS_H
+
+#include "alignment.h"
+#include "fzx_version.h"
+
+#define ARRAY_COUNT(arr) (s32)(sizeof(arr) / sizeof(arr[0]))
+#define ARRAY_COUNTU(arr) (u32)(sizeof(arr) / sizeof(arr[0]))
+#define SQ(x) ((x) * (x))
+#define CB(x) ((x) * (x) * (x))
+
+#define ABS(x) ((x) >= 0 ? (x) : -(x))
+
+#define CROSS_X(v1Ptr, v2Ptr) ((v1Ptr)->y * (v2Ptr)->z - (v1Ptr)->z * (v2Ptr)->y)
+#define CROSS_Y(v1Ptr, v2Ptr) ((v1Ptr)->z * (v2Ptr)->x - (v1Ptr)->x * (v2Ptr)->z)
+#define CROSS_Z(v1Ptr, v2Ptr) ((v1Ptr)->x * (v2Ptr)->y - (v1Ptr)->y * (v2Ptr)->x)
+#define SQ_SUM(vPtr) (SQ((vPtr)->x) + SQ((vPtr)->y) + SQ((vPtr)->z))
+#define DOT_XYZ(v1Ptr, v2Ptr) ((v1Ptr)->x * (v2Ptr)->x + (v1Ptr)->y * (v2Ptr)->y + (v1Ptr)->z * (v2Ptr)->z)
+#define DIST_DOT_XYZ(v1Ptr, v2APtr, v2BPtr) ((v1Ptr)->x * ((v2APtr)->x - (v2BPtr)->x) + (v1Ptr)->y * ((v2APtr)->y - (v2BPtr)->y) + (v1Ptr)->z * ((v2APtr)->z - (v2BPtr)->z))
+
+#define ALIGN_2(x) (((x) / 2) * 2)
+
+#define SCREEN_WIDTH 320
+#define SCREEN_HEIGHT 240
+
+#define SCREEN_WIDTH_F 320.0f
+#define SCREEN_HEIGHT_F 240.0f
+
+#define SCREEN_WIDTH_D 320.0
+#define SCREEN_HEIGHT_D 240.0
+
+#define MAX_TIMER (60 * 60 * 1000 - 1)
+
+#define TEX_COMPRESSED_SIZE(tex) (_ ## tex ## _COMPRESSED_SIZE)
+#define TEX_WIDTH(tex) (_ ## tex ## _WIDTH)
+#define TEX_HEIGHT(tex) (_ ## tex ## _HEIGHT)
+#define TEX_SIZE(tex, depth) (TEX_WIDTH(tex) * TEX_HEIGHT(tex) * (depth))
+#define TEX_SIZE_4B(tex) (TEX_WIDTH(tex) * TEX_HEIGHT(tex) / 2)
+
+#define PHYS_TO_K1ROM(x) (((u32) (x) | 0xB0000000))
+#ifdef HANDHELD
+u32 port_rom_read32(u32 romOffset); /* big-endian word from the player's ROM */
+#define ROM_READ(addr) port_rom_read32(addr)
+#else
+#define ROM_READ(addr) (*(vu32*) PHYS_TO_K1ROM(addr))
+#endif
+
+#if OS_TV_TYPE == OS_TV_TYPE_NTSC
+#define TIME_CONVERT(x) (x)
+#define SPEED_CONVERSION (21.6f)
+#else // OS_TV_TYPE_PAL
+#define TIME_CONVERT(x) (((x) / 5) * 6)
+#define SPEED_CONVERSION (18.0f)
+#endif
+
+/* 
+ * Macros for asset includes
+ */
+#define ASSET_STR(x) #x
+#define ASSET_STR_HELPER(x) ASSET_STR(x)
+
+#define ASSET_HEADER(x) ASSET_STR_HELPER(assets/ASSET_VERSION/ASSET_REVISION/x)
+#define ASSET_SOURCE(x) ASSET_STR_HELPER(src/assets/ASSET_VERSION/ASSET_REVISION/x)
+#define ASSET_HEADER_EK(x) ASSET_STR_HELPER(assets/ASSET_VERSION/ek/x)
+#define ASSET_SOURCE_EK(x) ASSET_STR_HELPER(src/assets/ASSET_VERSION/ek/x)
+
+/*
+ * Macros for libultra
+ */
+
+#if defined(__sgi)
+#define PRINTF
+#else
+#define PRINTF(...)
+#endif
+
+#define STACK(stack, size) \
+    u64 stack[ALIGN8(size) / sizeof(u64)]
+
+#define STACK_START(stack) \
+    ((u8*)(stack) + sizeof(stack))
+
+#define ALIGNED(x) __attribute__((aligned(x)))
+#define ARRLEN(x) ((s32)(sizeof(x) / sizeof(x[0])))
+#define STUBBED_PRINTF(x) ((void)(x))
+#define UNUSED __attribute__((unused))
+
+#ifndef __GNUC__
+#define __attribute__(x)
+#endif
+
+#define OS_MSEC_TO_CYCLES(n)    OS_USEC_TO_CYCLES((n) * 1000LL)
+#define OS_SEC_TO_CYCLES(n)     OS_MSEC_TO_CYCLES((n) * 1000LL)
+
+// Does p point at an MIO0 block? The game compares the first word with 'MIO0',
+// which only holds on a big-endian CPU; the handheld port checks the bytes.
+#ifdef HANDHELD
+#define IS_MIO0(p) (((u8*) (p))[0] == 'M' && ((u8*) (p))[1] == 'I' && ((u8*) (p))[2] == 'O' && ((u8*) (p))[3] == '0')
+#else
+#define IS_MIO0(p) (*(s32*) (p) == (s32) 'MIO0')
+#endif
+
+// An address in the N64's 4 MB of RDRAM. The handheld port keeps that memory as one
+// block at a fixed native address (tools/gen_link.py); the N64 build is unchanged.
+#ifdef HANDHELD
+void port_idle(void);
+void port_overlay_load(void* bssStart);
+#define FZX_RAM(addr) ((uintptr_t) (addr) - 0x80000000 + 0x20000000)
+#else
+#define FZX_RAM(addr) (addr)
+#endif
+
+#endif // MACROS_H

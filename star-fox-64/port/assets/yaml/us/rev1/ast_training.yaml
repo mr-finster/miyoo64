@@ -1,0 +1,89 @@
+# Documented
+:config:
+  segments:
+    - [0x6, 0xDDC010]
+  header:
+    code:
+      - '#include "assets/ast_training.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+      - '#include "sf64level.h"'
+      - '#include "sf64event.h"'
+      - '#include "sf64player.h"'
+      - '#include "sf64audio_external.h"'
+      - '#include "sf64mesg.h"'
+
+aTrQuitTrainingEnTex:
+  { type: TEXTURE, format: IA8, offset: 0x6000000, width: 96, height: 12, ctype: u8, symbol: aTrQuitTrainingEnTex }
+
+aTrQuitTrainingJpTex:
+  { type: TEXTURE, format: IA8, offset: 0x6000480, width: 96, height: 12, ctype: u8, symbol: aTrQuitTrainingJpTex }
+
+aTrYaruDePonFace1Tex:
+  { type: TEXTURE, format: RGBA16, offset: 0x6000900, width: 44, height: 44, ctype: u16, symbol: aTrYaruDePonFace1Tex }
+
+aTrYaruDePonFace2Tex:
+  { type: TEXTURE, format: RGBA16, offset: 0x6001820, width: 44, height: 44, ctype: u16, symbol: aTrYaruDePonFace2Tex }
+
+aTrBarrierDL:
+  { type: GFX, offset: 0x6002740, symbol: aTrBarrierDL }
+
+aTrBarrierMainTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x060028F0, width: 32, height: 32, ctype: u16, symbol: aTrBarrierMainTex }
+
+aTrBuildingDL:
+  { type: GFX, offset: 0x60030F0, symbol: aTrBuildingDL }
+
+aTrBuildingWindowTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06003360, width: 16, height: 16, ctype: u16, symbol: aTrBuildingWindowTex }
+
+aTrRedDotTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06003560, width: 16, height: 16, ctype: u16, symbol: aTrRedDotTex }
+
+aTrBackdropDL:
+  { type: GFX, offset: 0x6003760, symbol: aTrBackdropDL }
+
+aTrBackdropBottomTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06003878, width: 64, height: 32, ctype: u16, symbol: aTrBackdropBottomTex }
+
+aTrBackdropTopTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06004878, width: 64, height: 32, ctype: u16, symbol: aTrBackdropTopTex }
+
+aTrGroundDL:
+  { type: GFX, offset: 0x6005880, symbol: aTrGroundDL }
+
+aTrGroundTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06005938, width: 32, height: 32, ctype: u16, symbol: aTrGroundTex }
+
+aItemTrainingRingDL:
+  { type: GFX, offset: 0x6006140, symbol: aItemTrainingRingDL }
+
+aTrTrainingRingBlueSquareTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06006958, width: 8, height: 8, ctype: u16, symbol: aTrTrainingRingBlueSquareTex }
+
+aTrTrainingRingYellowSquareTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x060069D8, width: 8, height: 8, ctype: u16, symbol: aTrTrainingRingYellowSquareTex }
+
+aTrEnvSettings:
+  { type: SF64:ENVIRONMENT, offset: 0x6006A60, symbol: aTrEnvSettings }
+
+aTrOnRailsLevelObjects:
+  { type: SF64:OBJECT_INIT, offset: 0x6006AA4, symbol: aTrOnRailsLevelObjects }
+
+aTrAllRangeLevelObjects:
+  { type: SF64:OBJECT_INIT, offset: 0x6008EF8, symbol: aTrAllRangeLevelObjects }
+
+aTrEventScript:
+  { type: SF64:SCRIPT, offset: 0x6009B34, symbol: aTrEventScript }
+
+aTrBuildingHitbox:
+  { type: SF64:HITBOX, offset: 0x6009CC4, symbol: aTrBuildingHitbox }
+
+aItemTrainingRingHitbox:
+  { type: SF64:HITBOX, offset: 0x6009CFC, symbol: aItemTrainingRingHitbox }
+
+aTrBarrierHitbox:
+  { type: SF64:HITBOX, offset: 0x6009D18, symbol: aTrBarrierHitbox }
+
+# size = 0x9D40

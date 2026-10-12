@@ -1,0 +1,14 @@
+# GoldenEye -> Miyoo Mini build environment: Debian x86_64 with shauninman's
+# miyoomini-toolchain v0.0.3 (arm-linux-gnueabihf-gcc 8.3, glibc 2.28, the Mini's SDL 1.2 and
+# MI_* libraries in its sysroot), the toolchain union-miyoomini-toolchain uses.
+#   docker build --platform linux/amd64 -t gemm:build -f docker/Dockerfile.miyoo docker
+#   GE_IMAGE=gemm:build ./dev.sh make -C port -f Makefile.handheld PLAT=miyoo -j6
+FROM --platform=linux/amd64 debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential ca-certificates curl git make python3 python3-pil xz-utils zip \
+    && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /opt && cd /opt \
+    && curl -fsSL -o tc.tar.xz https://github.com/shauninman/miyoomini-toolchain-buildroot/releases/download/v0.0.3/miyoomini-toolchain.tar.xz \
+    && tar xf tc.tar.xz && rm tc.tar.xz \
+    && test -x /opt/miyoomini-toolchain/usr/bin/arm-linux-gnueabihf-gcc
+WORKDIR /work

@@ -1,0 +1,114 @@
+# Documented
+:config:
+  segments:
+    - [0x04, 0x918430]
+  header:
+    code:
+      - '#include "assets/ast_enmy_planet.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+
+# Unused: An alternate version of Gamma-Off in ast_enmy_space
+aUnusedGammaOffAltDL:
+  { type: GFX, offset: 0x4000290, symbol: aUnusedGammaOffAltDL }
+
+aVenomTankVTX:
+  { type: VTX, count: 90, offset: 0x40008F8, symbol: aVenomTankVTX }
+
+aTripodAnim:
+  { type: SF64:ANIM, offset: 0x40001A4, symbol: aTripodAnim }
+
+aTripodSkel: 
+  { type: SF64:SKELETON, offset: 0x4000270, symbol: aTripodSkel }
+
+aVenomTankDL:
+  { type: GFX, offset: 0x4000710, symbol: aVenomTankDL }
+
+aFighterTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x04001298, symbol: aFighterTex1 }
+
+aEnmyPlanetGenTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x04001698, symbol: aEnmyPlanetGenTex2 }
+
+aFighterTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x04000E98, symbol: aFighterTex2 }
+
+aFighterTex7:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x04001098, symbol: aFighterTex7 }
+
+aEnmyPlanetGenTex3:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x04001498, symbol: aEnmyPlanetGenTex3 }
+
+aPlanetArwingAllRangeDL:
+  { type: GFX, offset: 0x40018A0, symbol: aPlanetArwingAllRangeDL }
+
+aPlanetArwingAllRangeTex6:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 8, height: 8, offset: 0x040024B8, symbol: aPlanetArwingAllRangeTex6 }
+
+aPlanetArwingAllRangeTex3:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x04002538, symbol: aPlanetArwingAllRangeTex3 }
+
+aPlanetArwingAllRangeTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x04002D38, symbol: aPlanetArwingAllRangeTex1 }
+
+aPlanetArwingAllRangeTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x04003D38, symbol: aPlanetArwingAllRangeTex2 }
+
+aPlanetArwingAllRangeTex4:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x04004538, symbol: aPlanetArwingAllRangeTex4 }
+
+aPlanetArwingAllRangeTex5:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x04004D38, symbol: aPlanetArwingAllRangeTex5 }
+
+aFirebirdAnim:
+  { type: SF64:ANIM, offset: 0x40057AC, symbol: aFirebirdAnim }
+
+aFirebirdSkel: 
+  { type: SF64:SKELETON, offset: 0x40058B8, symbol: aFirebirdSkel }
+
+aFighterTex6:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x04005E78, symbol: aFighterTex6 }
+
+aFighterTex5:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x04006078, symbol: aFighterTex5 }
+
+# Unused: An alternate version of Gamma-On in ast_enmy_space
+aUnusedGammaOnAltDL:
+  { type: GFX, offset: 0x4006280, symbol: aUnusedGammaOnAltDL }
+
+aFighterTex4:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x040064E8, symbol: aFighterTex4 }
+
+aEnmyPlanetGenTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x040066E8, symbol: aEnmyPlanetGenTex1 }
+
+aVenomFighter1DL:
+  { type: GFX, offset: 0x40068F0, symbol: aVenomFighter1DL }
+
+aVenomFighter2DL:
+  { type: GFX, offset: 0x4006E90, symbol: aVenomFighter2DL }
+
+aGrangaFighter1DL:
+  { type: GFX, offset: 0x40073C0, symbol: aGrangaFighter1DL }
+
+aGrangaFighter2DL:
+  { type: GFX, offset: 0x4007AF0, symbol: aGrangaFighter2DL }
+
+aFighterTex3:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x04008100, symbol: aFighterTex3 }
+
+aBombDropDL:
+  { type: GFX, offset: 0x4008CE0, symbol: aBombDropDL }
+
+aBombDropTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x04008D68, symbol: aBombDropTex }
+
+aBombDropFireTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x04008FF8, symbol: aBombDropFireTex }
+
+aBombDropFireDL:
+  { type: GFX, offset: 0x4008F70, symbol: aBombDropFireDL }
+
+aSpyEyeDL:
+  { type: GFX, offset: 0x4009800, symbol: aSpyEyeDL }

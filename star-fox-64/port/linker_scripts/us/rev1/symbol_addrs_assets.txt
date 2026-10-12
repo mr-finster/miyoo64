@@ -1,0 +1,97 @@
+D_Gfx_800D94D0 = 0x800D94D0; // type:Gfx
+D_Gfx_800D95E8 = 0x800D95E8; // type:Gfx
+D_Gfx_800D9688 = 0x800D9688; // type:Gfx
+D_Gfx_800D96D0 = 0x800D96D0; // type:Gfx
+D_Gfx_800D9860 = 0x800D9860; // type:Gfx
+D_Gfx_800D9990 = 0x800D9990; // type:Gfx
+D_Gfx_800DA9F8 = 0x800DA9F8; // type:Gfx
+D_Gfx_800DAA98 = 0x800DAA98; // type:Gfx
+D_Gfx_800DAB28 = 0x800DAB28; // type:Gfx
+D_Gfx_800DAB80 = 0x800DAB80; // type:Gfx
+aCoHighwayShadowDL = 0x800DAC20; // type:Gfx
+D_Gfx_800DACA0 = 0x800DACA0; // type:Gfx
+gRcpInitDL = 0x800DBAA0; // type:Gfx
+
+aCoHighwayShadowTex = 0x800DA1F8;
+D_Tex_800D99F8 = 0x800D99F8;
+gTextCharPalettes = 0x800DBA20;
+
+D_Vtx_800D94A0 = 0x800D94A0;
+D_Vtx_800D94E8 = 0x800D94E8;
+D_Vtx_800D9658 = 0x800D9658;
+D_Vtx_800D96A0 = 0x800D96A0;
+D_Vtx_800D9760 = 0x800D9760;
+D_Vtx_800D9950 = 0x800D9950;
+D_Vtx_800D9910 = 0x800D9910;
+D_Vtx_800DAA58 = 0x800DAA58;
+D_Vtx_800DAAF8 = 0x800DAAF8;
+D_Vtx_800DAB40 = 0x800DAB40;
+aCoHighwayShadowVTX = 0x800DABE0;
+D_Vtx_800DAC80 = 0x800DAC80;
+
+D_Tex_800DACB8 = 0x800DACB8;
+D_Tex_800DB4B8 = 0x800DB4B8;
+D_Unk_800D96E8 = 0x800D96E8; // type:s16
+
+gSawtoothWaveSample = 0x800DBB10; // size:0x200 type:s16
+gTriangleWaveSample = 0x800DBD10; // size:0x200 type:s16
+gSineWaveSample = 0x800DBF10; // size:0x200 type:s16
+gSquareWaveSample = 0x800DC110; // size:0x200 type:s16
+gWhiteNoiseSample = 0x800DC310; // size:0x200 type:s16
+gUnkSample = 0x800DC510; // size:0x200 type:s16
+gWaveSamples = 0x800DC710; // size:0x20
+
+gBendPitchOneOctaveFrequencies = 0x800DC730; // size:0x400
+gBendPitchTwoSemitonesFrequencies = 0x800DCB30;
+gPitchFrequencies = 0x800DCF30;
+gDefaultShortNoteVelocityTable = 0x800DD130;
+gDefaultShortNoteGateTimeTable = 0x800DD140;
+gDefaultEnvelope = 0x800DD150;
+gZeroedSampleState = 0x800DD160;
+gDefaultSampleState = 0x800DD170;
+gHaasEffectDelaySizes = 0x800DD180; // size:0x80 type:u16
+gInvalidAdpcmCodeBook = 0x800DD200; // size:0x80 type:s16
+gHeadsetPanVolume = 0x800DD280; // size:0x200 type:f32
+gStereoPanVolume = 0x800DD480; // size:0x200 type:f32
+gDefaultPanVolume = 0x800DD680; // size:0x200 type:f32
+
+aAqSquidAnim = 0x06000AE4;
+aAqAnglerFishAnim = 0x06002628;
+aAqSpindlyFishAnim = 0x060260EC;
+aAqSquidHitbox = 0x060314AC;
+aTi1DesertCrawlerAnim3 = 0x70067C4;
+aTi1DesertCrawlerSkel = 0x7006990;
+aTi1DesertCrawlerAnim5 = 0x7006F74;
+aTi1DesertCrawlerAnim4 = 0x7007130;
+aTi1DesertCrawlerAnim2 = 0x7007234;
+aTi1DesertCrawlerAnim1 = 0x700733C;
+aTiGorasAnim9 = 0x7003EE8;
+aTiGorasSkelLimb34DL = 0x7003F00;
+aTiGorasSkelLimb90DL = 0x7004270;
+aTiGorasSkelLimb85DL = 0x7004400;
+aTiGorasSkelLimb3DL = 0x70045D0;
+aTiGorasSkelLimb56DL = 0x70049C0;
+aTiGorasSkelLimb7DL = 0x7004E80;
+aTiGorasLaserChargeDL = 0x7005300;
+aTiGorasAnim6 = 0x70084CC;
+aTiGorasAnim7 = 0x70096EC;
+aTiGorasSkelLimb27DL = 0x7009700;
+aTiGorasSkelLimb86DL = 0x7009890;
+aTi2Effect394DL = 0x7009A80;
+aTiGorasAnim8 = 0x700E244;
+aTiGorasAnim12 = 0x8008FE8;
+aTiGorasAnim13 = 0x900FC4C;
+aTiGorasAnim14 = 0x9004288;
+aTiGorasTailAttackAnim = 0xA009990;
+
+aA6GorgonAnim = 0x6018994;
+aA6GorgonCoreShieldDL = 0x6011910;
+aA6GorgonCoreTex = 0x601B2B0;
+aA6GorgonSkel = 0x6018BA0;
+aA6GorgonCoverHitbox = 0x6028578;
+aA6GorgonHitbox = 0x6028454;
+
+aTitleFoxSpeakAnim = 0x60246F8;
+aTitleFalcoSpeakAnim = 0x60338DC;
+aTitleSlippySpeakAnim = 0x6036278;
+aTitlePeppySpeakAnim = 0x603531C;

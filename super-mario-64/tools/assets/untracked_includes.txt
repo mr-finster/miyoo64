@@ -1,0 +1,16 @@
+# Release gate 1b (tools/assets/check_includes.py): the only files from the
+# decomp's untracked, ROM-derived data that code objects (whose bytes ship)
+# may #include, each with why none of its bytes ship. Paths are relative to
+# port/ (a generated copy under build/<plat>/ counts as its source). Anything
+# else fails the release: move its data into the asset region (ROM_DATA in
+# include/macros.h, or an asset object) and add it here with the reason.
+#
+# pattern                        why no bytes ship
+actors/*.h                       declarations of the actors' data (extern symbols of the asset region)
+levels/*/header.h                declarations of the levels' data
+src/goddard/dynlists/*.h         declarations and command macros of Goddard's dynlists
+levels/level_defines.h           the level enum; the tables built from it carry ROM_DATA (save_file.c, camera.c, audio/external.c, title_screen.c) or hold only pointers (camera.c sCameraTriggers, audio/external.c sLevelDynamics)
+levels/course_defines.h          the course enum; camera.c's sDanceCutsceneIndexTable carries ROM_DATA
+include/text_strings.h           menu text macros: every array made from them carries ROM_DATA (game/ingame_menu.c, menu/file_select.c, menu/star_select.c) except three 2-byte "0" + terminator buffers the code writes digits into
+include/text_menu_strings.h      the same
+textures/intro_raw/*.inc.c       Goddard's textures, ROM_DATA in goddard/renderer.c

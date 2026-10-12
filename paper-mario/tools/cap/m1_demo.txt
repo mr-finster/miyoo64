@@ -1,0 +1,5 @@
+# M1 battle scenes from the title-screen attract demo (no input). Controller-poll counts
+# (one poll per 30 fps game frame) found by rendering sparse captures with the bench.
+9620 cap 30 7_battle
+12860 cap 30 8_battle_desert
+12990 quit

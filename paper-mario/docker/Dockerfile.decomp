@@ -1,0 +1,21 @@
+# paper-mario decomp tools (image pm64hh:decomp): pmret/papermario's ./configure (splat and its Paper Mario segment
+# types) and the asset converters, to unpack the game's data from the player's ROM on this Mac for the native desktop
+# build (M2). Nothing made with it is shipped or committed (the asset rule, SPIKE.md Q6); the device gets its data from
+# recipes built on the handheld from the player's ROM (M3).
+#   docker build --platform linux/amd64 -t pm64hh:decomp -f docker/Dockerfile.decomp docker
+# decomp-requirements.txt is tools/configure/requirements.txt of pmret/papermario @ ee32192.
+FROM pm64hh:build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3-venv libyaml-dev zlib1g-dev curl ca-certificates build-essential \
+      binutils-mips-linux-gnu cpp-mips-linux-gnu \
+    && rm -rf /var/lib/apt/lists/*
+COPY decomp-requirements.txt /tmp/decomp-requirements.txt
+RUN /usr/bin/python3 -m venv /opt/pmvenv && /opt/pmvenv/bin/pip install -q -U pip setuptools wheel \
+    && /opt/pmvenv/bin/pip install -q -r /tmp/decomp-requirements.txt
+RUN curl -sSf https://sh.rustup.rs | sh -s -- -y -q --profile minimal \
+    && /root/.cargo/bin/cargo install -q pigment64 --version 0.4.2 \
+    && /root/.cargo/bin/cargo install -q crunch64-cli --version 0.3.1 \
+    && cp /root/.cargo/bin/pigment64 /root/.cargo/bin/crunch64 /usr/local/bin/ \
+    && rm -rf /root/.cargo /root/.rustup
+ENV PATH=/opt/pmvenv/bin:$PATH
+WORKDIR /work

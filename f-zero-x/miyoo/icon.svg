@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs><linearGradient id="rd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2A2C48"/><stop offset="1" stop-color="#4A4E74"/></linearGradient>
+<linearGradient id="ar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF27A"/><stop offset=".5" stop-color="#FFC22A"/><stop offset="1" stop-color="#F07A10"/></linearGradient></defs>
+<path d="M4 60 L24 5 L40 5 L60 60 Z" fill="url(#rd)" stroke="#0E0F1E" stroke-width="1.6" stroke-linejoin="round"/>
+<g stroke-linecap="round"><path d="M6.4 58 L25 7" stroke="#5EF0FF" stroke-width="2.4"/><path d="M57.6 58 L39 7" stroke="#5EF0FF" stroke-width="2.4"/>
+<path d="M9 58 L26.2 9" stroke="#E8FFFF" stroke-width=".9" opacity=".8"/><path d="M55 58 L37.8 9" stroke="#E8FFFF" stroke-width=".9" opacity=".8"/></g>
+<g fill="url(#ar)" stroke="#5A2400" stroke-width="1.4" stroke-linejoin="round">
+<path d="M14 50 L32 35 L50 50 L50 57.5 L32 42.5 L14 57.5 Z"/>
+<path d="M19 32.5 L32 21.5 L45 32.5 L45 38 L32 27 L19 38 Z"/>
+<path d="M23.4 18.6 L32 11.4 L40.6 18.6 L40.6 22.2 L32 15 L23.4 22.2 Z"/>
+</g>
+</svg>

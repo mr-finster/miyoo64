@@ -1,0 +1,13 @@
+{
+  "id": "dkr",
+  "title": "Diddy Kong Racing",
+  "folder": "DiddyKongRacing",
+  "exe": "dkr",
+  "files": ["dkr"],
+  "icon": "icon.png",
+  "env": "DKR",
+  "data": "data",
+  "rom": {"name": "Diddy Kong Racing (USA) (Rev 1)", "sha1": "6d96743d46f8c0cd0edb0ec5600b003c89b93755", "size": 12582912},
+  "system": "DIDDYKONG",
+  "minui_tag": "DKR"
+}

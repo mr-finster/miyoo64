@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs><radialGradient id="bg" cx=".38" cy=".25" r=".8"><stop offset="0" stop-color="#FFF2B8"/><stop offset=".3" stop-color="#FFC43C"/><stop offset=".75" stop-color="#EE9410"/><stop offset="1" stop-color="#B86006"/></radialGradient>
+<clipPath id="bc"><path d="M32 2 C46 2 57 12 57 26 C57 40 45 50 34.5 53 L29.5 53 C19 50 7 40 7 26 C7 12 18 2 32 2 Z"/></clipPath></defs>
+<g stroke="#2A1A60" stroke-width="1.5" stroke-linejoin="round">
+<path d="M29.4 52.5 L34.6 52.5 L33.4 56 L36.4 62 L27.6 62 L30.6 56 Z" fill="#3A46E6"/>
+<path id="b" d="M32 2 C46 2 57 12 57 26 C57 40 45 50 34.5 53 L29.5 53 C19 50 7 40 7 26 C7 12 18 2 32 2 Z" fill="url(#bg)"/>
+</g>
+<g clip-path="url(#bc)" fill="none" stroke-linejoin="miter">
+<polyline points="6.0,25 10.0,31 14.0,25 18.0,31 22.0,25 26.0,31 30.0,25 34.0,31 38.0,25 42.0,31 46.0,25 50.0,31 54.0,25 58.0,31" stroke="#2430D8" stroke-width="4.6"/>
+<polyline points="6.0,33.5 10.0,39.5 14.0,33.5 18.0,39.5 22.0,33.5 26.0,39.5 30.0,33.5 34.0,39.5 38.0,33.5 42.0,39.5 46.0,33.5 50.0,39.5 54.0,33.5 58.0,39.5" stroke="#2430D8" stroke-width="2.2"/>
+</g>
+<path d="M32 2 C46 2 57 12 57 26 C57 40 45 50 34.5 53 L29.5 53 C19 50 7 40 7 26 C7 12 18 2 32 2 Z" fill="none" stroke="#5A3400" stroke-width="1.5"/>
+<ellipse cx="22" cy="12" rx="6" ry="3.6" transform="rotate(-30 22 12)" fill="#FFFBE6" opacity=".9"/>
+</svg>

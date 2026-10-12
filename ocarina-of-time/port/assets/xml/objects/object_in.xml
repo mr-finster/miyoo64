@@ -1,0 +1,258 @@
+<Root>
+    <File Name="object_in" Segment="6">
+        <Animation Name="object_in_Anim_0003B4" Offset="0x3B4"/>
+        <Animation Name="object_in_Anim_000CB0" Offset="0xCB0"/>
+        <Animation Name="object_in_Anim_001BE0" Offset="0x1BE0"/>
+        <Animation Name="object_in_Anim_001CC0" Offset="0x1CC0"/>
+        <Texture Name="gIngoTLUT" Format="rgba16" Width="16" Height="16" Offset="0x1CD0"/>
+        <Texture Name="gIngoSkinGradientTLUT" Format="rgba16" Width="16" Height="16" Offset="0x1ED0"/>
+        <Texture Name="gIngoUnusedEyeTex" Format="rgba16" Width="32" Height="32" Offset="0x2150"/>
+        <Texture Name="gIngoSkinGradientTex" Format="ci8" Width="8" Height="8" Offset="0x2950" TlutOffset="0x1ED0"/>
+        <Texture Name="gIngoArmHairTex" Format="ci8" Width="16" Height="32" Offset="0x2990" TlutOffset="0x1CD0"/>
+        <Texture Name="gIngoFingersTex" Format="ci8" Width="16" Height="16" Offset="0x2B90" TlutOffset="0x1CD0"/>
+        <Texture Name="gIngoShirtSleeveTex" Format="ci8" Width="8" Height="8" Offset="0x2C90" TlutOffset="0x1CD0"/>
+        <Texture Name="gIngoShirtButtonsTex" Format="ci8" Width="32" Height="32" Offset="0x2CD0" TlutOffset="0x1CD0"/>
+        <Texture Name="gIngoClothTex" Format="ci8" Width="8" Height="8" Offset="0x30D0" TlutOffset="0x1CD0"/>
+        <Texture Name="gIngoClothStainTex" Format="ci8" Width="8" Height="8" Offset="0x3110" TlutOffset="0x1CD0"/>
+        <Texture Name="gIngoPocketTex" Format="ci8" Width="8" Height="8" Offset="0x31D0" TlutOffset="0x1CD0"/>
+        <Texture Name="gIngoHeadTLUT" Format="rgba16" Width="252" Height="1" Offset="0x3210"/>
+        <Texture Name="gIngoTLUT2" Format="rgba16" Width="100" Height="1" Offset="0x3408"/>
+        <Texture Name="gIngoHeadGradient2Tex" Format="ci8" Width="8" Height="8" Offset="0x34D0" TlutOffset="0x3210"/>
+        <Texture Name="gIngoEarTex" Format="ci8" Width="8" Height="8" Offset="0x3510" TlutOffset="0x3408"/>
+        <Texture Name="gIngoBrownTex" Format="ci8" Width="8" Height="8" Offset="0x3550" TlutOffset="0x3408"/> <!-- Used in his mustache, eyebrows, pitchfork -->
+        <Texture Name="gIngoEyebrowEdgeTex" Format="rgba16" Width="16" Height="16" Offset="0x3990"/>
+        <Texture Name="gIngoHairTex" Format="ci8" Width="16" Height="16" Offset="0x3B90" TlutOffset="0x3408"/>
+        <Texture Name="gIngoSideburnsTex" Format="ci8" Width="16" Height="16" Offset="0x3C90" TlutOffset="0x3408"/>
+        <Texture Name="gIngoPitchforkTex" Format="i8" Width="8" Height="8" Offset="0x3D90"/>
+        <Texture Name="gIngoBasketTex" Format="rgba16" Width="8" Height="16" Offset="0x3DD0"/>
+        <Texture Name="gIngoBeardTex" Format="ci8" Width="16" Height="32" Offset="0x3ED0" TlutOffset="0x3408"/>
+        <Texture Name="gIngoBasketInsideTex" Format="rgba16" Width="8" Height="16" Offset="0x40D0"/>
+        <Texture Name="gIngoBootSideTex" Format="ci8" Width="8" Height="16" Offset="0x41D0" TlutOffset="0x3408"/>
+        <Texture Name="gIngoBootTopTex" Format="ci8" Width="16" Height="16" Offset="0x4250" TlutOffset="0x3408"/>
+        <Texture Name="gIngoHeadGradientTex" Format="ci8" Width="8" Height="8" Offset="0x4790" TlutOffset="0x3408"/>
+
+        <Texture Name="gIngoEyeOpenTex" Format="ci8" Width="32" Height="32" Offset="0x3590" TlutOffset="0x3210"/>
+        <Texture Name="gIngoRedTex" Format="ci8" Width="8" Height="8" Offset="0x4350" TlutOffset="0x3210"/>
+        <Texture Name="gIngoEyeHalfTex" Format="ci8" Width="32" Height="32" Offset="0x47D0" TlutOffset="0x3210"/>
+        <Texture Name="gIngoEyeClosedTex" Format="ci8" Width="32" Height="32" Offset="0x4BD0" TlutOffset="0x3210"/>
+        <Texture Name="gIngoEyeClosed2Tex" Format="ci8" Width="32" Height="32" Offset="0x4390" TlutOffset="0x3210"/>
+
+        <Array Name="gIngoChildEraHeadVtx" Count="152" Offset="0x4FD0">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraRightEyebrowVtx" Count="7" Offset="0x5950">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraLeftEyebrowVtx" Count="7" Offset="0x59C0">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraMustacheVtx" Count="10" Offset="0x5A30">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraLeftFootVtx" Count="42" Offset="0x5AD0">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraRightFootVtx" Count="42" Offset="0x5D70">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraBasketVtx" Count="61" Offset="0x6010">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraPitchForkVtx" Count="53" Offset="0x63E0">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraLeftHandVtx" Count="70" Offset="0x7F98">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraLeftArmVtx" Count="33" Offset="0x83F8">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraLeftShoulderVtx" Count="30" Offset="0x8608">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraRightHandVtx" Count="70" Offset="0x87E8">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraRightArmVtx" Count="33" Offset="0x8C48">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraRightShoulderVtx" Count="30" Offset="0x8E58">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraChestVtx" Count="78" Offset="0x9038">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraLeftLegVtx" Count="36" Offset="0x9518">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraLeftThighVtx" Count="39" Offset="0x9758">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraRightLegVtx" Count="36" Offset="0x99C8">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraRightThighVtx" Count="39" Offset="0x9C08">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoChildEraTorsoVtx" Count="38" Offset="0x9E78">
+            <Vtx/>
+        </Array>
+
+        <DList Name="gIngoChildEraHeadDL" Offset="0x6730"/>
+        <DList Name="gIngoChildEraRightEyebrowDL" Offset="0x7398"/>
+        <DList Name="gIngoChildEraLeftEyebrowDL" Offset="0x74C0"/>
+        <DList Name="gIngoChildEraMustacheDL" Offset="0x75E8"/>
+        <DList Name="gIngoChildEraLeftFootDL" Offset="0x76E0"/>
+        <DList Name="gIngoChildEraRightFootDL" Offset="0x7880"/>
+        <DList Name="gIngoChildEraBasketDL" Offset="0x7A20"/>
+        <DList Name="gIngoChildEraPitchForkDL" Offset="0x7BF8"/>
+        <DList Name="gIngoChildEraChestDL" Offset="0xA0D8"/>
+        <DList Name="gIngoChildEraRightShoulderDL" Offset="0xA408"/>
+        <DList Name="gIngoChildEraRightArmDL" Offset="0xA630"/>
+        <DList Name="gIngoChildEraRightHandDL" Offset="0xA8E0"/>
+        <DList Name="gIngoChildEraLeftShoulderDL" Offset="0xACA0"/>
+        <DList Name="gIngoChildEraLeftArmDL" Offset="0xAEC8"/>
+        <DList Name="gIngoChildEraLeftHandDL" Offset="0xB178"/>
+        <DList Name="gIngoChildEraTorsoDL" Offset="0xB5B8"/>
+        <DList Name="gIngoChildEraRightThighDL" Offset="0xB7E0"/>
+        <DList Name="gIngoChildEraRightLegDL" Offset="0xBB28"/>
+        <DList Name="gIngoChildEraLeftThighDL" Offset="0xBD80"/>
+        <DList Name="gIngoChildEraLeftLegDL" Offset="0xC0C8"/>
+
+        <Texture Name="gIngoAdultEraTLUT" Format="rgba16" Width="16" Height="16" Offset="0xC298"/>
+        <Texture Name="gIngoAdultEraEyebrowEdgeTex" Format="rgba16" Width="16" Height="16" Offset="0xC498"/>
+        <Texture Name="gIngoAdultEraFaceHairTex" Format="ci8" Width="8" Height="8" Offset="0xC698" TlutOffset="0xC298"/>
+        <Texture Name="gIngoAdultEraGradientTex" Format="ci8" Width="8" Height="8" Offset="0xC6D8" TlutOffset="0xC298"/>
+        <Texture Name="gIngoAdultEraEarTex" Format="ci8" Width="8" Height="8" Offset="0xC718" TlutOffset="0xC298"/>
+        <Texture Name="object_in_Tex_00C758" Format="ci8" Width="16" Height="32" Offset="0xC758" TlutOffset="0xC298"/>
+        <Texture Name="gIngoAdultEraHairTex" Format="ci8" Width="16" Height="16" Offset="0xC958" TlutOffset="0xC298"/>
+        <Texture Name="gIngoAdultEraSideburnsTex" Format="ci8" Width="16" Height="16" Offset="0xCA58" TlutOffset="0xC298"/>
+        <Texture Name="gIngoAdultEraGradient2Tex" Format="ci8" Width="8" Height="8" Offset="0xCB58" TlutOffset="0xC298"/>
+
+        <Texture Name="gIngoUnusedEyeOpenTex" Format="rgba16" Width="32" Height="32" Offset="0xCB98"/>
+        <Texture Name="gIngoUnusedEyeHalfTex" Format="rgba16" Width="32" Height="32" Offset="0xD398"/>
+        <Texture Name="gIngoUnusedEyeClosedTex" Format="rgba16" Width="32" Height="32" Offset="0xDB98"/>
+
+        <Texture Name="gIngoAdultEraFingersTex" Format="ci8" Width="16" Height="16" Offset="0xE398" TlutOffset="0xC298"/>
+        <Texture Name="gIngoAdultEraArmHairTex" Format="ci8" Width="16" Height="32" Offset="0xE498" TlutOffset="0xC298"/>
+        <Texture Name="gIngoAdultEraSleeveTex" Format="ci8" Width="16" Height="16" Offset="0xE698" TlutOffset="0xC298"/>
+        <Texture Name="gIngoAdultEraCollarTex" Format="ci8" Width="16" Height="16" Offset="0xE798" TlutOffset="0xC298"/>
+        <Texture Name="gIngoAdultEraCollar2Tex" Format="ci8" Width="16" Height="16" Offset="0xE898" TlutOffset="0xC298"/>
+        <Texture Name="gIngoAdultEraShirtTex" Format="ci8" Width="16" Height="16" Offset="0xE998" TlutOffset="0xC298"/>
+        <Texture Name="gIngoAdultEraShoesTex" Format="ci8" Width="8" Height="8" Offset="0xEA98" TlutOffset="0xC298"/>
+        <Texture Name="gIngoAdultEraPantsTex" Format="ci8" Width="8" Height="8" Offset="0xEAD8" TlutOffset="0xC298"/>
+
+        <Array Name="gIngoAdultEraRightEyebrowVtx" Count="7" Offset="0xEB18">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraLeftEyebrowVtx" Count="7" Offset="0xEB88">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraMustacheVtx" Count="10" Offset="0xEBF8">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraHeadVtx" Count="137" Offset="0xEC98">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraLeftHandVtx" Count="70" Offset="0xF528">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraLeftArmVtx" Count="27" Offset="0xF988">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraLeftShoulderVtx" Count="27" Offset="0xFB38">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraRightHandVtx" Count="70" Offset="0xFCE8">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraRightArmVtx" Count="27" Offset="0x10148">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraRightShoulderVtx" Count="27" Offset="0x102F8">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraChestVtx" Count="99" Offset="0x104A8">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraLeftFootVtx" Count="29" Offset="0x10AD8">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraLeftLegVtx" Count="27" Offset="0x10CA8">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraLeftThighVtx" Count="29" Offset="0x10E58">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraRightFootVtx" Count="29" Offset="0x11028">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraRightLegVtx" Count="27" Offset="0x111F8">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraRightThighVtx" Count="29" Offset="0x113A8">
+            <Vtx/>
+        </Array>
+        <Array Name="gIngoAdultEraTorsoVtx" Count="30" Offset="0x11578">
+            <Vtx/>
+        </Array>
+
+        <DList Name="gIngoAdultEraChestDL" Offset="0x11758"/>
+        <DList Name="gIngoAdultEraHeadDL" Offset="0x11AD8"/>
+        <DList Name="gIngoAdultEraMustacheDL" Offset="0x12120"/>
+        <DList Name="gIngoAdultEraRightEyebrowDL" Offset="0x12220"/>
+        <DList Name="gIngoAdultEraLeftEyebrowDL" Offset="0x12350"/>
+        <DList Name="gIngoAdultEraRightShoulderDL" Offset="0x12480"/>
+        <DList Name="gIngoAdultEraRightArmDL" Offset="0x125B0"/>
+        <DList Name="gIngoAdultEraRightHandDL" Offset="0x126E0"/>
+        <DList Name="gIngoAdultEraLeftShoulderDL" Offset="0x12AC0"/>
+        <DList Name="gIngoAdultEraLeftArmDL" Offset="0x12BF0"/>
+        <DList Name="gIngoAdultEraLeftHandDL" Offset="0x12D20"/>
+        <DList Name="gIngoAdultEraTorsoDL" Offset="0x13100"/>
+        <DList Name="gIngoAdultEraRightThighDL" Offset="0x132B8"/>
+        <DList Name="gIngoAdultEraRightLegDL" Offset="0x133F0"/>
+        <DList Name="gIngoAdultEraRightFootDL" Offset="0x13540"/>
+        <DList Name="gIngoAdultEraLeftThighDL" Offset="0x13688"/>
+        <DList Name="gIngoAdultEraLeftLegDL" Offset="0x137C0"/>
+        <DList Name="gIngoAdultEraLeftFootDL" Offset="0x13910"/>
+
+        <Limb Name="gIngoRootLimb" LimbType="Standard" EnumName="INGO_LIMB_ROOT" Offset="0x13A58"/>
+        <Limb Name="gIngoLeftThighLimb" LimbType="Standard" EnumName="INGO_LIMB_LEFT_THIGH" Offset="0x13A64"/>
+        <Limb Name="gIngoLeftLegLimb" LimbType="Standard" EnumName="INGO_LIMB_LEFT_LEG" Offset="0x13A70"/>
+        <Limb Name="gIngoLeftFootLimb" LimbType="Standard" EnumName="INGO_LIMB_LEFT_FOOT" Offset="0x13A7C"/>
+        <Limb Name="gIngoRightThighLimb" LimbType="Standard" EnumName="INGO_LIMB_RIGHT_THIGH" Offset="0x13A88"/>
+        <Limb Name="gIngoRightLegLimb" LimbType="Standard" EnumName="INGO_LIMB_RIGHT_LEG" Offset="0x13A94"/>
+        <Limb Name="gIngoRightFootLimb" LimbType="Standard" EnumName="INGO_LIMB_RIGHT_FOOT" Offset="0x13AA0"/>
+        <Limb Name="gIngoTorsoLimb" LimbType="Standard" EnumName="INGO_LIMB_TORSO" Offset="0x13AAC"/>
+        <Limb Name="gIngoChestLimb" LimbType="Standard" EnumName="INGO_LIMB_CHEST" Offset="0x13AB8"/>
+        <Limb Name="gIngoLeftShoulderLimb" LimbType="Standard" EnumName="INGO_LIMB_LEFT_SHOULDER" Offset="0x13AC4"/>
+        <Limb Name="gIngoLeftArmLimb" LimbType="Standard" EnumName="INGO_LIMB_LEFT_ARM" Offset="0x13AD0"/>
+        <Limb Name="gIngoLeftHandLimb" LimbType="Standard" EnumName="INGO_LIMB_LEFT_HAND" Offset="0x13ADC"/>
+        <Limb Name="gIngoRightShoulderLimb" LimbType="Standard" EnumName="INGO_LIMB_RIGHT_SHOULDER" Offset="0x13AE8"/>
+        <Limb Name="gIngoRightArmLimb" LimbType="Standard" EnumName="INGO_LIMB_RIGHT_ARM" Offset="0x13AF4"/>
+        <Limb Name="gIngoRightHandLimb" LimbType="Standard" EnumName="INGO_LIMB_RIGHT_HAND" Offset="0x13B00"/>
+        <Limb Name="gIngoHeadLimb" LimbType="Standard" EnumName="INGO_LIMB_HEAD" Offset="0x13B0C"/>
+        <Limb Name="gIngoLeftEyebrowLimb" LimbType="Standard" EnumName="INGO_LIMB_LEFT_EYEBROW" Offset="0x13B18"/>
+        <Limb Name="gIngoRightEyebrowLimb" LimbType="Standard" EnumName="INGO_LIMB_RIGHT_EYEBROW" Offset="0x13B24"/>
+        <Limb Name="gIngoMustacheLimb" LimbType="Standard" EnumName="INGO_LIMB_MUSTACHE" Offset="0x13B30"/>
+
+        <Skeleton Name="gIngoSkel" Type="Flex" LimbType="Standard" LimbNone="INGO_LIMB_NONE" LimbMax="INGO_LIMB_MAX" EnumName="IngoLimb" Offset="0x13B88"/>
+
+        <Animation Name="object_in_Anim_013C6C" Offset="0x13C6C"/>
+        <Animation Name="object_in_Anim_013D60" Offset="0x13D60"/>
+        <Animation Name="object_in_Anim_01431C" Offset="0x1431C"/>
+        <Animation Name="object_in_Anim_014CA8" Offset="0x14CA8"/>
+        <Animation Name="object_in_Anim_0151C8" Offset="0x151C8"/>
+        <Animation Name="object_in_Anim_015814" Offset="0x15814"/>
+        <Animation Name="object_in_Anim_015DF0" Offset="0x15DF0"/>
+        <Animation Name="object_in_Anim_01646C" Offset="0x1646C"/>
+        <Animation Name="object_in_Anim_016B3C" Offset="0x16B3C"/>
+        <Animation Name="object_in_Anim_0175D0" Offset="0x175D0"/>
+        <Animation Name="object_in_Anim_017B58" Offset="0x17B58"/>
+        <Animation Name="object_in_Anim_018C38" Offset="0x18C38"/>
+
+        <!-- No idea what these are -->
+        <Blob Name="gIngoBlob_0020D0" Size="0x80" Offset="0x20D0"/>
+        <Blob Name="gIngoBlob_003150" Size="0x80" Offset="0x3150"/>
+    </File>
+</Root>

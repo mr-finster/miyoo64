@@ -1,0 +1,9 @@
+<Root>
+    <File Name="code">
+        <Array Name="sTransWipeVtx" Count="25" Offset="0x0">
+            <Vtx/>
+        </Array>
+        <Texture Name="sTransWipeTex" Format="i4" Width="64" Height="64" Offset="0x190"/>
+        <DList Name="sTransWipeDL" Offset="0x990"/>
+    </File>
+</Root>

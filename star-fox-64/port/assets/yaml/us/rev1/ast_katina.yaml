@@ -1,0 +1,180 @@
+# Documented
+:config:
+  segments:
+    - [0x6, 0xBB11D0]
+  header:
+    code:
+      - '#include "assets/ast_katina.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+      - '#include "sf64level.h"'
+      - '#include "sf64event.h"'
+      - '#include "sf64player.h"'
+      - '#include "sf64audio_external.h"'
+
+# Katina
+# Frontline Base
+aKaTitleCardTex:
+  { type: TEXTURE, format: IA8, width: 168, height: 28, offset: 0x6000000, ctype: u8, symbol: aKaTitleCardTex }
+
+aKaFLBaseRadarMarkTex:
+  { type: TEXTURE, format: IA8, width: 8, height: 8, offset: 0x6001260, ctype: u8, symbol: aKaFLBaseRadarMarkTex }
+
+aKaDestroyedHatchDL:
+  { type: GFX, offset: 0x60012A0, symbol: aKaDestroyedHatchDL }
+
+aKaEnemyDL:
+  { type: GFX, offset: 0x6001530, symbol: aKaEnemyDL }
+
+aKaGenTex2:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x6001968, ctype: u16, symbol: aKaGenTex2 }
+
+# Mothership model
+aKaSaucererBodyDL:
+  { type: GFX, offset: 0x6002170, symbol: aKaSaucererBodyDL }
+
+aKaSaucererTex2:
+  { type: TEXTURE, format: RGBA16, width: 8, height: 8, offset: 0x6004078, ctype: u16, symbol: aKaSaucererTex2 }
+
+aKaGenTex6:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x60040F8, ctype: u16, symbol: aKaGenTex6 }
+
+aKaGenTex5:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x60048F8, ctype: u16, symbol: aKaGenTex5 }
+
+aKaGenTex4:
+  { type: TEXTURE, format: RGBA16, width: 16, height: 16, offset: 0x60050F8, ctype: u16, symbol: aKaGenTex4 }
+
+aKaSaucererTex4:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x60052F8, ctype: u16, symbol: aKaSaucererTex4 }
+
+aKaSaucererTex1:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x6005AF8, ctype: u16, symbol: aKaSaucererTex1 }
+
+aKaGenTex3:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x60062F8, ctype: u16, symbol: aKaGenTex3 }
+
+aKaSaucererTex3:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x6006AF8, ctype: u16, symbol: aKaSaucererTex3 }
+
+aKaDestroyedKaSaucererDL:
+  { type: GFX, offset: 0x6007300, symbol: aKaDestroyedKaSaucererDL }
+
+aKaGroundDL:
+  { type: GFX, offset: 0x6009250, symbol: aKaGroundDL }
+
+aKaGroundTex:
+  { type: TEXTURE, format: RGBA16, width: 32, height: 32, offset: 0x60094A8, ctype: u16, symbol: aKaGroundTex }
+
+aKaBillPortrait1Tex:
+  { type: TEXTURE, format: RGBA16, width: 44, height: 44, offset: 0x6009CB0, ctype: u16, symbol: aKaBillPortrait1Tex }
+
+aKaBillPortrait2Tex:
+  { type: TEXTURE, format: RGBA16, width: 44, height: 44, offset: 0x600ABD0, ctype: u16, symbol: aKaBillPortrait2Tex }
+
+aKaFLBaseDL:
+  { type: GFX, offset: 0x600BAF0, symbol: aKaFLBaseDL }
+
+aKaFLBaseTex1:
+  { type: TEXTURE, format: RGBA16, width: 16, height: 16, offset: 0x600BDB0, ctype: u16, symbol: aKaFLBaseTex1 }
+
+aKaSaucererLaserTex:
+  { type: TEXTURE, format: RGBA16, width: 16, height: 16, offset: 0x600C2D8, ctype: u16, symbol: aKaSaucererLaserTex }
+
+aKaFLBaseDestroyedDL:
+  { type: GFX, offset: 0x600C4E0, symbol: aKaFLBaseDestroyedDL }
+
+aKaFLBaseTex3:
+  { type: TEXTURE, format: RGBA16, width: 16, height: 16, offset: 0x600C760, ctype: u16, symbol: aKaFLBaseTex3 }
+
+aKaFLBaseTex2:
+  { type: TEXTURE, format: RGBA16, width: 16, height: 16, offset: 0x600C960, ctype: u16, symbol: aKaFLBaseTex2 }
+
+# Mothership Core
+aKaSaucererCoreDL:
+  { type: GFX, offset: 0x600CB60, symbol: aKaSaucererCoreDL }
+
+aKaSaucererLaserDL:
+  { type: GFX, offset: 0x600BFB0, symbol: aKaSaucererLaserDL }
+
+aKaDestroyedHatch2DL:
+  { type: GFX, offset: 0x600CDC0, symbol: aKaDestroyedHatch2DL }
+
+aKaDestroyedCoreDL:
+  { type: GFX, offset: 0x600D090, symbol: aKaDestroyedCoreDL }
+
+aKaDestroyedHatch4DL:
+  { type: GFX, offset: 0x600D290, symbol: aKaDestroyedHatch4DL }
+
+aKaDestroyedHatch3DL:
+  { type: GFX, offset: 0x600D4E0, symbol: aKaDestroyedHatch3DL }
+
+aKaCornerianFighterShadowDL:
+  { type: GFX, offset: 0x600D730, symbol: aKaCornerianFighterShadowDL }
+
+aKaCornerianFighterShadowTex:
+  { type: TEXTURE, format: IA8, width: 32, height: 32, offset: 0x600D7B8, ctype: u8, symbol: aKaCornerianFighterShadowTex }
+
+aKaEnemyShadowDL:
+  { type: GFX, offset: 0x600DBC0, symbol: aKaEnemyShadowDL }
+
+aKaEnemyShadowTex:
+  { type: TEXTURE, format: IA8, width: 32, height: 32, offset: 0x600DC48, ctype: u8, symbol: aKaEnemyShadowTex }
+
+aKaCornerianFighterDL:
+  { type: GFX, offset: 0x600E050, symbol: aKaCornerianFighterDL }
+
+aKaCornerianFighterTex1:
+  { type: TEXTURE, format: RGBA16, width: 16, height: 16, offset: 0x600E7E8, ctype: u16, symbol: aKaCornerianFighterTex1 }
+
+aKaCornerianFighterTex2:
+  { type: TEXTURE, format: RGBA16, width: 16, height: 16, offset: 0x600E9E8, ctype: u16, symbol: aKaCornerianFighterTex2 }
+
+aKaCornerianFighterTex3:
+  { type: TEXTURE, format: RGBA16, width: 16, height: 16, offset: 0x600EBE8, ctype: u16, symbol: aKaCornerianFighterTex3 }
+
+aKaGenTex1:
+  { type: TEXTURE, format: RGBA16, width: 16, height: 16, offset: 0x600EDE8, ctype: u16, symbol: aKaGenTex1 }
+
+aKaEnemyLowPolyDL:
+  { type: GFX, offset: 0x600EFF0, symbol: aKaEnemyLowPolyDL }
+
+aKaBackdropDL:
+  { type: GFX, offset: 0x600F1D0, symbol: aKaBackdropDL }
+
+aKaBackdropTex:
+  { type: TEXTURE, format: RGBA16, width: 64, height: 32, offset: 0x600F260, ctype: u16, symbol: aKaBackdropTex }
+
+aKaSaucererHatch1DL:
+  { type: GFX, offset: 0x6010260, symbol: aKaSaucererHatch1DL }
+
+aKaSaucererAnim:
+  { type: SF64:ANIM, offset: 0x60105D8, symbol: aKaSaucererAnim }
+
+aKaSaucererHatch3DL:
+  { type: GFX, offset: 0x6010A60, symbol: aKaSaucererHatch3DL }
+
+aKaSaucererHatch2DL:
+  { type: GFX, offset: 0x6010D20, symbol: aKaSaucererHatch2DL }
+
+aKaSaucererSkel:
+  { type: SF64:SKELETON, offset: 0x6010744, symbol: aKaSaucererSkel }
+
+aKaSaucererHatch4DL:
+  { type: GFX, offset: 0x6010780, symbol: aKaSaucererHatch4DL }
+
+aKaEnvSetup:
+  { type: SF64:ENVIRONMENT, offset: 0x6011000, symbol: aKaEnvSetup }
+
+aKaLevelObjects:
+  { type: SF64:OBJECT_INIT, offset: 0x6011044, symbol: aKaLevelObjects }
+
+aKaSaucererHitbox:
+  { type: SF64:HITBOX, offset: 0x6011058, symbol: aKaSaucererHitbox }
+
+aKaFrontlineBaseHitbox:
+  { type: SF64:HITBOX, offset: 0x601115C, symbol: aKaFrontlineBaseHitbox }
+
+aKaUnusedHitbox:
+  { type: SF64:HITBOX, offset: 0x60111D8, symbol: aKaUnusedHitbox }

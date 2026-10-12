@@ -1,0 +1,8 @@
+# scenes with same-view z64 references (refs/r47, r48): edge/fog A/B checks
+23 Goron City,0x14D,0,0x8000
+03 Kokiri Shop,0xC1,0,0x8000
+13 Market day,0xB1,0,0x0000
+21 Graveyard,0xE4,0,0x8000
+53 Graveyard adult night,0xE4,1,0x0000
+68 Ganondorf,0x41F,1,0x8000
+36 Fishing Pond,0x45F,0,0x8000

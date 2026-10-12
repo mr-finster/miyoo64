@@ -1,0 +1,13 @@
+{
+  "id": "pm64",
+  "title": "Paper Mario",
+  "folder": "PaperMario",
+  "exe": "pm64",
+  "files": ["pm64", "recipes.bin"],
+  "icon": "icon.png",
+  "env": "PM64",
+  "data": "data",
+  "rom": {"name": "Paper Mario (USA)", "sha1": "3837f44cda784b466c9a2d99df70d77c322b97a0", "size": 41943040},
+  "system": "PAPERMARIO",
+  "minui_tag": "PM64"
+}

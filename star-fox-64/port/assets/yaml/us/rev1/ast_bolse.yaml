@@ -1,0 +1,202 @@
+# Documented
+:config:
+  segments:
+    - [0x06, 0xB0AA00]
+  header:
+    code:
+      - '#include "assets/ast_bolse.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+      - '#include "sf64level.h"'
+      - '#include "sf64event.h"'
+      - '#include "sf64player.h"'
+      - '#include "sf64audio_external.h"'
+      - '#include "sf64mesg.h"'
+
+# Bolse Defense Outpost
+aBoTitleCardTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 168, height: 19, offset: 0x6000000, symbol: aBoTitleCardTex }
+  
+aBoDefenseOutpostRadarMarkTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 16, height: 16, offset: 0x6000C80, symbol: aBoDefenseOutpostRadarMarkTex }
+
+aBoSatelliteLightsDL:
+  { type: GFX, offset: 0x6000D80, symbol: aBoSatelliteLightsDL }
+
+aBoSatelliteLightsTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x6001908, width: 16, height: 16, ctype: u16, symbol: aBoSatelliteLightsTex }
+
+aBoBaseCoreAnim:
+  { type: SF64:ANIM, offset: 0x6001C64, symbol: aBoBaseCoreAnim }
+    
+aBoBaseCoreSkel:
+  { type: SF64:SKELETON, offset: 0x6001FB0, symbol: aBoBaseCoreSkel }
+
+aBoBaseDL:
+  { type: GFX, offset: 0x6002020, symbol: aBoBaseDL }
+
+aBoGenericTex6:
+  { type: TEXTURE, format: RGBA16, offset: 0x06004848, width: 32, height: 32, ctype: u16, symbol: aBoGenericTex6 }
+
+aBoGenericTex5:
+  { type: TEXTURE, format: RGBA16, offset: 0x06005048, width: 16, height: 32, ctype: u16, symbol: aBoGenericTex5 }
+
+aBoGenericTex1:
+  { type: TEXTURE, format: RGBA16, offset: 0x06005908, width: 32, height: 32, ctype: u16, symbol: aBoGenericTex1 }
+
+aBoGenericTex2:
+  { type: TEXTURE, format: RGBA16, offset: 0x06006108, width: 32, height: 32, ctype: u16, symbol: aBoGenericTex2 }
+
+aBoLaserShotDL:
+  { type: GFX, offset: 0x6006910, symbol: aBoLaserShotDL }
+
+aBoBaseCoreTex1:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 32, offset: 0x6006AD0, symbol: aBoBaseCoreTex1 }
+
+aBoBaseCoreTLUT1:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 64, offset: 0x06006ED0, symbol: aBoBaseCoreTLUT1 }
+
+aBoLaserShotTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06006F50, width: 4, height: 16, ctype: u16, symbol: aBoLaserShotTex }
+
+aBoCorePanelTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x06006FD0, width: 32, height: 32, ctype: u16, symbol: aBoCorePanelTex }
+
+aBoUnusedCoreTex:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 32, offset: 0x60077D0, symbol: aBoUnusedCoreTex }
+
+aBoUnusedCoreTLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 64, offset: 0x06007BD0, symbol: aBoUnusedCoreTLUT }
+
+aBoGenericTex4:
+  { type: TEXTURE, format: RGBA16, offset: 0x06007DF8, width: 16, height: 32, ctype: u16, symbol: aBoGenericTex4 }
+
+aBoGenericTex3:
+  { type: TEXTURE, format: RGBA16, offset: 0x06008440, width: 16, height: 16, ctype: u16, symbol: aBoGenericTex3 }
+
+# Unused Animation
+aBoCorePanelDestroyedAnim: 
+  { type: SF64:ANIM, offset: 0x6008668, symbol: aBoCorePanelDestroyedAnim }
+
+# Unused Skeleton
+aBoCorePanelDestroyedSkel: 
+  { type: SF64:SKELETON, offset: 0x60086B4, symbol: aBoCorePanelDestroyedSkel }
+
+# Unused Animation
+aBoCorePanelIntactAnim:
+  { type: SF64:ANIM, offset: 0x60086F4, symbol: aBoCorePanelIntactAnim }
+
+# Unused Skeleton
+aBoCorePanelIntactSkel: 
+  { type: SF64:SKELETON, offset: 0x6008760, symbol: aBoCorePanelIntactSkel }
+
+aBoFighterDL:
+  { type: GFX, offset: 0x6008770, symbol: aBoFighterDL }
+
+aBoGroundTex2:
+  { type: TEXTURE, format: RGBA16, offset: 0x06008BB8, width: 32, height: 32, ctype: u16, symbol: aBoGroundTex2 }
+
+aBoFighterTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x060093B8, width: 32, height: 32, ctype: u16, symbol: aBoFighterTex }
+
+aBoCorePanelDL:
+  { type: GFX, offset: 0x6009BC0, symbol: aBoCorePanelDL }
+
+# Unused DisplayList, it's the Bolse Core.
+aBoUnusedCoreDL:
+  { type: GFX, offset: 0x600A2C0, symbol: aBoUnusedCoreDL }
+
+aBoGroundDL:
+  { type: GFX, offset: 0x600A810, symbol: aBoGroundDL }
+
+# Unused DisplayList, looks like a cube with an entrance.
+aBoUnusedCubeDL:
+  { type: GFX, offset: 0x600AB90, symbol: aBoUnusedCubeDL }
+
+aBoGroundTex1:
+  { type: TEXTURE, format: RGBA16, offset: 0x0600AD80, width: 32, height: 32, ctype: u16, symbol: aBoGroundTex1 }
+
+aBoBuildingDL:
+  { type: GFX, offset: 0x600B8B0, symbol: aBoBuildingDL }
+
+aBoSatelliteDL:
+  { type: GFX, offset: 0x600BAA0, symbol: aBoSatelliteDL }
+
+aBoGroundTileDL:
+  { type: GFX, offset: 0x600BEC0, symbol: aBoGroundTileDL }
+
+aBoBaseElectricArcDL:
+  { type: GFX, offset: 0x600BF30, symbol: aBoBaseElectricArcDL }
+
+aBoBaseElectricArcVTX2:
+  { type: VTX, count: 34, offset: 0x600C0B8, symbol: aBoBaseElectricArcVTX2 }
+
+aBoBaseElectricArcTex:
+  { type: TEXTURE, format: IA8, offset: 0x0600C2D8, width: 32, height: 16, ctype: u8, symbol: aBoBaseElectricArcTex }
+
+aBoBaseShieldDL:
+  { type: GFX, offset: 0x600C4E0, symbol: aBoBaseShieldDL }
+
+aBoBaseShieldTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x0600CF88, width: 16, height: 16, ctype: u16, symbol: aBoBaseShieldTex }
+
+aBoBackdropDL:
+  { type: GFX, offset: 0x600D190, symbol: aBoBackdropDL }
+
+aBoBackdropTex1:
+  { type: TEXTURE, format: RGBA16, offset: 0x0600D2A0, width: 32, height: 64, ctype: u16, symbol: aBoBackdropTex1 }
+
+aBoBackdropTex2:
+  { type: TEXTURE, format: RGBA16, offset: 0x0600E2A0, width: 32, height: 64, ctype: u16, symbol: aBoBackdropTex2 }
+
+aBoLaserCannonAnim:
+  { type: SF64:ANIM, offset: 0x600F2E0, symbol: aBoLaserCannonAnim }
+    
+aBoLaserCannonSkel: 
+  { type: SF64:SKELETON, offset: 0x600F36C, symbol: aBoLaserCannonSkel }
+
+aBoShieldReactorAnim:
+  { type: SF64:ANIM, offset: 0x600F3D8, symbol: aBoShieldReactorAnim }
+    
+aBoShieldReactorSkel:
+  { type: SF64:SKELETON, offset: 0x600F4A4, symbol: aBoShieldReactorSkel }
+
+aBoPoleDL:
+  { type: GFX, offset: 0x600F4C0, symbol: aBoPoleDL }
+
+aBoPoleTex:
+  { type: TEXTURE, format: RGBA16, offset: 0x0600F728, width: 32, height: 32, ctype: u16, symbol: aBoPoleTex }
+
+aBoEnvSetup:
+  { type: SF64:ENVIRONMENT, offset: 0x600FF30, symbol: aBoEnvSetup }
+
+aBoLevelObjects: 
+  { type: SF64:OBJECT_INIT, offset: 0x600FF74, symbol: aBoLevelObjects }
+
+aBoColPoly:
+  { type: SF64:COLPOLY, count: 262, offset: 0x6010294, symbol: aBoColPoly, mesh_symbol: D_BO_OFFSET }
+
+aBoUnusedHitbox:
+  { type: SF64:HITBOX, offset: 0x6011B20, symbol: aBoUnusedHitbox }
+
+aBoShieldReactorHitbox:
+  { type: SF64:HITBOX, offset: 0x6011B24, symbol: aBoShieldReactorHitbox }
+
+aBoShieldReactorDamagedHitbox:
+  { type: SF64:HITBOX, offset: 0x6011BA4, symbol: aBoShieldReactorDamagedHitbox }
+
+aBoLaserCannonHitbox:
+  { type: SF64:HITBOX, offset: 0x6011BF4, symbol: aBoLaserCannonHitbox }
+
+aBoPoleHitbox:
+  { type: SF64:HITBOX, offset: 0x6011C10, symbol: aBoPoleHitbox }
+
+aBoBuildingHitbox:
+  { type: SF64:HITBOX, offset: 0x6011C48, symbol: aBoBuildingHitbox }
+
+aBoBaseCoreHitbox:
+  { type: SF64:HITBOX, offset: 0x6011C80, symbol: aBoBaseCoreHitbox }
+
+aBoBaseElectricArcVTX1:
+  { type: VTX, count: 34, offset: 0x6011E28, symbol: aBoBaseElectricArcVTX1 }

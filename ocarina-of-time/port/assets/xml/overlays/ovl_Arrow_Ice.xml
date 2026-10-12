@@ -1,0 +1,11 @@
+<Root>
+    <File Name="ovl_Arrow_Ice">
+        <Texture Name="s1Tex" Format="i8" Width="32" Height="64" Offset="0x0"/>
+        <Texture Name="s2Tex" Format="i8" Width="32" Height="64" Offset="0x800"/>
+        <Array Name="sVtx" Count="43" Offset="0x1000">
+            <Vtx/>
+        </Array>
+        <DList Name="sMaterialDL" Offset="0x12B0"/>
+        <DList Name="sModelDL" Offset="0x1360"/>
+    </File>
+</Root>

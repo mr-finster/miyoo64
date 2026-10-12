@@ -1,0 +1,74 @@
+:config:
+  segments:
+    - [0x09, 0x9F4880]
+  header:
+    code:
+      - '#include "assets/ast_8_ti.h"'
+      - '#include "assets/ast_9_ti.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+  external_files:
+    - "assets/yaml/us/rev1/ast_8_ti.yaml"
+
+aTiGorasAnim14:
+  { type: SF64:ANIM, offset: 0x9004288, symbol: aTiGorasAnim14 }
+
+aTiGorasSkelLimb28DL:
+  { type: GFX, offset: 0x90042A0, symbol: aTiGorasSkelLimb28DL }
+
+aTiGorasSkelLimb29DL:
+  { type: GFX, offset: 0x90043D0, symbol: aTiGorasSkelLimb29DL }
+
+aTiGorasSkelLimb31DL:
+  { type: GFX, offset: 0x90044E0, symbol: aTiGorasSkelLimb31DL }
+
+aTiGorasSkelLimb32DL:
+  { type: GFX, offset: 0x90045F0, symbol: aTiGorasSkelLimb32DL }
+
+aTiGorasTex10:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x9004858, symbol: aTiGorasTex10, tlut: 0x9004958 }
+
+aTiGorasTex10TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 136, offset: 0x9004958, symbol: aTiGorasTex10TLUT }
+
+aTiGorasTex11:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 32, height: 32, offset: 0x9004A68, symbol: aTiGorasTex11, tlut: 0x9004E68 }
+
+aTiGorasTex11TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 232, offset: 0x9004E68, symbol: aTiGorasTex11TLUT }
+
+aTiGorasSkelLimb84DL:
+  { type: GFX, offset: 0x9005040, symbol: aTiGorasSkelLimb84DL }
+
+aTiGorasSkelLimb70DL:
+  { type: GFX, offset: 0x90051C0, symbol: aTiGorasSkelLimb70DL }
+
+aTiGorasSkelLimb5DL:
+  { type: GFX, offset: 0x9005450, symbol: aTiGorasSkelLimb5DL }
+
+aTiGorasSkelLimb78DL:
+  { type: GFX, offset: 0x9005600, symbol: aTiGorasSkelLimb78DL }
+
+aTiGorasSkelLimb26DL:
+  { type: GFX, offset: 0x90058A0, symbol: aTiGorasSkelLimb26DL }
+
+aTiGorasTex9:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x90059B8, symbol: aTiGorasTex9, tlut: 0x9005AB8 }
+
+aTiGorasTex9TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 240, offset: 0x9005AB8, symbol: aTiGorasTex9TLUT }
+
+aTiGorasAnim13:
+  { type: SF64:ANIM, offset: 0x900FC4C, symbol: aTiGorasAnim13 }
+
+aTiGorasSkelLimb72DL:
+  { type: GFX, offset: 0x900FC60, symbol: aTiGorasSkelLimb72DL }
+
+aTiGorasSkelLimb76DL:
+  { type: GFX, offset: 0x900FD70, symbol: aTiGorasSkelLimb76DL }
+
+aTiGorasSkelLimb2DL:
+  { type: GFX, offset: 0x900FE80, symbol: aTiGorasSkelLimb2DL }
+
+  # size: 0x10120

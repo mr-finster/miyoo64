@@ -1,0 +1,53 @@
+# ALLOWLIST. This working directory will hold things that must never be
+# published: the ROM input, extracted/derived game assets, rendered frame
+# dumps, recordings, package builds and reference clones (refs/).
+# Only source, scripts and docs are tracked -- everything else is ignored by
+# the leading "*" and has to be re-included explicitly below.
+*
+!.gitignore
+!README.md
+*.z64
+*.n64
+*.v64
+*.mp4
+*.log
+*.core
+!dev.sh
+!docker/
+!docker/Dockerfile
+!docker/Dockerfile.oot
+!docker/Dockerfile.oot
+# The port tree: z2442/oot-PSP @ 8f04fa0 (zeldaret/oot decomp + PSP port layer), imported
+# without its ROM-derived recipe metadata (assets/psp/ntsc-1.0), IDO binaries and icon.
+# port/.gitignore keeps build/, extracted/, baseroms/ ROMs out.
+!port/
+!port/**
+port/build/
+port/extracted/
+port/expected/
+port/.venv/
+port/baseroms/*/baserom*
+port/**/__pycache__/
+port/tools/ido5.3_compiler
+port/tools/ido7.1_compiler
+# The Miyoo Mini release (notes/miyoo.md, README_MIYOO.md): the packer, its templates and game.json,
+# the release script. The zips stay local (a PERSONAL one holds the player's ROM).
+!README_MIYOO.md
+!miyoo/
+!miyoo/game.json
+!miyoo/tools/
+!miyoo/tools/miyoo_pack.py
+!miyoo/templates/
+!miyoo/templates/app_config.json
+!miyoo/templates/forward.sh
+!miyoo/templates/launch.sh
+!tools/
+!tools/build_miyoo.sh
+!tools/pack_miyoo_personal.sh
+*.zip
+!miyoo/icon.png
+!miyoo/icon.svg
+# frame / texture dumps are ROM-derived images
+port/**/*.ppm
+# the Miyoo64 repository's docs
+!SETTINGS.md

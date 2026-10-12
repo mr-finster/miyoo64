@@ -1,0 +1,1866 @@
+MAKEFLAGS += --no-builtin-rules
+
+# Ensure the build fails if a piped command fails
+SHELL = /usr/bin/env bash
+.SHELLFLAGS = -o pipefail -c
+
+#### Build options ####
+
+# Build options can be changed by modifying them below, or by appending 'SETTING=value' to all 'make' commands
+# (e.g. 'make setup VERSION=ntsc-1.0' and 'make VERSION=ntsc-1.0' to build the NTSC 1.0 version).
+# Alternatively, you can create a file called .make_options.mk (gitignored by default) and add 'SETTING=value'
+# there to avoid modifying the Makefile directly.
+
+-include .make_options.mk
+
+# If COMPARE is 1, check the output md5sum after building. Set to 0 when modding.
+COMPARE ?= 1
+# If NON_MATCHING is 1, define the NON_MATCHING C flag when building. Set to 1 when modding.
+NON_MATCHING ?= 0
+# If ORIG_COMPILER is 1, compile with QEMU_IRIX and the original compiler.
+ORIG_COMPILER ?= 0
+# If COMPILER is "gcc", compile with GCC instead of IDO.
+COMPILER ?= ido
+# Target game version. Ensure the corresponding input ROM is placed in baseroms/$(VERSION)/baserom.z64.
+# Currently the following versions are supported:
+#   ntsc-1.0       N64 NTSC 1.0 (Japan/US depending on REGION)
+#   ntsc-1.1       N64 NTSC 1.1 (Japan/US depending on REGION)
+#   pal-1.0        N64 PAL 1.0 (Europe)
+#   ntsc-1.2       N64 NTSC 1.2 (Japan/US depending on REGION)
+#   pal-1.1        N64 PAL 1.1 (Europe)
+#   gc-jp          GameCube Japan
+#   gc-jp-mq       GameCube Japan Master Quest
+#   gc-us          GameCube US
+#   gc-us-mq       GameCube US Master Quest
+#   gc-eu-mq-dbg   GameCube Europe/PAL Master Quest Debug (default)
+#   gc-eu          GameCube Europe/PAL
+#   gc-eu-mq       GameCube Europe/PAL Master Quest
+#   gc-jp-ce       GameCube Japan (Collector's Edition disc)
+#   ique-cn        iQue Player (Simplified Chinese)
+VERSION ?= gc-eu-mq-dbg
+# Number of threads to extract and compress with. `nproc` is not available by
+# default on macOS, while getconf is available on both macOS and Linux.
+N_THREADS ?= $(shell nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
+# If DEBUG_OBJECTS is 1, produce additional debugging files such as objdump output or raw binaries for assets
+DEBUG_OBJECTS ?= 0
+# Set prefix to mips binutils binaries (mips-linux-gnu-ld => 'mips-linux-gnu-') - Change at your own risk!
+# In nearly all cases, not having 'mips-linux-gnu-*' binaries on the PATH indicates missing dependencies.
+MIPS_BINUTILS_PREFIX ?= mips-linux-gnu-
+# Emulator w/ flags for 'make run'.
+N64_EMULATOR ?=
+# Set to override game region in the ROM header (options: JP, US, EU). This can be used to build a fake US version
+# of the debug ROM for better emulator compatibility, or to build US versions of NTSC N64 ROMs.
+# REGION ?= US
+# Set to enable debug features regardless of ROM version.
+# Note that by enabling debug features on non-debug ROM versions, some debug ROM specific assets will not be included.
+# This means the debug test scenes and some debug graphics in the elf_msg actors will not work as expected.
+# This may also be used to disable debug features on debug ROMs by setting DEBUG_FEATURES to 0
+# DEBUG_FEATURES ?= 1
+
+# Version-specific settings
+REGIONAL_CHECKSUM := 0
+ifeq ($(VERSION),ntsc-1.0)
+  REGIONAL_CHECKSUM := 1
+  REGION ?= JP
+  PLATFORM := N64
+  DEBUG_FEATURES ?= 0
+  BUILD_CREATOR := zelda@srd44
+  BUILD_DATE := 98-10-21
+  BUILD_TIME := 04:56:31
+  REVISION := 0
+else ifeq ($(VERSION),ntsc-1.1)
+  REGIONAL_CHECKSUM := 1
+  REGION ?= JP
+  PLATFORM := N64
+  DEBUG_FEATURES ?= 0
+  BUILD_CREATOR := zelda@srd44
+  BUILD_DATE := 98-10-26
+  BUILD_TIME := 10:58:45
+  REVISION := 1
+else ifeq ($(VERSION),pal-1.0)
+  REGION ?= EU
+  PLATFORM := N64
+  DEBUG_FEATURES ?= 0
+  BUILD_CREATOR := zelda@srd44
+  BUILD_DATE := 98-11-10
+  BUILD_TIME := 14:34:22
+  REVISION := 0
+else ifeq ($(VERSION),ntsc-1.2)
+  REGIONAL_CHECKSUM := 1
+  REGION ?= JP
+  PLATFORM := N64
+  DEBUG_FEATURES ?= 0
+  BUILD_CREATOR := zelda@srd44
+  BUILD_DATE := 98-11-12
+  BUILD_TIME := 18:17:03
+  REVISION := 2
+else ifeq ($(VERSION),pal-1.1)
+  REGION ?= EU
+  PLATFORM := N64
+  DEBUG_FEATURES ?= 0
+  BUILD_CREATOR := zelda@srd44
+  BUILD_DATE := 98-11-18
+  BUILD_TIME := 17:36:49
+  REVISION := 1
+else ifeq ($(VERSION),gc-jp)
+  REGION ?= JP
+  PLATFORM := GC
+  DEBUG_FEATURES ?= 0
+  BUILD_CREATOR := zelda@srd022j
+  BUILD_DATE := 02-10-29
+  BUILD_TIME := 23:49:53
+  REVISION := 15
+else ifeq ($(VERSION),gc-jp-mq)
+  REGION ?= JP
+  PLATFORM := GC
+  DEBUG_FEATURES ?= 0
+  BUILD_CREATOR := zelda@srd022j
+  BUILD_DATE := 02-10-30
+  BUILD_TIME := 00:15:15
+  REVISION := 15
+else ifeq ($(VERSION),gc-us)
+  REGION ?= US
+  PLATFORM := GC
+  DEBUG_FEATURES ?= 0
+  BUILD_CREATOR := zelda@srd022j
+  BUILD_DATE := 02-12-19
+  BUILD_TIME := 13:28:09
+  REVISION := 15
+else ifeq ($(VERSION),gc-us-mq)
+  REGION ?= US
+  PLATFORM := GC
+  DEBUG_FEATURES ?= 0
+  BUILD_CREATOR := zelda@srd022j
+  BUILD_DATE := 02-12-19
+  BUILD_TIME := 14:05:42
+  REVISION := 15
+else ifeq ($(VERSION),gc-eu-dbg-2)
+  REGION ?= EU
+  PLATFORM := GC
+  DEBUG_FEATURES ?= 1
+  BUILD_CREATOR := zelda@srd022j
+  BUILD_DATE := 03-02-13
+  BUILD_TIME := 19:46:49
+  REVISION := 15
+else ifeq ($(VERSION),gc-eu-mq-dbg)
+  REGION ?= EU
+  PLATFORM := GC
+  DEBUG_FEATURES ?= 1
+  BUILD_CREATOR := zelda@srd022j
+  BUILD_DATE := 03-02-21
+  BUILD_TIME := 00:16:31
+  REVISION := 15
+else ifeq ($(VERSION),gc-eu-dbg)
+  REGION ?= EU
+  PLATFORM := GC
+  DEBUG_FEATURES ?= 1
+  BUILD_CREATOR := zelda@srd022j
+  BUILD_DATE := 03-02-21
+  BUILD_TIME := 00:49:18
+  REVISION := 15
+else ifeq ($(VERSION),gc-eu)
+  REGION ?= EU
+  PLATFORM := GC
+  DEBUG_FEATURES ?= 0
+  BUILD_CREATOR := zelda@srd022j
+  BUILD_DATE := 03-02-21
+  BUILD_TIME := 20:12:23
+  REVISION := 15
+else ifeq ($(VERSION),gc-eu-mq)
+  REGION ?= EU
+  PLATFORM := GC
+  DEBUG_FEATURES ?= 0
+  BUILD_CREATOR := zelda@srd022j
+  BUILD_DATE := 03-02-21
+  BUILD_TIME := 20:37:19
+  REVISION := 15
+else ifeq ($(VERSION),gc-jp-ce)
+  REGION ?= JP
+  PLATFORM := GC
+  DEBUG_FEATURES ?= 0
+  BUILD_CREATOR := zelda@srd022j
+  BUILD_DATE := 03-10-08
+  BUILD_TIME := 21:53:00
+  REVISION := 15
+else ifeq ($(VERSION),ique-cn)
+  REGION ?= US
+  PLATFORM := IQUE
+  DEBUG_FEATURES ?= 0
+  BUILD_CREATOR := build@toad.routefree.com
+  BUILD_DATE := 03-10-22
+  BUILD_TIME := 16:23:19
+  REVISION := 0
+else
+$(error Unsupported version $(VERSION))
+endif
+
+# ORIG_COMPILER cannot be combined with a non-IDO compiler. Check for this case and error out if found.
+ifneq ($(COMPILER),ido)
+  ifeq ($(ORIG_COMPILER),1)
+    $(error ORIG_COMPILER can only be used with the IDO compiler. Please check your Makefile variables and try again)
+  endif
+endif
+
+ifeq ($(COMPILER),gcc)
+  CPP_DEFINES += -DCOMPILER_GCC
+  NON_MATCHING := 1
+endif
+
+ifeq ($(NON_MATCHING),1)
+  CPP_DEFINES += -DNON_MATCHING -DAVOID_UB
+  COMPARE := 0
+endif
+
+PROJECT_DIR := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
+BUILD_DIR := build/$(VERSION)
+EXPECTED_DIR := expected/$(BUILD_DIR)
+BASEROM_DIR := baseroms/$(VERSION)
+EXTRACTED_DIR := extracted/$(VERSION)
+VENV := .venv
+
+MAKE = make
+
+ifeq ($(PLATFORM),N64)
+  CPP_DEFINES += -DPLATFORM_N64=1 -DPLATFORM_GC=0 -DPLATFORM_IQUE=0
+  LIBULTRA_VERSION := I
+  LIBULTRA_PATCH := 1
+else ifeq ($(PLATFORM),GC)
+  CPP_DEFINES += -DPLATFORM_N64=0 -DPLATFORM_GC=1 -DPLATFORM_IQUE=0
+  LIBULTRA_VERSION := L
+  LIBULTRA_PATCH := 0
+else ifeq ($(PLATFORM),IQUE)
+  CPP_DEFINES += -DPLATFORM_N64=0 -DPLATFORM_GC=0 -DPLATFORM_IQUE=1
+  LIBULTRA_VERSION := L
+  LIBULTRA_PATCH := 0
+else
+$(error Unsupported platform $(PLATFORM))
+endif
+
+# Converts e.g. ntsc-1.0 to NTSC_1_0
+VERSION_MACRO := $(shell echo $(VERSION) | tr a-z-. A-Z__)
+CPP_DEFINES += -DOOT_VERSION=$(VERSION_MACRO) -DOOT_REVISION=$(REVISION)
+CPP_DEFINES += -DOOT_REGION=REGION_$(REGION)
+CPP_DEFINES += -DLIBULTRA_VERSION=LIBULTRA_VERSION_$(LIBULTRA_VERSION)
+CPP_DEFINES += -DLIBULTRA_PATCH=$(LIBULTRA_PATCH)
+ifeq ($(PLATFORM),IQUE)
+  CPP_DEFINES += -DBBPLAYER
+endif
+
+ifeq ($(DEBUG_FEATURES),1)
+  CPP_DEFINES += -DDEBUG_FEATURES=1
+  OPTFLAGS := -O2
+else
+  CPP_DEFINES += -DDEBUG_FEATURES=0 -DNDEBUG
+  OPTFLAGS := -O2 -g3
+endif
+ASOPTFLAGS := -O1
+
+ifeq ($(OS),Windows_NT)
+    DETECTED_OS=windows
+else
+    UNAME_S := $(shell uname -s)
+    ifeq ($(UNAME_S),Linux)
+        DETECTED_OS=linux
+    endif
+    ifeq ($(UNAME_S),Darwin)
+        DETECTED_OS=macos
+        MAKE=gmake
+    endif
+endif
+
+#### Tools ####
+ifneq ($(shell type $(MIPS_BINUTILS_PREFIX)ld >/dev/null 2>/dev/null; echo $$?), 0)
+  $(error Unable to find $(MIPS_BINUTILS_PREFIX)ld. Please install or build MIPS binutils, commonly mips-linux-gnu. (or set MIPS_BINUTILS_PREFIX if your MIPS binutils install uses another prefix))
+endif
+
+# Detect compiler and set variables appropriately.
+ifeq ($(COMPILER),gcc)
+  CC       := $(MIPS_BINUTILS_PREFIX)gcc
+  CCAS     := $(CC) -x assembler-with-cpp
+else ifeq ($(COMPILER),ido)
+  CC       := tools/ido_recomp/$(DETECTED_OS)/7.1/cc
+  CC_OLD   := tools/ido_recomp/$(DETECTED_OS)/5.3/cc
+  CCAS     := $(CC_OLD)
+else
+$(error Unsupported compiler. Please use either ido or gcc as the COMPILER variable.)
+endif
+
+# if ORIG_COMPILER is 1, check that either QEMU_IRIX is set or qemu-irix package installed
+ifeq ($(ORIG_COMPILER),1)
+  ifndef QEMU_IRIX
+    QEMU_IRIX := $(shell which qemu-irix)
+    ifeq (, $(QEMU_IRIX))
+      $(error Please install qemu-irix package or set QEMU_IRIX env var to the full qemu-irix binary path)
+    endif
+  endif
+  CC       := $(QEMU_IRIX) -L tools/ido7.1_compiler tools/ido7.1_compiler/usr/bin/cc
+  CC_OLD   := $(QEMU_IRIX) -L tools/ido5.3_compiler tools/ido5.3_compiler/usr/bin/cc
+  CCAS     := $(CC)
+endif
+
+# EGCS Compiler
+EGCS_PREFIX := tools/egcs/$(DETECTED_OS)/
+EGCS_CC := $(EGCS_PREFIX)gcc -B $(EGCS_PREFIX)
+EGCS_CCAS := $(EGCS_CC) -x assembler-with-cpp
+
+AS      := $(MIPS_BINUTILS_PREFIX)as
+LD      := $(MIPS_BINUTILS_PREFIX)ld
+OBJCOPY := $(MIPS_BINUTILS_PREFIX)objcopy
+OBJDUMP := $(MIPS_BINUTILS_PREFIX)objdump
+NM      := $(MIPS_BINUTILS_PREFIX)nm
+STRIP   := $(MIPS_BINUTILS_PREFIX)strip
+
+# Command prefix to preprocess a file before running the compiler
+PREPROCESS :=
+
+# Command to patch certain object files after they are built
+POSTPROCESS_OBJ := @:
+
+# The default iconv on macOS has some differences from GNU iconv, so we use the Homebrew version instead
+ifeq ($(UNAME_S),Darwin)
+  ICONV := $(shell brew --prefix)/opt/libiconv/bin/iconv
+else
+  ICONV := iconv
+endif
+
+INC := -Iinclude -Iinclude/libc -Isrc -I$(BUILD_DIR) -I. -I$(EXTRACTED_DIR)
+
+# Check code syntax with host compiler
+CHECK_WARNINGS := -Wall -Wextra -Wno-format-security -Wno-unknown-pragmas -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces
+CHECK_WARNINGS += -Werror=implicit-int -Werror=implicit-function-declaration -Werror=int-conversion -Werror=incompatible-pointer-types
+
+# The `cpp` command behaves differently on macOS (it behaves as if
+# `-traditional-cpp` was passed) so we use `gcc -E` instead.
+CPP        := gcc -E
+MKLDSCRIPT := tools/mkldscript
+MKDMADATA  := tools/mkdmadata
+ELF2ROM    := tools/elf2rom
+BIN2C      := tools/bin2c
+FADO       := tools/fado/fado.elf
+PYTHON     ?= $(VENV)/bin/python3
+BUILD_FROM_PNG := tools/assets/build_from_png/build_from_png
+BUILD_JFIF := tools/assets/build_jfif/build_jfif
+
+# Command to replace $(BUILD_DIR) in some files with the build path.
+# We can't use the C preprocessor for this because it won't substitute inside string literals.
+BUILD_DIR_REPLACE := sed -e 's|$$(BUILD_DIR)|$(BUILD_DIR)|g'
+
+# Audio tools
+SAMPLECONV    := tools/audio/sampleconv/sampleconv
+SBC           := tools/audio/sbc
+SFC           := tools/audio/sfc
+SFPATCH       := tools/audio/sfpatch
+ATBLGEN       := tools/audio/atblgen
+AFILE_SIZES   := tools/audio/afile_sizes
+# We want linemarkers in sequence assembly files for better assembler error messages
+SEQ_CPP       := $(CPP) -x assembler-with-cpp -fno-dollars-in-identifiers
+SEQ_CPPFLAGS  := -D_LANGUAGE_ASEQ -DMML_VERSION=MML_VERSION_OOT $(CPP_DEFINES) -I include -I include/audio -I include/tables/sfx -I $(BUILD_DIR)/assets/audio/soundfonts
+
+SBCFLAGS := --matching
+SFCFLAGS := --matching
+
+# Extra debugging steps
+ifeq ($(DEBUG_OBJECTS),1)
+  OBJDUMP_CMD = @$(OBJDUMP) $(OBJDUMP_FLAGS) $@ > $(@:.o=.s)
+  OBJCOPY_CMD = @$(OBJCOPY) -O binary $@ $(@:.o=.bin)
+else
+  OBJDUMP_CMD = @:
+  OBJCOPY_CMD = @:
+endif
+
+ifeq ($(COMPILER),gcc)
+  OPTFLAGS := -Os -ffast-math -fno-unsafe-math-optimizations
+endif
+
+GBI_DEFINES := -DF3DEX_GBI_2
+ifneq ($(PLATFORM),N64)
+  GBI_DEFINES += -DF3DEX_GBI_PL -DGBI_DOWHILE
+endif
+ifeq ($(DEBUG_FEATURES),1)
+  GBI_DEFINES += -DGBI_DEBUG
+endif
+
+CPPFLAGS += -P -xc -fno-dollars-in-identifiers $(CPP_DEFINES) $(GBI_DEFINES)
+ASFLAGS += -march=vr4300 -32 -no-pad-sections -Iinclude -I$(EXTRACTED_DIR)
+
+ifeq ($(COMPILER),gcc)
+  CFLAGS += $(CPP_DEFINES) $(GBI_DEFINES) -G 0 -nostdinc -MD -MP $(INC) -march=vr4300 -mfix4300 -mabi=32 -mno-abicalls -mdivide-breaks -fno-PIC -fno-common -ffreestanding -funsigned-char -fbuiltin -fno-builtin-sinf -fno-builtin-cosf $(CHECK_WARNINGS)
+  CCASFLAGS += $(CPP_DEFINES) $(GBI_DEFINES) -G 0 -nostdinc -MD -MP $(INC) -march=vr4300 -mfix4300 -mabi=32 -mno-abicalls -fno-PIC -fno-common -Wa,-no-pad-sections
+  MIPS_VERSION := -mips3
+else
+  # Suppress warnings for wrong number of macro arguments (to fake variadic
+  # macros) and Microsoft extensions such as anonymous structs (which the
+  # compiler does support but warns for their usage).
+  CFLAGS += $(CPP_DEFINES) $(GBI_DEFINES) -G 0 -non_shared -fullwarn -verbose -Xcpluscomm $(INC) -Wab,-r4300_mul -woff 516,609,649,838,712,807
+  CCASFLAGS += $(CPP_DEFINES) $(GBI_DEFINES) -G 0 -non_shared -fullwarn -verbose -Xcpluscomm $(INC) -Wab,-r4300_mul -woff 516,609,649,838,712,807 -o32
+  MIPS_VERSION := -mips2
+
+  EGCS_CFLAGS += $(CPP_DEFINES) $(GBI_DEFINES) -DEGCS -G 0 -nostdinc $(INC) -mcpu=vr4300 -mabi=32 -mgp32 -mfp32 -fno-PIC
+  EGCS_CCASFLAGS := -Wall -nostdinc $(CPP_DEFINES) -DEGCS $(INC) -c -G 0 -Wa,-irix-symtab -D_ABIO32=1 -D_ABI64=3 -D_MIPS_SIM_ABI64=_ABI64 -D_MIPS_SIM_ABI32=_ABIO32 -DMIPSEB -D_LANGUAGE_ASSEMBLY -mabi=32 -fno-PIC -non_shared -mcpu=4300 -mfix4300
+  EGCS_ASOPTFLAGS :=
+endif
+
+ifeq ($(COMPILER),ido)
+  # Have CC_CHECK pretend to be a MIPS compiler
+  MIPS_BUILTIN_DEFS := -D_MIPS_ISA_MIPS2=2 -D_MIPS_ISA=_MIPS_ISA_MIPS2 -D_ABIO32=1 -D_MIPS_SIM=_ABIO32 -D_MIPS_SZINT=32 -D_MIPS_SZLONG=32 -D_MIPS_SZPTR=32
+  CC_CHECK  = gcc -nostdinc -MD -MP -fno-builtin -fsyntax-only -funsigned-char -std=gnu90 -D_LANGUAGE_C $(CPP_DEFINES) $(MIPS_BUILTIN_DEFS) $(GBI_DEFINES) $(INC) $(CHECK_WARNINGS)
+  ifeq ($(shell getconf LONG_BIT), 32)
+    # Work around memory allocation bug in QEMU
+    export QEMU_GUEST_BASE := 1
+  else
+    # Ensure that gcc (warning check) treats the code as 32-bit
+    CC_CHECK += -m32
+  endif
+else
+  CC_CHECK = @:
+endif
+
+OBJDUMP_FLAGS := -d -r -z -Mreg-names=32
+
+#### Files ####
+
+# ROM image
+ROM      := $(BUILD_DIR)/oot-$(VERSION).z64
+ROMC     := $(ROM:.z64=-compressed.z64)
+ELF      := $(ROM:.z64=.elf)
+MAP      := $(ROM:.z64=.map)
+LDSCRIPT := $(ROM:.z64=.ld)
+
+# description of ROM segments
+SPEC := spec/spec
+SPEC_INCLUDES := $(wildcard spec/*.inc)
+
+SRC_DIRS := $(shell find src -type d)
+UNDECOMPILED_DATA_DIRS := $(shell find data -type d)
+
+ifneq ($(wildcard $(EXTRACTED_DIR)/assets/audio),)
+  SAMPLE_EXTRACT_DIRS := $(shell find $(EXTRACTED_DIR)/assets/audio/samples -type d)
+  SAMPLEBANK_EXTRACT_DIRS := $(shell find $(EXTRACTED_DIR)/assets/audio/samplebanks -type d)
+  SOUNDFONT_EXTRACT_DIRS := $(shell find $(EXTRACTED_DIR)/assets/audio/soundfonts -type d)
+  SEQUENCE_EXTRACT_DIRS := $(shell find $(EXTRACTED_DIR)/assets/audio/sequences -type d)
+else
+  SAMPLE_EXTRACT_DIRS :=
+  SAMPLEBANK_EXTRACT_DIRS :=
+  SOUNDFONT_EXTRACT_DIRS :=
+  SEQUENCE_EXTRACT_DIRS :=
+endif
+
+ifneq ($(wildcard assets/audio/samples),)
+  SAMPLE_DIRS := $(shell find assets/audio/samples -type d)
+else
+  SAMPLE_DIRS :=
+endif
+
+ifneq ($(wildcard assets/audio/samplebanks),)
+  SAMPLEBANK_DIRS := $(shell find assets/audio/samplebanks -type d)
+else
+  SAMPLEBANK_DIRS :=
+endif
+
+ifneq ($(wildcard assets/audio/soundfonts),)
+  SOUNDFONT_DIRS := $(shell find assets/audio/soundfonts -type d)
+else
+  SOUNDFONT_DIRS :=
+endif
+
+ifneq ($(wildcard assets/audio/sequences),)
+  SEQUENCE_DIRS := $(shell find assets/audio/sequences -type d)
+else
+  SEQUENCE_DIRS :=
+endif
+
+SAMPLE_FILES         := $(foreach dir,$(SAMPLE_DIRS),$(wildcard $(dir)/*.wav))
+SAMPLE_EXTRACT_FILES := $(foreach dir,$(SAMPLE_EXTRACT_DIRS),$(wildcard $(dir)/*.wav))
+AIFC_FILES           := $(foreach f,$(SAMPLE_FILES),$(BUILD_DIR)/$(f:.wav=.aifc)) $(foreach f,$(SAMPLE_EXTRACT_FILES:.wav=.aifc),$(f:$(EXTRACTED_DIR)/%=$(BUILD_DIR)/%))
+
+SAMPLEBANK_XMLS         := $(foreach dir,$(SAMPLEBANK_DIRS),$(wildcard $(dir)/*.xml))
+SAMPLEBANK_EXTRACT_XMLS := $(foreach dir,$(SAMPLEBANK_EXTRACT_DIRS),$(wildcard $(dir)/*.xml))
+SAMPLEBANK_BUILD_XMLS   := $(foreach f,$(SAMPLEBANK_XMLS),$(BUILD_DIR)/$f) $(foreach f,$(SAMPLEBANK_EXTRACT_XMLS),$(f:$(EXTRACTED_DIR)/%=$(BUILD_DIR)/%))
+SAMPLEBANK_O_FILES      := $(foreach f,$(SAMPLEBANK_BUILD_XMLS),$(f:.xml=.o))
+SAMPLEBANK_DEP_FILES    := $(foreach f,$(SAMPLEBANK_O_FILES),$(f:.o=.d))
+
+SOUNDFONT_XMLS         := $(foreach dir,$(SOUNDFONT_DIRS),$(wildcard $(dir)/*.xml))
+SOUNDFONT_EXTRACT_XMLS := $(foreach dir,$(SOUNDFONT_EXTRACT_DIRS),$(wildcard $(dir)/*.xml))
+SOUNDFONT_BUILD_XMLS   := $(foreach f,$(SOUNDFONT_XMLS),$(BUILD_DIR)/$f) $(foreach f,$(SOUNDFONT_EXTRACT_XMLS),$(f:$(EXTRACTED_DIR)/%=$(BUILD_DIR)/%))
+SOUNDFONT_O_FILES      := $(foreach f,$(SOUNDFONT_BUILD_XMLS),$(f:.xml=.o))
+SOUNDFONT_HEADERS      := $(foreach f,$(SOUNDFONT_BUILD_XMLS),$(f:.xml=.h))
+SOUNDFONT_DEP_FILES    := $(foreach f,$(SOUNDFONT_O_FILES),$(f:.o=.c.d))
+
+SEQUENCE_FILES         := $(foreach dir,$(SEQUENCE_DIRS),$(wildcard $(dir)/*.seq))
+SEQUENCE_EXTRACT_FILES := $(foreach dir,$(SEQUENCE_EXTRACT_DIRS),$(wildcard $(dir)/*.seq))
+SEQUENCE_O_FILES       := $(foreach f,$(SEQUENCE_FILES),$(BUILD_DIR)/$(f:.seq=.o)) $(foreach f,$(SEQUENCE_EXTRACT_FILES:.seq=.o),$(f:$(EXTRACTED_DIR)/%=$(BUILD_DIR)/%))
+SEQUENCE_DEP_FILES     := $(foreach f,$(SEQUENCE_O_FILES),$(f:.o=.d))
+
+SEQUENCE_TABLE := include/tables/sequence_table.h
+
+# create extracted directory
+$(shell mkdir -p $(EXTRACTED_DIR))
+
+ifneq ($(wildcard $(EXTRACTED_DIR)/assets),)
+  ASSET_BIN_DIRS_EXTRACTED := $(shell find $(EXTRACTED_DIR)/assets -type d)
+else
+  ASSET_BIN_DIRS_EXTRACTED :=
+endif
+ASSET_BIN_DIRS_COMMITTED := $(shell find assets -type d -not -path "assets/xml*" -not -path "assets/audio*" -not -path assets/text)
+ASSET_BIN_DIRS := $(ASSET_BIN_DIRS_EXTRACTED) $(ASSET_BIN_DIRS_COMMITTED)
+
+ASSET_FILES_BIN_EXTRACTED := $(foreach dir,$(ASSET_BIN_DIRS_EXTRACTED),$(wildcard $(dir)/*.bin))
+ASSET_FILES_BIN_COMMITTED := $(foreach dir,$(ASSET_BIN_DIRS_COMMITTED),$(wildcard $(dir)/*.bin))
+ASSET_FILES_OUT := $(foreach f,$(ASSET_FILES_BIN_EXTRACTED:.bin=.bin.inc.c),$(f:$(EXTRACTED_DIR)/%=$(BUILD_DIR)/%)) \
+                   $(foreach f,$(ASSET_FILES_BIN_COMMITTED:.bin=.bin.inc.c),$(BUILD_DIR)/$f)
+
+# Find all .o files included in the spec
+SPEC_O_FILES := $(shell $(CPP) $(CPPFLAGS) -I. $(SPEC) | $(BUILD_DIR_REPLACE) | sed -n -E 's/^[ \t]*include[ \t]*"([a-zA-Z0-9/_.-]+\.o)"/\1/p')
+
+# Split out reloc files
+O_FILES := $(filter-out %_reloc.o,$(SPEC_O_FILES))
+OVL_RELOC_FILES := $(filter %_reloc.o,$(SPEC_O_FILES))
+
+# Automatic dependency files
+DEP_FILES := $(O_FILES:.o=.d) $(O_FILES:.o=.asmproc.d) $(OVL_RELOC_FILES:.o=.d) $(BUILD_DIR)/spec.d
+
+TEXTURE_FILES_PNG_EXTRACTED := $(foreach dir,$(ASSET_BIN_DIRS_EXTRACTED),$(wildcard $(dir)/*.png))
+TEXTURE_FILES_PNG_COMMITTED := $(foreach dir,$(ASSET_BIN_DIRS_COMMITTED),$(wildcard $(dir)/*.png))
+TEXTURE_FILES_JPG_EXTRACTED := $(foreach dir,$(ASSET_BIN_DIRS_EXTRACTED),$(wildcard $(dir)/*.jpg))
+TEXTURE_FILES_JPG_COMMITTED := $(foreach dir,$(ASSET_BIN_DIRS_COMMITTED),$(wildcard $(dir)/*.jpg))
+TEXTURE_FILES_OUT := $(foreach f,$(TEXTURE_FILES_PNG_EXTRACTED:.png=.inc.c),$(f:$(EXTRACTED_DIR)/%=$(BUILD_DIR)/%)) \
+                     $(foreach f,$(TEXTURE_FILES_PNG_COMMITTED:.png=.inc.c),$(BUILD_DIR)/$f) \
+                     $(foreach f,$(TEXTURE_FILES_JPG_EXTRACTED:.jpg=.jpg.inc.c),$(f:$(EXTRACTED_DIR)/%=$(BUILD_DIR)/%)) \
+                     $(foreach f,$(TEXTURE_FILES_JPG_COMMITTED:.jpg=.jpg.inc.c),$(BUILD_DIR)/$f)
+
+# create build directories
+$(shell mkdir -p $(BUILD_DIR)/baserom \
+                 $(BUILD_DIR)/assets/text \
+                 $(BUILD_DIR)/linker_scripts)
+$(shell mkdir -p $(foreach dir, \
+                      $(SRC_DIRS) \
+                      $(UNDECOMPILED_DATA_DIRS) \
+                      $(SAMPLE_DIRS) \
+                      $(SAMPLEBANK_DIRS) \
+                      $(SOUNDFONT_DIRS) \
+                      $(SEQUENCE_DIRS) \
+                      $(ASSET_BIN_DIRS_COMMITTED), \
+                    $(BUILD_DIR)/$(dir)))
+ifneq ($(wildcard $(EXTRACTED_DIR)/assets),)
+$(shell mkdir -p $(foreach dir, \
+                      $(SAMPLE_EXTRACT_DIRS) \
+                      $(SAMPLEBANK_EXTRACT_DIRS) \
+                      $(SOUNDFONT_EXTRACT_DIRS) \
+                      $(SEQUENCE_EXTRACT_DIRS) \
+                      $(ASSET_BIN_DIRS_EXTRACTED), \
+                    $(dir:$(EXTRACTED_DIR)/%=$(BUILD_DIR)/%)))
+endif
+
+$(BUILD_DIR)/src/boot/build.o: CPP_DEFINES += -DBUILD_CREATOR="\"$(BUILD_CREATOR)\"" -DBUILD_DATE="\"$(BUILD_DATE)\"" -DBUILD_TIME="\"$(BUILD_TIME)\""
+
+$(BUILD_DIR)/src/audio/internal/seqplayer.o: CPP_DEFINES += -DMML_VERSION=MML_VERSION_OOT
+
+ifeq ($(COMPILER),ido)
+$(BUILD_DIR)/src/boot/driverominit.o: OPTFLAGS := -O2
+
+ifeq ($(PLATFORM),IQUE)
+# iQue's driverominit.o seems to have been patched manually. For non-matching builds we edit the source code instead.
+ifneq ($(NON_MATCHING),1)
+$(BUILD_DIR)/src/boot/driverominit.o: POSTPROCESS_OBJ := $(PYTHON) tools/patch_ique_driverominit.py
+endif
+
+$(BUILD_DIR)/src/boot/viconfig.o: OPTFLAGS := -O2
+endif
+
+$(BUILD_DIR)/src/code/jpegutils.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/code/jpegdecoder.o: OPTFLAGS := -O2
+
+$(BUILD_DIR)/src/code/fault_n64.o: CFLAGS += -trapuv
+$(BUILD_DIR)/src/code/fault_gc.o: CFLAGS += -trapuv
+$(BUILD_DIR)/src/code/fault_gc.o: OPTFLAGS := -O2 -g3
+$(BUILD_DIR)/src/code/fault_gc_drawer.o: CFLAGS += -trapuv
+$(BUILD_DIR)/src/code/fault_gc_drawer.o: OPTFLAGS := -O2 -g3
+
+$(BUILD_DIR)/src/code/ucode_disas.o: OPTFLAGS := -O2 -g3
+
+ifeq ($(PLATFORM),N64)
+$(BUILD_DIR)/src/code/z_rumble.o: CFLAGS += -DNO_SQRTF_INTRINSIC
+endif
+
+$(BUILD_DIR)/src/code/jpegutils.o: CC := $(CC_OLD)
+$(BUILD_DIR)/src/code/jpegdecoder.o: CC := $(CC_OLD)
+
+ifeq ($(PLATFORM),IQUE)
+# Some files are compiled with EGCS on iQue
+EGCS_O_FILES += $(BUILD_DIR)/src/boot/boot_main.o
+EGCS_O_FILES += $(BUILD_DIR)/src/boot/idle.o
+EGCS_O_FILES += $(BUILD_DIR)/src/boot/inflate.o
+EGCS_O_FILES += $(BUILD_DIR)/src/boot/is_debug_ique.o
+EGCS_O_FILES += $(BUILD_DIR)/src/boot/z_locale.o
+EGCS_O_FILES += $(BUILD_DIR)/src/boot/z_std_dma.o
+EGCS_O_FILES += $(BUILD_DIR)/src/code/z_actor.o
+EGCS_O_FILES += $(BUILD_DIR)/src/code/z_common_data.o
+EGCS_O_FILES += $(BUILD_DIR)/src/code/z_construct.o
+EGCS_O_FILES += $(BUILD_DIR)/src/code/z_kanfont.o
+EGCS_O_FILES += $(BUILD_DIR)/src/code/z_message.o
+EGCS_O_FILES += $(BUILD_DIR)/src/code/z_parameter.o
+EGCS_O_FILES += $(BUILD_DIR)/src/code/z_sram.o
+EGCS_O_FILES += $(BUILD_DIR)/src/overlays/actors/ovl_En_Mag/z_en_mag.o
+EGCS_O_FILES += $(BUILD_DIR)/src/overlays/actors/ovl_End_Title/z_end_title.o
+EGCS_O_FILES += $(BUILD_DIR)/src/overlays/actors/ovl_Fishing/z_fishing.o
+EGCS_O_FILES += $(BUILD_DIR)/src/overlays/gamestates/ovl_file_choose/z_file_copy_erase.o
+EGCS_O_FILES += $(BUILD_DIR)/src/overlays/gamestates/ovl_opening/z_opening.o
+EGCS_O_FILES += $(BUILD_DIR)/src/overlays/gamestates/ovl_title/z_title.o
+EGCS_O_FILES += $(BUILD_DIR)/src/overlays/misc/ovl_kaleido_scope/z_kaleido_map.o
+EGCS_O_FILES += $(BUILD_DIR)/src/overlays/misc/ovl_kaleido_scope/z_kaleido_scope.o
+
+$(EGCS_O_FILES): CC := $(EGCS_CC)
+$(EGCS_O_FILES): CFLAGS := $(EGCS_CFLAGS) -mno-abicalls
+$(EGCS_O_FILES): MIPS_VERSION :=
+endif
+
+ifeq ($(PLATFORM),IQUE)
+$(BUILD_DIR)/src/libc/%.o: CC := $(EGCS_CC)
+$(BUILD_DIR)/src/libc/%.o: CCAS := $(EGCS_CCAS)
+$(BUILD_DIR)/src/libc/%.o: CFLAGS := $(EGCS_CFLAGS) -mno-abicalls
+$(BUILD_DIR)/src/libc/%.o: CCASFLAGS := $(EGCS_CCASFLAGS)
+$(BUILD_DIR)/src/libc/%.o: OPTFLAGS := -O1
+$(BUILD_DIR)/src/libc/%.o: MIPS_VERSION :=
+$(BUILD_DIR)/src/libc/memmove.o: MIPS_VERSION := -mips2
+else ifeq ($(DEBUG_FEATURES),1)
+$(BUILD_DIR)/src/libc/%.o: OPTFLAGS := -g
+$(BUILD_DIR)/src/libc/%.o: ASOPTFLAGS := -g
+else
+$(BUILD_DIR)/src/libc/%.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libc/%.o: ASOPTFLAGS := -O2
+endif
+
+$(BUILD_DIR)/src/libc64/%.o: OPTFLAGS := -O2
+
+$(BUILD_DIR)/src/libu64/%.o: OPTFLAGS := -O2
+
+$(BUILD_DIR)/src/audio/%.o: OPTFLAGS := -O2
+
+# Use signed chars instead of unsigned for this audio file (needed to match AudioDebug_ScrPrt)
+$(BUILD_DIR)/src/audio/game/general.o: CFLAGS += -signed
+
+ifeq ($(PLATFORM),N64)
+$(BUILD_DIR)/src/audio/game/general.o: CFLAGS += -DNO_SQRTF_INTRINSIC
+endif
+
+# Put string literals in .data for some audio files (needed to match these files with literals)
+$(BUILD_DIR)/src/audio/game/sfx.o: CFLAGS += -use_readwrite_const
+$(BUILD_DIR)/src/audio/game/sequence.o: CFLAGS += -use_readwrite_const
+
+ifeq ($(PLATFORM),IQUE)
+$(BUILD_DIR)/src/libultra/%.o: CC := $(EGCS_CC)
+$(BUILD_DIR)/src/libultra/%.o: CCAS := $(EGCS_CCAS)
+$(BUILD_DIR)/src/libultra/%.o: CFLAGS := $(EGCS_CFLAGS) -mno-abicalls
+$(BUILD_DIR)/src/libultra/%.o: CCASFLAGS := $(EGCS_CCASFLAGS)
+$(BUILD_DIR)/src/libultra/%.o: ASOPTFLAGS := $(EGCS_ASOPTFLAGS)
+
+$(BUILD_DIR)/src/libultra/reg/_%.o: OPTFLAGS := -O0
+$(BUILD_DIR)/src/libultra/reg/_%.o: MIPS_VERSION := -mgp64 -mfp64 -mips3
+
+$(BUILD_DIR)/src/libultra/audio/%.o: OPTFLAGS := -O2
+
+$(BUILD_DIR)/src/libultra/libc/ll.o: OPTFLAGS := -O0
+$(BUILD_DIR)/src/libultra/libc/llcvt.o: OPTFLAGS := -O0
+
+$(BUILD_DIR)/src/libultra/os/exceptasm.o: MIPS_VERSION := -mips3
+$(BUILD_DIR)/src/libultra/os/invaldcache.o: MIPS_VERSION := -mips3
+$(BUILD_DIR)/src/libultra/os/invalicache.o: MIPS_VERSION := -mips3
+$(BUILD_DIR)/src/libultra/os/writebackdcache.o: MIPS_VERSION := -mips3
+$(BUILD_DIR)/src/libultra/os/writebackdcacheall.o: MIPS_VERSION := -mips3
+else
+$(BUILD_DIR)/src/libultra/%.o: CC := $(CC_OLD)
+
+$(BUILD_DIR)/src/libultra/libc/ll.o: OPTFLAGS := -O1
+$(BUILD_DIR)/src/libultra/libc/ll.o: MIPS_VERSION := -mips3 -32
+$(BUILD_DIR)/src/libultra/libc/ll.o: POSTPROCESS_OBJ := $(PYTHON) tools/set_o32abi_bit.py
+
+$(BUILD_DIR)/src/libultra/libc/llcvt.o: OPTFLAGS := -O1
+$(BUILD_DIR)/src/libultra/libc/llcvt.o: MIPS_VERSION := -mips3 -32
+$(BUILD_DIR)/src/libultra/libc/llcvt.o: POSTPROCESS_OBJ := $(PYTHON) tools/set_o32abi_bit.py
+
+$(BUILD_DIR)/src/libultra/os/exceptasm.o: MIPS_VERSION := -mips3 -32
+$(BUILD_DIR)/src/libultra/os/exceptasm.o: POSTPROCESS_OBJ := $(PYTHON) tools/set_o32abi_bit.py
+endif
+
+$(BUILD_DIR)/src/code/%.o: ASOPTFLAGS := -O2
+$(BUILD_DIR)/src/libleo/%.o: ASOPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/libc/%.o: ASOPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/mgu/%.o: ASOPTFLAGS := -O2
+
+ifeq ($(LIBULTRA_VERSION),I)
+$(BUILD_DIR)/src/libultra/gu/%.o: OPTFLAGS := -O3
+$(BUILD_DIR)/src/libultra/io/%.o: OPTFLAGS := -O1
+$(BUILD_DIR)/src/libultra/libc/%.o: OPTFLAGS := -O3
+$(BUILD_DIR)/src/libultra/os/%.o: OPTFLAGS := -O1
+
+$(BUILD_DIR)/src/libultra/io/aisetfreq.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/cartrominit.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/contpfs.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/contramread.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/contramwrite.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/contreaddata.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/crc.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/devmgr.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/epiread.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/epiwrite.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/epirawdma.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/epirawread.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/epirawwrite.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/motor.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/pfsgetstatus.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/pfsselectbank.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/pimgr.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/pirawdma.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/sirawdma.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/sirawread.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/sirawwrite.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/sprawdma.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/vimgr.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/visetspecial.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/viswapcontext.o: OPTFLAGS := -O2
+
+$(BUILD_DIR)/src/libultra/gu/lookat.o: CFLAGS += -DNO_SQRTF_INTRINSIC
+$(BUILD_DIR)/src/libultra/gu/lookathil.o: CFLAGS += -DNO_SQRTF_INTRINSIC
+$(BUILD_DIR)/src/libultra/gu/normalize.o: CFLAGS += -DNO_SQRTF_INTRINSIC
+else
+$(BUILD_DIR)/src/libultra/gu/%.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/io/%.o: OPTFLAGS := -O2
+$(BUILD_DIR)/src/libultra/libc/%.o: OPTFLAGS := -O2
+ifeq ($(PLATFORM),IQUE)
+$(BUILD_DIR)/src/libultra/os/%.o: OPTFLAGS := -O0
+else
+$(BUILD_DIR)/src/libultra/os/%.o: OPTFLAGS := -O1
+endif
+endif
+
+$(BUILD_DIR)/src/libleo/%.o: CC := $(CC_OLD)
+$(BUILD_DIR)/src/libleo/%.o: OPTFLAGS := -O2
+
+ifeq ($(PLATFORM),IQUE)
+$(BUILD_DIR)/src/libgcc/%.o: CC := $(EGCS_CC)
+$(BUILD_DIR)/src/libgcc/%.o: CFLAGS := $(EGCS_CFLAGS)
+endif
+
+$(BUILD_DIR)/assets/misc/z_select_static/%.o: GBI_DEFINES := -DF3DEX_GBI
+
+ifeq ($(PLATFORM),IQUE)
+$(BUILD_DIR)/src/makerom/%.o: CCAS := $(EGCS_CCAS)
+$(BUILD_DIR)/src/makerom/%.o: CCASFLAGS := $(EGCS_CCASFLAGS)
+$(BUILD_DIR)/src/makerom/%.o: ASOPTFLAGS := $(EGCS_ASOPTFLAGS)
+endif
+
+ifeq ($(PERMUTER),)  # permuter + preprocess.sh misbehaves, permuter doesn't care about rodata diffs or bss ordering so just don't use it in that case
+# Handle encoding (UTF-8 -> EUC-JP) and custom pragmas
+$(BUILD_DIR)/src/%.o: PREPROCESS := ./tools/preprocess.sh -v $(VERSION) -i $(ICONV) --
+endif
+
+else
+# Note that if adding additional assets directories for modding reasons these flags must also be used there
+$(BUILD_DIR)/assets/%.o: CFLAGS += -fno-zero-initialized-in-bss -fno-toplevel-reorder
+$(BUILD_DIR)/src/%.o: CFLAGS += -fexec-charset=euc-jp
+$(BUILD_DIR)/src/libultra/libc/ll.o: OPTFLAGS := -Ofast
+$(BUILD_DIR)/src/overlays/%.o: CFLAGS += -fno-merge-constants -mno-explicit-relocs -mno-split-addresses
+endif
+
+#### Main Targets ###
+
+all: rom compress
+
+rom: $(ROM)
+ifneq ($(COMPARE),0)
+	@md5sum $(ROM)
+ ifneq ($(REGIONAL_CHECKSUM),0)
+	@md5sum -c $(BASEROM_DIR)/checksum-$(REGION).md5
+ else
+	@md5sum -c $(BASEROM_DIR)/checksum.md5
+ endif
+endif
+
+compress: $(ROMC)
+ifneq ($(COMPARE),0)
+	@md5sum $(ROMC)
+ ifneq ($(REGIONAL_CHECKSUM),0)
+	@md5sum -c $(BASEROM_DIR)/checksum-$(REGION)-compressed.md5
+ else
+	@md5sum -c $(BASEROM_DIR)/checksum-compressed.md5
+ endif
+endif
+
+clean:
+	$(RM) -r $(BUILD_DIR)
+
+assetclean:
+	$(RM) -r $(EXTRACTED_DIR)
+
+distclean:
+	$(RM) -r extracted/
+	$(RM) -r build/
+	$(MAKE) -C tools distclean
+
+venv:
+# Create the virtual environment if it doesn't exist.
+# Delete the virtual environment directory if creation fails.
+	test -d $(VENV) || python3 -m venv $(VENV) || { rm -rf $(VENV); false; }
+	$(PYTHON) -m pip install -U pip
+	$(PYTHON) -m pip install -U -r requirements.txt
+
+setup: venv
+	$(MAKE) -C tools
+	$(PYTHON) tools/decompress_baserom.py $(VERSION)
+	$(PYTHON) tools/extract_baserom.py $(BASEROM_DIR)/baserom-decompressed.z64 $(EXTRACTED_DIR)/baserom -v $(VERSION)
+	$(PYTHON) -m tools.assets.extract $(EXTRACTED_DIR)/baserom $(EXTRACTED_DIR) -v $(VERSION) -j$(N_THREADS)
+	$(PYTHON) tools/extract_incbins.py $(EXTRACTED_DIR)/baserom $(EXTRACTED_DIR)/incbin -v $(VERSION)
+	$(PYTHON) tools/extract_text.py $(EXTRACTED_DIR)/baserom $(EXTRACTED_DIR)/text -v $(VERSION)
+	$(PYTHON) tools/extract_audio.py -b $(EXTRACTED_DIR)/baserom -o $(EXTRACTED_DIR) -v $(VERSION) --read-xml
+
+disasm:
+	$(RM) -r $(EXPECTED_DIR)
+	VERSION=$(VERSION) DISASM_BASEROM=$(BASEROM_DIR)/baserom-decompressed.z64 DISASM_DIR=$(EXPECTED_DIR) PYTHON=$(PYTHON) AS_CMD='$(AS) $(ASFLAGS)' LD=$(LD) ./tools/disasm/do_disasm.sh
+
+run: $(ROM)
+ifeq ($(N64_EMULATOR),)
+	$(error Emulator path not set. Set N64_EMULATOR in the Makefile or define it as an environment variable)
+endif
+	$(N64_EMULATOR) $<
+
+
+.PHONY: all rom compress clean assetclean distclean venv setup disasm run
+.DEFAULT_GOAL := rom
+
+#### Various Recipes ####
+
+ifeq ($(PLATFORM),IQUE)
+  COMPRESS_ARGS := --format gzip --pad-to 0x4000
+  CIC = 6102
+else
+  COMPRESS_ARGS := --format yaz0 --pad-to 0x800000 --fill-padding-bytes
+  CIC = 6105
+endif
+
+$(ROM): $(ELF)
+	$(ELF2ROM) -cic $(CIC) $< $@
+
+$(ROMC): $(ROM) $(ELF) $(BUILD_DIR)/compress_ranges.txt
+	$(PYTHON) tools/compress.py --in $(ROM) --out $@ --dmadata-start `./tools/dmadata_start.sh $(NM) $(ELF)` --compress `cat $(BUILD_DIR)/compress_ranges.txt` --threads $(N_THREADS) $(COMPRESS_ARGS)
+	$(PYTHON) -m ipl3checksum sum --cic $(CIC) --update $@
+
+COM_PLUGIN := tools/com-plugin/common-plugin.so
+
+LDFLAGS := -T $(LDSCRIPT) -T $(BUILD_DIR)/linker_scripts/makerom.ld -T $(BUILD_DIR)/undefined_syms.txt --no-check-sections --accept-unknown-input-arch --emit-relocs -Map $(MAP)
+ifeq ($(PLATFORM),IQUE)
+  ifeq ($(NON_MATCHING),0)
+    LDFLAGS += -plugin $(COM_PLUGIN) -plugin-opt order=$(BASEROM_DIR)/bss-order.txt
+    $(ELF): $(BASEROM_DIR)/bss-order.txt
+  endif
+endif
+
+$(ELF): $(TEXTURE_FILES_OUT) $(ASSET_FILES_OUT) $(O_FILES) $(OVL_RELOC_FILES) $(LDSCRIPT) $(BUILD_DIR)/linker_scripts/makerom.ld $(BUILD_DIR)/undefined_syms.txt \
+        $(SAMPLEBANK_O_FILES) $(SOUNDFONT_O_FILES) $(SEQUENCE_O_FILES) \
+        $(BUILD_DIR)/assets/audio/sequence_font_table.o $(BUILD_DIR)/assets/audio/audiobank_padding.o
+	$(LD) $(LDFLAGS) -o $@
+
+$(BUILD_DIR)/linker_scripts/makerom.ld: linker_scripts/makerom.ld
+	$(CPP) -I include $(CPPFLAGS) $< > $@
+
+## Order-only prerequisites
+# These ensure e.g. the O_FILES are built before the OVL_RELOC_FILES.
+# The intermediate phony targets avoid quadratically-many dependencies between the targets and prerequisites.
+
+o_files: $(O_FILES)
+$(OVL_RELOC_FILES): | o_files
+
+asset_files: $(TEXTURE_FILES_OUT) $(ASSET_FILES_OUT)
+$(O_FILES): | asset_files
+
+.PHONY: o_files asset_files
+
+$(BUILD_DIR)/spec: $(SPEC) $(SPEC_INCLUDES)
+	$(CPP) $(CPPFLAGS) -MD -MP -MF $@.d -MT $@ -I. $< | $(BUILD_DIR_REPLACE) > $@
+
+$(LDSCRIPT): $(BUILD_DIR)/spec
+	$(MKLDSCRIPT) $< $@
+
+$(BUILD_DIR)/undefined_syms.txt: undefined_syms.txt
+	$(CPP) $(CPPFLAGS) $< > $@
+
+$(BUILD_DIR)/baserom/%.o: $(EXTRACTED_DIR)/baserom/%
+	$(OBJCOPY) -I binary -O elf32-big $< $@
+
+$(BUILD_DIR)/data/%.o: data/%.s
+	$(CPP) $(CPPFLAGS) -MD -MP -MF $(@:.o=.d) -MT $@ -Iinclude $< | $(AS) $(ASFLAGS) -o $@
+
+ifeq ($(PLATFORM),IQUE)
+  NES_CHARMAP := assets/text/charmap.chn.txt
+else
+  NES_CHARMAP := assets/text/charmap.nes.txt
+endif
+
+$(BUILD_DIR)/assets/text/%.enc.nes.h: assets/text/%.h $(EXTRACTED_DIR)/text/%.h $(NES_CHARMAP)
+	$(CPP) $(CPPFLAGS) -I$(EXTRACTED_DIR) -MD -MP -MF $(@:.o=.d) -MT $@ $< | $(PYTHON) tools/msgenc.py --encoding utf-8 --charmap $(NES_CHARMAP) - $@
+
+$(BUILD_DIR)/assets/text/%.enc.jpn.h: assets/text/%.h $(EXTRACTED_DIR)/text/%.h assets/text/charmap.jpn.txt
+	$(CPP) $(CPPFLAGS) -I$(EXTRACTED_DIR) -MD -MP -MF $(@:.o=.d) -MT $@ $< | $(PYTHON) tools/msgenc.py --encoding SHIFT-JIS --wchar --charmap assets/text/charmap.jpn.txt - $@
+
+# Dependencies for encoded message headers. These dependencies are not automatic as these headers are generated
+# as part of the build. A clean build must know to generate them before the relevant .d files are created.
+$(BUILD_DIR)/assets/text/jpn_message_data_static.o: $(BUILD_DIR)/assets/text/message_data.enc.jpn.h
+$(BUILD_DIR)/assets/text/nes_message_data_static.o: $(BUILD_DIR)/assets/text/message_data.enc.nes.h
+$(BUILD_DIR)/assets/text/ger_message_data_static.o: $(BUILD_DIR)/assets/text/message_data.enc.nes.h
+$(BUILD_DIR)/assets/text/fra_message_data_static.o: $(BUILD_DIR)/assets/text/message_data.enc.nes.h
+$(BUILD_DIR)/assets/text/staff_message_data_static.o: $(BUILD_DIR)/assets/text/message_data_staff.enc.nes.h
+
+$(BUILD_DIR)/assets/text/%.o: assets/text/%.c
+ifneq ($(COMPILER),gcc)
+# Preprocess text with modern cpp for varargs macros
+	$(CPP) -undef -D_LANGUAGE_C -D__sgi $(CPPFLAGS) -MD -MP -MT $@ $(INC) $< -o $(@:.o=.c)
+	$(CC) -c $(CFLAGS) $(MIPS_VERSION) $(OPTFLAGS) -o $@ $(@:.o=.c)
+else
+	$(CC) -c $(CFLAGS) $(MIPS_VERSION) $(OPTFLAGS) -o $@ $<
+endif
+	$(OBJCOPY) -O binary --only-section .rodata $@ $@.bin
+
+$(BUILD_DIR)/assets/%.o: assets/%.c
+	$(CC_CHECK) $< -o $@
+	$(CC) -c $(CFLAGS) $(MIPS_VERSION) $(OPTFLAGS) -o $@ $<
+	$(OBJCOPY_CMD)
+
+$(BUILD_DIR)/assets/%.o: $(EXTRACTED_DIR)/assets/%.c
+	$(CC_CHECK) $< -o $@
+	$(CC) -c $(CFLAGS) $(MIPS_VERSION) $(OPTFLAGS) -o $@ $<
+	$(OBJCOPY_CMD)
+
+# Assemble the ROM header with GNU AS always
+$(BUILD_DIR)/src/makerom/rom_header.o: src/makerom/rom_header.s
+ifeq ($(COMPILER),ido)
+	$(CPP) $(CPPFLAGS) $(MIPS_BUILTIN_DEFS) $(INC) -MD -MP -MF $(@:.o=.d) -MT $@ $< | $(AS) $(ASFLAGS) -o $@
+else
+	$(CCAS) -c $(CCASFLAGS) $(MIPS_VERSION) $(ASOPTFLAGS) -o $@ $<
+endif
+	$(OBJDUMP_CMD)
+
+$(BUILD_DIR)/src/makerom/ipl3.o: $(EXTRACTED_DIR)/incbin/ipl3
+	$(OBJCOPY) -I binary -O elf32-big --rename-section .data=.text $< $@
+
+$(BUILD_DIR)/src/%.o: src/%.s
+ifeq ($(COMPILER),ido)
+# For header dependencies
+	$(CPP) $(MIPS_BUILTIN_DEFS) $(CPPFLAGS) -x assembler-with-cpp $(INC) -MD -MP -MF $(@:.o=.d) -MT $@ $< -o /dev/null
+	$(CCAS) -c $(CCASFLAGS) $(MIPS_VERSION) $(ASOPTFLAGS) -o $(@:.o=.tmp.o) $<
+# IDO generates bad symbol tables, fix the symbol table with strip..
+	$(STRIP) $(@:.o=.tmp.o) -N dummy-symbol-name
+# but strip doesn't know about file-relative offsets in .mdebug and doesn't relocate them, ld will
+# segfault unless .mdebug is removed
+	$(OBJCOPY) --remove-section .mdebug $(@:.o=.tmp.o) $@
+	@$(RM) $(@:.o=.tmp.o)
+else
+	$(CCAS) -c $(CCASFLAGS) $(MIPS_VERSION) $(ASOPTFLAGS) -o $@ $<
+endif
+	$(POSTPROCESS_OBJ) $@
+	$(OBJDUMP_CMD)
+
+# Incremental link to move z_message and z_game_over data into rodata
+$(BUILD_DIR)/src/code/z_message_z_game_over.o: $(BUILD_DIR)/src/code/z_message.o $(BUILD_DIR)/src/code/z_game_over.o
+	$(LD) -r -G 0 -T linker_scripts/data_with_rodata.ld -o $@ $^
+	$(PYTHON) tools/patch_data_with_rodata_mdebug.py $@
+
+DEP_FILES += $(BUILD_DIR)/src/code/z_message.d $(BUILD_DIR)/src/code/z_game_over.d
+
+$(BUILD_DIR)/dmadata_table_spec.h $(BUILD_DIR)/compress_ranges.txt: $(BUILD_DIR)/spec
+	$(MKDMADATA) $< $(BUILD_DIR)/dmadata_table_spec.h $(BUILD_DIR)/compress_ranges.txt
+
+# Dependencies for files that may include the dmadata header automatically generated from the spec file
+$(BUILD_DIR)/src/boot/z_std_dma.o: $(BUILD_DIR)/dmadata_table_spec.h
+$(BUILD_DIR)/src/dmadata/dmadata.o: $(BUILD_DIR)/dmadata_table_spec.h
+
+$(BUILD_DIR)/src/%.o: src/%.c
+	$(CC_CHECK) $< -o $@
+	$(PREPROCESS) $(CC) -c $(CFLAGS) $(MIPS_VERSION) $(OPTFLAGS) -o $@ $<
+	$(POSTPROCESS_OBJ) $@
+	$(OBJDUMP_CMD)
+
+$(BUILD_DIR)/src/audio/game/session_init.o: src/audio/game/session_init.c $(BUILD_DIR)/assets/audio/soundfont_sizes.h $(BUILD_DIR)/assets/audio/sequence_sizes.h
+	$(CC_CHECK) $< -o $@
+	$(CC) -c $(CFLAGS) $(MIPS_VERSION) $(OPTFLAGS) -o $(@:.o=.tmp) $<
+	$(LD) -r -T linker_scripts/data_with_rodata.ld -o $@ $(@:.o=.tmp)
+	$(PYTHON) tools/patch_data_with_rodata_mdebug.py $@
+	$(OBJDUMP_CMD)
+
+ifeq ($(PLATFORM),IQUE)
+ifneq ($(NON_MATCHING),1)
+$(BUILD_DIR)/src/overlays/misc/ovl_kaleido_scope/ovl_kaleido_scope_reloc.o: POSTPROCESS_OBJ := $(PYTHON) tools/patch_ique_kaleido_reloc.py
+endif
+endif
+
+$(BUILD_DIR)/src/overlays/%_reloc.o: $(BUILD_DIR)/spec
+	$(FADO) $$(tools/reloc_prereq $< $(notdir $*)) -n $(notdir $*) -o $(@:.o=.s) -M $(@:.o=.d)
+	$(POSTPROCESS_OBJ) $(@:.o=.s)
+	$(AS) $(ASFLAGS) $(@:.o=.s) -o $@
+
+# Assets from assets/
+
+$(BUILD_DIR)/assets/%.inc.c: assets/%.png
+	$(BUILD_FROM_PNG) $< $(dir $@) assets/$(dir $*) $(wildcard $(EXTRACTED_DIR)/assets/$(dir $*))
+
+$(BUILD_DIR)/assets/%.bin.inc.c: assets/%.bin
+	$(BIN2C) -t 1 $< $@
+
+$(BUILD_DIR)/assets/%.jpg.inc.c: assets/%.jpg
+	$(BUILD_JFIF) $< $@
+
+# Assets from extracted/
+
+$(BUILD_DIR)/assets/%.inc.c: $(EXTRACTED_DIR)/assets/%.png
+	$(BUILD_FROM_PNG) $< $(dir $@) $(wildcard assets/$(dir $*)) $(EXTRACTED_DIR)/assets/$(dir $*)
+
+$(BUILD_DIR)/assets/%.bin.inc.c: $(EXTRACTED_DIR)/assets/%.bin
+	$(BIN2C) -t 1 $< $@
+
+$(BUILD_DIR)/assets/%.jpg.inc.c: $(EXTRACTED_DIR)/assets/%.jpg
+	$(BUILD_JFIF) $< $@
+
+# Audio
+
+AUDIO_BUILD_DEBUG ?= 0
+ifeq ($(AUDIO_BUILD_DEBUG),1)
+  # for debugging only, make soundfonts depend on samplebanks so they can be linked against
+  $(BUILD_DIR)/assets/audio/soundfonts/%.o: $(SAMPLEBANK_O_FILES)
+endif
+
+# first build samples...
+
+.PRECIOUS: $(BUILD_DIR)/assets/audio/samples/%.aifc
+.PRECIOUS: $(BUILD_DIR)/assets/audio/samples/%.half.aifc
+
+$(BUILD_DIR)/assets/audio/samples/%.half.aifc: assets/audio/samples/%.half.wav
+	$(SAMPLECONV) vadpcm-half $< $@
+
+$(BUILD_DIR)/assets/audio/samples/%.half.aifc: $(EXTRACTED_DIR)/assets/audio/samples/%.half.wav
+	$(SAMPLECONV) vadpcm-half $< $@
+ifeq ($(AUDIO_BUILD_DEBUG),1)
+	@(cmp $(<D)/aifc/$(<F:.half.wav=.half.aifc) $@ && echo "$(<F) OK") || (mkdir -p NONMATCHINGS/$(<D) && cp $(<D)/aifc/$(<F:.half.wav=.half.aifc) NONMATCHINGS/$(<D)/$(<F:.half.wav=.half.aifc))
+endif
+
+$(BUILD_DIR)/assets/audio/samples/%.aifc: assets/audio/samples/%.wav
+	$(SAMPLECONV) vadpcm $< $@
+
+$(BUILD_DIR)/assets/audio/samples/%.aifc: $(EXTRACTED_DIR)/assets/audio/samples/%.wav
+	$(SAMPLECONV) vadpcm $< $@
+ifeq ($(AUDIO_BUILD_DEBUG),1)
+	@(cmp $(<D)/aifc/$(<F:.wav=.aifc) $@ && echo "$(<F) OK") || (mkdir -p NONMATCHINGS/$(<D) && cp $(<D)/aifc/$(<F:.wav=.aifc) NONMATCHINGS/$(<D)/$(<F:.wav=.aifc))
+endif
+
+# then assemble the samplebanks...
+
+.PRECIOUS: $(BUILD_DIR)/assets/audio/samplebanks/%.xml
+
+$(BUILD_DIR)/assets/audio/samplebanks/%.xml: assets/audio/samplebanks/%.xml
+	cat $< | $(BUILD_DIR_REPLACE) > $@
+
+$(BUILD_DIR)/assets/audio/samplebanks/%.xml: $(EXTRACTED_DIR)/assets/audio/samplebanks/%.xml
+	cat $< | $(BUILD_DIR_REPLACE) > $@
+
+.PRECIOUS: $(BUILD_DIR)/assets/audio/samplebanks/%.s
+$(BUILD_DIR)/assets/audio/samplebanks/%.s: $(BUILD_DIR)/assets/audio/samplebanks/%.xml | $(AIFC_FILES)
+	$(SBC) $(SBCFLAGS) --makedepend $(@:.s=.d) $< $@
+
+ifneq ($(PSP_PORT_NO_ASSET_REGEN),1)
+-include $(SAMPLEBANK_DEP_FILES)
+endif
+
+$(BUILD_DIR)/assets/audio/samplebanks/%.o: $(BUILD_DIR)/assets/audio/samplebanks/%.s
+	$(AS) $(ASFLAGS) $< -o $@
+ifeq ($(AUDIO_BUILD_DEBUG),1)
+	$(OBJCOPY) -O binary --only-section .rodata $@ $(@:.o=.bin)
+	@cmp $(@:.o=.bin) $(patsubst $(BUILD_DIR)/assets/audio/samplebanks/%,$(EXTRACTED_DIR)/baserom_audiotest/audiotable_files/%,$(@:.o=.bin)) && echo "$(<F) OK"
+endif
+
+# also assemble the soundfonts and generate the associated headers...
+
+$(BUILD_DIR)/assets/audio/soundfonts/%.xml: assets/audio/soundfonts/%.xml
+	cat $< | $(BUILD_DIR_REPLACE) > $@
+
+$(BUILD_DIR)/assets/audio/soundfonts/%.xml: $(EXTRACTED_DIR)/assets/audio/soundfonts/%.xml
+	cat $< | $(BUILD_DIR_REPLACE) > $@
+
+.PRECIOUS: $(BUILD_DIR)/assets/audio/soundfonts/%.c $(BUILD_DIR)/assets/audio/soundfonts/%.h $(BUILD_DIR)/assets/audio/soundfonts/%.name
+$(BUILD_DIR)/assets/audio/soundfonts/%.c $(BUILD_DIR)/assets/audio/soundfonts/%.h $(BUILD_DIR)/assets/audio/soundfonts/%.name: $(BUILD_DIR)/assets/audio/soundfonts/%.xml | $(SAMPLEBANK_BUILD_XMLS) $(AIFC_FILES)
+# This rule can be triggered for either the .c or .h file, so $@ may refer to either the .c or .h file. A simple
+# substitution $(@:.c=.h) will fail ~50% of the time with -j. Instead, don't assume anything about the suffix of $@.
+	$(SFC) $(SFCFLAGS) --makedepend $(basename $@).c.d $< $(basename $@).c $(basename $@).h $(basename $@).name
+
+ifneq ($(PSP_PORT_NO_ASSET_REGEN),1)
+-include $(SOUNDFONT_DEP_FILES)
+endif
+
+$(BUILD_DIR)/assets/audio/soundfonts/%.o: $(BUILD_DIR)/assets/audio/soundfonts/%.c $(BUILD_DIR)/assets/audio/soundfonts/%.name
+	$(CPP) $(MIPS_BUILTIN_DEFS) $(CPPFLAGS) -x assembler-with-cpp $(INC) -I include/audio -MD -MP -MF $(@:.o=.d) -MT $@ $< -o /dev/null
+# compile c to unlinked object
+	$(CC) -c $(CFLAGS) $(MIPS_VERSION) $(OPTFLAGS) -I include/audio -o $(@:.o=.tmp) $<
+# partial link
+	$(LD) -r -T linker_scripts/soundfont.ld $(@:.o=.tmp) -o $(@:.o=.tmp2)
+# patch defined symbols to be ABS symbols so that they remain file-relative offsets forever
+	$(SFPATCH) $(@:.o=.tmp2) $(@:.o=.tmp2)
+# write start and size symbols afterwards, filename != symbolic name so source symbolic name from the .name file written by sfc
+# also write a .note.name section containing the symbolic name of the soundfont
+	$(OBJCOPY) --add-symbol $$(cat $(<:.c=.name) | tr -d '\0')_Start=.rodata:0,global --redefine-sym __LEN__=$$(cat $(<:.c=.name) | tr -d '\0')_Size --add-section .note.name=$(<:.c=.name) $(@:.o=.tmp2) $@
+# cleanup temp files
+	@$(RM) $(@:.o=.tmp) $(@:.o=.tmp2)
+ifeq ($(AUDIO_BUILD_DEBUG),1)
+	$(LD) $(foreach f,$(SAMPLEBANK_O_FILES),-R $f) -T linker_scripts/soundfont.ld $@ -o $(@:.o=.elf)
+	$(OBJCOPY) -O binary -j.rodata $(@:.o=.elf) $(@:.o=.bin)
+	@(cmp $(@:.o=.bin) $(patsubst $(BUILD_DIR)/assets/audio/soundfonts/%,$(EXTRACTED_DIR)/baserom_audiotest/audiobank_files/%,$(@:.o=.bin)) && echo "$(<F) OK" || (mkdir -p NONMATCHINGS/soundfonts && cp $(@:.o=.bin) NONMATCHINGS/soundfonts/$(@F:.o=.bin)))
+endif
+
+# then assemble the sequences...
+
+$(BUILD_DIR)/assets/audio/sequences/%.o: assets/audio/sequences/%.seq include/audio/aseq.h $(SEQUENCE_TABLE) | $(SOUNDFONT_HEADERS)
+	$(SEQ_CPP) $(SEQ_CPPFLAGS) -MD -MP -MT $@ $< -o $(@:.o=.s)
+	$(AS) $(ASFLAGS) -I $(BUILD_DIR)/assets/audio/soundfonts -I include/audio -I $(dir $<) $(@:.o=.s) -o $@
+
+$(BUILD_DIR)/assets/audio/sequences/%.o: $(EXTRACTED_DIR)/assets/audio/sequences/%.seq include/audio/aseq.h $(SEQUENCE_TABLE) | $(SOUNDFONT_HEADERS)
+	$(SEQ_CPP) $(SEQ_CPPFLAGS) -MD -MP -MT $@ $< -o $(@:.o=.s)
+	$(AS) $(ASFLAGS) -I $(BUILD_DIR)/assets/audio/soundfonts -I include/audio -I $(dir $<) $(@:.o=.s) -o $@
+ifeq ($(AUDIO_BUILD_DEBUG),1)
+	$(OBJCOPY) -O binary -j.data $@ $(@:.o=.aseq)
+	@(cmp $(@:.o=.aseq) $(patsubst $(BUILD_DIR)/assets/audio/sequences/%,$(EXTRACTED_DIR)/baserom_audiotest/audioseq_files/%,$(@:.o=.aseq)) && echo "$(<F) OK" || (mkdir -p NONMATCHINGS/sequences && cp $(@:.o=.aseq) NONMATCHINGS/sequences/$(@F:.o=.aseq)))
+endif
+
+ifneq ($(PSP_PORT_NO_ASSET_REGEN),1)
+-include $(SEQUENCE_DEP_FILES)
+endif
+
+# put together the tables
+
+$(BUILD_DIR)/assets/audio/samplebank_table.h: $(SAMPLEBANK_BUILD_XMLS)
+	$(ATBLGEN) --banks $@ $^
+
+$(BUILD_DIR)/assets/audio/soundfont_table.h: $(SOUNDFONT_BUILD_XMLS) $(SAMPLEBANK_BUILD_XMLS)
+	$(ATBLGEN) --fonts $@ $(SOUNDFONT_BUILD_XMLS)
+
+SEQ_ORDER_DEFS := -DDEFINE_SEQUENCE_PTR\(name,seqId,_2,_3,_4\)=*\(name,seqId\) \
+                  -DDEFINE_SEQUENCE\(name,seqId,_2,_3,_4\)=\(name,seqId\)
+$(BUILD_DIR)/assets/audio/sequence_order.in: $(SEQUENCE_TABLE)
+	$(CPP) $(CPPFLAGS) $< $(SEQ_ORDER_DEFS) -o $@
+
+$(BUILD_DIR)/assets/audio/sequence_font_table.s: $(BUILD_DIR)/assets/audio/sequence_order.in $(SEQUENCE_O_FILES)
+	$(ATBLGEN) --sequences $@ $^
+
+# build the tables into objects, move data -> rodata
+
+$(BUILD_DIR)/src/audio/tables/samplebank_table.o: src/audio/tables/samplebank_table.c $(BUILD_DIR)/assets/audio/samplebank_table.h
+$(BUILD_DIR)/src/audio/tables/soundfont_table.o: src/audio/tables/soundfont_table.c $(BUILD_DIR)/assets/audio/soundfont_table.h $(SOUNDFONT_HEADERS)
+$(BUILD_DIR)/src/audio/tables/sequence_table.o: src/audio/tables/sequence_table.c $(SEQUENCE_TABLE)
+
+$(BUILD_DIR)/src/audio/tables/sequence_table.o: CFLAGS += -I include/tables
+
+$(BUILD_DIR)/src/audio/tables/%.o: src/audio/tables/%.c
+	$(CC_CHECK) $< -o $@
+	$(CC) -c $(CFLAGS) $(MIPS_VERSION) $(OPTFLAGS) -o $(@:.o=.tmp) $<
+	$(LD) -r -T linker_scripts/data_with_rodata.ld $(@:.o=.tmp) -o $@
+	$(PYTHON) tools/patch_data_with_rodata_mdebug.py $@
+	@$(RM) $(@:.o=.tmp)
+
+$(BUILD_DIR)/assets/audio/sequence_font_table.o: $(BUILD_DIR)/assets/audio/sequence_font_table.s
+	$(AS) $(ASFLAGS) $< -o $@
+
+# make headers with file sizes and amounts
+
+ifneq ($(PSP_PORT_NO_ASSET_REGEN),1)
+$(BUILD_DIR)/assets/audio/soundfont_sizes.h: $(SOUNDFONT_O_FILES)
+	$(AFILE_SIZES) $@ NUM_SOUNDFONTS SOUNDFONT_SIZES .rodata $^
+
+$(BUILD_DIR)/assets/audio/sequence_sizes.h: $(SEQUENCE_O_FILES)
+	$(AFILE_SIZES) $@ NUM_SEQUENCES SEQUENCE_SIZES .data $^
+else
+$(BUILD_DIR)/assets/audio/soundfont_sizes.h $(BUILD_DIR)/assets/audio/sequence_sizes.h:
+	@test -f $@ || { \
+		echo "Missing $@; run 'make psp-port' with the ROM available to generate PSP audio metadata."; \
+		exit 1; \
+	}
+endif
+
+# Extra audiobank padding that doesn't belong to any soundfont file
+$(BUILD_DIR)/assets/audio/audiobank_padding.o:
+	echo ".section .rodata; .fill 0x20" | $(AS) $(ASFLAGS) -o $@
+
+#### PSP Port Probe ####
+
+PSP_ENABLE_GPROF ?= 0
+PSP_AUDIO_SOURCE_FREQUENCY ?= 22050
+PSP_AUDIO_HARDWARE_SRC ?= 1
+PSP_AUDIO_MEDIA_ENGINE ?= 1
+PSP_AUDIO_MIXER_VME ?= 1
+PSP_AUDIO_MIXER_FAST ?= 1
+PSP_AUDIO_MIXER_VERIFY ?= 0
+PSP_AUDIO_DIAGNOSTICS ?= 0
+PSP_GFX_DIAGNOSTICS ?= 0
+PSP_FAST_SQRT ?= 1
+PSP_OOTDEBUG ?= 0
+PSP_AUDIO_ME_OPT_CFLAGS ?= -O3 -finline-functions
+PSP_AUDIO_CPU_OPT_CFLAGS ?= -O3 -finline-functions
+PSP_GFX_HOT_OPT_CFLAGS ?= -O3 -finline-functions
+PSP_PORT_AUDIO_ME_VARIANT :=
+PSP_PORT_AUDIO_MIXER_VARIANT :=
+PSP_PORT_AUDIO_SRC_VARIANT :=
+PSP_PORT_AUDIO_DIAGNOSTICS_VARIANT :=
+ifeq ($(PSP_AUDIO_MEDIA_ENGINE),0)
+PSP_PORT_AUDIO_ME_VARIANT := -no-me
+endif
+ifeq ($(PSP_AUDIO_HARDWARE_SRC),0)
+PSP_PORT_AUDIO_SRC_VARIANT := -soft-src
+endif
+ifeq ($(PSP_AUDIO_MIXER_VME),0)
+PSP_PORT_AUDIO_MIXER_VARIANT := -mixer-cpu
+endif
+ifeq ($(PSP_AUDIO_MIXER_FAST),0)
+PSP_PORT_AUDIO_MIXER_VARIANT := -mixer-ref
+endif
+ifneq ($(PSP_AUDIO_MIXER_VERIFY),0)
+ifeq ($(PSP_AUDIO_MIXER_VME),0)
+PSP_PORT_AUDIO_MIXER_VARIANT := -mixer-cpu-verify
+else
+PSP_PORT_AUDIO_MIXER_VARIANT := -mixer-vme-verify
+endif
+endif
+PSP_PORT_GPROF_ENABLED := $(filter 1 ON on TRUE true YES yes,$(PSP_ENABLE_GPROF))
+PSP_PORT_OOTDEBUG_ENABLED := $(filter 1 ON on TRUE true YES yes,$(PSP_OOTDEBUG))
+PSP_PORT_AUDIO_DIAGNOSTICS_ENABLED := $(filter 1 ON on TRUE true YES yes,$(PSP_AUDIO_DIAGNOSTICS))
+ifneq ($(PSP_PORT_AUDIO_DIAGNOSTICS_ENABLED),)
+PSP_PORT_AUDIO_DIAGNOSTICS_VARIANT := -audio-diag
+endif
+ifneq ($(PSP_PORT_OOTDEBUG_ENABLED),)
+PSP_PORT_OOTDEBUG_VARIANT := -ootdebug
+endif
+ifneq ($(PSP_PORT_GPROF_ENABLED),)
+PSP_PORT_DEFAULT_BUILD_DIR := build/psp-port-gprof$(PSP_PORT_AUDIO_ME_VARIANT)$(PSP_PORT_AUDIO_MIXER_VARIANT)$(PSP_PORT_AUDIO_SRC_VARIANT)$(PSP_PORT_AUDIO_DIAGNOSTICS_VARIANT)$(PSP_PORT_OOTDEBUG_VARIANT)/$(VERSION)
+else
+PSP_PORT_DEFAULT_BUILD_DIR := build/psp-port$(PSP_PORT_AUDIO_ME_VARIANT)$(PSP_PORT_AUDIO_MIXER_VARIANT)$(PSP_PORT_AUDIO_SRC_VARIANT)$(PSP_PORT_AUDIO_DIAGNOSTICS_VARIANT)$(PSP_PORT_OOTDEBUG_VARIANT)/$(VERSION)
+endif
+PSP_PORT_BUILD_DIR ?= $(PSP_PORT_DEFAULT_BUILD_DIR)
+PSP_PORT_PSPSDK := $(shell psp-config -p 2>/dev/null)
+PSP_PORT_PREFIX := $(shell psp-config -P 2>/dev/null)
+PSP_PORT_CC := psp-gcc
+PSP_PORT_AR := psp-ar
+PSP_PORT_INTRAFONT_LIB := $(firstword $(wildcard $(PSP_PORT_PREFIX)/lib/libintrafont.a))
+PSP_PORT_GPROF_LINKER_SOURCE := $(PSP_PORT_PREFIX)/lib/ldscripts/elf_mipsallegrexel_psp.x
+PSP_PORT_GPROF_LINKER_SCRIPT := $(PSP_PORT_BUILD_DIR)/linkfile.gprof
+
+PSP_PORT_ACTOR_SOURCES := $(sort $(filter-out %.inc.c,$(wildcard src/overlays/actors/*/*.c)))
+PSP_PORT_EFFECT_SOURCES := $(sort $(filter-out %.inc.c,$(wildcard src/overlays/effects/*/*.c)))
+PSP_PORT_KALEIDO_SOURCES := $(sort $(filter-out %.inc.c,$(wildcard src/overlays/misc/ovl_kaleido_scope/*.c)))
+PSP_PORT_RUNTIME_ASM_SOURCES := \
+	src/code/kanread.s \
+	src/port/psp/gfx/gfx_clip_vfpu.s \
+	src/port/psp/gfx/gfx_transform_vfpu.s \
+	src/port/psp/oot_psp_asset_transform.s \
+	src/port/psp/oot_psp_me_kcall.s \
+	src/port/psp/oot_psp_dve_user.s \
+	src/port/psp/oot_psp_ucode_assets.s
+PSP_PORT_ROOT_ASSET_SOURCES := $(sort $(filter-out %.inc.c,$(wildcard assets/objects/*/*.c)))
+PSP_PORT_ROOT_TEXTURE_SOURCES := \
+	assets/textures/do_action_static/do_action_static.c \
+	assets/textures/icon_item_24_static/icon_item_24_static.c \
+	assets/textures/icon_item_jpn_static/icon_item_jpn_static.c \
+	assets/textures/icon_item_nes_static/icon_item_nes_static.c
+PSP_PORT_TEXT_ASSET_SOURCES := $(sort $(filter-out %.inc.c,$(wildcard assets/text/*message_data_static.c)))
+PSP_PORT_EXTRACTED_OBJECT_SOURCES := $(sort $(filter-out %.inc.c,$(wildcard extracted/$(VERSION)/assets/objects/*/*.c)))
+PSP_PORT_EXTRACTED_SCENE_SOURCES := $(sort $(filter-out %.inc.c,$(wildcard extracted/$(VERSION)/assets/scenes/*/*/*.c)))
+PSP_PORT_EXTRACTED_TEXTURE_SOURCES := $(sort $(filter-out %.inc.c,$(wildcard extracted/$(VERSION)/assets/textures/*/*.c)))
+PSP_PORT_EXTRACTED_MISC_SOURCES := $(sort $(filter-out %.inc.c,$(wildcard extracted/$(VERSION)/assets/misc/*/*.c)))
+
+PSP_PORT_RUNTIME_SOURCES := \
+	src/buffers/audio_heap.c \
+	src/buffers/gfxbuffers.c \
+	src/buffers/zbuffer.c \
+	src/audio/game/data.c \
+	src/audio/game/general.c \
+	src/audio/game/sequence.c \
+	src/audio/game/session_config.c \
+	src/audio/game/session_init.c \
+	src/audio/game/sfx.c \
+	src/audio/game/sfx_params.c \
+	src/audio/internal/data.c \
+	src/audio/internal/effects.c \
+	src/audio/internal/heap.c \
+	src/audio/internal/load.c \
+	src/audio/internal/os.c \
+	src/audio/internal/playback.c \
+	src/audio/internal/seqplayer.c \
+	src/audio/internal/synthesis.c \
+	src/audio/internal/thread.c \
+	src/code/TwoHeadArena.c \
+	src/code/TwoHeadGfxArena.c \
+	src/code/game.c \
+	src/code/gamealloc.c \
+	src/code/gfxalloc.c \
+	src/code/graph.c \
+	src/code/jpegdecoder.c \
+	src/code/jpegutils.c \
+	src/code/listalloc.c \
+	src/code/PreRender.c \
+	src/code/z_cutscene_spline.c \
+	src/code/sys_math.c \
+	src/code/sys_math_atan.c \
+	src/code/shrink_window.c \
+	src/code/sys_matrix.c \
+	src/code/sys_math3d.c \
+	src/code/title_setup.c \
+	src/code/z_actor.c \
+	src/code/z_actor_dlftbls.c \
+	src/code/z_bgcheck.c \
+	src/code/z_bg_collect.c \
+	src/code/z_bg_item.c \
+	src/code/z_camera.c \
+	src/code/z_common_data.c \
+	src/code/z_collision_check.c \
+	src/code/z_collision_btltbls.c \
+	src/code/z_construct.c \
+	src/code/z_DLF.c \
+	src/code/z_debug_display.c \
+	src/code/z_demo.c \
+	src/code/z_en_a_keep.c \
+	src/code/z_en_item00.c \
+	src/code/z_env_flags.c \
+	src/code/z_elf_message.c \
+	src/code/z_draw.c \
+	src/code/z_eff_blure.c \
+	src/code/z_eff_shield_particle.c \
+	src/code/z_eff_spark.c \
+	src/code/z_eff_ss_dead.c \
+	src/code/z_effect.c \
+	src/code/z_effect_soft_sprite.c \
+	src/code/z_effect_soft_sprite_dlftbls.c \
+	src/code/z_effect_soft_sprite_old_init.c \
+	src/code/z_fbdemo.c \
+	src/code/z_fbdemo_circle.c \
+	src/code/z_fbdemo_fade.c \
+	src/code/z_fbdemo_triforce.c \
+	src/code/z_fbdemo_wipe1.c \
+	src/code/z_frame_advance.c \
+	src/code/z_face_reaction.c \
+	src/code/z_fcurve_data.c \
+	src/code/z_fcurve_data_skelanime.c \
+	src/code/z_game_over.c \
+	src/code/z_horse.c \
+	src/code/z_inventory.c \
+	src/code/z_jpeg.c \
+	src/code/z_kaleido_manager.c \
+	src/code/z_kaleido_scope_call.c \
+	src/code/z_kaleido_setup.c \
+	src/code/z_kankyo.c \
+	src/code/z_kanfont.c \
+	src/code/z_lib.c \
+	src/code/z_lifemeter.c \
+	src/code/z_lights.c \
+	src/code/z_malloc.c \
+	src/code/z_map_data.c \
+	src/code/z_map_exp.c \
+	src/code/z_map_mark.c \
+	src/code/z_memory_utils.c \
+	src/code/z_message.c \
+	src/code/z_olib.c \
+	src/code/z_onepointdemo.c \
+	src/code/z_parameter.c \
+	src/code/z_path.c \
+	src/code/z_player_call.c \
+	src/code/z_player_lib.c \
+	src/code/z_play.c \
+	src/code/z_prenmi_buff.c \
+	src/code/z_quake.c \
+	src/code/z_rcp.c \
+	src/code/z_rumble.c \
+	src/code/z_room.c \
+	src/code/z_scene.c \
+	src/code/z_scene_table.c \
+	src/code/z_skin.c \
+	src/code/z_skin_awb.c \
+	src/code/z_skin_matrix.c \
+	src/code/z_skelanime.c \
+	src/code/z_sfx_source.c \
+	src/code/z_sram.c \
+	src/code/sys_rumble.c \
+	src/code/z_vimode.c \
+	src/code/z_view.c \
+	src/code/z_vismono.c \
+	src/code/z_viszbuf.c \
+	src/code/z_viscvg.c \
+	src/code/z_vr_box.c \
+	src/code/z_vr_box_draw.c \
+	src/elf_message/elf_message_field.c \
+	src/elf_message/elf_message_ydan.c \
+	src/libc64/__osMalloc_gc.c \
+	src/libc64/aprintf.c \
+	src/libc64/math64.c \
+	src/libc64/malloc.c \
+	src/libc64/qrand.c \
+	src/libc64/sleep.c \
+	src/libu64/gfxprint.c \
+	src/libu64/loadfragment2_n64.c \
+	src/libu64/mtxuty-cvt.c \
+	src/libu64/pad.c \
+	src/libu64/runtime.c \
+	src/libultra/gu/coss.c \
+	src/libultra/gu/lookat.c \
+	src/libultra/gu/lookathil.c \
+	src/libultra/gu/mtxutil.c \
+	src/libultra/gu/normalize.c \
+	src/libultra/gu/ortho.c \
+	src/libultra/gu/perspective.c \
+	src/libultra/gu/rotate.c \
+	src/libultra/gu/scale.c \
+	src/libultra/gu/sins.c \
+	src/libultra/gu/translate.c \
+	src/libultra/gu/us2dex.c \
+	src/libultra/libc/xldtob.c \
+	src/libultra/libc/xlitob.c \
+	src/libultra/libc/xprintf.c \
+	$(PSP_PORT_ACTOR_SOURCES) \
+	$(PSP_PORT_EFFECT_SOURCES) \
+	$(PSP_PORT_KALEIDO_SOURCES) \
+	src/overlays/gamestates/ovl_file_choose/z_file_choose.c \
+	src/overlays/gamestates/ovl_file_choose/z_file_copy_erase.c \
+	src/overlays/gamestates/ovl_file_choose/z_file_nameset.c \
+	src/overlays/gamestates/ovl_file_choose/z_file_nameset_data.c \
+	src/overlays/gamestates/ovl_opening/z_opening.c \
+	src/overlays/gamestates/ovl_select/z_select.c \
+	src/overlays/gamestates/ovl_title/z_title.c \
+	src/overlays/misc/ovl_map_mark_data/z_map_mark_data.c \
+	src/port/psp/gfx/gfx_cc.c \
+	src/port/psp/gfx/gfx_fast3d.c \
+	src/port/psp/gfx/gfx_scegu.c \
+	src/port/psp/gfx/gfx_window_psp.c \
+	src/port/psp/gfx/psp_texture_manager.c \
+	src/port/psp/oot_psp_asset_builder.c \
+	src/port/psp/oot_psp_asset_loader.c \
+	src/port/psp/oot_psp_audio_backend.c \
+	src/port/psp/oot_psp_audiomgr.c \
+	src/port/psp/oot_psp_controls.c \
+	src/port/psp/oot_psp_dve.c \
+	src/port/psp/oot_psp_game.c \
+	src/port/psp/oot_psp_home_menu.c \
+	src/port/psp/oot_psp_memory.c \
+	src/port/psp/oot_psp_mixer.c \
+	src/port/psp/oot_psp_performance.c \
+	src/port/psp/oot_psp_renderer.c \
+	src/port/psp/oot_psp_runtime_patch.c \
+	src/port/psp/oot_psp_video.c \
+	src/port/psp/sys_ucode_psp.c \
+	src/port/psp/libultra_psp.c \
+	src/port/psp/sched_psp.c
+
+PSP_PORT_ASSET_SOURCES := \
+	$(PSP_PORT_ROOT_ASSET_SOURCES) \
+	$(PSP_PORT_ROOT_TEXTURE_SOURCES) \
+	$(PSP_PORT_TEXT_ASSET_SOURCES) \
+	$(PSP_PORT_EXTRACTED_OBJECT_SOURCES) \
+	$(PSP_PORT_EXTRACTED_SCENE_SOURCES) \
+	$(PSP_PORT_EXTRACTED_TEXTURE_SOURCES) \
+	$(PSP_PORT_EXTRACTED_MISC_SOURCES)
+
+PSP_PORT_LINKED_ASSET_SOURCES := \
+	$(EMPTY)
+
+PSP_PORT_PROBE_SOURCE := src/port/psp/oot_psp_probe.c
+
+PSP_PORT_SETUP_STAMP := $(PSP_PORT_BUILD_DIR)/setup.stamp
+PSP_PORT_ASSET_SNAPSHOT := assets/psp/ntsc-1.0/generated.zip
+PSP_PORT_ASSET_TRANSFORM := assets/psp/ntsc-1.0/asset_transform.z
+PSP_PORT_RUNTIME_PATCH_MANIFEST := assets/psp/ntsc-1.0/runtime_patches.z
+PSP_PORT_ROMINFO_SOURCE := $(PSP_PORT_BUILD_DIR)/oot_psp_rominfo.c
+PSP_PORT_ROMINFO_OBJECT := $(PSP_PORT_BUILD_DIR)/oot_psp_rominfo.o
+PSP_PORT_ASSET_TABLE_SOURCE := $(PSP_PORT_BUILD_DIR)/oot_psp_asset_tables.c
+PSP_PORT_ASSET_TABLE_OBJECT := $(PSP_PORT_BUILD_DIR)/oot_psp_asset_tables.o
+PSP_PORT_AUDIO_TABLE_SOURCE := $(PSP_PORT_BUILD_DIR)/oot_psp_audio_tables.c
+PSP_PORT_AUDIO_TABLE_OBJECT := $(PSP_PORT_BUILD_DIR)/oot_psp_audio_tables.o
+PSP_PORT_ASSET_SEGMENT_SOURCE := $(PSP_PORT_BUILD_DIR)/oot_psp_asset_segments.S
+PSP_PORT_ASSET_SEGMENT_TABLE_SOURCE := $(PSP_PORT_BUILD_DIR)/oot_psp_asset_segments.c
+PSP_PORT_ASSET_SEGMENT_STAMP := $(PSP_PORT_BUILD_DIR)/oot_psp_asset_segments.stamp
+PSP_PORT_ASSET_SEGMENT_DATA_DIR := $(PSP_PORT_BUILD_DIR)/data/segments
+PSP_PORT_ASSET_SEGMENT_DATA_STAMP := $(PSP_PORT_ASSET_SEGMENT_DATA_DIR)/.stamp
+PSP_PORT_ASSET_SEGMENT_OBJECT := $(PSP_PORT_BUILD_DIR)/oot_psp_asset_segments.o
+PSP_PORT_ASSET_SEGMENT_TABLE_OBJECT := $(PSP_PORT_BUILD_DIR)/oot_psp_asset_segments_table.o
+PSP_PORT_RUNTIME_OBJECTS := $(patsubst %.c,$(PSP_PORT_BUILD_DIR)/%.o,$(PSP_PORT_RUNTIME_SOURCES))
+PSP_PORT_RUNTIME_ASM_OBJECTS := $(patsubst %.s,$(PSP_PORT_BUILD_DIR)/%.o,$(PSP_PORT_RUNTIME_ASM_SOURCES))
+PSP_PORT_ASSET_OBJECTS := $(patsubst %.c,$(PSP_PORT_BUILD_DIR)/%.o,$(PSP_PORT_LINKED_ASSET_SOURCES))
+PSP_PORT_NATIVE_SEGMENT_OBJECTS := $(patsubst %.c,$(PSP_PORT_BUILD_DIR)/%.o,$(PSP_PORT_ASSET_SOURCES))
+PSP_PORT_PROBE_OBJECT := $(PSP_PORT_BUILD_DIR)/$(PSP_PORT_PROBE_SOURCE:.c=.o)
+PSP_PORT_LIBRARY := $(PSP_PORT_BUILD_DIR)/liboot_psp_platform.a
+PSP_PORT_ELF := $(PSP_PORT_BUILD_DIR)/oot-psp-port.elf
+PSP_PORT_BASE_ELF := $(PSP_PORT_BUILD_DIR)/oot-psp-port.base.elf
+PSP_PORT_RUNTIME_PATCH_BLOB := $(PSP_PORT_BUILD_DIR)/oot_psp_runtime_patches.bin
+PSP_PORT_RUNTIME_PATCH_ASM := $(PSP_PORT_BUILD_DIR)/oot_psp_runtime_patches.S
+PSP_PORT_RUNTIME_PATCH_OBJECT := $(PSP_PORT_BUILD_DIR)/oot_psp_runtime_patches.o
+PSP_PORT_PRX_ELF := $(PSP_PORT_BUILD_DIR)/oot-psp-port.prx.elf
+PSP_PORT_STRIPPED_ELF := $(PSP_PORT_BUILD_DIR)/oot-psp-port.stripped.elf
+PSP_PORT_PRX := $(PSP_PORT_BUILD_DIR)/oot-psp-port.prx
+PSP_PORT_PBP := $(PSP_PORT_BUILD_DIR)/EBOOT.PBP
+PSP_PORT_DVEMGR_SOURCE_DIR := src/port/psp/dvemgr
+PSP_PORT_DVEMGR_BUILD_DIR := $(PSP_PORT_BUILD_DIR)/dvemgr
+PSP_PORT_DVEMGR_OBJECTS := \
+	$(PSP_PORT_DVEMGR_BUILD_DIR)/main.o \
+	$(PSP_PORT_DVEMGR_BUILD_DIR)/exports.o \
+	$(PSP_PORT_DVEMGR_BUILD_DIR)/imports.o
+PSP_PORT_DVEMGR_ELF := $(PSP_PORT_DVEMGR_BUILD_DIR)/dvemgr.elf
+PSP_PORT_DVEMGR_PRX := $(PSP_PORT_BUILD_DIR)/Plugins/dvemgr.prx
+PSP_PORT_BUILD_MODE := $(if $(filter 1,$(PSP_PORT_NO_ASSET_REGEN)),no-asset-regen,full-assets)
+PSP_PORT_BUILD_MODE_STAMP := $(PSP_PORT_BUILD_DIR)/.build-mode
+PSP_PORT_DEP_FILES := $(PSP_PORT_RUNTIME_OBJECTS:.o=.d) $(PSP_PORT_RUNTIME_ASM_OBJECTS:.o=.d) \
+	$(PSP_PORT_ASSET_OBJECTS:.o=.d) \
+	$(PSP_PORT_ROMINFO_OBJECT:.o=.d) $(PSP_PORT_ASSET_TABLE_OBJECT:.o=.d) \
+	$(PSP_PORT_AUDIO_TABLE_OBJECT:.o=.d) \
+	$(PSP_PORT_ASSET_SEGMENT_OBJECT:.o=.d) $(PSP_PORT_ASSET_SEGMENT_TABLE_OBJECT:.o=.d) \
+	$(PSP_PORT_PROBE_OBJECT:.o=.d)
+PSP_PORT_DEP_FILES += $(PSP_PORT_DVEMGR_OBJECTS:.o=.d)
+ifneq ($(PSP_PORT_NO_ASSET_REGEN),1)
+PSP_PORT_DEP_FILES += $(PSP_PORT_NATIVE_SEGMENT_OBJECTS:.o=.d)
+endif
+
+$(PSP_PORT_BUILD_DIR)/assets/text/jpn_message_data_static.o: $(BUILD_DIR)/assets/text/message_data.enc.jpn.h
+$(PSP_PORT_BUILD_DIR)/assets/text/nes_message_data_static.o: $(BUILD_DIR)/assets/text/message_data.enc.nes.h
+$(PSP_PORT_BUILD_DIR)/assets/text/ger_message_data_static.o: $(BUILD_DIR)/assets/text/message_data.enc.nes.h
+$(PSP_PORT_BUILD_DIR)/assets/text/fra_message_data_static.o: $(BUILD_DIR)/assets/text/message_data.enc.nes.h
+$(PSP_PORT_BUILD_DIR)/assets/text/staff_message_data_static.o: $(BUILD_DIR)/assets/text/message_data_staff.enc.nes.h
+
+PSP_PORT_EXTRACTED_ASSET_FILES := \
+	$(EXTRACTED_DIR)/assets/objects/object_timeblock/gSongOfTimeBlockDL.inc.c \
+	$(EXTRACTED_DIR)/assets/objects/object_timeblock/gSongOfTimeBlockVtx.inc.c \
+	$(EXTRACTED_DIR)/assets/objects/object_timeblock/gSongOfTimeBlockTex.i4.png \
+	$(EXTRACTED_DIR)/assets/textures/nintendo_rogo_static/nintendo_rogo_static.c \
+	$(EXTRACTED_DIR)/assets/textures/nintendo_rogo_static/nintendo_rogo_static.h \
+	$(EXTRACTED_DIR)/assets/textures/nintendo_rogo_static/gNintendo64LogoDL.inc.c \
+	$(EXTRACTED_DIR)/assets/textures/nintendo_rogo_static/gNintendo64LogoVtx.inc.c \
+	$(EXTRACTED_DIR)/assets/textures/nintendo_rogo_static/nintendo_rogo_static_Tex_000000.i8.png \
+	$(EXTRACTED_DIR)/assets/textures/nintendo_rogo_static/nintendo_rogo_static_Tex_001800.i8.png
+
+PSP_PORT_GENERATED_ASSET_FILES := \
+	$(BUILD_DIR)/assets/objects/gameplay_dangeon_keep/gameplay_dangeon_keep_000000_Tex.i8.inc.c \
+	$(BUILD_DIR)/assets/objects/gameplay_dangeon_keep/gameplay_dangeon_keep_000200_Tex.i8.inc.c \
+	$(BUILD_DIR)/assets/objects/gameplay_dangeon_keep/gameplay_dangeon_keep_0005C0_Tex.rgba16.inc.c \
+	$(BUILD_DIR)/assets/objects/gameplay_dangeon_keep/gameplay_dangeon_keep_001280_Tex.rgba16.inc.c \
+	$(BUILD_DIR)/assets/objects/gameplay_dangeon_keep/gDoorChainTex.rgba16.inc.c \
+	$(BUILD_DIR)/assets/objects/gameplay_dangeon_keep/gPushBlockBaseTex.i4.inc.c \
+	$(BUILD_DIR)/assets/objects/gameplay_dangeon_keep/gPushBlockGrayTex.i4.inc.c \
+	$(BUILD_DIR)/assets/objects/gameplay_dangeon_keep/gPushBlockSilverTex.i4.inc.c \
+	$(BUILD_DIR)/assets/objects/gameplay_dangeon_keep/gUnusedGoldLockTex.rgba16.inc.c \
+	$(BUILD_DIR)/assets/objects/gameplay_dangeon_keep/gUnusedStoneTex.rgba16.inc.c \
+	$(BUILD_DIR)/assets/objects/object_bdoor/gBossDoorDefaultTex.rgba16.inc.c \
+	$(BUILD_DIR)/assets/objects/object_bdoor/gBossDoorFireTex.rgba16.inc.c \
+	$(BUILD_DIR)/assets/objects/object_bdoor/gBossDoorForestTex.rgba16.inc.c \
+	$(BUILD_DIR)/assets/objects/object_bdoor/gBossDoorGanonsCastleTex.rgba16.inc.c \
+	$(BUILD_DIR)/assets/objects/object_bdoor/gBossDoorShadowTex.rgba16.inc.c \
+	$(BUILD_DIR)/assets/objects/object_bdoor/gBossDoorSpiritTex.rgba16.inc.c \
+	$(BUILD_DIR)/assets/objects/object_bdoor/gBossDoorWaterTex.rgba16.inc.c \
+	$(BUILD_DIR)/assets/objects/object_timeblock/gSongOfTimeBlockTex.i4.inc.c \
+	$(BUILD_DIR)/assets/textures/nintendo_rogo_static/nintendo_rogo_static_Tex_000000.i8.inc.c \
+	$(BUILD_DIR)/assets/textures/nintendo_rogo_static/nintendo_rogo_static_Tex_001800.i8.inc.c
+
+PSP_PORT_RUNTIME_GENERATED_ASSET_DIRS := \
+	assets/code \
+	assets/n64dd \
+	assets/overlays \
+	$(EXTRACTED_DIR)/assets/code \
+	$(EXTRACTED_DIR)/assets/n64dd \
+	$(EXTRACTED_DIR)/assets/overlays
+PSP_PORT_NATIVE_GENERATED_ASSET_DIRS := \
+	assets/objects \
+	assets/scenes \
+	assets/textures \
+	assets/misc \
+	$(EXTRACTED_DIR)/assets/objects \
+	$(EXTRACTED_DIR)/assets/scenes \
+	$(EXTRACTED_DIR)/assets/textures \
+	$(EXTRACTED_DIR)/assets/misc
+
+PSP_PORT_RUNTIME_GENERATED_ASSET_STAMP := $(BUILD_DIR)/assets/psp_generated_runtime_assets.stamp
+PSP_PORT_NATIVE_GENERATED_ASSET_STAMP := $(BUILD_DIR)/assets/psp_generated_native_assets.stamp
+
+PSP_PORT_DEFINES := \
+	-D_LANGUAGE_C \
+	-DNON_MATCHING \
+	-DAVOID_UB \
+	-DDEBUG_FEATURES=$(DEBUG_FEATURES) \
+	-DOOT_VERSION=$(VERSION_MACRO) \
+	-DOOT_REVISION=$(REVISION) \
+	-DOOT_REGION=REGION_$(REGION) \
+	-DLIBULTRA_VERSION=LIBULTRA_VERSION_L \
+	-DLIBULTRA_PATCH=0 \
+	-DPLATFORM_PSP=1 \
+	-DPLATFORM_N64=0 \
+	-DPLATFORM_GC=0 \
+	-DPLATFORM_IQUE=0 \
+	-DF3DEX_GBI_2 \
+	-DF3DEX_GBI_PL \
+	-DGBI_DOWHILE \
+	-DTARGET_PSP=1 \
+	-DOOT_PSP_AUDIO_SOURCE_FREQUENCY=$(PSP_AUDIO_SOURCE_FREQUENCY) \
+	-DOOT_PSP_AUDIO_HARDWARE_SRC=$(PSP_AUDIO_HARDWARE_SRC) \
+	-DOOT_PSP_AUDIO_MEDIA_ENGINE=$(PSP_AUDIO_MEDIA_ENGINE) \
+	-DOOT_PSP_AUDIO_MIXER_VME=$(PSP_AUDIO_MIXER_VME) \
+	-DOOT_PSP_AUDIO_MIXER_FAST=$(PSP_AUDIO_MIXER_FAST) \
+	-DOOT_PSP_AUDIO_MIXER_VERIFY=$(PSP_AUDIO_MIXER_VERIFY) \
+	-DOOT_PSP_AUDIO_DIAGNOSTICS=$(if $(PSP_PORT_AUDIO_DIAGNOSTICS_ENABLED),1,0) \
+	-DOOT_PSP_GFX_DIAGNOSTICS=$(PSP_GFX_DIAGNOSTICS) \
+	-DOOT_PSP_FAST_SQRT=$(PSP_FAST_SQRT) \
+	-D_PSP_FW_VERSION=500
+ifneq ($(PSP_PORT_GPROF_ENABLED),)
+PSP_PORT_DEFINES += -DOOT_PSP_GPROF=1
+endif
+ifneq ($(PSP_PORT_OOTDEBUG_ENABLED),)
+PSP_PORT_DEFINES += -DOOTDEBUG=1
+endif
+ifneq ($(PSP_PORT_INTRAFONT_LIB),)
+PSP_PORT_DEFINES += -DOOT_PSP_USE_INTRAFONT=1
+else
+PSP_PORT_DEFINES += -DOOT_PSP_USE_INTRAFONT=0
+endif
+PSP_PORT_ASM_DEFINES := $(filter-out -D_LANGUAGE_C,$(PSP_PORT_DEFINES))
+
+PSP_PORT_INCLUDES := \
+	-Iinclude \
+	-Iinclude/libc \
+	-Isrc \
+	-isystem $(BUILD_DIR) \
+	-I. \
+	-I$(EXTRACTED_DIR) \
+	-Isrc/port/psp \
+	-Isrc/port/psp/gfx \
+	-I$(PSP_PORT_PSPSDK)/include \
+	-I$(PSP_PORT_PREFIX)/include
+
+PSP_PORT_CFLAGS := -G0 -O2 -g3 -Wall -Wextra -Wno-format-security -Wno-unused-parameter -Wno-unused-variable \
+	-Wno-missing-braces \
+	-Wno-int-to-pointer-cast -Wno-pointer-to-int-cast -fno-strict-aliasing -fwrapv -fno-common -fsigned-char \
+	-ffunction-sections -fdata-sections \
+	-fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-ident \
+	-include src/port/psp/oot_psp_compat.h \
+	$(PSP_PORT_DEFINES) $(PSP_PORT_INCLUDES)
+
+ifneq ($(PSP_PORT_GPROF_ENABLED),)
+PSP_PORT_CFLAGS += -pg -g -fno-omit-frame-pointer -fno-optimize-sibling-calls
+endif
+PSP_PORT_AUDIO_ME_CFLAGS := $(filter-out -pg,$(PSP_PORT_CFLAGS)) $(PSP_AUDIO_ME_OPT_CFLAGS)
+PSP_PORT_AUDIO_CPU_CFLAGS := $(PSP_PORT_CFLAGS) $(PSP_AUDIO_CPU_OPT_CFLAGS)
+PSP_PORT_GFX_HOT_CFLAGS := $(PSP_PORT_CFLAGS) $(PSP_GFX_HOT_OPT_CFLAGS)
+
+PSP_PORT_LIBS := -L$(PSP_PORT_PSPSDK)/lib -L$(PSP_PORT_PREFIX)/lib -lme-core -lpspdmac -lpspgu -lpspgum -ljpeg -lz \
+	-lpspdisplay -lpspge -lpspfpu -lpspctrl -lpsppower -lpspaudio -lpspdebug -lpspkubridge
+ifneq ($(PSP_PORT_INTRAFONT_LIB),)
+PSP_PORT_LIBS += -lintrafont
+endif
+
+ifneq ($(PSP_PORT_GPROF_ENABLED),)
+PSP_PORT_LINKER_DEPS := $(PSP_PORT_GPROF_LINKER_SCRIPT)
+PSP_PORT_EXTRA_LINK_OBJECTS := $(PSP_PORT_ASSET_SEGMENT_OBJECT)
+PSP_PORT_LDFLAGS := -pg -g -Wl,-T$(PSP_PORT_GPROF_LINKER_SCRIPT) -Wl,-q -Wl,-zmax-page-size=128 -Wl,--gc-sections \
+	-Wl,-u,module_info -Wl,-u,sceKernelChangeThreadPriority -Wl,-u,ootPspDveImport -Wl,-u,ootPspMeKcallImport \
+	$(PSP_PORT_LIBS)
+else
+PSP_PORT_LINKER_DEPS :=
+PSP_PORT_EXTRA_LINK_OBJECTS :=
+PSP_PORT_LDFLAGS := -specs=$(PSP_PORT_PSPSDK)/lib/prxspecs -Wl,-q,-T$(PSP_PORT_PSPSDK)/lib/linkfile.prx \
+	-Wl,-zmax-page-size=128 -Wl,--gc-sections -Wl,-u,module_info -Wl,-u,sceKernelChangeThreadPriority \
+	-Wl,-u,ootPspDveImport -Wl,-u,ootPspMeKcallImport \
+	$(PSP_PORT_PSPSDK)/lib/prxexports.o $(PSP_PORT_LIBS)
+endif
+
+psp-port: $(PSP_PORT_PBP) $(PSP_PORT_DVEMGR_PRX)
+	@echo "PSP port is up to date: $(PSP_PORT_PBP) and $(PSP_PORT_DVEMGR_PRX)"
+
+psp-port-eboot:
+	$(MAKE) PSP_PORT_NO_ASSET_REGEN=1 $(PSP_PORT_PBP) $(PSP_PORT_DVEMGR_PRX)
+
+$(PSP_PORT_DVEMGR_BUILD_DIR)/%.o: $(PSP_PORT_DVEMGR_SOURCE_DIR)/%.c
+	@mkdir -p $(dir $@)
+	$(PSP_PORT_CC) -MMD -MP -MF $(@:.o=.d) -MT $@ -c -Os -G0 -Wall -fshort-wchar -fno-pic \
+		-mno-check-zero-division -D_PSP_FW_VERSION=500 -I$(PSP_PORT_PSPSDK)/include -I$(PSP_PORT_PREFIX)/include \
+		-o $@ $<
+
+$(PSP_PORT_DVEMGR_BUILD_DIR)/%.o: $(PSP_PORT_DVEMGR_SOURCE_DIR)/%.s
+	@mkdir -p $(dir $@)
+	$(PSP_PORT_CC) -MMD -MP -MF $(@:.o=.d) -MT $@ -c -x assembler-with-cpp -D_PSP_FW_VERSION=500 \
+		-I$(PSP_PORT_PSPSDK)/include -I$(PSP_PORT_PREFIX)/include -o $@ $<
+
+$(PSP_PORT_DVEMGR_ELF): $(PSP_PORT_DVEMGR_OBJECTS)
+	$(PSP_PORT_CC) -L$(PSP_PORT_PREFIX)/lib -L$(PSP_PORT_PSPSDK)/lib \
+		-specs=$(PSP_PORT_PSPSDK)/lib/prxspecs -Wl,-q,-T$(PSP_PORT_PSPSDK)/lib/linkfile.prx \
+		-nostartfiles -Wl,-zmax-page-size=128 $^ -nostdlib -lpspdebug -lpspdisplay_driver -lpspctrl_driver \
+		-lpspmodinfo -lpspsdk -lpspkernel -o $@
+	psp-fixup-imports $@
+
+$(PSP_PORT_DVEMGR_PRX): $(PSP_PORT_DVEMGR_ELF)
+	@mkdir -p $(dir $@)
+	psp-prxgen $< $@
+
+$(PSP_PORT_BUILD_DIR)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(PSP_PORT_CC) -MMD -MP -MF $(@:.o=.d) -MT $@ -c $(PSP_PORT_CFLAGS) -o $@ $<
+
+$(PSP_PORT_BUILD_DIR)/%.o: %.s
+	@mkdir -p $(dir $@)
+	$(PSP_PORT_CC) -MMD -MP -MF $(@:.o=.d) -MT $@ -c -x assembler-with-cpp $(PSP_PORT_ASM_DEFINES) $(PSP_PORT_INCLUDES) -Wa,-I$(EXTRACTED_DIR) -o $@ $<
+
+$(PSP_PORT_RUNTIME_OBJECTS) $(PSP_PORT_NATIVE_SEGMENT_OBJECTS): include/command_macros_base.h include/cutscene_commands.h include/scene.h
+
+$(PSP_PORT_SETUP_STAMP): $(PSP_PORT_ASSET_SNAPSHOT) tools/psp_port_asset_snapshot.py
+	@mkdir -p $(dir $@)
+	$(PYTHON) tools/psp_port_asset_snapshot.py restore $(PSP_PORT_ASSET_SNAPSHOT) $(PSP_PORT_BUILD_DIR)
+	@touch $@
+
+$(PSP_PORT_ROMINFO_SOURCE) $(PSP_PORT_ASSET_TABLE_SOURCE) $(PSP_PORT_AUDIO_TABLE_SOURCE): $(PSP_PORT_SETUP_STAMP)
+	@test -f $@
+
+$(PSP_PORT_ROMINFO_OBJECT): $(PSP_PORT_ROMINFO_SOURCE)
+	@mkdir -p $(dir $@)
+	$(PSP_PORT_CC) -MMD -MP -MF $(@:.o=.d) -MT $@ -c $(PSP_PORT_CFLAGS) -o $@ $<
+
+$(PSP_PORT_ASSET_TABLE_OBJECT): $(PSP_PORT_ASSET_TABLE_SOURCE)
+	@mkdir -p $(dir $@)
+	$(PSP_PORT_CC) -MMD -MP -MF $(@:.o=.d) -MT $@ -c $(PSP_PORT_CFLAGS) -o $@ $<
+
+$(PSP_PORT_AUDIO_TABLE_OBJECT): $(PSP_PORT_AUDIO_TABLE_SOURCE)
+	@mkdir -p $(dir $@)
+	$(PSP_PORT_CC) -MMD -MP -MF $(@:.o=.d) -MT $@ -c $(PSP_PORT_CFLAGS) -o $@ $<
+
+$(PSP_PORT_ASSET_SEGMENT_STAMP): $(PSP_PORT_SETUP_STAMP)
+	@touch $@
+
+$(PSP_PORT_ASSET_SEGMENT_SOURCE) $(PSP_PORT_ASSET_SEGMENT_TABLE_SOURCE): $(PSP_PORT_ASSET_SEGMENT_STAMP)
+	@:
+
+$(PSP_PORT_ASSET_SEGMENT_OBJECT): $(PSP_PORT_ASSET_SEGMENT_SOURCE)
+	@mkdir -p $(dir $@)
+	$(PSP_PORT_CC) -MMD -MP -MF $(@:.o=.d) -MT $@ -c -x assembler-with-cpp $(PSP_PORT_DEFINES) $(PSP_PORT_INCLUDES) -o $@ $<
+
+$(PSP_PORT_BUILD_DIR)/src/port/psp/oot_psp_asset_transform.o: $(PSP_PORT_ASSET_TRANSFORM)
+
+$(PSP_PORT_ASSET_SEGMENT_TABLE_OBJECT): $(PSP_PORT_ASSET_SEGMENT_TABLE_SOURCE)
+	@mkdir -p $(dir $@)
+	$(PSP_PORT_CC) -MMD -MP -MF $(@:.o=.d) -MT $@ -c $(PSP_PORT_CFLAGS) -o $@ $<
+
+# handheld: these extracted files only depend on the PSP snapshot when it exists (the
+# snapshot is not imported; the N64 build must not need it).
+ifneq ($(wildcard $(PSP_PORT_ASSET_SNAPSHOT)),)
+$(PSP_PORT_EXTRACTED_ASSET_FILES): $(PSP_PORT_SETUP_STAMP)
+	@test -f $@
+endif
+
+$(PSP_PORT_RUNTIME_GENERATED_ASSET_STAMP): $(PSP_PORT_SETUP_STAMP)
+	@mkdir -p $(dir $@)
+	@touch $@
+
+$(PSP_PORT_NATIVE_GENERATED_ASSET_STAMP): $(PSP_PORT_SETUP_STAMP)
+	@mkdir -p $(dir $@)
+	@{ for dir in $(PSP_PORT_NATIVE_GENERATED_ASSET_DIRS); do \
+		if test -d "$$dir"; then \
+			find "$$dir" -type f \( -name '*.png' -o -name '*.bin' -o -name '*.jpg' \); \
+		fi; \
+	done; } | sed \
+		-e 's#^assets/#$(BUILD_DIR)/assets/#' \
+		-e 's#^$(EXTRACTED_DIR)/assets/#$(BUILD_DIR)/assets/#' \
+		-e 's#\.png$$#.inc.c#' \
+		-e 's#\.bin$$#.bin.inc.c#' \
+		-e 's#\.jpg$$#.jpg.inc.c#' | xargs -r $(MAKE)
+	@touch $@
+
+$(PSP_PORT_RUNTIME_OBJECTS): $(PSP_PORT_SETUP_STAMP) $(PSP_PORT_RUNTIME_GENERATED_ASSET_STAMP)
+
+$(PSP_PORT_BUILD_DIR)/src/audio/internal/playback.o \
+$(PSP_PORT_BUILD_DIR)/src/audio/internal/seqplayer.o \
+$(PSP_PORT_BUILD_DIR)/src/audio/internal/synthesis.o \
+$(PSP_PORT_BUILD_DIR)/src/audio/internal/thread.o: PSP_PORT_CFLAGS := $(PSP_PORT_AUDIO_CPU_CFLAGS)
+$(PSP_PORT_BUILD_DIR)/src/audio/internal/seqplayer.o: PSP_PORT_CFLAGS += -DMML_VERSION=MML_VERSION_OOT
+$(PSP_PORT_BUILD_DIR)/src/port/psp/gfx/gfx_fast3d.o: PSP_PORT_CFLAGS := $(PSP_PORT_GFX_HOT_CFLAGS)
+$(PSP_PORT_BUILD_DIR)/src/port/psp/oot_psp_audio_backend.o: PSP_PORT_CFLAGS := $(PSP_PORT_AUDIO_ME_CFLAGS)
+$(PSP_PORT_BUILD_DIR)/src/port/psp/oot_psp_mixer.o: PSP_PORT_CFLAGS := $(PSP_PORT_AUDIO_ME_CFLAGS)
+
+
+$(PSP_PORT_BUILD_MODE_STAMP): FORCE
+	@mkdir -p $(dir $@)
+	@mode='$(PSP_PORT_BUILD_MODE)'; \
+	if test ! -f $@ || test "$$(cat $@)" != "$$mode"; then \
+		printf '%s\n' "$$mode" > $@; \
+	fi
+
+$(PSP_PORT_LIBRARY): $(PSP_PORT_BUILD_MODE_STAMP) $(PSP_PORT_RUNTIME_OBJECTS) $(PSP_PORT_RUNTIME_ASM_OBJECTS) $(PSP_PORT_ASSET_OBJECTS) $(PSP_PORT_ROMINFO_OBJECT) $(PSP_PORT_ASSET_TABLE_OBJECT) $(PSP_PORT_AUDIO_TABLE_OBJECT) $(PSP_PORT_ASSET_SEGMENT_OBJECT) $(PSP_PORT_ASSET_SEGMENT_TABLE_OBJECT)
+	@mkdir -p $(dir $@)
+	$(file >$@.rsp,$(filter-out $(PSP_PORT_BUILD_MODE_STAMP),$^))
+	$(RM) $@
+	$(PSP_PORT_AR) rcs $@ @$@.rsp
+
+$(PSP_PORT_GPROF_LINKER_SCRIPT): $(PSP_PORT_GPROF_LINKER_SOURCE)
+	@mkdir -p $(dir $@)
+	sed 's#^\([[:space:]]*\.rodata\.sceNid[[:space:]]*: {\)[[:space:]]*\*(\.rodata\.sceNid)[[:space:]]*}#\1 KEEP (*(.rodata.sceNid)) }#' $< > $@
+
+$(PSP_PORT_BASE_ELF): $(PSP_PORT_LIBRARY) $(PSP_PORT_PROBE_OBJECT) $(PSP_PORT_LINKER_DEPS) $(PSP_PORT_EXTRA_LINK_OBJECTS)
+	@mkdir -p $(dir $@)
+ifneq ($(PSP_PORT_EXTRA_LINK_OBJECTS),)
+	$(file >$@.extra.rsp,$(PSP_PORT_EXTRA_LINK_OBJECTS))
+endif
+	$(PSP_PORT_CC) -o $@ $(PSP_PORT_PROBE_OBJECT) $(if $(PSP_PORT_EXTRA_LINK_OBJECTS),@$@.extra.rsp) \
+		-Wl,--start-group $(PSP_PORT_LIBRARY) -Wl,--end-group $(PSP_PORT_LDFLAGS)
+	psp-fixup-imports $@
+
+$(PSP_PORT_RUNTIME_PATCH_BLOB): $(PSP_PORT_BASE_ELF) $(PSP_PORT_RUNTIME_PATCH_MANIFEST) tools/psp_port_runtime_patches.py
+	$(PYTHON) tools/psp_port_runtime_patches.py resolve $< $(PSP_PORT_RUNTIME_PATCH_MANIFEST) $@ --base-elf $(PSP_PORT_BASE_ELF)
+
+$(PSP_PORT_RUNTIME_PATCH_ASM): $(PSP_PORT_RUNTIME_PATCH_BLOB)
+	@printf '%s\n' \
+		'.section .rodata' \
+		'.balign 16' \
+		'.global gOotPspRuntimePatchBlob' \
+		'gOotPspRuntimePatchBlob:' \
+		'.incbin "$(PSP_PORT_RUNTIME_PATCH_BLOB)"' \
+		'.global gOotPspRuntimePatchBlobEnd' \
+		'gOotPspRuntimePatchBlobEnd:' > $@
+
+$(PSP_PORT_RUNTIME_PATCH_OBJECT): $(PSP_PORT_RUNTIME_PATCH_ASM)
+	$(PSP_PORT_CC) -MMD -MP -MF $(@:.o=.d) -MT $@ -c -x assembler-with-cpp $(PSP_PORT_ASM_DEFINES) $(PSP_PORT_INCLUDES) -o $@ $<
+
+$(PSP_PORT_ELF): $(PSP_PORT_LIBRARY) $(PSP_PORT_PROBE_OBJECT) $(PSP_PORT_RUNTIME_PATCH_OBJECT) $(PSP_PORT_LINKER_DEPS) $(PSP_PORT_EXTRA_LINK_OBJECTS)
+	@mkdir -p $(dir $@)
+ifneq ($(PSP_PORT_EXTRA_LINK_OBJECTS),)
+	$(file >$@.extra.rsp,$(PSP_PORT_EXTRA_LINK_OBJECTS))
+endif
+	$(PSP_PORT_CC) -o $@ $(PSP_PORT_PROBE_OBJECT) $(if $(PSP_PORT_EXTRA_LINK_OBJECTS),@$@.extra.rsp) \
+		-Wl,--start-group $(PSP_PORT_LIBRARY) -Wl,--end-group $(PSP_PORT_RUNTIME_PATCH_OBJECT) $(PSP_PORT_LDFLAGS)
+	psp-fixup-imports $@
+	$(PYTHON) tools/psp_port_runtime_patches.py resolve $@ $(PSP_PORT_RUNTIME_PATCH_MANIFEST) $(PSP_PORT_RUNTIME_PATCH_BLOB) --base-elf $(PSP_PORT_BASE_ELF)
+	$(PSP_PORT_CC) -MMD -MP -MF $(PSP_PORT_RUNTIME_PATCH_OBJECT:.o=.d) -MT $(PSP_PORT_RUNTIME_PATCH_OBJECT) \
+		-c -x assembler-with-cpp $(PSP_PORT_ASM_DEFINES) $(PSP_PORT_INCLUDES) -o $(PSP_PORT_RUNTIME_PATCH_OBJECT) \
+		$(PSP_PORT_RUNTIME_PATCH_ASM)
+	$(PSP_PORT_CC) -o $@ $(PSP_PORT_PROBE_OBJECT) $(if $(PSP_PORT_EXTRA_LINK_OBJECTS),@$@.extra.rsp) \
+		-Wl,--start-group $(PSP_PORT_LIBRARY) -Wl,--end-group $(PSP_PORT_RUNTIME_PATCH_OBJECT) $(PSP_PORT_LDFLAGS)
+	psp-fixup-imports $@
+
+$(PSP_PORT_PRX_ELF): $(PSP_PORT_ELF) $(PSP_PORT_ASSET_SEGMENT_SOURCE) tools/psp_port_strip_asset_relocs.py
+	$(PYTHON) tools/psp_port_strip_asset_relocs.py $< $(PSP_PORT_ASSET_SEGMENT_SOURCE) $@
+
+$(PSP_PORT_PRX): $(PSP_PORT_PRX_ELF)
+	psp-prxgen $< $@
+
+$(PSP_PORT_STRIPPED_ELF): $(PSP_PORT_ELF)
+	psp-strip -s -o $@ $<
+
+ifneq ($(PSP_PORT_GPROF_ENABLED),)
+PSP_PORT_EBOOT_PAYLOAD := $(PSP_PORT_STRIPPED_ELF)
+else
+PSP_PORT_EBOOT_PAYLOAD := $(PSP_PORT_PRX)
+endif
+
+PSP_PORT_ICON0 := assets/psp/ICON0.PNG
+
+$(PSP_PORT_PBP): $(PSP_PORT_EBOOT_PAYLOAD) $(PSP_PORT_ICON0)
+	mksfoex -d MEMSIZE=1 "OOT PSP Port" $(PSP_PORT_BUILD_DIR)/PARAM.SFO
+	pack-pbp $@ $(PSP_PORT_BUILD_DIR)/PARAM.SFO $(PSP_PORT_ICON0) NULL NULL NULL NULL $< NULL
+
+psp-port-clean:
+	$(RM) -r $(PSP_PORT_BUILD_DIR)
+
+.PHONY: FORCE psp-port psp-port-eboot psp-port-clean
+
+FORCE:
+
+-include $(DEP_FILES) $(PSP_PORT_DEP_FILES)
+
+# Print target for debugging
+print-% : ; $(info $* is a $(flavor $*) variable set to [$($*)]) @true

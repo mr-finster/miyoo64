@@ -1,0 +1,228 @@
+# Documented
+:config:
+  segments:
+    - [0x06, 0xB612E0]
+  header:
+    code:
+      - '#include "assets/ast_solar.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+      - '#include "sf64level.h"'
+      - '#include "sf64event.h"'
+      - '#include "sf64player.h"'
+      - '#include "sf64audio_external.h"'
+      - '#include "sf64mesg.h"'
+
+aSoTitleCardTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 112, height: 13, offset: 0x6000000, symbol: aSoTitleCardTex}
+
+aSoLava1DL:
+  { type: GFX, offset: 0x60005B0, symbol: aSoLava1DL}
+
+aSoDynaFloorVTX1:
+  { type: VTX, count: 289, offset: 0x6001C50, symbol: aSoDynaFloorVTX1}
+
+aSoLava2DL:
+  { type: GFX, offset: 0x6002E60, symbol: aSoLava2DL}
+
+aSoDynaFloorVTX2:
+  { type: VTX, count: 289, offset: 0x6004500, symbol: aSoDynaFloorVTX2}
+
+aSoLavaTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6005710, symbol: aSoLavaTex}
+
+aSoGoreAnim:
+  { type: SF64:ANIM, offset: 0x600636C, symbol: aSoGoreAnim}
+
+aSoGoreSkel:
+  { type: SF64:SKELETON, offset: 0x6006558, symbol: aSoGoreSkel}
+
+aSoGoreTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6006DD8, symbol: aSoGoreTex1}
+
+aSoFireSmokeFrame6DL:
+  { type: GFX, offset: 0x6007C40, symbol: aSoFireSmokeFrame6DL}
+
+aSoFireSmokeFrame6Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6007CC0, symbol: aSoFireSmokeFrame6Tex}
+
+aSoFireSmokeFrame4DL:
+  { type: GFX, offset: 0x60084C0, symbol: aSoFireSmokeFrame4DL}
+
+aSoFireSmokeFrame4Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6008540, symbol: aSoFireSmokeFrame4Tex}
+
+aSoFireSmokeFrame5DL:
+  { type: GFX, offset: 0x6008D40, symbol: aSoFireSmokeFrame5DL}
+
+aSoFireSmokeFrame5Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6008DC0, symbol: aSoFireSmokeFrame5Tex}
+
+aSoVulkainAnim7:
+  { type: SF64:ANIM, offset: 0x6009D30, symbol: aSoVulkainAnim7}
+
+aSoVulkainAnim6:
+  { type: SF64:ANIM, offset: 0x600B1B4, symbol: aSoVulkainAnim6}
+
+aSoVulkainAnim4:
+  { type: SF64:ANIM, offset: 0x600C15C, symbol: aSoVulkainAnim4}
+
+aSoVulkainAnim1:
+  { type: SF64:ANIM, offset: 0x600D3DC, symbol: aSoVulkainAnim1}
+
+aSoVulkainAnim2:
+  { type: SF64:ANIM, offset: 0x600E2C4, symbol: aSoVulkainAnim2}
+
+aSoVulkainSkel:
+  { type: SF64:SKELETON, offset: 0x600E470, symbol: aSoVulkainSkel}
+
+aSoVulkainAnim3:
+  { type: SF64:ANIM, offset: 0x600F744, symbol: aSoVulkainAnim3}
+
+aSoVulkainDebris8DL:
+  { type: GFX, offset: 0x600F750, symbol: aSoVulkainDebris8DL}
+
+aSoVulkainSkinDestTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6010198, symbol: aSoVulkainSkinDestTex}
+
+aSoVulkainDebris8Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6010998, symbol: aSoVulkainDebris8Tex}
+
+aSoVulkainDebrisTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x6011198, symbol: aSoVulkainDebrisTex1}
+
+aSoVulkainDebrisTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6011398, symbol: aSoVulkainDebrisTex2}
+
+aSoVulkainAnim589:
+  { type: SF64:ANIM, offset: 0x6012C00, symbol: aSoVulkainAnim589}
+
+aSoVulkainAnim0:
+  { type: SF64:ANIM, offset: 0x601388C, symbol: aSoVulkainAnim0}
+
+aSoVulkainDebris6DL:
+  { type: GFX, offset: 0x60138A0, symbol: aSoVulkainDebris6DL}
+
+aSoVulkainDebris9Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6013C70, symbol: aSoVulkainDebris9Tex}
+
+aSoVulkainDebris4DL:
+  { type: GFX, offset: 0x6014470, symbol: aSoVulkainDebris4DL}
+
+aSoVulkainDebris2DL:
+  { type: GFX, offset: 0x60146D0, symbol: aSoVulkainDebris2DL}
+
+aSoVulkainDebris5DL:
+  { type: GFX, offset: 0x6014930, symbol: aSoVulkainDebris5DL}
+
+aSoVulkainDebris3DL:
+  { type: GFX, offset: 0x6014B80, symbol: aSoVulkainDebris3DL}
+
+aSoVulkainDebris1DL:
+  { type: GFX, offset: 0x6014DB0, symbol: aSoVulkainDebris1DL}
+
+aSoVulkainDebris7DL:
+  { type: GFX, offset: 0x60151A0, symbol: aSoVulkainDebris7DL}
+
+aSoVulkainDebris9DL:
+  { type: GFX, offset: 0x6015810, symbol: aSoVulkainDebris9DL}
+
+aSoRock3DL:
+  { type: GFX, offset: 0x6016CF0, symbol: aSoRock3DL}
+
+aSoRock3Tex:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x6016F08, symbol: aSoRock3Tex}
+
+aSoRock3TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 64, offset: 0x6017008, symbol: aSoRock3TLUT}
+  
+aSoRock2DL:
+  { type: GFX, offset: 0x6017090, symbol: aSoRock2DL}
+
+aSoRock2Tex:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 16, height: 16, offset: 0x6017200, symbol: aSoRock2Tex}
+
+aSoRock2TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 56, offset: 0x6017300, symbol: aSoRock2TLUT}
+
+aSoRock1DL:
+  { type: GFX, offset: 0x6017370, symbol: aSoRock1DL}
+
+aSoRock1Tex:
+  { type: TEXTURE, ctype: u8, format: CI8, width: 8, height: 8, offset: 0x60174E0, symbol: aSoRock1Tex}
+
+aSoRock1TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 24, offset: 0x6017520, symbol: aSoRock1TLUT}
+
+sSoFlareS12Frame6DL:
+  { type: GFX, offset: 0x6017550, symbol: sSoFlareS12Frame6DL}
+
+sSoFlareS12Frame6Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x60175D8, symbol: sSoFlareS12Frame6Tex}
+
+sSoFlareS12Frame5DL:
+  { type: GFX, offset: 0x60185E0, symbol: sSoFlareS12Frame5DL}
+
+sSoFlareS12Frame5Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x6018668, symbol: sSoFlareS12Frame5Tex}
+
+sSoFlareS12Frame4DL:
+  { type: GFX, offset: 0x6019670, symbol: sSoFlareS12Frame4DL}
+
+sSoFlareS12Frame4Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x60196F8, symbol: sSoFlareS12Frame4Tex}
+
+sSoFlareS12Frame3DL:
+  { type: GFX, offset: 0x601A700, symbol: sSoFlareS12Frame3DL}
+
+sSoFlareS12Frame3Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x601A788, symbol: sSoFlareS12Frame3Tex}
+
+sSoFlareS12Frame1DL:
+  { type: GFX, offset: 0x601B790, symbol: sSoFlareS12Frame1DL}
+
+sSoFlareS12Frame1Tex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x601B818, symbol: sSoFlareS12Frame1Tex}
+
+aSoFlareS3FrameDL:
+  { type: GFX, offset: 0x601C820, symbol: aSoFlareS3FrameDL}
+
+aSoFlareS3FrameTex:
+  { type: TEXTURE, ctype: u32, format: RGBA32, width: 32, height: 32, offset: 0x601C8A8, symbol: aSoFlareS3FrameTex}
+
+aSoUnused1DL:
+  { type: GFX, offset: 0x601D8B0, symbol: aSoUnused1DL}
+
+aSoUnused1Tex:
+  { type: TEXTURE, ctype: u16, format: IA16, width: 32, height: 32, offset: 0x601D948, symbol: aSoUnused1Tex}
+
+aSoBackdropDL:
+  { type: GFX, offset: 0x601E150, symbol: aSoBackdropDL}
+
+aSoBackdropTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x601E1E8, symbol: aSoBackdropTex2}
+
+aSoEnvSetup:
+  { type: SF64:ENVIRONMENT, offset: 0x601F1F0, symbol: aSoEnvSetup}
+
+aSoLevelObjects:
+  { type: SF64:OBJECT_INIT, offset: 0x601F234, symbol: aSoLevelObjects}
+
+aSoEventScript:
+  { type: SF64:SCRIPT, offset: 0x6020DD0, symbol: aSoEventScript}
+
+aSoBackdropTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 64, offset: 0x6020F60, symbol: aSoBackdropTex1}
+
+aSoUnusedLavaTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x6021F60, symbol: aSoUnusedLavaTex}
+
+aSoDynaFloorIndexes:
+  { type: ARRAY, count: 289, array_type: u16, offset: 0x6022760, symbol: aSoDynaFloorIndexes}
+
+aSoVulkainSkinSrcTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x60229A4, symbol: aSoVulkainSkinSrcTex}
+
+aSoVulkainDyingHitbox:
+  { type: SF64:HITBOX, offset: 0x60231A4, symbol: aSoVulkainDyingHitbox}

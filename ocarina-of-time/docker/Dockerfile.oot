@@ -1,0 +1,6 @@
+# OoT build environment: the MK64 image (../mario-kart-64/docker/Dockerfile, tag mk64hh:build)
+# plus what the zeldaret/oot decomp and the qemu tests need.
+FROM --platform=linux/amd64 mk64hh:build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libxml2-dev qemu-user \
+    && rm -rf /var/lib/apt/lists/*

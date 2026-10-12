@@ -1,0 +1,36 @@
+# Allowlist: ignore everything, then re-include tracked paths explicitly.
+# Never add ROMs, baseroms/, refs/, build output or extracted assets.
+/*
+!/.gitignore
+!/README.md
+!/tools/
+!/Makefile
+!/dev.sh
+!/decomp/
+!/port/
+!/README_MIYOO.md
+# the Miyoo Mini packer (the shared miyoo/): its tool, templates and this port's game.json and icon only
+!/miyoo/
+/miyoo/*
+!/miyoo/game.json
+!/miyoo/icon.png
+!/miyoo/icon.svg
+!/miyoo/tools/
+/miyoo/tools/*
+!/miyoo/tools/miyoo_pack.py
+!/miyoo/templates/
+
+# Belt and braces inside allowed dirs.
+*.z64
+*.n64
+*.v64
+*.rom
+*.bin
+*.zip
+.DS_Store
+__pycache__/
+*.pyc
+# the old release icon, cut from the player's ROM (tools/make_icon.sh, unused since 2026-10-06): never in git
+/miyoo/icon_game.png
+# the Miyoo64 repository's docs
+!/SETTINGS.md

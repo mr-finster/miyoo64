@@ -1,0 +1,24 @@
+<Root>
+    <File Name="icon_item_24_static" Segment="9">
+        <Texture Name="gQuestIconMedallionForestTex" Format="rgba32" Width="24" Height="24" Offset="0x0"/>
+        <Texture Name="gQuestIconMedallionFireTex" Format="rgba32" Width="24" Height="24" Offset="0x900"/>
+        <Texture Name="gQuestIconMedallionWaterTex" Format="rgba32" Width="24" Height="24" Offset="0x1200"/>
+        <Texture Name="gQuestIconMedallionSpiritTex" Format="rgba32" Width="24" Height="24" Offset="0x1B00"/>
+        <Texture Name="gQuestIconMedallionShadowTex" Format="rgba32" Width="24" Height="24" Offset="0x2400"/>
+        <Texture Name="gQuestIconMedallionLightTex" Format="rgba32" Width="24" Height="24" Offset="0x2D00"/>
+        <Texture Name="gQuestIconKokiriEmeraldTex" Format="rgba32" Width="24" Height="24" Offset="0x3600"/>
+        <Texture Name="gQuestIconGoronRubyTex" Format="rgba32" Width="24" Height="24" Offset="0x3F00"/>
+        <Texture Name="gQuestIconZoraSapphireTex" Format="rgba32" Width="24" Height="24" Offset="0x4800"/>
+        <Texture Name="gQuestIconStoneOfAgonyTex" Format="rgba32" Width="24" Height="24" Offset="0x5100"/>
+        <Texture Name="gQuestIconGerudosCardTex" Format="rgba32" Width="24" Height="24" Offset="0x5A00"/>
+        <Texture Name="gQuestIconGoldSkulltulaTex" Format="rgba32" Width="24" Height="24" Offset="0x6300"/>
+        <Texture Name="gQuestIconHeartContainerTex" Format="rgba32" Width="24" Height="24" Offset="0x6C00"/>
+        <Texture Name="gQuestIconHeartPieceTex" Format="rgba32" Width="24" Height="24" Offset="0x7500"/>
+        <Texture Name="gQuestIconDungeonBossKeyTex" Format="rgba32" Width="24" Height="24" Offset="0x7E00"/>
+        <Texture Name="gQuestIconDungeonCompassTex" Format="rgba32" Width="24" Height="24" Offset="0x8700"/>
+        <Texture Name="gQuestIconDungeonMapTex" Format="rgba32" Width="24" Height="24" Offset="0x9000"/>
+        <Texture Name="gQuestIconSmallKeyTex" Format="rgba32" Width="24" Height="24" Offset="0x9900"/>
+        <Texture Name="gQuestIconMagicJarSmallTex" Format="rgba32" Width="24" Height="24" Offset="0xA200"/>
+        <Texture Name="gQuestIconMagicJarBigTex" Format="rgba32" Width="24" Height="24" Offset="0xAB00"/>
+    </File>
+</Root>

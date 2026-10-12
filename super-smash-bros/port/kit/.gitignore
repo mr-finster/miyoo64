@@ -1,0 +1,18 @@
+# Allowlist: nothing is tracked unless it is admitted here. No ROM or ROM-derived
+# data, no build output, no test output.
+*
+!.gitignore
+!README.md
+!platform/
+!platform/*.c
+!platform/*.h
+!ports/
+!ports/*/
+!ports/*/hh_game.h
+!tests/
+!tests/*.c
+!tests/*.h
+!tests/*.sh
+!tools/
+!tools/*.sh
+!tools/*.py

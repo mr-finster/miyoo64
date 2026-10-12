@@ -1,0 +1,94 @@
+# Documented
+:config:
+  segments:
+    - [0x02, 0x8A68C0]
+  header:
+    code:
+      - '#include "assets/ast_bg_space.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+
+aSpFireSmokeFrame13DL:
+  { type: GFX, offset: 0x2000000, symbol: aSpFireSmokeFrame13DL }
+
+aSpFireSmokeFrame13Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x2000088, symbol: aSpFireSmokeFrame13Tex }
+
+aSpFireSmokeFrame12DL:
+  { type: GFX, offset: 0x2000890, symbol: aSpFireSmokeFrame12DL }
+
+aSpFireSmokeFrame12Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x2000918, symbol: aSpFireSmokeFrame12Tex }
+
+aSpFireSmokeFrame11DL:
+  { type: GFX, offset: 0x2001120, symbol: aSpFireSmokeFrame11DL }
+
+aSpFireSmokeFrame11Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x020011A8, symbol: aSpFireSmokeFrame11Tex }
+
+aSpFireSmokeFrame10DL:
+  { type: GFX, offset: 0x20019B0, symbol: aSpFireSmokeFrame10DL }
+
+aSpFireSmokeFrame10Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x02001A38, symbol: aSpFireSmokeFrame10Tex }
+
+aSpFireSmokeFrame9DL:
+  { type: GFX, offset: 0x2002240, symbol: aSpFireSmokeFrame9DL }
+
+aSpFireSmokeFrame9Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x020022C8, symbol: aSpFireSmokeFrame9Tex }
+
+aSpFireSmokeFrame8DL:
+  { type: GFX, offset: 0x2002AD0, symbol: aSpFireSmokeFrame8DL }
+
+aSpFireSmokeFrame8Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x02002B58, symbol: aSpFireSmokeFrame8Tex }
+
+aSpFireSmokeFrame7DL:
+  { type: GFX, offset: 0x2003360, symbol: aSpFireSmokeFrame7DL }
+
+aSpFireSmokeFrame7Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x020033E8, symbol: aSpFireSmokeFrame7Tex }
+
+aSpFireSmokeFrame6DL:
+  { type: GFX, offset: 0x2003BF0, symbol: aSpFireSmokeFrame6DL }
+
+aSpFireSmokeFrame6Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x02003C78, symbol: aSpFireSmokeFrame6Tex }
+
+aSpFireSmokeFrame5DL:
+  { type: GFX, offset: 0x2004480, symbol: aSpFireSmokeFrame5DL }
+
+aSpFireSmokeFrame5Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x02004508, symbol: aSpFireSmokeFrame5Tex }
+
+aSpFireSmokeFrame4DL:
+  { type: GFX, offset: 0x2004D10, symbol: aSpFireSmokeFrame4DL }
+
+aSpFireSmokeFrame4Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x02004D98, symbol: aSpFireSmokeFrame4Tex }
+
+aSpFireSmokeFrame3DL:
+  { type: GFX, offset: 0x20055A0, symbol: aSpFireSmokeFrame3DL }
+
+aSpFireSmokeFrame3Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x02005628, symbol: aSpFireSmokeFrame3Tex }
+
+aSpFireSmokeFrame2DL:
+  { type: GFX, offset: 0x2005E30, symbol: aSpFireSmokeFrame2DL }
+
+aSpFireSmokeFrame2Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x02005EB8, symbol: aSpFireSmokeFrame2Tex }
+
+aSpFireSmokeFrame1DL:
+  { type: GFX, offset: 0x20066C0, symbol: aSpFireSmokeFrame1DL }
+
+aSpFireSmokeFrame1Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x02006748, symbol: aSpFireSmokeFrame1Tex }
+
+aSpPinkExplosionDL:
+  { type: GFX, offset: 0x2006F50, symbol: aSpPinkExplosionDL }
+
+aSpPinkExplosionTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x02006FD8, symbol: aSpPinkExplosionTex }

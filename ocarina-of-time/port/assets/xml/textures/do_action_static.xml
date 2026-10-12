@@ -1,0 +1,65 @@
+<Root>
+     <File Name="do_action_static" Segment="7">
+        <!-- Japanese -->
+        <Texture Name="gAttackDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x0"/>
+        <Texture Name="gCheckDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x180"/>
+        <Texture Name="gEnterDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x300"/>
+        <Texture Name="gReturnDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x480"/>
+        <Texture Name="gOpenDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x600"/>
+        <Texture Name="gJumpDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x780"/>
+        <Texture Name="gDecideDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x900"/>
+        <Texture Name="gDiveDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0xA80"/>
+        <Texture Name="gFasterDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0xC00"/>
+        <Texture Name="gThrowDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0xD80"/>
+        <Texture Name="gUnusedNaviDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0xF00"/>
+        <Texture Name="gClimbDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x1080"/>
+        <Texture Name="gDropDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x1200"/>
+        <Texture Name="gDownDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x1380"/>
+        <Texture Name="gSaveDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x1500"/>
+        <Texture Name="gSpeakDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x1680"/>
+        <Texture Name="gNextDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x1800"/>
+        <Texture Name="gGrabDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x1980"/>
+        <Texture Name="gStopDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x1B00"/>
+        <Texture Name="gPutAwayDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x1C80"/>
+        <Texture Name="gReelDoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x1E00"/>
+        <Texture Name="gNum1DoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x1F80"/>
+        <Texture Name="gNum2DoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x2100"/>
+        <Texture Name="gNum3DoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x2280"/>
+        <Texture Name="gNum4DoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x2400"/>
+        <Texture Name="gNum5DoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x2580"/>
+        <Texture Name="gNum6DoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x2700"/>
+        <Texture Name="gNum7DoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x2880"/>
+        <Texture Name="gNum8DoActionJPNTex" Format="ia4" Width="48" Height="16" Offset="0x2A00"/>
+
+        <!-- English -->
+        <Texture Name="gAttackDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x2B80"/>
+        <Texture Name="gCheckDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x2D00"/>
+        <Texture Name="gEnterDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x2E80"/>
+        <Texture Name="gReturnDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x3000"/>
+        <Texture Name="gOpenDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x3180"/>
+        <Texture Name="gJumpDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x3300"/>
+        <Texture Name="gDecideDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x3480"/>
+        <Texture Name="gDiveDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x3600"/>
+        <Texture Name="gFasterDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x3780"/>
+        <Texture Name="gThrowDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x3900"/>
+        <Texture Name="gUnusedNaviDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x3A80"/>
+        <Texture Name="gClimbDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x3C00"/>
+        <Texture Name="gDropDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x3D80"/>
+        <Texture Name="gDownDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x3F00"/>
+        <Texture Name="gSaveDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x4080"/>
+        <Texture Name="gSpeakDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x4200"/>
+        <Texture Name="gNextDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x4380"/>
+        <Texture Name="gGrabDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x4500"/>
+        <Texture Name="gStopDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x4680"/>
+        <Texture Name="gPutAwayDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x4800"/>
+        <Texture Name="gReelDoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x4980"/>
+        <Texture Name="gNum1DoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x4B00"/>
+        <Texture Name="gNum2DoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x4C80"/>
+        <Texture Name="gNum3DoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x4E00"/>
+        <Texture Name="gNum4DoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x4F80"/>
+        <Texture Name="gNum5DoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x5100"/>
+        <Texture Name="gNum6DoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x5280"/>
+        <Texture Name="gNum7DoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x5400"/>
+        <Texture Name="gNum8DoActionENGTex" Format="ia4" Width="48" Height="16" Offset="0x5580"/>
+     </File>
+</Root>

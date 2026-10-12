@@ -1,0 +1,80 @@
+<Root>
+     <File Name="map_name_static" Segment="11">
+
+        <!-- Place names for each world map point -->
+
+        <Texture Name="gHauntedWastelandPointNameJPNTex" Format="ia4" Width="128" Height="16" Offset="0x0"/>
+        <Texture Name="gGerudosFortressPointNameJPNTex" Format="ia4" Width="128" Height="16" Offset="0x400"/>
+        <Texture Name="gGerudoValleyPointNameJPNTex" Format="ia4" Width="128" Height="16" Offset="0x800"/>
+        <Texture Name="gHyliaLakesidePointNameJPNTex" Format="ia4" Width="128" Height="16" Offset="0xC00"/>
+        <Texture Name="gLonLonRanchPointNameJPNTex" Format="ia4" Width="128" Height="16" Offset="0x1000"/>
+        <Texture Name="gMarketPointNameJPNTex" Format="ia4" Width="128" Height="16" Offset="0x1400"/>
+        <Texture Name="gHyruleFieldPointNameJPNTex" Format="ia4" Width="128" Height="16" Offset="0x1800"/>
+        <Texture Name="gDeathMountainPointNameJPNTex" Format="ia4" Width="128" Height="16" Offset="0x1C00"/>
+        <Texture Name="gKakarikoVillagePointNameJPNTex" Format="ia4" Width="128" Height="16" Offset="0x2000"/>
+        <Texture Name="gLostWoodsPointNameJPNTex" Format="ia4" Width="128" Height="16" Offset="0x2400"/>
+        <Texture Name="gKokiriForestPointNameJPNTex" Format="ia4" Width="128" Height="16" Offset="0x2800"/>
+        <Texture Name="gZorasDomainPointNameJPNTex" Format="ia4" Width="128" Height="16" Offset="0x2C00"/>
+
+        <Texture Name="gHauntedWastelandPointNameENGTex" Format="ia4" Width="128" Height="16" Offset="0x3000"/>
+        <Texture Name="gGerudosFortressPointNameENGTex" Format="ia4" Width="128" Height="16" Offset="0x3400"/>
+        <Texture Name="gGerudoValleyPointNameENGTex" Format="ia4" Width="128" Height="16" Offset="0x3800"/>
+        <Texture Name="gHyliaLakesidePointNameENGTex" Format="ia4" Width="128" Height="16" Offset="0x3C00"/>
+        <Texture Name="gLonLonRanchPointNameENGTex" Format="ia4" Width="128" Height="16" Offset="0x4000"/>
+        <Texture Name="gMarketPointNameENGTex" Format="ia4" Width="128" Height="16" Offset="0x4400"/>
+        <Texture Name="gHyruleFieldPointNameENGTex" Format="ia4" Width="128" Height="16" Offset="0x4800"/>
+        <Texture Name="gDeathMountainPointNameENGTex" Format="ia4" Width="128" Height="16" Offset="0x4C00"/>
+        <Texture Name="gKakarikoVillagePointNameENGTex" Format="ia4" Width="128" Height="16" Offset="0x5000"/>
+        <Texture Name="gLostWoodsPointNameENGTex" Format="ia4" Width="128" Height="16" Offset="0x5400"/>
+        <Texture Name="gKokiriForestPointNameENGTex" Format="ia4" Width="128" Height="16" Offset="0x5800"/>
+        <Texture Name="gZorasDomainPointNameENGTex" Format="ia4" Width="128" Height="16" Offset="0x5C00"/>
+
+        <!-- Place names for each world map area -->
+
+        <Texture Name="gHyruleFieldPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0x6000"/>
+        <Texture Name="gKakarikoVillagePositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0x6A00"/>
+        <Texture Name="gGraveyardPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0x7400"/>
+        <Texture Name="gZorasRiverPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0x7E00"/>
+        <Texture Name="gKokiriForestPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0x8800"/>
+        <Texture Name="gSacredForestMeadowPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0x9200"/>
+        <Texture Name="gLakeHyliaPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0x9C00"/>
+        <Texture Name="gZorasDomainPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0xA600"/>
+        <Texture Name="gZorasFountainPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0xB000"/>
+        <Texture Name="gGerudoValleyPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0xBA00"/>
+        <Texture Name="gLostWoodsPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0xC400"/>
+        <Texture Name="gDesertColossusPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0xCE00"/>
+        <Texture Name="gGerudosFortressPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0xD800"/>
+        <Texture Name="gHauntedWastelandPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0xE200"/>
+        <Texture Name="gMarketPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0xEC00"/>
+        <Texture Name="gHyruleCastlePositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0xF600"/>
+        <Texture Name="gDeathMountainTrailPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0x10000"/>
+        <Texture Name="gDeathMountainCraterPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0x10A00"/>
+        <Texture Name="gGoronCityPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0x11400"/>
+        <Texture Name="gLonLonRanchPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0x11E00"/>
+        <Texture Name="gQuestionMarkPositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0x12800"/>
+        <Texture Name="gGanonsCastlePositionNameJPNTex" Format="ia8" Width="80" Height="32" Offset="0x13200"/>
+
+        <Texture Name="gHyruleFieldPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x13C00"/>
+        <Texture Name="gKakarikoVillagePositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x14600"/>
+        <Texture Name="gGraveyardPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x15000"/>
+        <Texture Name="gZorasRiverPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x15A00"/>
+        <Texture Name="gKokiriForestPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x16400"/>
+        <Texture Name="gSacredForestMeadowPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x16E00"/>
+        <Texture Name="gLakeHyliaPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x17800"/>
+        <Texture Name="gZorasDomainPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x18200"/>
+        <Texture Name="gZorasFountainPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x18C00"/>
+        <Texture Name="gGerudoValleyPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x19600"/>
+        <Texture Name="gLostWoodsPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x1A000"/>
+        <Texture Name="gDesertColossusPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x1AA00"/>
+        <Texture Name="gGerudosFortressPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x1B400"/>
+        <Texture Name="gHauntedWastelandPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x1BE00"/>
+        <Texture Name="gMarketPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x1C800"/>
+        <Texture Name="gHyruleCastlePositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x1D200"/>
+        <Texture Name="gDeathMountainTrailPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x1DC00"/>
+        <Texture Name="gDeathMountainCraterPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x1E600"/>
+        <Texture Name="gGoronCityPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x1F000"/>
+        <Texture Name="gLonLonRanchPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x1FA00"/>
+        <Texture Name="gQuestionMarkPositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x20400"/>
+        <Texture Name="gGanonsCastlePositionNameENGTex" Format="ia8" Width="80" Height="32" Offset="0x20E00"/>
+     </File>
+</Root>

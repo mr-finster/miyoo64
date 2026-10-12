@@ -1,0 +1,19 @@
+{
+  "id": "ssb64",
+  "title": "Super Smash Bros",
+  "folder": "SuperSmashBros",
+  "exe": "ssb64",
+  "files": [
+    "ssb64"
+  ],
+  "icon": "icon.png",
+  "env": "SSB64",
+  "data": "data",
+  "rom": {
+    "name": "Super Smash Bros. (USA)",
+    "sha1": "e2929e10fccc0aa84e5776227e798abc07cedabf",
+    "size": 16777216
+  },
+  "system": "SMASHBROS",
+  "minui_tag": "SSB64"
+}

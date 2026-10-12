@@ -1,0 +1,38 @@
+#include "libultra/ultra64.h"
+#include "leo/leo_internal.h"
+
+void leoMode_sel(void) {
+    u32 sense;
+
+#if LEO_VERSION <= LEO_VERSION_B
+    sense = leoSend_asic_cmd_w(ASIC_SET_STBY, LEOcur_command->data.time.yearlo << 0x10);
+#else
+    sense = leoSend_asic_cmd_w_nochkDiskChange(ASIC_SET_STBY, LEOcur_command->data.time.yearlo << 0x10);
+#endif
+    if (sense != LEO_SENSE_NO_ADDITIONAL_SENSE_INFOMATION) {
+        goto mselerror;
+    }
+#if LEO_VERSION <= LEO_VERSION_B
+    sense = leoSend_asic_cmd_w(ASIC_SET_SLEEP, LEOcur_command->data.time.month << 0x10);
+#else
+    sense = leoSend_asic_cmd_w_nochkDiskChange(ASIC_SET_SLEEP, LEOcur_command->data.time.month << 0x10);
+#endif
+    if (sense != LEO_SENSE_NO_ADDITIONAL_SENSE_INFOMATION) {
+        goto mselerror;
+    }
+#if LEO_VERSION <= LEO_VERSION_B
+    sense = leoSend_asic_cmd_w(ASIC_SET_LED_TIMER, LEOcur_command->data.readwrite.xfer_blks);
+#else
+    sense = leoSend_asic_cmd_w_nochkDiskChange(ASIC_SET_LED_TIMER, LEOcur_command->data.readwrite.xfer_blks);
+#endif
+    if (sense != LEO_SENSE_NO_ADDITIONAL_SENSE_INFOMATION) {
+    mselerror:
+        LEOcur_command->header.sense = sense;
+        LEOcur_command->header.status = LEO_STATUS_CHECK_CONDITION;
+        return;
+    }
+
+    LEOcur_command->header.sense = sense;
+    LEOcur_command->header.status = LEO_STATUS_GOOD;
+    return;
+}

@@ -1,0 +1,254 @@
+:config:
+  segments:
+    - [0x06, 0xA5B8F0]
+  header:
+    code:
+      - '#include "assets/ast_corneria.h"'
+    header:
+      - '#include "gfx.h"'
+      - '#include "sf64object.h"'
+      - '#include "sf64level.h"'
+      - '#include "sf64event.h"'
+      - '#include "sf64player.h"'
+      - '#include "sf64audio_external.h"'
+      - '#include "sf64mesg.h"'
+      
+aA6AndPortrait1Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 44, height: 44, offset: 0x06000000, symbol: aA6AndPortrait1Tex }
+
+aA6AndPortrait2Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 44, height: 44, offset: 0x06000F20, symbol: aA6AndPortrait2Tex }
+
+aA6CaimanPortrait1Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 44, height: 44, offset: 0x06001E40, symbol: aA6CaimanPortrait1Tex }
+
+aA6CaimanPortrait2Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 44, height: 44, offset: 0x06002D60, symbol: aA6CaimanPortrait2Tex }
+
+aA6BossPortrait1Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 44, height: 44, offset: 0x06003C80, symbol: aA6BossPortrait1Tex }
+
+aA6BossPortrait2Tex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 44, height: 44, offset: 0x06004BA0, symbol: aA6BossPortrait2Tex }
+
+aA6TurretModeRadarTex: # assumption
+  { type: TEXTURE, ctype: u8, format: CI4, width: 48, height: 44, offset: 0x06005AC0, symbol: aA6TurretModeRadarTex, tlut: 0x06005EE0 }
+
+aA6TurretModeRadarMarkTLUT: # assumption
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 4, offset: 0x06005EE0, symbol: aA6TurretModeRadarMarkTLUT}
+
+aA6GorgonSkelTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x06007DB8, symbol: aA6GorgonSkelTex1 }
+
+aA6GorgonSkelTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x06007FB8, symbol: aA6GorgonSkelTex2 }
+
+aA6GorgonSkelTex3:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x060081B8, symbol: aA6GorgonSkelTex3 }
+
+aA6GorgonSkelTex4:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x060083B8, symbol: aA6GorgonSkelTex4 }
+
+aA6GorgonSkelTex5:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 16, offset: 0x06008BB8, symbol: aA6GorgonSkelTex5 }
+
+aA6UmbraStationTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06008FB8, symbol: aA6UmbraStationTex2 }
+
+aA6UmbraStationDL:
+  { type: GFX, offset: 0x600D560, symbol: aA6UmbraStationDL }
+
+aA6ShipGenericTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 16, offset: 0x0600E088, symbol: aA6ShipGenericTex }
+
+aA6UmbraStationTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x0600E488, symbol: aA6UmbraStationTex1 }
+
+aA6GorgonTentacleClawDL:
+  { type: GFX, offset: 0x600E690, symbol: aA6GorgonTentacleClawDL }
+
+aA6GorgonSkelTex6:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x0600ECF0, symbol: aA6GorgonSkelTex6 }
+
+aA6GorgonSkelTex7:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x0600FF28, symbol: aA6GorgonSkelTex7 }
+
+aA6GorgonSkelTex8:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 16, offset: 0x06010728, symbol: aA6GorgonSkelTex8 }
+
+aA6GorgonSkelTex9:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x06010B28, symbol: aA6GorgonSkelTex9 }
+
+aA6GorgonSkelTex10:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width:  8, height:  8, offset: 0x06010D28, symbol: aA6GorgonSkelTex10 }
+
+aA6GorgonCoreShieldDL:
+  { type: GFX, offset: 0x6010DB0, symbol: aA6GorgonCoreShieldDL }
+
+aA6GorgonCoreShieldTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x060111E8, symbol: aA6GorgonCoreShieldTex }
+
+aA6GorgonLaserDL:
+  { type: GFX, offset: 0x60119F0, symbol: aA6GorgonLaserDL }
+
+aA6GorgonLaserTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x06011CE0, symbol: aA6GorgonLaserTex }
+
+aA6HarlockFrigateDL:
+  { type: GFX, offset: 0x6011EE0, symbol: aA6HarlockFrigateDL }
+
+aA6HarlockFrigateTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06013178, symbol: aA6HarlockFrigateTex2 }
+
+aA6GenericTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06013978, symbol: aA6GenericTex1 }
+
+aA6HarlockFrigateTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06014178, symbol: aA6HarlockFrigateTex1 }
+
+aA6HarlockFrigateTex3:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x06014978, symbol: aA6HarlockFrigateTex3 }
+
+aA6UnusedTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x06015178, symbol: aA6UnusedTex2 }
+
+aA6GorgonTentacleLimbDL:
+  { type: GFX, offset: 0x6015380, symbol: aA6GorgonTentacleLimbDL }
+
+aA6ZeramClassCruiserDL:
+  { type: GFX, offset: 0x6015630, symbol: aA6ZeramClassCruiserDL }
+
+aA6ZeramClassCruiserTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x060165C0, symbol: aA6ZeramClassCruiserTex1 }
+
+aA6ZeramClassCruiserTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x06016DC0, symbol: aA6ZeramClassCruiserTex2 }
+
+aA6ZeramClassCruiserTex3:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x06016FC0, symbol: aA6ZeramClassCruiserTex3 }
+
+aA6ZeramClassCruiserTex5:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x060171C0, symbol: aA6ZeramClassCruiserTex5 }
+
+aA6ZeramClassCruiserTex4:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x060173C0, symbol: aA6ZeramClassCruiserTex4 }
+
+aA6TitleCardTex:
+  { type: TEXTURE, ctype: u8, format: IA8, width: 96, height: 28, offset: 0x06017BC0, symbol: aA6TitleCardTex }
+
+aA6UnusedDL1: # unused, looks like a blue square
+  { type: GFX, offset: 0x6018640, symbol: aA6UnusedDL1 }
+
+aA6UnusedTex1:
+  { type: TEXTURE, ctype: u8, format: CI4, width: 16, height: 16, offset: 0x06018718, symbol: aA6UnusedTex1, tlut: 0x06018798}
+
+aA6UnusedTex1TLUT:
+  { type: TEXTURE, ctype: u16, format: TLUT, colors: 8, offset: 0x06018798, symbol: aA6UnusedTex1TLUT}
+
+aA6GorgonAnim:
+  { type: SF64:ANIM, offset: 0x60188B4, symbol: aA6GorgonAnim }
+
+aA6GorgonSkel:
+  { type: SF64:SKELETON, offset: 0x6018AC0, symbol: aA6GorgonSkel }
+
+aA6NinjinMissileDL:
+  { type: GFX, offset: 0x6018B10, symbol: aA6NinjinMissileDL }
+  
+aA6NinjinMissileTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x06019050, symbol: aA6NinjinMissileTex2 }
+
+aA6RocketTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x06019250, symbol: aA6RocketTex1 }
+
+aA6NinjinMissileTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x06019450, symbol: aA6NinjinMissileTex1 }
+
+aA6RocketDL:
+  { type: GFX, offset: 0x6019650, symbol: aA6RocketDL }
+
+aA6RocketTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x06019A40, symbol: aA6RocketTex2 }
+
+aA6RocketTex4:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x06019C40, symbol: aA6RocketTex4 }
+
+aA6RocketTex3:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 16, height: 16, offset: 0x06019E40, symbol: aA6RocketTex3 }
+
+aA6SpaceMineDL:
+  { type: GFX, offset: 0x601A040, symbol: aA6SpaceMineDL }
+
+aA6SpaceMineTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x0601A140, symbol: aA6SpaceMineTex }
+
+aA6UnusedOrbDL: # unused, looks like a white orb with a multi-color grading on the side
+  { type: GFX, offset: 0x601A940, symbol: aA6UnusedOrbDL }
+
+aA6UnusedOrbTex: # unused, from previous DL
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x0601A9C8, symbol: aA6UnusedOrbTex }
+
+aA6GorgonCoreDL:
+  { type: GFX, offset: 0x601B1D0, symbol: aA6GorgonCoreDL }
+
+aA6GorgonCoreTex:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 32, height: 32, offset: 0x0601B258, symbol: aA6GorgonCoreTex }
+
+aA6BackdropDL:
+  { type: GFX, offset: 0x601BA60, symbol: aA6BackdropDL }
+
+aA6BackdropTex1:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x0601BE40, symbol: aA6BackdropTex1 }
+
+aA6BackdropTex2:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x0601CE40, symbol: aA6BackdropTex2 }
+
+aA6BackdropTex3:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x0601DE40, symbol: aA6BackdropTex3 }
+
+aA6BackdropTex4:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x0601EE40, symbol: aA6BackdropTex4 }
+
+aA6BackdropTex5:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x0601FE40, symbol: aA6BackdropTex5 }
+
+aA6BackdropTex6:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x06020E40, symbol: aA6BackdropTex6 }
+
+aA6BackdropTex7:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x06021E40, symbol: aA6BackdropTex7 }
+
+aA6BackdropTex8:
+  { type: TEXTURE, ctype: u16, format: RGBA16, width: 64, height: 32, offset: 0x06022E40, symbol: aA6BackdropTex8 }
+
+aA6EnvSetup:
+  { type: SF64:ENVIRONMENT, offset: 0x6023E40, symbol: aA6EnvSetup}
+
+aA6LevelObjects:
+  { type: SF64:OBJECT_INIT, offset: 0x6023E84, symbol: aA6LevelObjects}
+  
+aA6EventScript:
+  { type: SF64:SCRIPT, offset: 0x6027E64, symbol: aA6EventScript}
+
+aA6UmbraStationHitbox:
+  { type: SF64:HITBOX, offset: 0x6027FF4, symbol: aA6UmbraStationHitbox }
+
+aA6HarlockFrigateHitbox:
+  { type: SF64:HITBOX, offset: 0x6028168, symbol: aA6HarlockFrigateHitbox }
+
+aA6ZeramClassCruiserHitbox:
+  { type: SF64:HITBOX, offset: 0x60281B4, symbol: aA6ZeramClassCruiserHitbox }
+
+aA6GorgonHitbox:
+  { type: SF64:HITBOX, offset: 0x6028368, symbol: aA6GorgonHitbox }
+
+aA6GorgonCoverHitbox:
+  { type: SF64:HITBOX, offset: 0x602848C, symbol: aA6GorgonCoverHitbox }
+
+aLevelUnkEnvSetup:
+  { type: SF64:ENVIRONMENT, offset: 0x6028670, symbol: aLevelUnkEnvSetup}
+
+aA6Unk4LevelObjects:
+  { type: SF64:OBJECT_INIT, offset: 0x60286B4, symbol: aA6Unk4LevelObjects}
+
+aA6Unk4EventScript:
+  { type: SF64:SCRIPT, offset: 0x602890C, symbol: aA6Unk4EventScript}

@@ -1,0 +1,82 @@
+# ALLOWLIST. This working directory will hold things that must never be
+# published: the ROM input, ROM-extracted/derived game data (including the
+# decomp's committed model/level/text C files), rendered frame dumps,
+# recordings, builds, toolchains and reference clones (refs/).
+# Only source, scripts and docs are tracked -- everything else is ignored by
+# the leading "*" and has to be re-included explicitly below.
+*
+!.gitignore
+!README.md
+!dev.sh
+!docker/
+!docker/Dockerfile.sm64
+!tools/
+!tools/*.sh
+!tools/*.py
+# the asset split: packer, recipe derivation/emission, leak scan (numbers only, never data)
+!tools/assets/
+!tools/assets/*.py
+!tools/assets/*.sh
+!tools/assets/*.json
+!tools/assets/untracked_includes.txt
+# the launcher icon (our own drawing: miyoo/icon.svg -> miyoo/icon.png)
+!miyoo/icon.svg
+# the Miyoo Mini release (the shared Miyoo kit: the packer, the launch templates, the port's game.json)
+!miyoo/
+!miyoo/game.json
+!miyoo/templates/
+!miyoo/templates/*
+!miyoo/tools/
+!miyoo/tools/*.py
+!README_MIYOO.md
+# The port tree: sm64-port @ 2b17d08 (2024-11-15), the n64decomp/sm64 decomp plus the
+# PC port layer. CODE ONLY is tracked. The decomp's committed ROM-derived game data is
+# fetched from that pinned commit by tools/decomp_data.sh (user-approved 2026-09-24),
+# kept untracked here, and never shipped (NOLOAD asset region + leak-scan gates):
+!port/
+!port/**
+port/actors/
+port/levels/
+port/assets/
+port/bin/
+port/data/
+port/text/
+port/sound/
+port/textures/
+port/assets.json
+port/src/goddard/dynlists/
+port/include/trig_tables.inc.c
+port/include/text_strings.h.in
+port/include/text_menu_strings.h.in
+# N64-only: IPL3/boot/header asm, RSP microcode source, SDK microcode binaries, the
+# IRIX compiler binaries, the upstream enhancement patches (one binary font), images.
+port/asm/
+port/rsp/
+port/lib/PR/
+port/tools/ido5.3_compiler/
+port/enhancements/
+port/doxygen/
+port/build/
+port/baserom*
+# Never tracked anywhere (last, so they win over any re-include above):
+# ROMs, builds, dumps, recordings, binaries.
+*.z64
+*.n64
+*.v64
+*.rom
+*.mp4
+*.log
+*.core
+core
+core.*
+*.ppm
+*.png
+*.wav
+*.bin
+*.sav
+.DS_Store
+._*
+# the launcher icon (our own drawing, miyoo/icon.svg), re-included after *.png
+!miyoo/icon.png
+# the Miyoo64 repository's docs
+!SETTINGS.md

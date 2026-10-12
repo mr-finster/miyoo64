@@ -1,0 +1,205 @@
+# F-Zero X port build: the Miyoo Mini (PLAT=miyoo) and the desktop 32-bit x86 proxy (PLAT=pc).
+#
+#   make -f Makefile.handheld PLAT=pc      -j$(nproc)   # desktop SDL2 proxy (-m32)
+#   make -f Makefile.handheld PLAT=miyoo   -j$(nproc)   # Miyoo Mini cross build (SDL 1.2, glibc; notes/miyoo.md)
+#
+# Needs the decomp's own N64 build first (`make VERSION=us init` with the
+# player's baserom.us.rev0.z64): the port takes every N64 number it needs from
+# build/us/rev0/fzerox.us.rev0.elf (tools/gen_link.py, tools/gen_swapmap.py)
+# and compiles no asset data at all - the game DMAs its assets from the player's
+# ROM at run time, as on the N64.
+
+PLAT        ?= pc
+TARGET      := fzerox
+BUILD_DIR   := build/$(PLAT)$(if $(filter 1,$(UBSAN)),-ubsan)$(if $(filter 1,$(STAT)),-stat)
+GEN_DIR     := $(BUILD_DIR)/gen
+ELF         := $(BUILD_DIR)/$(TARGET)
+N64_ELF     := build/us/rev0/fzerox.us.rev0.elf
+TOOLS       := ../tools
+PYTHON      ?= python3
+
+V ?= @
+
+#==============================================================================#
+# Toolchain                                                                    #
+#==============================================================================#
+ifeq ($(PLAT),miyoo)
+  # Miyoo Mini family (SigmaStar SSD202D: two Cortex-A7s, NEON-VFPv4, a 640x480 panel; 752x560 on the
+  # v4) with the union toolchain (shauninman/miyoomini-toolchain-buildroot v0.0.3: GCC 8.3, glibc 2.28,
+  # the device's SDL 1.2 in its sysroot). The handheld build's CPU flags with the hard-float ABI. HANDHELD_DEVICE
+  # stays defined (SDL 1.2 backend, NEON, save states); MIYOO swaps the OS bits (panel, menu,
+  # keys, paths, power) and adds the second core and the clock (src/port/miyoo, the shared Miyoo kit).
+  # -D_FILE_OFFSET_BITS=64: 32-bit glibc's readdir fails on 64-bit inodes (the ROM search saw an empty
+  # folder: MK64's Miyoo port). No SDL_ttf / SDL_image: the Miyoo screens draw with a built-in font.
+  MIYOO_TOOLCHAIN ?= /opt/miyoomini-toolchain
+  MIYOO_CROSS     ?= $(MIYOO_TOOLCHAIN)/usr/bin/arm-linux-gnueabihf-
+  MIYOO_SYSROOT   ?= $(MIYOO_TOOLCHAIN)/usr/arm-linux-gnueabihf/sysroot
+  CC      := $(MIYOO_CROSS)gcc
+  OBJCOPY := $(MIYOO_CROSS)objcopy
+  NM      := $(MIYOO_CROSS)nm
+  MARCH   := -march=armv7ve+neon-vfpv4 -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -marm
+  OPT_FLAGS = -O2 -fno-math-errno -ffp-contract=off $(EXTRA_CFLAGS)
+  GAME_ABI :=
+  SDL_CFLAGS := -I$(MIYOO_SYSROOT)/usr/include -D_REENTRANT -D_FILE_OFFSET_BITS=64 -Isrc/port/miyoo
+  SDL_LIBS   := -L$(MIYOO_SYSROOT)/usr/lib -lSDL -lrt # -lrt: glibc 2.28's timer_create (sdl/sprof.c)
+  PLAT_DEFINES := HANDHELD_DEVICE=1 MIYOO=1 TARGET_MIYOO=1
+  CTX_S   := src/port/ultra/ctx_arm.S
+else
+  CC      := gcc
+  OBJCOPY := objcopy
+  NM      := nm
+  # 32-bit so pointer and struct widths match the device. SSE float, no FMA
+  # contraction: frames are bit-comparable with the ARM build (MK64 rounds 12-13).
+  MARCH   := -m32 -fno-pie -malign-data=abi
+  OPT_FLAGS = -O2 -fno-math-errno -msse2 -mfpmath=sse -ffp-contract=off $(EXTRA_CFLAGS)
+  # Game structs holding u64/f64 must lay out like MIPS/ARM EABI (8-byte aligned).
+  GAME_ABI := -malign-double
+  SDL_CFLAGS := $(shell PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig pkg-config --cflags sdl2)
+  SDL_LIBS   := $(shell PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig pkg-config --libs sdl2)
+  PLAT_DEFINES := TARGET_PC=1
+  CTX_S   := src/port/ultra/ctx_x86.S
+endif
+# `make ... PLAT=pc UBSAN=1` (into build/pc-ubsan): report shift counts that are negative or
+# >= the type's width at run time. MIPS and x86 use the count's low 5 bits, ARM its low byte
+# (x >> 32 is 0 on the device and x on the desktop), so only the device would show such a
+# bug (ocarina-of-time 33d8a76, mario-kart-64 1a4bbf7). Likewise a float converted to an int it doesn't
+# fit: x86 gives INT_MIN where ARM saturates (float-cast-overflow; mario-kart-64 b2dff40).
+ifeq ($(UBSAN),1)
+  MARCH += -fsanitize=shift-exponent,float-cast-overflow
+endif
+# `make ... STAT=1` (into build/<plat>-stat): the renderer's overdraw census
+# (src/port/gfx/gfx_soft_stat.h). A measuring tool, never a release build.
+ifeq ($(STAT),1)
+  PLAT_DEFINES += FZX_STAT=1
+endif
+
+#==============================================================================#
+# Sources                                                                      #
+#==============================================================================#
+# The US cartridge build's C objects (from the decomp linker script), minus:
+# libultra OS/IO (replaced by src/port/ultra), the 64DD (leo), the RSP microcode
+# stubs, the asset segments (DMA'd from the ROM), and the pure-BSS segments
+# (placed at their N64 offsets in the RDRAM block, see tools/gen_link.py).
+N64_OBJS := $(shell grep -oE 'build/us/rev0/src/[^ ]+\.o' linker_scripts/us/rev0/fzerox.ld 2>/dev/null | \
+              sed 's#build/us/rev0/##; s#\.o$$##' | sort -u)
+EXCLUDED := $(shell cat $(GEN_DIR)/excluded.txt 2>/dev/null)
+GAME_SRCS := $(filter-out $(EXCLUDED),$(filter src/audio/rom/% src/framebuffers/% src/game/% src/overlays/% \
+               src/sys/% src/libultra/gu/%,$(N64_OBJS)))
+# Files the port replaces: aisetnextbuf reads AI registers directly.
+GAME_SRCS := $(filter-out src/audio/rom/lib/aisetnextbuf src/libultra/gu/sqrtf $(shell cat $(GEN_DIR)/dataonly.txt 2>/dev/null),$(GAME_SRCS))
+
+# Excluded objects that also carry initialised data: compiled, .bss stripped (gen_link.py).
+DATAONLY := $(shell cat $(GEN_DIR)/dataonly.txt 2>/dev/null)
+RDRAM_OBJS := $(shell cat $(GEN_DIR)/rdram_objs.txt 2>/dev/null)
+
+PORT_DIRS := src/port src/port/ultra src/port/gfx src/port/audio src/port/sdl
+# the Miyoo Mini's panel, menu, second core and clock (the shared Miyoo kit; MIYOO only)
+ifeq ($(PLAT),miyoo)
+  PORT_DIRS += src/port/miyoo
+endif
+PORT_SRCS := $(foreach d,$(PORT_DIRS),$(patsubst %.c,%,$(wildcard $(d)/*.c)))
+# One window backend per platform: SDL2 desktop, SDL 1.2 handheld (and Miyoo).
+ifeq ($(PLAT),miyoo)
+  PORT_SRCS := $(filter-out src/port/gfx/gfx_sdl,$(PORT_SRCS))
+else
+  PORT_SRCS := $(filter-out src/port/gfx/gfx_sdl12,$(PORT_SRCS))
+endif
+
+GAME_OBJS := $(foreach f,$(GAME_SRCS),$(BUILD_DIR)/$(f).o)
+PORT_OBJS := $(foreach f,$(PORT_SRCS),$(BUILD_DIR)/$(f).o) $(BUILD_DIR)/$(CTX_S:.S=.o) \
+             $(GEN_DIR)/swapmap_us.o
+DATAONLY_OBJS := $(foreach f,$(DATAONLY),$(BUILD_DIR)/$(f).dataonly.o)
+O_FILES   := $(GAME_OBJS) $(PORT_OBJS) $(DATAONLY_OBJS)
+DEP_FILES := $(O_FILES:.o=.d)
+
+#==============================================================================#
+# Flags                                                                        #
+#==============================================================================#
+DEFINES := _LANGUAGE_C LANGUAGE_C _MIPS_SZLONG=32 F3DEX_GBI_2 NDEBUG VERSION_US=1 BUILD_REVISION=REVISION_B \
+           LANGUAGE=LANGUAGE_ENG OS_TV_TYPE=OS_TV_TYPE_NTSC BUILD_VERSION=VERSION_I ASSET_VERSION=us \
+           ASSET_REVISION=rev0 NON_MATCHING AVOID_UB HANDHELD=1 TARGET_HANDHELD=1 PORT_REAL_PTR_MIN=0x10000000u $(PLAT_DEFINES)
+INCLUDES := -Iinclude -Ibin/us/rev0 -I. -Isrc/port -Isrc/port/gfx -Isrc/port/ultra -Isrc/port/audio \
+            -Isrc/port/sdl -I$(GEN_DIR)
+CFLAGS_COMMON := $(OPT_FLAGS) $(MARCH) -std=gnu99 -fsigned-char -fno-strict-aliasing -fwrapv -fno-common \
+                 -fno-toplevel-reorder -fno-stack-protector -MMD -MP $(foreach d,$(DEFINES),-D$(d)) $(INCLUDES)
+# The decomp is warning-heavy by nature (IDO-era idioms); port code is held to -Wall.
+# The decomp's strings are EUC-JP on the N64 (its own Makefile converts them).
+# libultra's own sinf/cosf, as on the N64: GCC would otherwise merge sin/cos pairs
+# into libm's sincosf, which differs between glibc and musl (the race diverged).
+GAME_CFLAGS := $(CFLAGS_COMMON) $(GAME_ABI) -fno-builtin-sinf -fno-builtin-cosf -fno-builtin-sincosf -fexec-charset=EUC-JP -w
+PORT_CFLAGS := $(CFLAGS_COMMON) $(GAME_ABI) -D_OS_LIBC_H_ -include stdint.h -Wall -Wno-unused-function -Wno-missing-braces $(SDL_CFLAGS)
+
+# -Ttext-segment=0x10000000: every real pointer is >= 0x10000000, above the N64
+# segment window (0x0Sxxxxxx), so the renderer can tell them apart (MK64 port.h).
+# The RDRAM block is a NOLOAD section at 0x20000000 (tools/gen_link.py).
+LDFLAGS := $(MARCH) -no-pie -Wl,-Ttext-segment=0x10000000 -Wl,--no-check-sections \
+           -Wl,-T,$(GEN_DIR)/overlays.ld -Wl,-T,src/port/savestate.ld -Wl,-Map,$(ELF).map \
+           -Wl,--defsym=_ftext=__executable_start -Wl,--defsym=_fbss=__bss_start
+# gfx_pc.c's "static memory" test: no asset region in this port (assets live in RDRAM).
+LDFLAGS += -Wl,--defsym=__assets_start=0 -Wl,--defsym=__assets_end=0
+LIBS := $(SDL_LIBS) -lz -lm -lpthread
+
+#==============================================================================#
+# Rules                                                                        #
+#==============================================================================#
+.PHONY: all gen clean FORCE
+all: $(ELF)
+
+$(N64_ELF):
+	@echo "Missing $(N64_ELF): run 'make VERSION=us init' with baserom.us.rev0.z64 first." && exit 1
+
+# Generated link description + byte-order maps (numbers only, from the N64 build).
+$(GEN_DIR)/n64_syms.ld $(GEN_DIR)/overlays.ld $(GEN_DIR)/overlays.h $(GEN_DIR)/excluded.txt $(GEN_DIR)/dataonly.txt $(GEN_DIR)/rdram_objs.txt: $(N64_ELF) $(TOOLS)/gen_link.py
+	@mkdir -p $(GEN_DIR)
+	$(V)$(PYTHON) $(TOOLS)/gen_link.py . $(GEN_DIR) $(BUILD_DIR)/
+$(GEN_DIR)/swapmap_us.c: $(N64_ELF) $(TOOLS)/gen_swapmap.py
+	@mkdir -p $(GEN_DIR)
+	$(V)$(PYTHON) $(TOOLS)/gen_swapmap.py . $@ --check > $(GEN_DIR)/swapmap.log
+gen: $(GEN_DIR)/n64_syms.ld $(GEN_DIR)/swapmap_us.c
+
+# Save states hold the game's .data/.bss, never the port's: every port object but the OS
+# layer (src/port/ultra/ultra_os.c: fibers, queues, clock, SRAM) moves its .data/.bss to
+# .port_data/.port_bss, which src/port/savestate.ld places outside the saved ranges.
+PORT_OWN = $(filter-out src/port/ultra/ultra_os.c,$(filter src/port/%,$<))
+COMMA := ,
+$(BUILD_DIR)/src/%.o: src/%.c | $(GEN_DIR)/overlays.h
+	@mkdir -p $(dir $@)
+	$(V)$(CC) -c $(if $(filter src/port/%,$<),$(PORT_CFLAGS),$(GAME_CFLAGS)) -o $@ $<
+	$(if $(PORT_OWN),$(V)$(OBJCOPY) --rename-section .data=.port_data --rename-section .bss=.port_bss$(COMMA)alloc $@)
+$(BUILD_DIR)/src/%.o: src/%.S
+	@mkdir -p $(dir $@)
+	$(V)$(CC) -c $(MARCH) -o $@ $<
+$(BUILD_DIR)/src/%.dataonly.o: $(BUILD_DIR)/src/%.o
+	$(V)$(OBJCOPY) --remove-section=.bss --strip-debug $< $@
+
+# Every variable placed at its N64 offset must have its N64 size natively.
+# miyoo_worker.c (the shared Miyoo kit) needs glibc's CPU affinity calls, before the forced stdint.h
+$(BUILD_DIR)/src/port/miyoo/miyoo_worker.o: PORT_CFLAGS += -D_GNU_SOURCE '-DMIYOO_WORKER_ENV="FZX_THREADS"'
+# the kit's switches under the port's prefix (FZX_THREADS, FZX_CPUCLOCK)
+$(BUILD_DIR)/src/port/miyoo/miyoo_clock.o: PORT_CFLAGS += '-DMIYOO_CLOCK_ENV="FZX_CPUCLOCK"'
+
+# The commit a log came from: port_main.o only (FZX_BUILD_ID; "+" = uncommitted changes).
+BUILD_ID := $(shell git rev-parse --short HEAD 2>/dev/null)$(shell git diff --quiet HEAD 2>/dev/null || echo +)
+$(BUILD_DIR)/src/port/port_main.o: PORT_CFLAGS += -DFZX_BUILD_ID='"$(BUILD_ID)"'
+$(BUILD_DIR)/src/port/port_main.o: FORCE
+FORCE:
+
+$(BUILD_DIR)/layout.ok: $(foreach f,$(RDRAM_OBJS),$(BUILD_DIR)/$(f).o) $(TOOLS)/check_layout.py
+	$(V)$(PYTHON) $(TOOLS)/check_layout.py . $(NM) $(BUILD_DIR) $(GEN_DIR)/rdram_objs.txt && touch $@
+
+$(GEN_DIR)/%.o: $(GEN_DIR)/%.c
+	$(V)$(CC) -c $(PORT_CFLAGS) -o $@ $<
+
+# A save state loads only into the exact executable that wrote it (fixed addresses,
+# function pointers in .data): the stamp is a hash of every object linked, so it
+# changes with any rebuild that changes code and stays the same for identical inputs.
+$(ELF): $(O_FILES) $(GEN_DIR)/n64_syms.ld $(GEN_DIR)/overlays.ld $(BUILD_DIR)/layout.ok src/port/savestate.ld
+	@echo "LD $@"
+	$(V)echo "const unsigned int port_build_stamp = 0x$$(cat $(O_FILES) | sha1sum | cut -c1-8)u;" > $(GEN_DIR)/build_stamp.c
+	$(V)$(CC) -c $(PORT_CFLAGS) -o $(GEN_DIR)/build_stamp.o $(GEN_DIR)/build_stamp.c
+	$(V)$(CC) $(LDFLAGS) -o $@ $(O_FILES) $(GEN_DIR)/build_stamp.o $(GEN_DIR)/n64_syms.ld $(LIBS)
+
+clean:
+	rm -rf $(BUILD_DIR)
+
+-include $(DEP_FILES)
