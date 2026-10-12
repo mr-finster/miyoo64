@@ -707,6 +707,36 @@ static void gfx_sdl12_swap_buffers_begin(void) {
     }
 }
 
+/* X50 (the other ports' exit, 2026-10-13: SM64 on MinUI sat at a black screen after EXIT GAME, the other games came
+ * back): SDL down before the launcher comes back. SDL 1.2's fbcon otherwise leaves the console, keyboard and video
+ * modes set up, and the launcher after us can hang at its first flip. Any job still on the worker and the last flip
+ * finish first (~0.5 s at most for the flip; SDL left up rather than pulled from under it). The watchdog first:
+ * SIGALRM's default action ends the process, so a flip or an SDL_Quit that never returns can't keep the launcher
+ * from coming back. Never released: the process ends right after. */
+int gfx_wm_shutdown(void) {
+    static int sDone = -1;
+    sigset_t s;
+
+    if (sDone >= 0) return sDone;
+    signal(SIGALRM, SIG_DFL);
+    sigemptyset(&s);
+    sigaddset(&s, SIGALRM);
+    sigprocmask(SIG_UNBLOCK, &s, NULL);
+    alarm(5);
+#if defined(MIYOO)
+    gfx_miyoo_job_fence(); /* SM64_PRESJOB / SM64_AUDIOJOB: the worker is done with the panel and the audio */
+#endif
+    if (sPresentLock) {
+        SDL_mutexP(sPresentLock);
+        for (int i = 0; (sPresentPending || sPresentBusy) && i < 50; i++)
+            SDL_CondWaitTimeout(sPresentCond, sPresentLock, 10);
+        if (sPresentBusy) return sDone = 0;
+    }
+    fb_unpan();
+    SDL_Quit();
+    return sDone = 1;
+}
+
 static void gfx_sdl12_swap_buffers_end(void) { }
 static double gfx_sdl12_get_time(void) { return SDL_GetTicks() / 1000.0; }
 

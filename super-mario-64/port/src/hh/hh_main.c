@@ -1069,5 +1069,12 @@ int main(int argc, char **argv) {
 #endif
     fflush(NULL);
     sync();
+#if defined(HANDHELD)
+    { /* SDL down before the launcher comes back (X50, gfx_sdl12.c); the line after it says the shutdown finished
+       * rather than hung. */
+        extern int gfx_wm_shutdown(void);
+        port_log_always(gfx_wm_shutdown() ? "exit: SDL shut down\n" : "exit: SDL left up (a flip still running)\n");
+    }
+#endif
     return 0;
 }
