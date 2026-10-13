@@ -22,8 +22,9 @@ spruce.
   1800 MHz on the Mini Plus, from the OS's 1200; below what Onion itself asks for its heaviest games) and puts it
   back when it quits.
   Frames are not held to the screen's refresh: a frame starts as soon as the last one is done, while the game's
-  own clock still follows real time. Frames are held to 30 a second (`minstep=1` lifts that in the
-  missions: more frames, but the motion is less even).
+  own clock still follows real time. In the missions a frame may come at any screen refresh (up to 60 fps), and the
+  motion steps by the real time between frames so it stays even (`minstep=2` holds 30 a second, `fracstep=0` steps
+  whole refreshes).
 - **Menu:** RESUME, SAVE STATE, LOAD STATE (slots 1-9 and the auto save), EXIT GAME, in a built-in
   font. Volume and brightness are left to the OS. Notices like SAVED SLOT 1 show in the top-left
   corner for two seconds.
@@ -103,8 +104,8 @@ starts a comment). The name is the setting without its `GE_`, lowercase (`hud1to
 | `screen` | | `n64`: gameplay in the N64's view between black bands, as on the console (a little faster) |
 | `cpuclock` | 1500 / 1800 | the CPU clock in MHz while the game runs (Mini / Mini Plus; the OS's is 1200, Onion's heaviest cores ask up to 1600 / 1900); `0` leaves it alone |
 | `uncap` | 1 | `0`: frames start at screen refreshes as on the N64 (slower: a frame that takes 2.2 refreshes waits for the third) |
-| `minstep` | 2 | `1`: in the missions a frame may follow the last one at the next screen refresh (up to 60 fps instead of 30; the game's speed is the same, but frames come 1 or 2 refreshes apart, so the motion is less even) |
-| `fracstep` | 0 | `1` (testing): the motion (walking, turning, the camera, guns) steps by the real time since the last frame instead of whole screen refreshes, so frames that come 1.5 or 2.4 refreshes apart move evenly; the game's speed and its frame counters are the same |
+| `minstep` | 1 | in the missions a frame may follow the last one at the next screen refresh (up to 60 fps; with `fracstep=1` the motion stays even). `2`: frames held to 30 a second, as before 1014b |
+| `fracstep` | 1 | the motion (walking, turning, the camera, guns) steps by the real time since the last frame instead of whole screen refreshes, so frames that come 1.5 or 2.4 refreshes apart move evenly; the game's speed and its frame counters are the same. `0`: whole refreshes, as before 1014b |
 | `threads` | 2 | `1`: draw on one core only (the second core shares the 3D drawing; for comparing speed) |
 | `intres` | 100 | the 3D's size in percent under the full-size HUD (85 or lower: faster, softer) |
 

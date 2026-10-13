@@ -102,7 +102,7 @@ line:
 | `rotate180=` | `1` | `0` draws the picture unturned, for an SDL that turns the panel itself |
 | `threads=` | `2` | `1` draws on one core only, as before (for an A/B on the device) |
 | `cpuclock=` | (the model's) | the CPU clock in MHz: 1500 on the Mini and 1800 on the Mini Plus by default (the stock clock is 1200), `0` leaves it as the OS set it; put back when the game quits |
-| `fps=` | `30` | the game's own 30 fps hold (it still runs at 60 in light scenes); `60` shows every frame as soon as it is drawn (see "Speed" below) |
+| `fps=` | `30` | a firm 30 fps hold (since 1014b also in light scenes, which used to jump to 60 and back; `DKR_HOLD30=0`: the game's own rule again); `60` shows every frame as soon as it is drawn (see "Speed" below) |
 | `fillrule=` | `1` | `0` draws see-through effects with the old edge rule (a thin bright line where two triangles meet) |
 | `vdsoclock=` | `1` | `0` reads the clock through the kernel instead (the game is the same either way) |
 
@@ -115,7 +115,7 @@ Environment variables for testing (set them in `launch.sh`):
   panel itself).
 - `DKR_LOG=0` keeps the output on the terminal.
 - `DKR_THREADS=1` or `2` overrides `threads=`.
-- `DKR_CPUCLOCK=<MHz>` overrides `cpuclock=`; `DKR_FPS=30` or `60` overrides `fps=`.
+- `DKR_CPUCLOCK=<MHz>` overrides `cpuclock=`; `DKR_FPS=30` or `60` overrides `fps=`. `DKR_HOLD30=0`: with fps=30, let light scenes run at 60 as the game's own rule does (before 1014b). `DKR_RATELOG=1`: every 300 frames, the fields per frame and game time against the clock in `console.log`.
 - `DKR_WATCHDOG=<s>`: the stall report after that many seconds without a picture (default 3; 0 turns
   it off). See "If it freezes" below.
 - `DKR_FIXEDSTACK=0`: the game loop on the process's own stack, as before (see "If it freezes").
@@ -212,7 +212,8 @@ waiting for it. `threads=1` (or `DKR_THREADS=1`) prints `mt off` and draws exact
   (not quit) leaves the clock up until the OS sets it again.
 - **Frame rate.** The game paces itself by the 60 Hz fields that pass, as on the console: when its
   frames take under 16.7 ms for 20 frames in a row it runs at 60 fps by itself, and a slower frame
-  is held to 30 fps. That is the default on the Mini too (since 2026-10-11). `fps=60` (or
+  is held to 30 fps. On the Mini the default (since 1014b) holds every frame to 30 fps, light scenes
+  too, so the rate no longer jumps to 60 and back (`DKR_HOLD30=0`: the game's own rule). `fps=60` (or
   `DKR_FPS=60`) drops the hold: every frame shows as soon as it is drawn and the game advances by the
   time that passed (a 20 ms frame alternates one and two fields, ~50 fps); nothing is blended.
   `fps:` in `console.log` says which.

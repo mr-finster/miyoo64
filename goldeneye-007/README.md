@@ -36,7 +36,7 @@ Optional: a text file `App/GoldenEye/data/debug.cfg`, one `key=value` per line. 
 | Setting | Effect |
 |---|---|
 | `screen=n64` | gameplay in the N64's view between black bands (a little faster) |
-| `minstep=1` | in the missions, up to 60 fps instead of 30 (the motion is less even) |
+| `minstep=2` | frames held to 30 a second (default `1`: in the missions up to 60 fps, motion stepped by real time; `fracstep=0` turns that off) |
 | `intres=<percent>` | the 3D's size under the full-size HUD (default 100; 85 or lower is faster and softer) |
 | `threads=1` | draw on one core only (default `2`) |
 | `cpuclock=<MHz>` | the CPU clock while the game runs (default 1500 / 1800; `0` leaves it alone) |

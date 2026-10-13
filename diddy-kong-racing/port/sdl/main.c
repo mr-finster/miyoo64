@@ -557,6 +557,39 @@ int port_fps60(void) {
     }
     return sFps60;
 }
+/* hold30 (DKR_HOLD30, default 1; decomp/src/video.c fb_update): with fps=30, every frame waits at least 2 fields,
+ * so a light scene does not run at 60 and drop back to 30 (the game's own rule lets gVideoDeltaTime fall to 1
+ * after 20 fast frames). DKR_HOLD30=0: the earlier hold (min(gVideoDeltaTime, 2)). */
+int port_hold30(void) {
+    static int sOn = -1;
+    if (sOn < 0) {
+        const char *e = getenv("DKR_HOLD30");
+        sOn = !(e && e[0] == '0');
+        port_log_always("hold30: %s\n", sOn ? "on (a firm 30 fps hold)" : "off (the game may drop to 1 field a frame)");
+    }
+    return sOn;
+}
+/* DKR_RATELOG=1: every 300 frames, how many advanced by 1, 2, 3, 4+ fields and how often the step changed. */
+void port_rate_log(s32 rate) {
+    static int sOn = -1;
+    static unsigned n, h[5], flips;
+    static unsigned long long fields;
+    static u64 t0;
+    static s32 last;
+    if (sOn < 0) { const char *e = getenv("DKR_RATELOG"); sOn = e && e[0] == '1'; }
+    if (!sOn) return;
+    if (n == 0) t0 = port_clock_us();
+    fields += (unsigned long long) rate;
+    h[rate < 1 ? 0 : rate > 4 ? 4 : rate]++;
+    if (n && rate != last) flips++;
+    last = rate;
+    if (++n % 300 == 0) {
+        port_log_always("rate: %u frames: 1:%u 2:%u 3:%u 4+:%u, changes %u; game %.2f s, clock %.2f s\n", n, h[1], h[2],
+                        h[3], h[4], flips, (double) fields * 0.016683, (double) (port_clock_us() - t0) * 1e-6);
+        h[0] = h[1] = h[2] = h[3] = h[4] = 0;
+        flips = 0;
+    }
+}
 static void port_fps60_bench(int on) { /* -1: back to the setting */
     port_fps60();
     sFps60 = on < 0 ? sFps60Cfg : on;

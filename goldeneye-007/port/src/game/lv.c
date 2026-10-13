@@ -1049,7 +1049,7 @@ void lvlManageMpGame(void)
 
 #ifdef VERSION_US
 #if defined(HANDHELD)
-    {   /* GE_FRACSTEP=1 (debug.cfg fracstep=1, default off): the motion step follows the real frame time (hh_plat.c) */
+    {   /* GE_FRACSTEP (debug.cfg fracstep=0|1, default 1 on the Miyoo): the motion step follows the real frame time (hh_plat.c) */
         extern f32 hhFracStep(s32 clockTimer);
         g_GlobalTimerDelta = hhFracStep(g_ClockTimer);
     }

@@ -331,11 +331,17 @@ s32 fb_update(s32 mesg) {
          * 2 at 30, a 20 ms frame alternating 1 and 2), where the hold keeps anything between 16.7 and 33 ms at
          * 30 fps. The game drops to 1 by itself after 20 frames under 16.7 ms (above), as on the console.
          * Off (the default, fps=30): the hold as before. */
-        extern int port_fps60(void);
-        const s32 hold = port_fps60() ? 1 : gVideoDeltaTime > 2 ? 2 : gVideoDeltaTime;
+        /* hold30=1 (DKR_HOLD30, the default since 1014b): the hold is a firm 2 fields. The game's own rule
+         * above drops gVideoDeltaTime to 1 after 20 frames done inside one field, so light scenes ran at 60 and fell
+         * back to 30 at the first heavy frame (the user, 2026-10-13: "gets to 60fps and then drops and it's
+         * jarring"; 1014a's on-time waits made those 20-frame runs common on the device). DKR_HOLD30=0: as before. */
+        extern int port_fps60(void), port_hold30(void);
+        extern void port_rate_log(s32 rate);
+        const s32 hold = port_fps60() ? 1 : port_hold30() ? 2 : gVideoDeltaTime > 2 ? 2 : gVideoDeltaTime;
         if (tempUpdateRate < hold) {
             tempUpdateRate += port_vi_fields(hold - tempUpdateRate);
         }
+        port_rate_log(tempUpdateRate);
     }
     return tempUpdateRate;
 #else

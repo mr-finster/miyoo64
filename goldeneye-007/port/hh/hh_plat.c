@@ -197,7 +197,7 @@ __attribute__((constructor)) static void hh_plat_fps_knob(void)
 }
 
 #if defined(TARGET_MIYOO)
-/* The Miyoo Mini's minimum frame step (GE_MINSTEP, debug.cfg minstep=1|2, default 2; read on first use, after
+/* The Miyoo Mini's minimum frame step (GE_MINSTEP, debug.cfg minstep=1|2, default 1; read on first use, after
  * debug.cfg is in the environment). The 30 fps cap is the port's, not the N64's: GoldenEye's own threshold is half a retrace (boss.c,
  * 387937), so on the console a frame done inside one retrace steps 1 (the logos at 60), and the game code steps by
  * time (g_ClockTimer, g_GlobalTimerDelta, loops of one retrace per step, the half-frame counters). 2: a frame waits
@@ -210,17 +210,19 @@ int hh_minstep(void)
     static int step SAVESTATE_EXCLUDE;
     if (step == 0) {
         const char *e = getenv("GE_MINSTEP");
-        step = (e && e[0] == '1') ? 1 : 2; /* default 2 (the user, 2026-10-11: 1 felt uneven on the device) */
+        step = (e && e[0] == '2') ? 2 : 1; /* default 1 since 1014b: with fracstep=1 (below) the uneven 1, 2 steps move
+                                              * evenly (the user, 2026-10-13, Mini Plus Dam: 36-46 fps, smoother than the
+                                              * locked 30 of minstep=2; 2026-10-11 minstep=1 alone had felt uneven) */
         if (getenv("GE_FPS") || getenv("GE_FRAMEVIS"))
             step = 2; /* the tests' own interval (hhMainLoopTickInterval) */
-        fprintf(stderr, "minstep: %d (debug.cfg minstep=%d: %s)\n", step, 3 - step,
-                step == 1 ? "a frame every second retrace at most, 30 fps" : "a frame on every retrace one is ready for");
+        fprintf(stderr, "minstep: %d (%s)\n", step,
+                step == 2 ? "a frame every second retrace at most, 30 fps" : "a frame on every retrace one is ready for");
     }
     return step;
 }
 #endif
 
-/* The fractional frame step (GE_FRACSTEP=1, debug.cfg fracstep=1; default off, opt-in for testing). The game's step is
+/* The fractional frame step (GE_FRACSTEP, debug.cfg fracstep=0|1; default 1 on the Miyoo since 1014b, 0 elsewhere). The game's step is
  * whole retraces (g_ClockTimer: the retraces osGetCount crossed since the last frame, rounded at half a retrace), so
  * frames that take 2.4 retraces of real time step 2, 2, 3, 2, 3 and motion judders though the frames come evenly; with
  * minstep=1 it is 1, 2, 1, 2. With this on, the motion step (g_GlobalTimerDelta: Bond's walk and turn, the camera, guns,
@@ -240,9 +242,14 @@ f32 hhFracStep(s32 clk)
     double r, raw, d, lo, hi;
     if (on < 0) {
         const char *e = getenv("GE_FRACSTEP");
-        on = (e && e[0] == '1') && hh_os_real_retraces() >= 0.0;
+#if defined(TARGET_MIYOO)
+        on = !(e && e[0] == '0'); /* default on (fracstep=0: whole retraces, as before 1014b) */
+#else
+        on = (e && e[0] == '1');
+#endif
+        on = on && hh_os_real_retraces() >= 0.0;
         logn = getenv("GE_FRACLOG") != NULL;
-        fprintf(stderr, "fracstep: %s (debug.cfg fracstep=1: the motion step follows the real frame time)\n", on ? "on" : "off");
+        fprintf(stderr, "fracstep: %s (debug.cfg fracstep=0|1: 1 = the motion step follows the real frame time)\n", on ? "on" : "off");
     }
     if (!on)
         return (f32)clk;
