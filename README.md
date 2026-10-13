@@ -3,13 +3,13 @@
 <p align="center"><b>Nine N64 games running natively on the Miyoo Mini family, built from the decompilation projects.</b></p>
 
 <p align="center">
-  <a href="https://miyoo-n64.pages.dev"><img src="https://img.shields.io/badge/download-miyoo--n64.pages.dev-2ea44f" alt="Download"></a>
+  <a href="https://github.com/mr-finster/miyoo64/releases/latest"><img src="https://img.shields.io/github/v/release/mr-finster/miyoo64" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-blue" alt="Licence: MIT"></a>
   <img src="https://img.shields.io/badge/device-Miyoo%20Mini%20%7C%20Mini%20Plus%20%7C%20Mini%20Flip-lightgrey" alt="Device: Miyoo Mini, Mini Plus, Mini Flip">
 </p>
 
 <p align="center">
-  <a href="https://miyoo-n64.pages.dev">Download</a> ·
+  <a href="https://github.com/mr-finster/miyoo64/releases/latest">Download</a> ·
   <a href="#status">Status</a> ·
   <a href="#controls">Controls</a> ·
   <a href="https://github.com/mr-finster/miyoo64/issues">Report a bug</a>
@@ -22,7 +22,7 @@
 
 Native ports of nine N64 games to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip). No emulation: each game's C code, rebuilt by its decompilation community, runs on the Mini's ARM CPU and is drawn by a software renderer that uses both of its cores. Every game has save states (9 slots and an auto save), the same in-game menu (MENU: resume, save, load, exit), and picks up where you left off after a power-off.
 
-Downloads are on https://miyoo-n64.pages.dev; this repository holds the source only.
+Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/latest), or https://miyoo-n64.pages.dev.
 
 ## Status
 
@@ -56,7 +56,7 @@ Each folder is one game and builds on its own.
 
 ## Install
 
-1. Download the game's zip from https://miyoo-n64.pages.dev.
+1. Download the game's zip from the [latest release](https://github.com/mr-finster/miyoo64/releases/latest) or https://miyoo-n64.pages.dev.
 2. Put your Miyoo's SD card in your computer.
 3. Unzip the download and copy the folders your OS needs to the root of the card, merging them with the folders already there (Onion: `App` and `Roms`; MinUI: `App`, `Emus` and `Roms`; Allium: `App` and `Apps`; stock and spruce: `App`). On Windows, drag them onto the card and choose to replace the files. On a Mac, don't drag folders in Finder (Replace deletes the whole folder on the card); unzip with Terminal instead: `unzip -o <zip> -d /Volumes/<card>`.
 4. Put your ROM in the game's folder as `App/<Game>/rom.z64`. Any .z64, .v64 or .n64 dump works, renamed to rom.z64. The table below has the version each game needs.
