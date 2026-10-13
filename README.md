@@ -26,19 +26,21 @@ Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/l
 
 ## Status
 
-| Game | State | Notes |
+| Game | State | Highlights |
 |---|---|---|
-| Mario Kart 64 | Playable | |
-| Diddy Kong Racing | Playable | Runs at 30 fps |
-| Ocarina of Time | Playable | USA 1.0 only |
-| GoldenEye 007 | Playable | Heavy views (Jungle, foliage) slow down |
-| F-Zero X | Playable | |
-| Star Fox 64 | Playable | |
-| Paper Mario | Playable | |
-| Super Smash Bros. | Playable | |
-| Super Mario 64 | Playable | |
+| Mario Kart 64 | ✅ Playable | Course fog, mirror mode and chrome reflections drawn as on the N64 |
+| Diddy Kong Racing | ✅ Playable | Steady 30 fps; ground lighting, fog bands and HUD icons fixed |
+| Ocarina of Time | ✅ Playable | Shop backgrounds, torch flames and Lake Hylia's water fixed (USA 1.0 ROM) |
+| GoldenEye 007 | ✅ Playable | Fills the screen, smooth real-time motion, 36–50 fps on Dam; the busiest views (Jungle) are heavier |
+| F-Zero X | ✅ Playable | Fills the screen; full speed with fog, sparks and the energy aura |
+| Star Fox 64 | ✅ Playable | Fills the screen; motion-blur warps, fog and explosions as on the N64 |
+| Paper Mario | ✅ Playable | Fills the screen; battle swirls, title cards and Tidal Wave drawn |
+| Super Smash Bros. | ✅ Playable | Hit flashes, shields and costume colours as on the N64 |
+| Super Mario 64 | ✅ Playable | Metal Mario, coloured fog and the castle window fixed, both cores drawing |
 
-On the Mini v4 and Mini Flip (750x560 screens) the picture is shown at 640x480 with a border for now.
+Every game has 9 save-state slots plus an auto save, and picks up where you left off after a power-off.
+
+On the Mini v4 and Mini Flip (750x560 screens) the picture is shown at 640x480 with a border for now; filling those screens is next.
 
 | Game | Folder | Built from |
 |---|---|---|
