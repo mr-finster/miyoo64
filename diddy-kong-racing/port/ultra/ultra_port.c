@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <time.h>
+extern int sched_yield(void); /* not <sched.h>: the game has a sched.h of its own on the include path */
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -91,9 +92,17 @@ s32 port_vi_fields(s32 minFields) {
     if (t < sFieldClock + (u64) minFields * FIELD_US) {
         u64 wake = sFieldClock + (u64) minFields * FIELD_US;
         u32 t0 = port_time_us();
+        /* Any sleep on the Miyoo Mini costs a whole kernel tick (9.2-9.6 ms on the Mini Plus, however short the
+         * request): only the part of the wait above 12 ms is slept, the rest is a sched_yield loop to the same
+         * deadline (DKR_SPINWAIT=0: sleep to 1 ms before it, as before). Exact sleeps: the same timing. */
+        static int sSpin = -1;
+        if (sSpin < 0) { const char *e = getenv("DKR_SPINWAIT"); sSpin = !(e && e[0] == '0'); }
         while ((t = now_us()) < wake) {
             u64 left = wake - t;
-            if (left > 1500) usleep((useconds_t) (left - 1000));
+            if (sSpin) {
+                if (left > 12000) usleep((useconds_t) (left - 12000));
+                else sched_yield();
+            } else if (left > 1500) usleep((useconds_t) (left - 1000));
         }
         PORT_PROF_ADD(PROF_SLEEP, port_time_us() - t0);
     }

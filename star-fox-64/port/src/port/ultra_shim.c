@@ -164,6 +164,34 @@ int port_timers_poll(void) {
     return fired;
 }
 
+/* A pacing wait. Any sleep on the Miyoo Mini costs a whole kernel tick, 9.2-9.6 ms however short the request
+ * (measured on the Mini Plus), so a frame's remainder under ~10 ms slept was a frame late. Only the part of a wait
+ * above 12 ms is slept; the rest is a sched_yield loop on the monotonic clock, to the same deadline. On a kernel whose
+ * sleeps are exact the timing is the same. SF64_SPINWAIT=0: one sleep, as before. Returns the microseconds waited. */
+extern int sched_yield(void); /* not <sched.h>: the game has a sched.h of its own on the include path */
+static unsigned int spin_wait_us(unsigned int us) {
+    static int spin = -1;
+    struct timespec ts;
+    unsigned long long t0, now, until;
+    if (spin < 0) { const char *e = getenv("SF64_SPINWAIT"); spin = !(e && e[0] == '0'); }
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    t0 = (unsigned long long)ts.tv_sec * 1000000000ull + (unsigned long long)ts.tv_nsec;
+    until = t0 + (unsigned long long)us * 1000ull;
+    for (now = t0; now < until;) {
+        const unsigned long long left = until - now;
+        if (!spin || left > 12000000ull) {
+            const unsigned long long s = spin ? left - 12000000ull : left;
+            struct timespec d = { (time_t)(s / 1000000000ull), (long)(s % 1000000000ull) };
+            nanosleep(&d, NULL); /* a signal cutting it short: the loop goes on to the deadline */
+        } else {
+            sched_yield();
+        }
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        now = (unsigned long long)ts.tv_sec * 1000000000ull + (unsigned long long)ts.tv_nsec;
+    }
+    return (unsigned int)((now - t0) / 1000u);
+}
+
 /* A blocking receive on a queue a pending timer feeds: sleep until it is due. */
 static int port_timer_wait_for(OSMesgQueue* mq) {
     int i, best = -1;
@@ -178,8 +206,7 @@ static int port_timer_wait_for(OSMesgQueue* mq) {
         const OSTime now = osGetTime();
         if (sTimers[best].deadline > now) {
             const u64 us = (u64) ((sTimers[best].deadline - now) / 62.5);
-            struct timespec ts = { (time_t) (us / 1000000), (long) (us % 1000000) * 1000 };
-            nanosleep(&ts, NULL);
+            (void) spin_wait_us((unsigned int) us);
         }
     }
     return port_timers_poll();

@@ -6,6 +6,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <time.h>
 #include <sys/stat.h>
 #include "hh_os.h"
 #include "hh_hw.h"
@@ -218,6 +219,81 @@ int hh_minstep(void)
     return step;
 }
 #endif
+
+/* The fractional frame step (GE_FRACSTEP=1, debug.cfg fracstep=1; default off, opt-in for testing). The game's step is
+ * whole retraces (g_ClockTimer: the retraces osGetCount crossed since the last frame, rounded at half a retrace), so
+ * frames that take 2.4 retraces of real time step 2, 2, 3, 2, 3 and motion judders though the frames come evenly; with
+ * minstep=1 it is 1, 2, 1, 2. With this on, the motion step (g_GlobalTimerDelta: Bond's walk and turn, the camera, guns,
+ * props, the float timers -- the EU build already runs it at 1.2x the count, so a non-whole step is one the game knows)
+ * is the real time since the last frame, in retraces, read off the host clock. The whole-retrace count (g_ClockTimer,
+ * g_GlobalTimer: the AI's frame counters, the 30 Hz tick, sound) is untouched. The fractional total is held within one
+ * retrace of the whole one (and resynced on a jump: a pause, a state load, a long stall), so the two never drift apart
+ * and game time still equals real time. A step of 0 (paused, controls locked) stays 0. Unpaced (GE_NOPACE): off. */
+f32 hhFracStep(s32 clk)
+{
+    static int on SAVESTATE_EXCLUDE = -1, have SAVESTATE_EXCLUDE, logn SAVESTATE_EXCLUDE;
+    static double base SAVESTATE_EXCLUDE, sum SAVESTATE_EXCLUDE, isum SAVESTATE_EXCLUDE;
+    static double lsum SAVESTATE_EXCLUDE, lisum SAVESTATE_EXCLUDE, lreal SAVESTATE_EXCLUDE;
+    static unsigned lframes SAVESTATE_EXCLUDE, lresync SAVESTATE_EXCLUDE;
+    static double lwall0 SAVESTATE_EXCLUDE;
+    extern double hh_os_real_retraces(void);
+    double r, raw, d, lo, hi;
+    if (on < 0) {
+        const char *e = getenv("GE_FRACSTEP");
+        on = (e && e[0] == '1') && hh_os_real_retraces() >= 0.0;
+        logn = getenv("GE_FRACLOG") != NULL;
+        fprintf(stderr, "fracstep: %s (debug.cfg fracstep=1: the motion step follows the real frame time)\n", on ? "on" : "off");
+    }
+    if (!on)
+        return (f32)clk;
+    if (clk <= 0) { /* paused or locked: no motion, and the next step starts the timeline again */
+        have = 0;
+        return 0.0f;
+    }
+    r = hh_os_real_retraces();
+    if (!have) {
+        have = 1;
+        base = r - (double)clk;
+        sum = isum = 0.0;
+    }
+    isum += (double)clk;
+    raw = r - base;
+    if (raw - isum > 3.0 || isum - raw > 3.0) { /* the clock base moved (pause, state load) or a long stall: resync */
+        base = r - isum;
+        raw = isum;
+        lresync++;
+    }
+    if (raw < isum - 1.0) raw = isum - 1.0;
+    if (raw > isum + 1.0) raw = isum + 1.0;
+    d = raw - sum;
+    lo = (double)clk - 1.0;
+    if (lo < 0.25) lo = 0.25;
+    hi = (double)clk + 1.0;
+    if (d < lo) d = lo;
+    if (d > hi) d = hi;
+    sum += d;
+    if (isum > 1048576.0) { /* keep the doubles small: the same offsets, rebased */
+        base += isum;
+        sum -= isum;
+        isum = 0.0;
+    }
+    if (logn) { /* GE_FRACLOG=1: every 300 frames, the fractional and whole game time against the wall clock */
+        struct timespec ts;
+        double wall;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        wall = (double)ts.tv_sec + (double)ts.tv_nsec * 1e-9;
+        if (lframes == 0)
+            lwall0 = wall;
+        lsum += d;
+        lisum += (double)clk;
+        lreal = r;
+        if (++lframes % 300 == 0)
+            fprintf(stderr, "fracstep: %u frames, wall %.2f s = %.1f retraces; game time frac %.1f whole %.0f (%+.2f); "
+                            "resyncs %u; this step %.3f of %d; host clock %.1f\n",
+                    lframes, wall - lwall0, (wall - lwall0) * 60.0, lsum, lisum, lsum - lisum, lresync, d, clk, lreal);
+    }
+    return (f32)d;
+}
 
 /* The cap per retrace (boss.c): 60 on the intro screens the N64 draws at 60 (front.c hhFront60, round 27:
  * the logos and the barrel's dots move twice as smoothly, as on the console), hhMainLoopTickInterval

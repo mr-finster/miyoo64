@@ -1048,7 +1048,14 @@ void lvlManageMpGame(void)
 #endif
 
 #ifdef VERSION_US
+#if defined(HANDHELD)
+    {   /* GE_FRACSTEP=1 (debug.cfg fracstep=1, default off): the motion step follows the real frame time (hh_plat.c) */
+        extern f32 hhFracStep(s32 clockTimer);
+        g_GlobalTimerDelta = hhFracStep(g_ClockTimer);
+    }
+#else
     g_GlobalTimerDelta = (f32) g_ClockTimer;
+#endif
 #else
     g_JP_GlobalTimerDelta = (f32) g_ClockTimer;
 #ifdef VERSION_EU

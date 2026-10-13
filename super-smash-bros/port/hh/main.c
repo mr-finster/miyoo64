@@ -572,6 +572,34 @@ static void savestate_test_hooks(void)
     if (sFrameCount == sPowerAt) raise(SIGTERM);
 }
 
+/* A pacing wait. Any sleep on the Miyoo Mini costs a whole kernel tick, 9.2-9.6 ms however short the request
+ * (measured on the Mini Plus), so a frame's remainder under ~10 ms slept was a frame late. Only the part of a wait
+ * above 12 ms is slept; the rest is a sched_yield loop on the monotonic clock, to the same deadline. On a kernel whose
+ * sleeps are exact the timing is the same. SSB64_SPINWAIT=0: one sleep, as before. Returns the microseconds waited. */
+extern int sched_yield(void); /* not <sched.h>: the game has a sched.h of its own on the include path */
+static unsigned int spin_wait_us(unsigned int us) {
+    static int spin = -1;
+    struct timespec ts;
+    unsigned long long t0, now, until;
+    if (spin < 0) { const char *e = getenv("SSB64_SPINWAIT"); spin = !(e && e[0] == '0'); }
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    t0 = (unsigned long long)ts.tv_sec * 1000000000ull + (unsigned long long)ts.tv_nsec;
+    until = t0 + (unsigned long long)us * 1000ull;
+    for (now = t0; now < until;) {
+        const unsigned long long left = until - now;
+        if (!spin || left > 12000000ull) {
+            const unsigned long long s = spin ? left - 12000000ull : left;
+            struct timespec d = { (time_t)(s / 1000000000ull), (long)(s % 1000000000ull) };
+            nanosleep(&d, NULL); /* a signal cutting it short: the loop goes on to the deadline */
+        } else {
+            sched_yield();
+        }
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        now = (unsigned long long)ts.tv_sec * 1000000000ull + (unsigned long long)ts.tv_nsec;
+    }
+    return (unsigned int)((now - t0) / 1000u);
+}
+
 int main(int argc, char **argv)
 {
     char err[512];
@@ -684,7 +712,7 @@ int main(int argc, char **argv)
         if (free_run) {
             deadline = port_time_us();
         } else if (slack > 0 && slack <= 1000000) {
-            usleep((useconds_t)slack);
+            (void)spin_wait_us((unsigned int)slack);
         } else if (slack > 0 || slack < -(int32_t)(TICK_US * 6)) {
             deadline = port_time_us();   /* hopelessly behind (a load), or the clock wrapped: resync */
         } else {

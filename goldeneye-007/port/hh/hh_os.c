@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+extern int sched_yield(void); /* not <sched.h>: the game has a sched.h of its own on the include path */
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/auxv.h>
@@ -234,13 +235,35 @@ u64 hh_host_ns(void)
 static u64 hh_real_counts(void) { return (hh_host_ns() - g_real_base_ns) * 3 / 64; }
 static u64 hh_counts_to_ns(u64 c) { return c * 64 / 3; }
 
+/* The idle wait to the next event. Any sleep on the Miyoo Mini costs a whole kernel tick, 9.2-9.6 ms however short the
+ * request (measured on the Mini Plus), so a sub-retrace gap slept was a frame's worth of time lost. Only the part of a
+ * wait above HH_SPIN_NS is slept; the rest is a sched_yield loop on the monotonic clock, to the same deadline (Perfect
+ * Dark's pacer, pdmain.c). On a kernel whose sleeps are exact the deadline, and so the timing, is the same.
+ * GE_SPINWAIT=0: sleep the whole wait, as before. The PERF line's sleep bucket gets the time actually waited. */
+#define HH_SPIN_NS 12000000ull
 static void hh_sleep_ns(u64 ns)
 {
+    static int spin SAVESTATE_EXCLUDE = -1;
     struct timespec ts;
-    PORT_PROF_ADD(PROF_SLEEP, ns / 1000u); /* the PERF line's sleep bucket (hh_gfx.c) */
-    ts.tv_sec = (time_t)(ns / 1000000000ull);
-    ts.tv_nsec = (long)(ns % 1000000000ull);
-    nanosleep(&ts, NULL);
+    const u64 t0 = hh_host_ns(), until = t0 + ns;
+    u64 now = t0;
+    if (spin < 0) {
+        const char *e = getenv("GE_SPINWAIT");
+        spin = !(e && e[0] == '0');
+    }
+    while (now < until) {
+        const u64 left = until - now;
+        if (!spin || left > HH_SPIN_NS) {
+            const u64 s = spin ? left - HH_SPIN_NS : left;
+            ts.tv_sec = (time_t)(s / 1000000000ull);
+            ts.tv_nsec = (long)(s % 1000000000ull);
+            nanosleep(&ts, NULL);
+        } else {
+            sched_yield();
+        }
+        now = hh_host_ns();
+    }
+    PORT_PROF_ADD(PROF_SLEEP, (uint32_t)((now - t0) / 1000u)); /* the PERF line's sleep bucket (hh_gfx.c): actual */
 }
 
 void hh_os_rebase_clock(void)
@@ -805,6 +828,14 @@ int hh_uncap(void)
         fprintf(stderr, "uncap: %s (debug.cfg uncap=0: frames start at retraces, as on the N64)\n", on ? "on" : "off");
     }
     return on;
+}
+
+/* The host clock in retraces since the game's clock base (a continuous count, where osGetCount moves in whole
+ * retraces), for the fractional frame step (hh_plat.c hhFracStep, GE_FRACSTEP); -1 when unpaced (GE_NOPACE: no real
+ * time). Pauses and state loads move the base (hh_os_pause_end, hh_os_state_loaded); the step resyncs on a jump. */
+double hh_os_real_retraces(void)
+{
+    return g_paced ? (double)hh_real_counts() / (double)HH_VI_COUNTS : -1.0;
 }
 
 void hh_os_init(int paced)

@@ -164,6 +164,38 @@ static s32 SchedPsp_CarryUsec(void) {
     return sCarry;
 }
 
+/*
+ * The pacing wait. Any sleep on the Miyoo Mini costs a whole kernel tick,
+ * 9.2-9.6 ms however short the request (measured on the Mini Plus), so a
+ * frame's remainder under ~10 ms slept was up to a frame late. Only the part
+ * of a wait above 12 ms is slept; the rest is a sched_yield loop on the
+ * microsecond clock, to the same deadline. On a kernel whose sleeps are
+ * exact the timing is the same. OOT_SPINWAIT=0: one sleep, as before.
+ */
+extern int sched_yield(void); /* not <sched.h>: the game's sched.h is on the include path */
+static void SchedPsp_Wait(u32 waitUsec) {
+    static s32 sSpin = -1;
+    const u32 start = sceKernelGetSystemTimeLow();
+    u32 done;
+
+    if (sSpin < 0) {
+        const char* e = getenv("OOT_SPINWAIT");
+
+        sSpin = !(e != NULL && e[0] == '0');
+    }
+    if (!sSpin) {
+        sceKernelDelayThread(waitUsec);
+        return;
+    }
+    while ((done = sceKernelGetSystemTimeLow() - start) < waitUsec) {
+        if (waitUsec - done > 12000U) {
+            sceKernelDelayThread(waitUsec - done - 12000U);
+        } else {
+            sched_yield();
+        }
+    }
+}
+
 static void SchedPsp_PaceGfxTask(OSScTask* task) {
     const u32 now = sceKernelGetSystemTimeLow();
     const u32 frameUsec = SchedPsp_GetFrameUsec(task);
@@ -188,7 +220,7 @@ static void SchedPsp_PaceGfxTask(OSScTask* task) {
              *
              * Sleep only for the remaining amount of this VI.
              */
-            sceKernelDelayThread((u32)waitUsec);
+            SchedPsp_Wait((u32)waitUsec);
         } else if (waitUsec != 0) {
             /*
              * A "wait" over a second is no frame's remainder (a frame is a

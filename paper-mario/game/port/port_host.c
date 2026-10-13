@@ -332,6 +332,34 @@ static void port_priority(void) {
     port_log("priority: nice %d (asked %d)\n", getpriority(PRIO_PROCESS, 0), want);
 }
 
+/* A pacing wait. Any sleep on the Miyoo Mini costs a whole kernel tick, 9.2-9.6 ms however short the request
+ * (measured on the Mini Plus), so a frame's remainder under ~10 ms slept was a frame late. Only the part of a wait
+ * above 12 ms is slept; the rest is a sched_yield loop on the monotonic clock, to the same deadline. On a kernel whose
+ * sleeps are exact the timing is the same. PM64_SPINWAIT=0: one sleep, as before. Returns the microseconds waited. */
+extern int sched_yield(void); /* not <sched.h>: the game has a sched.h of its own on the include path */
+static unsigned int spin_wait_us(unsigned int us) {
+    static int spin = -1;
+    struct timespec ts;
+    unsigned long long t0, now, until;
+    if (spin < 0) { const char *e = getenv("PM64_SPINWAIT"); spin = !(e && e[0] == '0'); }
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    t0 = (unsigned long long)ts.tv_sec * 1000000000ull + (unsigned long long)ts.tv_nsec;
+    until = t0 + (unsigned long long)us * 1000ull;
+    for (now = t0; now < until;) {
+        const unsigned long long left = until - now;
+        if (!spin || left > 12000000ull) {
+            const unsigned long long s = spin ? left - 12000000ull : left;
+            struct timespec d = { (time_t)(s / 1000000000ull), (long)(s % 1000000000ull) };
+            nanosleep(&d, NULL); /* a signal cutting it short: the loop goes on to the deadline */
+        } else {
+            sched_yield();
+        }
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        now = (unsigned long long)ts.tv_sec * 1000000000ull + (unsigned long long)ts.tv_nsec;
+    }
+    return (unsigned int)((now - t0) / 1000u);
+}
+
 int main(int argc, char **argv) {
     debug_cfg_load(port_save_path("debug.cfg"), port_log); /* the settings file (debug_cfg.h): before any switch is read */
     port_clock_pick(); /* PM64_VDSOCLOCK: before any other thread reads the clock */
@@ -423,7 +451,7 @@ int main(int argc, char **argv) {
         next += 33333;
         const uint32_t now = port_time_us();
         const int32_t ahead = (int32_t) (next - now);
-        if (ahead > 0 && ahead <= 33333) { usleep((useconds_t) ahead); perfSleep += (uint32_t) ahead; }
+        if (ahead > 0 && ahead <= 33333) { perfSleep += spin_wait_us((unsigned int) ahead); } /* the time actually waited */
         else if (ahead > 33333 || ahead < -100000) next = now;
 #endif
         if (perfN == 300) {

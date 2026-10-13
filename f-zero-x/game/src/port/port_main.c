@@ -267,9 +267,38 @@ uint32_t port_time_us(void) {
  * handled signal, and the Bench's profiled runs (sdl/sprof.c) raise SIGPROF every 500 us, so their
  * pacer never slept more than 0.5 ms and the game ran ahead of the clock (a host check: 15 ms asked,
  * 0.5 ms slept). Retrying with the same deadline doesn't add the timer slack once per signal. */
+/* Any sleep on the Miyoo Mini costs a whole kernel tick, 9.2-9.6 ms however short the request (measured on the Mini
+ * Plus), so a VI's remainder slept was up to a VI late: only the part of the wait above 12 ms is slept, the rest is a
+ * sched_yield loop on the monotonic clock to the same deadline (a signal doesn't cut it short either). Exact sleeps:
+ * the same timing. FZX_SPINWAIT=0: the one absolute sleep below, as before. */
+extern int sched_yield(void); /* not <sched.h>: the game has a sched.h of its own on the include path */
 static void sleep_us(u32 us) {
     struct timespec dl;
     int i;
+    static int spin = -1;
+    if (spin < 0) {
+        const char* e = getenv("FZX_SPINWAIT");
+        spin = !(e && e[0] == '0');
+    }
+    if (spin) {
+        struct timespec t;
+        unsigned long long now, until;
+        clock_gettime(CLOCK_MONOTONIC, &t);
+        now = (unsigned long long) t.tv_sec * 1000000000ull + (unsigned long long) t.tv_nsec;
+        until = now + (unsigned long long) us * 1000ull;
+        while (now < until) {
+            if (until - now > 12000000ull) {
+                const unsigned long long s = until - now - 12000000ull;
+                struct timespec d = { (time_t) (s / 1000000000ull), (long) (s % 1000000000ull) };
+                nanosleep(&d, NULL);
+            } else {
+                sched_yield();
+            }
+            clock_gettime(CLOCK_MONOTONIC, &t);
+            now = (unsigned long long) t.tv_sec * 1000000000ull + (unsigned long long) t.tv_nsec;
+        }
+        return;
+    }
     clock_gettime(CLOCK_MONOTONIC, &dl);
     dl.tv_sec += (time_t) (us / 1000000u);
     dl.tv_nsec += (long) (us % 1000000u) * 1000;

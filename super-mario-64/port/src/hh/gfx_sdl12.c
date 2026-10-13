@@ -21,6 +21,8 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+extern int sched_yield(void); /* not <sched.h>: the game has a sched.h of its own on the include path */
+#include <time.h>
 #include <SDL/SDL.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -429,6 +431,39 @@ static void ladder_step(void) {
 static uint32_t sDeadlineMs SAVESTATE_EXCLUDE;
 static int sLateRun SAVESTATE_EXCLUDE;
 
+/* The pacer's wait. Any sleep on the Miyoo Mini costs a whole kernel tick, 9.2-9.6 ms however short the request
+ * (measured on the Mini Plus), so a frame's 1-11 ms remainder slept was up to a frame late. Only the part of a wait
+ * above 12 ms is slept; the rest is a sched_yield loop on the monotonic clock, to the same deadline. On a kernel whose
+ * sleeps are exact the timing is the same. SM64_SPINWAIT=0: SDL_Delay, as before. Returns the microseconds waited. */
+static uint32_t pace_wait_ms(uint32_t ms) {
+    static int spin SAVESTATE_EXCLUDE = -1;
+    struct timespec ts;
+    uint64_t t0, now, until;
+    if (spin < 0) { const char *e = getenv("SM64_SPINWAIT"); spin = !(e && e[0] == '0'); }
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    t0 = (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
+    if (!spin) {
+        SDL_Delay(ms);
+    } else {
+        until = t0 + (uint64_t)ms * 1000000ull;
+        for (;;) {
+            clock_gettime(CLOCK_MONOTONIC, &ts);
+            now = (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
+            if (now >= until) break;
+            if (until - now > 12000000ull) {
+                const uint64_t s = until - now - 12000000ull;
+                struct timespec d = { (time_t)(s / 1000000000ull), (long)(s % 1000000000ull) };
+                nanosleep(&d, NULL);
+            } else {
+                sched_yield();
+            }
+        }
+    }
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    now = (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
+    return (uint32_t)((now - t0) / 1000u);
+}
+
 static bool gfx_sdl12_start_frame(void) {
     if (sResEnabled) ladder_step();
 
@@ -457,7 +492,7 @@ static bool gfx_sdl12_start_frame(void) {
             gPortResetDebtUs = pay < RESET_PAY_MS ? 0 : gPortResetDebtUs - pay * 1000u; /* under 1 ms left: dropped */
         }
         const uint32_t sleep = (uint32_t)(-late) + pay;
-        if (sleep) { SDL_Delay(sleep); PORT_PROF_ADD(PROF_SLEEP, sleep * 1000u); }
+        if (sleep) { const uint32_t waited = pace_wait_ms(sleep); PORT_PROF_ADD(PROF_SLEEP, waited); }
         sDoRender = true; sSkipsInARow = 0;
         sDeadlineMs += FRAME_TIME_MS + pay;
     } else if (late < LATE_SLOWDOWN_MS || sSkipsInARow >= FRAMESKIP_MAX || (sRobust && sLateRun < LATE_RUN)) {
