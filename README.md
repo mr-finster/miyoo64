@@ -1,13 +1,44 @@
-# Miyoo64
+<h1 align="center">Miyoo64</h1>
 
-Native ports of nine N64 games to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip),
-built from the N64 decompilation projects made by their communities. No emulation: each game's
-C code runs on the Mini's ARM CPU, drawn by a software renderer that uses both of its cores.
-You need your own ROM. Nothing from the games is in this repository or in the downloads.
+<p align="center"><b>Nine N64 games running natively on the Miyoo Mini family, built from the decompilation projects.</b></p>
 
-Downloads: https://miyoo-n64.pages.dev (this repository holds the source only).
+<p align="center">
+  <a href="https://miyoo-n64.pages.dev"><img src="https://img.shields.io/badge/download-miyoo--n64.pages.dev-2ea44f" alt="Download"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-blue" alt="Licence: MIT"></a>
+  <img src="https://img.shields.io/badge/device-Miyoo%20Mini%20%7C%20Mini%20Plus%20%7C%20Mini%20Flip-lightgrey" alt="Device: Miyoo Mini, Mini Plus, Mini Flip">
+</p>
 
-## Games
+<p align="center">
+  <a href="https://miyoo-n64.pages.dev">Download</a> ·
+  <a href="#status">Status</a> ·
+  <a href="#controls">Controls</a> ·
+  <a href="https://github.com/mr-finster/miyoo64/issues">Report a bug</a>
+</p>
+
+> [!IMPORTANT]
+> No ROMs or game data are included, here or in the downloads. Bring your own ROM: each game reads a copy of a game you own and builds what it needs on the Miyoo itself.
+
+## About
+
+Native ports of nine N64 games to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip). No emulation: each game's C code, rebuilt by its decompilation community, runs on the Mini's ARM CPU and is drawn by a software renderer that uses both of its cores. Every game has save states (9 slots and an auto save), the same in-game menu (MENU: resume, save, load, exit), and picks up where you left off after a power-off.
+
+Downloads are on https://miyoo-n64.pages.dev; this repository holds the source only.
+
+## Status
+
+| Game | State | Notes |
+|---|---|---|
+| Mario Kart 64 | Playable | |
+| Diddy Kong Racing | Playable | Runs at 30 fps |
+| Ocarina of Time | Playable | USA 1.0 only |
+| GoldenEye 007 | Playable | Heavy views (Jungle, foliage) slow down |
+| F-Zero X | Playable | |
+| Star Fox 64 | Playable | |
+| Paper Mario | Playable | |
+| Super Smash Bros. | Playable | |
+| Super Mario 64 | Playable | |
+
+On the Mini v4 and Mini Flip (750x560 screens) the picture is shown at 640x480 with a border for now.
 
 | Game | Folder | Built from |
 |---|---|---|
@@ -21,27 +52,25 @@ Downloads: https://miyoo-n64.pages.dev (this repository holds the source only).
 | Super Smash Bros. | [super-smash-bros](super-smash-bros/) | [VetriTheRetri/ssb-decomp-re](https://github.com/VetriTheRetri/ssb-decomp-re) |
 | Super Mario 64 | [super-mario-64](super-mario-64/) | [n64decomp/sm64](https://github.com/n64decomp/sm64) |
 
-Each folder is one game and builds on its own. Every game has save states (9 slots and an auto
-save), the same in-game menu (MENU: resume, save, load, exit), and picks up where you left off
-after a power-off.
+Each folder is one game and builds on its own.
 
 ## Install
 
-1. Download the game's zip from https://miyoo-n64.pages.dev (the zips are only there, not on GitHub).
+1. Download the game's zip from https://miyoo-n64.pages.dev.
 2. Put your Miyoo's SD card in your computer.
-3. Unzip the download and copy its folders (App, Roms and the rest) to the root of the card,
-   merging them with the folders already there. On Windows, drag them onto the card and choose to
-   replace the files.
-   On a Mac, don't drag the folders themselves: Finder replaces a folder of the same name, which
-   would remove your other apps. Open each folder and drag what's inside into the matching folder
-   on the card.
-4. Put your ROM in the game's folder as `App/<Game>/rom.z64`. Any .z64, .v64 or .n64 dump works,
-   renamed to rom.z64. The table below has the folder and the version each game needs.
-5. Eject the card, put it back in the Miyoo and start the game from Apps, or from Ports on Onion.
-   The first start takes a minute.
-   Don't see Ports on Onion? Turn on the Ports Collection in Apps > Package Manager.
+3. Unzip the download and copy the folders your OS needs to the root of the card, merging them with the folders already there (Onion: `App` and `Roms`; MinUI: `App`, `Emus` and `Roms`; Allium: `App` and `Apps`; stock and spruce: `App`). On Windows, drag them onto the card and choose to replace the files. On a Mac, don't drag folders in Finder (Replace deletes the whole folder on the card); unzip with Terminal instead: `unzip -o <zip> -d /Volumes/<card>`.
+4. Put your ROM in the game's folder as `App/<Game>/rom.z64`. Any .z64, .v64 or .n64 dump works, renamed to rom.z64. The table below has the version each game needs.
+5. Eject the card, put it back in the Miyoo and start the game. The first start takes a minute.
 
-## You need your own ROM
+| OS | Where the game shows up |
+|---|---|
+| Onion | Apps, and Ports (with the Ports Collection) |
+| Stock OS | Apps |
+| MinUI, MyMinUI | the home screen |
+| spruce | Apps |
+| Allium | Apps |
+
+### Which ROM
 
 Each game checks the dump and refuses any other version (the screen says which one it found).
 
@@ -64,7 +93,16 @@ they run, so keep it on the card for those two.
 
 ## Controls
 
-The controls table of each game is in its folder's README:
+| Button | Every game |
+|---|---|
+| <kbd>MENU</kbd> | Game menu: resume, save state, load state, exit |
+| <kbd>Up</kbd> / <kbd>Down</kbd> | Pick a menu entry |
+| <kbd>Left</kbd> / <kbd>Right</kbd> | Change the save slot |
+| <kbd>A</kbd> / <kbd>START</kbd> | Select |
+| <kbd>B</kbd> / <kbd>MENU</kbd> | Close the menu |
+| <kbd>Power</kbd> | Saves the auto save on the way out |
+
+Each game's own button layout is in its folder's README:
 [Mario Kart 64](mario-kart-64/README.md#controls),
 [Diddy Kong Racing](diddy-kong-racing/README.md#controls),
 [Ocarina of Time](ocarina-of-time/README.md#controls),
@@ -75,30 +113,18 @@ The controls table of each game is in its folder's README:
 [Super Smash Bros.](super-smash-bros/README.md#controls),
 [Super Mario 64](super-mario-64/README.md#controls).
 
-MENU opens the game menu in every game: resume, save state, load state (slots 1-9 and the auto
-save), exit. Volume and brightness are the OS's.
+## How it's built
 
-## Supported OSes
+Each game is its decompilation project's C code compiled for the Mini's ARM CPU, with a port layer per game: a software renderer descended from the Super Mario 64 PC port's Fast3D (reworked to split each frame's drawing across both cores), audio through the Mini's SDL 1.2, and a shared kit for the panel, the game menu, save states and the CPU clock. On first start each game rebuilds its data from your ROM using recipes (numbers only, no game data) shipped in the zip.
 
-One zip works on every Miyoo OS. The game lives in `App/<Game>/`; the other entries only start
-that folder, so they share one copy and one save folder.
-
-| OS | Where the game shows up |
-|---|---|
-| Onion | Apps, and Ports (with the Ports Collection) |
-| Stock OS | Apps |
-| MinUI, MyMinUI | the home screen |
-| spruce | Apps |
-| Allium | Apps |
-
-## Building from source
+## Build it yourself
 
 Every game builds in Docker, on the Miyoo Mini toolchain Onion and MinUI use (GCC 8.3, glibc 2.28
 and the device's SDL 1.2 in the sysroot, at `/opt/miyoomini-toolchain`). Most games' build images
 start from the Mario Kart 64 image, so build that one first:
 
 ```sh
-docker build --platform linux/amd64 -t mk64fk:build mario-kart-64/docker
+docker build --platform linux/amd64 -t mk64hh:build mario-kart-64/docker
 ```
 
 Each game's `dev.sh` then runs a command in that game's image. GoldenEye 007 also has its own
@@ -128,19 +154,16 @@ The steps for each game are in its README, under "Building the Miyoo zip":
 [Super Smash Bros.](super-smash-bros/README.md#building-the-miyoo-zip),
 [Super Mario 64](super-mario-64/README.md#building-the-miyoo-zip).
 
+## How it's made
+
+Made with the help of AI coding tools. Every change is checked before release: each game's frames are compared against the previous build in an emulator (qemu) on deterministic runs, release gates refuse a zip that contains anything matching the ROM or a host path, and builds are played on a real Miyoo Mini Plus before they go up.
+
 ## Reporting bugs
 
 Open an issue: https://github.com/mr-finster/miyoo64/issues. Say which game, which OS and
 version, and which Miyoo (Mini, Mini Plus ...), and attach `console.log` from `App/<Game>/data/`
 (Mario Kart 64: `App/MarioKart64/console.log`). It records the last run; the logs of earlier runs
 are kept next to it.
-
-## Layout
-
-- `<game>/`: one game each (see its README)
-- `<game>/miyoo/`: the Miyoo packer (`miyoo/tools/miyoo_pack.py`, the same in every game), its
-  launch templates and the game's `game.json`
-- `.github/ISSUE_TEMPLATE/`: the bug report form
 
 ## Credits
 
@@ -170,13 +193,6 @@ The renderers descend from the Super Mario 64 PC port's Fast3D, reworked for sof
 Each folder keeps its upstream licence and notice files (`LICENSE`, `LICENSE.md`, `NOTICE.md`);
 its README's Credits section has the details.
 
-## Disclaimer
-
-Unofficial ports, rebuilt from the N64 decompilation projects made by their communities. Written
-with help from AI coding tools and tested on a Miyoo Mini. Nothing from the original games is
-hosted here: no ROMs, no game data. Each port reads a copy of a game you own and builds what it
-needs on the Miyoo itself. Not connected to Nintendo, Rare, Miyoo or any other rights holder.
-
 ## Licence
 
 MIT for this project's own code: see LICENSE. Each game folder's upstream decompilation and third-party
@@ -185,6 +201,8 @@ code keeps its own licence: CC0 for the Diddy Kong Racing, F-Zero X and Star Fox
 terms in `mario-kart-64/base-psp/LICENSE`, the MIT notices for BattleShip and Starship in
 `super-smash-bros/port/NOTICE.md` and for Golden Balloon in `diddy-kong-racing/port/asset_swap.c`, and the
 upstream projects' own terms for the rest.
+
+Unofficial ports, not connected to Nintendo, Rare, Miyoo or any other rights holder.
 
 ## Support
 
