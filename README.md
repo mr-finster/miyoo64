@@ -156,7 +156,7 @@ The steps for each game are in its README, under "Building the Miyoo zip":
 
 ## How it's made
 
-Made with the help of AI coding tools. Every change is checked before release: each game's frames are compared against the previous build in an emulator (qemu) on deterministic runs, release gates refuse a zip that contains anything matching the ROM or a host path, and builds are played on a real Miyoo Mini Plus before they go up.
+Made with the help of AI coding tools. Every change is checked before release: each game's frames are compared against the previous build in an emulator (qemu) on deterministic runs, release gates refuse a zip that contains anything matching the ROM or a host path, and builds are played on a real Miyoo Mini Plus before they go up. More on the approach and the tooling: [How it was made](docs/HOW-IT-WAS-MADE.md).
 
 ## Reporting bugs
 
