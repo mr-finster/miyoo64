@@ -15,6 +15,8 @@
   <a href="https://github.com/mr-finster/miyoo64/issues">Report a bug</a>
 </p>
 
+<p align="center"><img src="https://miyoo-n64.pages.dev/img/montage.jpg" alt="Screenshots of the nine games running on a Miyoo Mini" width="800"></p>
+
 > [!IMPORTANT]
 > No ROMs or game data are included, here or in the downloads. Bring your own ROM: each game reads a copy of a game you own and builds what it needs on the Miyoo itself.
 
