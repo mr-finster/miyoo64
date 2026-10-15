@@ -1,6 +1,6 @@
 <h1 align="center">Miyoo64</h1>
 
-<p align="center"><b>Nine N64 games running natively on the Miyoo Mini family, built from the decompilation projects.</b></p>
+<p align="center"><b>Ten N64 games running natively on the Miyoo Mini family, built from the decompilation projects.</b></p>
 
 <p align="center">
   <a href="https://github.com/mr-finster/miyoo64/releases/latest"><img src="https://img.shields.io/github/v/release/mr-finster/miyoo64" alt="Latest release"></a>
@@ -15,14 +15,14 @@
   <a href="https://github.com/mr-finster/miyoo64/issues">Report a bug</a>
 </p>
 
-<p align="center"><img src="https://miyoo-n64.pages.dev/img/montage.jpg" alt="Screenshots of the nine games running on a Miyoo Mini" width="800"></p>
+<p align="center"><img src="https://miyoo-n64.pages.dev/img/montage.jpg" alt="Screenshots of the games running on a Miyoo Mini" width="800"></p>
 
 > [!IMPORTANT]
 > No ROMs or game data are included, here or in the downloads. Bring your own ROM: each game reads a copy of a game you own and builds what it needs on the Miyoo itself.
 
 ## About
 
-Native ports of nine N64 games to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip). No emulation: each game's C code, rebuilt by its decompilation community, runs on the Mini's ARM CPU and is drawn by a software renderer that uses both of its cores. Every game has save states (9 slots and an auto save), the same in-game menu (MENU: resume, save, load, exit), and picks up where you left off after a power-off.
+Native ports of ten N64 games to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip). No emulation: each game's C code, rebuilt by its decompilation community, runs on the Mini's ARM CPU and is drawn by a software renderer that uses both of its cores. Every game has save states (9 slots and an auto save), the same in-game menu (MENU: resume, save, load, exit), and picks up where you left off after a power-off.
 
 Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/latest), or https://miyoo-n64.pages.dev.
 
@@ -30,6 +30,7 @@ Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/l
 
 | Game | State | Highlights |
 |---|---|---|
+| Perfect Dark | ✅ Playable | The full solo campaign, checked mission by mission against the N64; fills the Mini v4 and Flip screens |
 | Mario Kart 64 | ✅ Playable | Course fog, mirror mode and chrome reflections drawn as on the N64 |
 | Diddy Kong Racing | ✅ Playable | Steady 30 fps; ground lighting, fog bands and HUD icons fixed |
 | Ocarina of Time | ✅ Playable | Shop backgrounds, torch flames and Lake Hylia's water fixed (USA 1.0 ROM) |
@@ -46,6 +47,7 @@ On the Mini v4 and Mini Flip (750x560 screens) the picture is shown at 640x480 w
 
 | Game | Folder | Built from |
 |---|---|---|
+| Perfect Dark | [perfect-dark](perfect-dark/) | [fgsfdsfgs/perfect_dark](https://github.com/fgsfdsfgs/perfect_dark), from [n64decomp/perfect_dark](https://github.com/n64decomp/perfect_dark) |
 | Mario Kart 64 | [mario-kart-64](mario-kart-64/) | [n64decomp/mk64](https://github.com/n64decomp/mk64) |
 | Diddy Kong Racing | [diddy-kong-racing](diddy-kong-racing/) | [DavidSM64/Diddy-Kong-Racing](https://github.com/DavidSM64/Diddy-Kong-Racing) |
 | The Legend of Zelda: Ocarina of Time | [ocarina-of-time](ocarina-of-time/) | [zeldaret/oot](https://github.com/zeldaret/oot) |
@@ -63,7 +65,7 @@ Each folder is one game and builds on its own.
 1. Download the game's zip from the [latest release](https://github.com/mr-finster/miyoo64/releases/latest) or https://miyoo-n64.pages.dev.
 2. Put your Miyoo's SD card in your computer.
 3. Unzip the download and copy the folders your OS needs to the root of the card, merging them with the folders already there (Onion: `App` and `Roms`; MinUI: `App`, `Emus` and `Roms`; Allium: `App` and `Apps`; stock and spruce: `App`). On Windows, drag them onto the card and choose to replace the files. On a Mac, don't drag folders in Finder (Replace deletes the whole folder on the card); unzip with Terminal instead: `unzip -o <zip> -d /Volumes/<card>`.
-4. Put your ROM in the game's folder as `App/<Game>/rom.z64`. Any .z64, .v64 or .n64 dump works, renamed to rom.z64. The table below has the version each game needs.
+4. Put your ROM in the game's folder as `App/<Game>/rom.z64`. Any .z64, .v64 or .n64 dump works, renamed to rom.z64 (Perfect Dark: a .z64 dump only). The table below has the version each game needs.
 5. Eject the card, put it back in the Miyoo and start the game. The first start takes a minute.
 
 | OS | Where the game shows up |
@@ -80,6 +82,7 @@ Each game checks the dump and refuses any other version (the screen says which o
 
 | Game | ROM folder | Version | SHA-1 |
 |---|---|---|---|
+| Perfect Dark | `App/PerfectDark/` | Perfect Dark (USA), Rev 1 (version 1.1) | `af8788ac4d1a57260eae9c53ffe851fcf2a3319b` |
 | Mario Kart 64 | `App/MarioKart64/` | Mario Kart 64 (USA) | `579c48e211ae952530ffc8738709f078d5dd215e` |
 | Diddy Kong Racing | `App/DiddyKongRacing/` | Diddy Kong Racing (USA), Rev 1 (version 1.1) | `6d96743d46f8c0cd0edb0ec5600b003c89b93755` |
 | Ocarina of Time | `App/OcarinaOfTime/` | The Legend of Zelda: Ocarina of Time (USA), v1.0 | `ad69c91157f6705e8ab06c79fe08aad47bb57ba7` |
@@ -92,8 +95,9 @@ Each game checks the dump and refuses any other version (the screen says which o
 
 The SHA-1 is of the big-endian `.z64` byte order; `.v64` and `.n64` dumps of the same ROM are
 converted. Besides `App/<Game>/rom.z64`, each game also looks in `Roms/N64/` and anywhere on the
-card down to two folders deep, under any file name. F-Zero X and Paper Mario read the ROM while
-they run, so keep it on the card for those two.
+card down to two folders deep, under any file name. F-Zero X, Paper Mario and Perfect Dark read
+the ROM while they run, so keep it on the card for those three. Perfect Dark reads only
+`App/PerfectDark/rom.z64`, and only a `.z64` dump.
 
 ## Controls
 
@@ -107,6 +111,7 @@ they run, so keep it on the card for those two.
 | <kbd>Power</kbd> | Saves the auto save on the way out |
 
 Each game's own button layout is in its folder's README:
+[Perfect Dark](perfect-dark/README.md#controls),
 [Mario Kart 64](mario-kart-64/README.md#controls),
 [Diddy Kong Racing](diddy-kong-racing/README.md#controls),
 [Ocarina of Time](ocarina-of-time/README.md#controls),
@@ -132,7 +137,8 @@ docker build --platform linux/amd64 -t mk64hh:build mario-kart-64/docker
 ```
 
 Each game's `dev.sh` then runs a command in that game's image. GoldenEye 007 also has its own
-Miyoo image (`goldeneye-007/docker/Dockerfile.miyoo`).
+Miyoo image (`goldeneye-007/docker/Dockerfile.miyoo`). Perfect Dark has no `dev.sh`: its `make`
+runs the toolchain directly, in the Mario Kart 64 image or wherever `/opt/miyoomini-toolchain` is.
 
 Mario Kart 64 and F-Zero X use the decompilations' tools as git submodules:
 
@@ -145,9 +151,11 @@ game uses to rebuild its data on the Miyoo (numbers only), and for the release g
 which refuses to package a zip if any file in it matches the ROM. Nothing read from the ROM is
 written into this repository (each folder's `.gitignore` is an allowlist) or the public zip.
 GoldenEye 007, Paper Mario and Super Mario 64 fetch their decompilation's code or data at build time,
-at a pinned commit.
+at a pinned commit; Perfect Dark fetches the PC port's asset metadata (names and IDs) the same way,
+and builds without the ROM.
 
 The steps for each game are in its README, under "Building the Miyoo zip":
+[Perfect Dark](perfect-dark/README.md#building-the-miyoo-zip),
 [Mario Kart 64](mario-kart-64/README.md#building-the-miyoo-zip),
 [Diddy Kong Racing](diddy-kong-racing/README.md#building-the-miyoo-zip),
 [Ocarina of Time](ocarina-of-time/README.md#building-the-miyoo-zip),
@@ -173,6 +181,8 @@ are kept next to it.
 
 Built on the work of the decompilation communities:
 
+- Perfect Dark: [n64decomp/perfect_dark](https://github.com/n64decomp/perfect_dark) (MIT) and
+  [fgsfdsfgs/perfect_dark](https://github.com/fgsfdsfgs/perfect_dark), its PC port
 - Mario Kart 64: [n64decomp/mk64](https://github.com/n64decomp/mk64), with
   [beckerd/psp_mk64_portable](https://github.com/beckerd/psp_mk64_portable)'s portable tree
 - Diddy Kong Racing: [DavidSM64/Diddy-Kong-Racing](https://github.com/DavidSM64/Diddy-Kong-Racing)
@@ -201,7 +211,8 @@ its README's Credits section has the details.
 
 MIT for this project's own code: see LICENSE. Each game folder's upstream decompilation and third-party
 code keeps its own licence: CC0 for the Diddy Kong Racing, F-Zero X and Star Fox 64 decompilations
-(`diddy-kong-racing/decomp/LICENSE.md`, `f-zero-x/game/LICENSE`, `star-fox-64/port/LICENSE.md`), beckerd's
+(`diddy-kong-racing/decomp/LICENSE.md`, `f-zero-x/game/LICENSE`, `star-fox-64/port/LICENSE.md`), MIT for the
+Perfect Dark decompilation and its PC port (`perfect-dark/LICENSE`), beckerd's
 terms in `mario-kart-64/base-psp/LICENSE`, the MIT notices for BattleShip and Starship in
 `super-smash-bros/port/NOTICE.md` and for Golden Balloon in `diddy-kong-racing/port/asset_swap.c`, and the
 upstream projects' own terms for the rest.

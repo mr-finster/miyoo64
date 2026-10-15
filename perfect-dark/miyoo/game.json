@@ -1,0 +1,14 @@
+{
+  "id": "pd",
+  "title": "Perfect Dark",
+  "folder": "PerfectDark",
+  "exe": "pd",
+  "files": ["pd"],
+  "icon": "icon.png",
+  "env": "PD",
+  "data": "data",
+  "rom": {"name": "Perfect Dark (USA) (Rev 1)", "sha1": "af8788ac4d1a57260eae9c53ffe851fcf2a3319b", "size": 33554432},
+  "rom_store": false,
+  "system": "PERFECTDARK",
+  "minui_tag": "PD"
+}

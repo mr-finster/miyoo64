@@ -1,0 +1,39 @@
+# ALLOWLIST. This folder will hold things that must never be published: the ROM, the asset
+# metadata fetched at build time (src/assets/, tools/fetch_assets.sh) and the ID headers made from
+# it (src/generated/, tools/gen_headers.sh), the fetch's clone (refs/), qemu run dirs, build output.
+# Only source, scripts and docs are tracked: everything is ignored by the leading "*" and has to be
+# re-included below.
+*
+!*/
+!.gitignore
+!*.c
+!*.h
+!*.s
+!*.inc
+!*.cc
+!*.in
+!*.md
+!*.sh
+!*.py
+!Makefile
+!LICENSE
+!include/make/PRdefs
+!tools/extract
+!tools/extract-segment
+!tools/mkrawobject
+!tools/mksimpleelf
+!tools/mktextures
+!tools/patchmips3
+!tools/rarezip
+!tools/rareunzip
+!tools/assetmgr/mk*
+!miyoo/game.json
+!miyoo/icon.png
+!miyoo/templates/app_config.json
+# Never, even if the patterns above match:
+/src/assets/
+/src/generated/
+/refs/
+/build/
+/extracted/
+__pycache__/

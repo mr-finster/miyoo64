@@ -1,0 +1,475 @@
+#!/usr/bin/env python3
+
+import os, zlib
+
+class Extractor:
+    def extract(self, romid):
+        self.romid = romid
+
+        filename = 'pd.%s.z64' % romid
+
+        fd = open(filename, 'rb')
+        self.rom = fd.read()
+        fd.close()
+
+        self.data = self.decompress(self.rom[self.val('data'):])
+        self.extract_all()
+
+    def extract_all(self):
+        self.extract_accessingpak()
+        self.extract_animations()
+        self.extract_audio()
+        self.extract_bootloader()
+        self.extract_copyright()
+        self.extract_data()
+        self.extract_files()
+        self.extract_firingrange()
+        self.extract_fonts()
+        self.extract_game()
+        self.extract_getitle()
+        self.extract_jpnfonts()
+        self.extract_lib()
+        self.extract_mpconfigs()
+        self.extract_mpstrings()
+        self.extract_preamble()
+        self.extract_textureconfig()
+        self.extract_textures()
+
+    def extract_accessingpak(self):
+        # ntsc-beta doesn't have this texture
+        if self.romid != 'ntsc-beta':
+            addr = self.val('copyright') + 0xb30
+            data = self.decompress(self.rom[addr:addr+0x8b0])
+            self.write_asset('accessingpak.bin', data)
+
+    def extract_animations(self):
+        segstart = self.val('animations')
+        segend = self.val('mpconfigs')
+
+        pos = segend - 0x389c
+        i = 0
+
+        while pos + 0xc <= segend:
+            datastart = int.from_bytes(self.rom[pos+4:pos+8], 'big')
+            dataend = int.from_bytes(self.rom[pos+4+0xc:pos+8+0xc], 'big')
+            data = self.rom[segstart+datastart:segstart+dataend]
+
+            self.write_asset('animations/%04x.bin' % i, data)
+
+            pos += 0xc
+            i += 1
+
+    def extract_audio(self):
+        sfxctl = self.val('sfxctl')
+        sfxtbl = sfxctl + 0x2fb80
+        seqctl = sfxtbl + 0x4c2160
+        seqtbl = seqctl + 0xa060
+        sequencestbl = seqtbl + 0x17c070
+        self.write_asset('sfx.ctl', self.rom[sfxctl:sfxtbl])
+        self.write_asset('sfx.tbl', self.rom[sfxtbl:seqctl])
+        self.write_asset('seq.ctl', self.rom[seqctl:seqtbl])
+        self.write_asset('seq.tbl', self.rom[seqtbl:sequencestbl])
+
+        length = 0x563b0 if self.romid == 'ntsc-beta' else 0x563a0
+
+        sequences = self.rom[sequencestbl:sequencestbl+length]
+
+        # Extract sequences
+        count = int.from_bytes(sequences[0:2], 'big')
+        i = 0
+        while i < count:
+            sequence = self.extract_sequence(sequences, i)
+            self.write_asset('sequences/%s.seq' % self.sequencenames[i], sequence)
+            i += 1
+
+    def extract_sequence(self, sequences, index):
+        pos = 4 + index * 8
+        offset = int.from_bytes(sequences[pos:pos+4], 'big')
+        return self.decompress(sequences[offset:])
+
+    def extract_copyright(self):
+        addr = self.val('copyright')
+        data = self.decompress(self.rom[addr:addr+0xb30])
+        self.write_asset('copyright.bin', data)
+
+    def extract_data(self):
+        self.write_extracted('data.bin', self.data)
+
+    def extract_files(self):
+        offsets = self.get_file_offsets()
+        names = self.get_file_names(offsets[len(offsets) - 1])
+
+        for (index, offset) in enumerate(offsets):
+            if index == 0:
+                continue
+            try:
+                endoffset = offsets[index + 1]
+            except:
+                return
+            content = self.rom[offset:endoffset]
+            name = names[index]
+
+            # If the content is zipped then the last byte might be padding. So
+            # unzip it to see.
+            unzipped = None
+            if content[0:2] == b'\x11\x73':
+                (unzipped, unused) = self.decompressandgetunused(content)
+                if len(unused):
+                    content = content[:-len(unused)]
+
+            unzippedname = name[:-1] if name.endswith('Z') else name
+
+            if name.endswith('.seg') and not name.endswith('ob_mid.seg'):
+                self.write_asset('files/bgdata/%s' % os.path.basename(unzippedname), content)
+            elif name.endswith('padsZ'):
+                self.write_asset('files/bgdata/%s.bin' % os.path.basename(unzippedname), unzipped)
+            elif name.endswith('tilesZ'):
+                self.write_extracted('files/bgdata/%s.bin' % os.path.basename(unzippedname), unzipped)
+            elif name.startswith('A'):
+                self.write_asset('files/audio/%s.mp3' % unzippedname[1:-1], content)
+            elif name.startswith('C'):
+                self.write_asset('files/chrs/%s.bin' % unzippedname[1:], unzipped)
+            elif name.startswith('G'):
+                self.write_asset('files/guns/%s.bin' % unzippedname[1:], unzipped)
+            elif name.startswith('L'):
+                self.write_extracted('files/lang/%s.bin' % unzippedname[1:], unzipped)
+            elif name.startswith('P'):
+                self.write_asset('files/props/%s.bin' % unzippedname[1:], unzipped)
+            elif name.startswith('U'):
+                self.write_extracted('files/setup/%s.bin' % unzippedname[1:], unzipped)
+            elif name == 'ob/ob_mid.seg':
+                self.write_asset('files/%s' % name, unzipped)
+            else:
+                print('Warning: skipping unrecognised file %s' % name)
+
+    def get_file_offsets(self):
+        i = self.val('files')
+        offsets = []
+        while True:
+            offset = int.from_bytes(self.data[i:i+4], 'big')
+            if offset == 0 and len(offsets):
+                return offsets
+            offsets.append(offset)
+            i += 4
+
+    def get_file_names(self, tableaddr):
+        i = tableaddr
+        names = []
+        while True:
+            offset = int.from_bytes(self.rom[i:i+4], 'big')
+            if offset == 0 and len(names):
+                return names
+            names.append(self.read_name(tableaddr + offset))
+            i += 4
+
+    def read_name(self, address):
+        nullpos = self.rom[address:].index(0)
+        return str(self.rom[address:address + nullpos], 'utf-8')
+
+    def extract_game(self):
+        binary = bytes()
+        start = i = self.val('game')
+
+        while True:
+            romoffset = start + int.from_bytes(self.rom[i:i+4], 'big') + 2
+            peek = int.from_bytes(self.rom[romoffset:romoffset+2], 'big')
+            if peek == 0:
+                break
+            part = self.decompress(self.rom[romoffset:romoffset+0x1000])
+            binary += part
+            if len(part) != 0x1000:
+                break
+            i += 4
+
+        self.write_extracted('game.bin', binary)
+
+    def extract_inflate(self):
+        self.write_extracted('inflate.bin', self.rom[0x4e850:0x4fc40])
+
+    def extract_garbage(self):
+        start = self.val('garbage')
+        end = self.val('animations')
+        self.write_extracted('garbage.bin', self.rom[start:end])
+
+    # In all versions, lib starts at 0x1050 and is compressed from 0x3050 onwards
+    def extract_lib(self):
+        part1 = self.rom[0x1050:0x3050]
+        part2 = self.decompress(self.rom[0x3050:])
+        self.write_extracted('lib.bin', part1 + part2)
+
+    def extract_mpconfigs(self):
+        addr = self.val('mpconfigs')
+        self.write_extracted('mpconfigs.bin', self.rom[addr:addr+0x68*44])
+
+    def extract_mpstrings(self):
+        self.extract_mpstrings_lang(0, 'E')
+        self.extract_mpstrings_lang(1, 'J')
+        self.extract_mpstrings_lang(2, 'P')
+        self.extract_mpstrings_lang(3, 'G')
+        self.extract_mpstrings_lang(4, 'F')
+        self.extract_mpstrings_lang(5, 'S')
+        self.extract_mpstrings_lang(6, 'I')
+
+    def extract_mpstrings_lang(self, index, lang):
+        addr = self.val('mpconfigs') + 0x68 * 44 + 0x3700 * index
+        self.write_extracted('mpstrings%s.bin' % lang, self.rom[addr:addr+0x3700])
+
+    def extract_firingrange(self):
+        addr = self.val('firingrange')
+        self.write_extracted('firingrange.bin', self.rom[addr:addr+0x1550])
+
+    def extract_font(self, startvar, endvar, fontname):
+        start = self.val(startvar)
+        end = self.val(endvar)
+        self.write_asset('fonts/%s.bin' % fontname, self.rom[start:end])
+
+    def extract_fonts(self):
+        self.extract_font('font0', 'font1', 'bankgothic')
+        self.extract_font('font1', 'font2', 'zurich')
+        self.extract_font('font2', 'font3', 'tahoma')
+        self.extract_font('font3', 'font4', 'numeric')
+        self.extract_font('font4', 'font5', 'handelgothicsm')
+        self.extract_font('font5', 'font6', 'handelgothicxs')
+        self.extract_font('font6', 'font7', 'handelgothicmd')
+        self.extract_font('font7', 'font8', 'handelgothiclg')
+        self.extract_font('font8', 'font9', 'ocramd')
+        self.extract_font('font9', 'sfxctl', 'ocralg')
+
+    def extract_jpnfonts(self):
+        if self.romid == 'jpn-final':
+            self.extract_font('jpnfontcombined', 'animations', 'jpn')
+        else:
+            self.extract_font('jpnfontsingle', 'jpnfontmulti', 'jpnsingle')
+            self.extract_font('jpnfontmulti', 'animations', 'jpnmulti')
+
+    def extract_bootloader(self):
+        self.write_extracted('bootloader.bin', self.rom[0x40:0x1000])
+
+    def extract_preamble(self):
+        self.write_extracted('preamble.bin', self.rom[0x1000:0x1050])
+
+    def extract_textures(self):
+        base = self.val('textures')
+        datalen = 0x294960 if self.romid == 'jpn-final' else 0x291d60
+        tablepos = base + datalen
+        index = 0
+        while True:
+            start = int.from_bytes(self.rom[tablepos+1:tablepos+4], 'big')
+            end = int.from_bytes(self.rom[tablepos+9:tablepos+12], 'big')
+            if int.from_bytes(self.rom[tablepos+12:tablepos+16], 'big') != 0:
+                break
+            texturedata = self.rom[base+start:base+end]
+            self.write_asset('textures/%04x.bin' % index, texturedata)
+            index += 1
+            tablepos += 8
+
+        tablepos += 8
+
+    def extract_textureconfig(self):
+        addr = self.val('textureconfig')
+        self.write_extracted('textureconfig.bin', self.rom[addr:addr+0xb50])
+
+    def extract_getitle(self):
+        addr = self.val('textureconfig') + 0xb50
+        self.write_extracted('getitle.bin', self.rom[addr:addr+0x65d0])
+
+    #
+    # Misc functions
+    #
+
+    def decompress(self, buffer):
+        header = int.from_bytes(buffer[0:2], 'big')
+        assert(header == 0x1173)
+        return zlib.decompress(buffer[5:], wbits=-15)
+
+    def decompressandgetunused(self, buffer):
+        header = int.from_bytes(buffer[0:2], 'big')
+        assert(header == 0x1173)
+        obj = zlib.decompressobj(wbits=-15)
+        bin = obj.decompress(buffer[5:])
+        return (bin, obj.unused_data)
+
+    def write_extracted(self, filename, data):
+        filename = 'extracted/%s/%s' % (self.romid, filename)
+        self.write(filename, data)
+
+    def write_asset(self, filename, data):
+        filename = 'src/assets/%s/%s' % (self.romid, filename)
+        self.write(filename, data)
+
+    def write(self, filename, data):
+        dirname = os.path.dirname(filename)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+
+        if os.path.isfile(filename):
+            fd = open(filename, 'rb')
+            existing_data = fd.read()
+            fd.close()
+
+            if existing_data != data and data is not None:
+                print('Warning: %s already exists and contains different content to what we want to write. To overwrite the file, remove it manually then run the extractor again.' % filename)
+
+            return
+
+        fd = open(filename, 'wb')
+        if data:
+            fd.write(data)
+        fd.close()
+
+    def val(self, name):
+        index = ['ntsc-beta','ntsc-1.0','ntsc-final','pal-beta','pal-final','jpn-final'].index(self.romid)
+        return self.vals[name][index]
+
+    sequencenames = [
+        'dummy',
+        'title-part1',
+        'extraction-pri',
+        'pause',
+        'defense-pri',
+        'investigation-amb',
+        'escape-pri',
+        'deepsea-pri',
+        'defection-amb',
+        'defection-pri',
+        'solodeath',
+        'defection-intro-effects',
+        'villa-pri',
+        'training-pri',
+        'chicago-pri',
+        'g5building-pri',
+        'defection-nrg',
+        'extraction-nrg',
+        'investigation-pri',
+        'investigation-nrg',
+        'infiltration-pri',
+        'mpdeath-beta',
+        'rescue-pri',
+        'airbase-pri',
+        'afo-pri',
+        'mpdeath',
+        'villa-intro',
+        'endscreen-missing',
+        'pelagic-pri',
+        'crashsite-pri',
+        'crashsite-nrg',
+        'attackship-pri',
+        'attackship-nrg',
+        'skedarruins-pri',
+        'defection-intro',
+        'defection-outro',
+        'defense-nrg',
+        'investigation-intro',
+        'investigation-outro',
+        'villa-nrg',
+        'chicago-nrg',
+        'g5building-nrg',
+        'infiltration-nrg',
+        'chicago-outro',
+        'extraction-outro',
+        'extraction-intro',
+        'g5building-intro',
+        'chicago-intro',
+        'villa-intro-v1',
+        'infiltration-intro',
+        'rescue-nrg',
+        'escape-nrg',
+        'airbase-nrg',
+        'afo-nrg',
+        'pelagic-nrg',
+        'deepsea-nrg',
+        'skedarruins-nrg',
+        'airbase-intro-part2',
+        'darkcombat',
+        'skedarmystery',
+        'crashsite-intro-amb',
+        'cioperative',
+        'datadyneaction',
+        'maiantears',
+        'alienconflict',
+        'escape-intro',
+        'rescue-outro',
+        'villa-intro-v2',
+        'villa-intro-v3',
+        'g5building-outro',
+        'g5building-special',
+        'endscreen-failed',
+        'mpsetup',
+        'endscreen-completed',
+        'crashsite-intro',
+        'airbase-intro',
+        'attackship-intro',
+        'deepsea-special',
+        'afo-intro',
+        'attackship-outro',
+        'escape-specical',
+        'rescue-intro',
+        'deepsea-intro',
+        'infiltration-outro',
+        'pelagic-intro',
+        'escape-outro-long',
+        'defense-intro',
+        'crashsite-outro',
+        'credits',
+        'mainmenu',
+        'deepsea-outro',
+        'afo-special',
+        'pelagic-outro',
+        'afo-outro',
+        'skedarruins-intro',
+        'bloop',
+        'airbase-outro',
+        'defense-outro',
+        'skedarruins-outro',
+        'villa-outro',
+        'skedarruins-king',
+        'training-session',
+        'crashsite-amb',
+        'mpendscreen-completed',
+        'ocean',
+        'airbase-wind',
+        'chicago-traffic',
+        'title-part2',
+        'training-intro',
+        'infiltration-amb',
+        'deepsea-amb',
+        'afo-amb',
+        'attackship-amb',
+        'skedarruins-amb',
+        'escape-outro-ufo',
+        'rescue-amb',
+        'escape-amb',
+        'jingle',
+        'escape-outro-short',
+    ]
+
+    vals = {
+        #                   ntsc-beta  ntsc-1.0   ntsc-final pal-beta   pal-final  jpn-final
+        'files':           [0x29160,   0x28080,   0x28080,   0x29b90,   0x28910,   0x28800,   ],
+        'data':            [0x30850,   0x39850,   0x39850,   0x39850,   0x39850,   0x39850,   ],
+        'game':            [0x43c40,   0x4fc40,   0x4fc40,   0x4fc40,   0x4fc40,   0x4fc40,   ],
+        'jpnfontsingle':   [0x148c40,  0x194b20,  0x194b20,  0x180330,  0x180330,  0,         ],
+        'jpnfontmulti':    [0x154340,  0x19fb40,  0x19fb40,  0x18b340,  0x18b340,  0,         ],
+        'jpnfontcombined': [0,         0,         0,         0,         0,         0x179330,  ],
+        'animations':      [0x155dc0,  0x1a15c0,  0x1a15c0,  0x18cdc0,  0x18cdc0,  0x190c50,  ],
+        'mpconfigs':       [0x785130,  0x7d0a40,  0x7d0a40,  0x7bc240,  0x7bc240,  0x7c00d0,  ],
+        'firingrange':     [0x79e410,  0x7e9d20,  0x7e9d20,  0x7d5520,  0x7d5520,  0x7d93b0,  ],
+        'textureconfig':   [0x79f960,  0x7eb270,  0x7eb270,  0x7d6a70,  0x7d6a70,  0x7da900,  ],
+        'font0':           [0x7a6a80,  0x7f2390,  0x7f2390,  0x7ddb90,  0x7ddb90,  0x7e1a20,  ],
+        'font1':           [0x7a9020,  0x7f4930,  0x7f4930,  0x7e0130,  0x7e0130,  0x7e3fc0,  ],
+        'font2':           [0x7abf50,  0x7f7860,  0x7f7860,  0x7e3060,  0x7e3060,  0x7e6ef0,  ],
+        'font3':           [0x7ad210,  0x7f8b20,  0x7f8b20,  0x7e4320,  0x7e4320,  0x7e81b0,  ],
+        'font4':           [0x7ae420,  0x7f9d30,  0x7f9d30,  0x7e5530,  0x7e5530,  0x7e93c0,  ],
+        'font5':           [0x7b06a0,  0x7fbfb0,  0x7fbfb0,  0x7e87b0,  0x7e87b0,  0x7ec640,  ],
+        'font6':           [0x7b2470,  0x7fdd80,  0x7fdd80,  0x7eae20,  0x7eae20,  0x7eecb0,  ],
+        'font7':           [0x7b4fd0,  0x8008e0,  0x8008e0,  0x7eee70,  0x7eee70,  0x7f2d00,  ],
+        'font8':           [0x7b8490,  0x803da0,  0x803da0,  0x7f2330,  0x7f2330,  0x7f61c0,  ],
+        'font9':           [0x7bb1b0,  0x806ac0,  0x806ac0,  0x7f5050,  0x7f5050,  0x7f8ee0,  ],
+        'sfxctl':          [0x7be940,  0x80a250,  0x80a250,  0x7f87e0,  0x7f87e0,  0x7fc670,  ],
+        'textures':        [0x1d12fe0, 0x1d65f40, 0x1d65f40, 0x1d5bb50, 0x1d5ca20, 0x1d61f90, ],
+        'copyright':       [0x1fabac0, 0x1ffea20, 0x1ffea20, 0x1ff4630, 0x1ff5500, 0x1ffd6b0, ],
+    }
+
+extractor = Extractor()
+extractor.extract(os.environ['ROMID'])
+

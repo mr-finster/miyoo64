@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -e
+
+INFILE="$1"
+OUTFILE="$2"
+ALIGN="${3:-0x10}"
+
+echo -e "\n.data\n.incbin \"$INFILE\"\n.balign $ALIGN" > build/$ROMID/file-$$.s
+
+$TOOLCHAIN-as -mabi=32 -mips2 -I src/include -EB --no-pad-sections -o "$OUTFILE" build/$ROMID/file-$$.s
+
+rm -f build/$ROMID/file-$$.s
