@@ -1180,6 +1180,7 @@ static bool span_clear_mip(const AlphaRows *r, int32_t uf, int32_t vf, int32_t d
     return true;
 }
 static int sMipSkip SAVESTATE_EXCLUDE = -1;
+static int sXluTile0 SAVESTATE_EXCLUDE = -1; /* GE_XLUTILE0 (raster_tri_body) */
 
 /* The mip block's level and fraction from rb's bits on the core, as the float code computes them:
  *   l2 = ((float)e + (float)m * 2^-23) * 0.5f;  if (l2 > 0) { lvl = l2 < 7 ? (int)l2 : 7; fr = (l2 - lvl) * 256; }
@@ -3932,7 +3933,15 @@ static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *
      * the y gradients of u/w, v/w and 1/w are needed too. */
     mip_lod_init();
     /* GE_MIPLOD 1: only the RDP's LOD draws, with more than one level (as the N64: the rest read tile 0) */
-    const bool mip = tex && tex->nlev > 1 && persp && !sUiMode &&
+    /* GE_XLUTILE0 (2026-10-15, the angrylion reference sweep: the Runway's dark ovals on the snow): a blended draw
+     * whose alpha comes from its texture, without the RDP's LOD (no G_TL_LOD), reads tile 0 alone on the N64 --
+     * bilinear however far it is minified. Under GE_MIPLOD 2 and 3 such a draw took the old pick: the nearest texel of
+     * a coarse level, and a decal seen edge-on (the Runway's 32x64 oval, 64 texels in ~10 rows) lost its soft rim and
+     * drew as a stepped dark trapezoid. Those draws now read level 0 as the RDP does (and GE_MIPLOD=1); alpha-tested
+     * (texture-edge) and opaque draws keep the old pick. GE_XLUTILE0=0: the old pick. */
+    if (sXluTile0 < 0) { const char *e = getenv("GE_XLUTILE0"); sXluTile0 = !(e && e[0] == '0'); }
+    const bool xlu_tile0 = sXluTile0 && sMipLod != 1 && !sTexLod && sUseAlpha && !tex_edge && a_tex;
+    const bool mip = tex && tex->nlev > 1 && persp && !sUiMode && !xlu_tile0 &&
                      (sMipLod == 1 ? sTexLod && sMaxLevel > 0 : (!sN64Filter || sTexLod));
     /* the RDP's rule for this draw's level (mip_pick_n64): GE_MIPLOD on and a G_TL_LOD draw; 2 and 3 leave the
      * other draws (the sky, characters, the gun) on the old pick */
