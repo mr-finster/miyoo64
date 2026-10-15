@@ -1454,6 +1454,43 @@ static void target_covered(void);
 static bool sUnified SAVESTATE_EXCLUDE;       /* internal res == native: 3D draws straight to native (see frame section) */
 int gfx_soft_last_frame_had_3d = 1;           /* read by the WM's res ladder */
 
+/* MK64_PICK=<frame>,<x>,<y> (debug, the effect checks against the N64): every triangle drawn over pixel
+ * (x, y) of rendered frame <frame> is logged with its vertices, its combiner and draw state, and the
+ * pixel before and after it -- which draw made a pixel's colour, to compare with the N64's. */
+extern u32 gfx_soft_frames_rendered;
+static long sPickF SAVESTATE_EXCLUDE = -2;
+static int sPickX SAVESTATE_EXCLUDE, sPickY SAVESTATE_EXCLUDE;
+static bool pick_hit(const SoftVtx *a, const SoftVtx *b, const SoftVtx *c) {
+    if (sPickF == -2) {
+        const char *e = getenv("MK64_PICK");
+        sPickF = -1;
+        if (e) sscanf(e, "%ld,%d,%d", &sPickF, &sPickX, &sPickY);
+    }
+    if (sPickF < 0 || (long)gfx_soft_frames_rendered != sPickF) return false;
+    const float px = sPickX + 0.5f, py = sPickY + 0.5f, ar = edge(a, b, c->x, c->y);
+    if (ar == 0.0f) return false;
+    const float w0 = edge(b, c, px, py) / ar, w1 = edge(c, a, px, py) / ar, w2 = edge(a, b, px, py) / ar;
+    return w0 >= 0.0f && w1 >= 0.0f && w2 >= 0.0f;
+}
+static void pick_log(const SoftVtx *v, int phase) {
+    if (phase == 0) {
+        const SoftTex *t = (sCurShader && sCurShader->cc.used_textures[0]) ? &sTex[sBoundTex[0]] : NULL;
+        port_log_always("PICK f%ld (%d,%d) %s tri: shader %08X rgb_tex %d rgb_in %d a_tex %d a_in %d texa %d decal %d | tex %dx%d%s %s | "
+                        "alpha %d ztest %d zmask %d decalz %d | fogpx %d fog %d,%d,%d a%d | lerp %d %d,%d,%d add %d %d,%d,%d\n",
+                        sPickF, sPickX, sPickY, sPhase3D ? "3d" : "2d", sCurShader ? (unsigned)sCurShader->shader_id : 0u,
+                        sCurShader && sCurShader->rgb_tex, sCurShader && sCurShader->rgb_in, sCurShader && sCurShader->a_tex,
+                        sCurShader && sCurShader->a_in, sCurShader && sCurShader->rgb_texa, sCurShader && sCurShader->rgb_decal,
+                        t ? t->w : 0, t ? t->h : 0, t && t->is16 ? " 16" : "", gfx_soft_bilinear ? "bilin" : "near",
+                        sUseAlpha, sDepthTest, sDepthMask, sZDecal, sFogPx, sFogR, sFogG, sFogB, sFogA,
+                        sTexLerp, sLerpR, sLerpG, sLerpB, sTexAdd, sAddR, sAddG, sAddB);
+        for (int k = 0; k < 3; k++)
+            port_log_always("PICK   v%d xy %.1f,%.1f z %.5f invw %.5f uv %.4f,%.4f rgba %u,%u,%u,%u\n", k, v[k].x, v[k].y, v[k].z, v[k].invw,
+                            v[k].u, v[k].v, v[k].r, v[k].g, v[k].b, v[k].a);
+    }
+    const uint32_t c = sFB[sPickY * sW + sPickX];
+    port_log_always("PICK   pixel %s %u,%u,%u z %u\n", phase == 0 ? "before" : "after", (c >> 16) & 255, (c >> 8) & 255, c & 255,
+                    (unsigned)sZB[sPickY * sW + sPickX]);
+}
 static void gfx_soft_draw_triangles(float buf_vbo[], size_t buf_vbo_len, size_t num_tris) {
     (void)buf_vbo_len;
     PROF_BEGIN();
@@ -1461,7 +1498,10 @@ static void gfx_soft_draw_triangles(float buf_vbo[], size_t buf_vbo_len, size_t 
     target_ready();
     if (!sUnified) { if (sPhase3D) sIntDirty = true; else sNatDirty = true; }
     for (size_t i = 0; i < num_tris; i++) {
+        const bool pick = sPickF != -1 && pick_hit(&v[i*3+0], &v[i*3+1], &v[i*3+2]);
+        if (pick) pick_log(&v[i*3], 0);
         const int px = raster_tri(&v[i*3+0], &v[i*3+1], &v[i*3+2], true);
+        if (pick) pick_log(&v[i*3], 1);
         /* Profiling counters are 3D-only: this path also serves the ortho
          * (2D-phase) batches, whose time lands in PROF_R2D, and counting their
          * pixels here understated the GFX3D line's ns/px (round 13). */
