@@ -133,6 +133,11 @@ a question or closes the menu (so does MENU).
 | `FZX_FASTROWS=0` | the rows of the main textured triangles set up in the generic loop, as before (the same picture; on, a smaller NEON row loop) |
 | `FZX_SPANVEC=0` | the textured rows' per-span values stepped one by one, as before (the same picture; on, as two NEON vectors) |
 | `FZX_WALLLOD=0` | the track's walls sampled once a pixel, as before (their stripes break up and crawl more than on the console in the distance); on, sampled where the console's own pixels fall in each pixel, and `FZX_WALLLOD=ab` alternates the two every 5 s |
+| `FZX_MIRRORCLAMP=0` | the machines' decals (mirrored and clamped 16-texel tiles) doubled with their mirrored copy: big decal-coloured panels, such as the Blue Falcon's yellow shoulders; on, clamped at the tile's edge as on the console (thin stripes) |
+| `FZX_STATICFADE=0` | the static fade (machine settings to the race) as an even fade; on, the picture is eaten away in random specks, as on the console |
+| `FZX_CCSHADEA=0` | the debris of an exploding machine all in the machine's colour; on, each shard whitened by its own alpha (pale and white shards), as on the console |
+| `FZX_FLATSHADE=0` | triangles drawn with smooth shading off still shaded smoothly (the debris ran into yellow and white gradients); on, one colour a triangle, as on the console |
+| `FZX_BLENDCOL=0` | the attack highlight (side or spin attack) and the machine settings screen's outline drawn with the machine's own textures (a thin blue-white edge); on, in the blend colour (a solid red rim, a dark outline), as on the console |
 
 ## Performance
 

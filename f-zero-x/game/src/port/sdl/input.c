@@ -256,6 +256,38 @@ void port_input_read(OSContPad* pad) {
     pad->stick_y = (s8) y;
     gPortPolls++;
     poll_script(pad);
+    {
+        /* FZX_COURSE=<0..23> (a test switch): gCourseIndex held at that course on every read, as
+         * mupen64plus's "Track Modifier" cheat (800F8517) holds it on the N64, so a GP race or a
+         * time attack loads that course on both for the reference shots. */
+        static int sCourse = -2;
+        if (sCourse == -2) {
+            const char* e = getenv("FZX_COURSE");
+            sCourse = e != NULL && *e ? atoi(e) : -1;
+        }
+        if (sCourse >= 0) {
+            extern s32 gCourseIndex;
+            gCourseIndex = sCourse;
+        }
+    }
+    {
+        /* FZX_SHIELD=1 (a test switch): player 1's energy float gets its upper half 0x4326 on every
+         * read, as mupen64plus's "Player 1\Infinite Shield" cheat (812C4B48 4326) does on the N64:
+         * Racer.energy is gRacers + 0x228 (fzx_racer.h), so the wall-grinding test drive lives to
+         * the pit lane (the pit force field). */
+        static int sShield = -1;
+        if (sShield < 0) {
+            const char* e = getenv("FZX_SHIELD");
+            sShield = e != NULL && e[0] == '1';
+        }
+        if (sShield) {
+            extern u8 gRacers[];
+            u32 bits;
+            memcpy(&bits, gRacers + 0x228, 4);
+            bits = (bits & 0xFFFF) | 0x43260000u;
+            memcpy(gRacers + 0x228, &bits, 4);
+        }
+    }
 }
 
 /* FZX_CPUPLAYER=1 (racer.c, a test switch): the player's machine is CPU-driven from the start,

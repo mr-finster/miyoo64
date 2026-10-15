@@ -1710,10 +1710,25 @@ extern int texman_can_hold(unsigned int num, unsigned int bytes);
  * import buffer (bit 0: S, bit 1: T); 0 falls back to plain repeat. */
 #define GFX_MAX_IMPORT_TEXELS 8192
 #define GFX_MAX_MIRROR_TEXELS 16384
+/* FZX_MIRRORCLAMP: the RDP clamps a coordinate to the tile first and mirrors it by the mask
+ * after, so a clamped tile no wider than its mask period never reaches the mirrored half: it
+ * reads as a plain clamp at its own edge. The machines' decals (IA4 16x16, mirror|clamp, UVs
+ * running to ~54 texels) show their edge column over most of the panel on the N64; doubled,
+ * the clamp sat at texel 31, the mirrored copy of column 0, and painted the Blue Falcon's
+ * shoulders and the other machines' panels in the decal colour. FZX_MIRRORCLAMP=0: doubled
+ * as before. */
+static int gfx_mirrorclamp SAVESTATE_EXCLUDE = -1;
 static uint8_t gfx_mirror_flags(uint32_t width, uint32_t height) {
     uint8_t m = 0;
     if (rdp.texture_tile.cms & G_TX_MIRROR) m |= 1;
     if (rdp.texture_tile.cmt & G_TX_MIRROR) m |= 2;
+    if (gfx_mirrorclamp < 0) { const char *e = getenv("FZX_MIRRORCLAMP"); gfx_mirrorclamp = !(e && e[0] == '0'); }
+    if (m != 0 && gfx_mirrorclamp) {
+        const int ew = ((int) rdp.texture_tile.lrs - (int) rdp.texture_tile.uls + 4) / 4;
+        const int eh = ((int) rdp.texture_tile.lrt - (int) rdp.texture_tile.ult + 4) / 4;
+        if ((rdp.texture_tile.cms & G_TX_CLAMP) && rdp.texture_tile.masks < 16 && ew <= (1 << rdp.texture_tile.masks)) m &= ~1;
+        if ((rdp.texture_tile.cmt & G_TX_CLAMP) && rdp.texture_tile.maskt < 16 && eh <= (1 << rdp.texture_tile.maskt)) m &= ~2;
+    }
     if (m != 0 && (width << (m & 1)) * (height << ((m >> 1) & 1)) > GFX_MAX_MIRROR_TEXELS) {
         m = 0;
     }
@@ -3088,6 +3103,25 @@ static inline int cc2_a_input(uint8_t mux, int slot, const struct RGBA *shade, i
     }
 }
 
+/* FZX_CCSHADEA: a texture-free cycle-1 colour whose multiplier (C) is the shade alpha, as the
+ * machines' explosion debris, (1 - SHADE) * SHADE_ALPHA + SHADE (hud_gfx D_4007FD8): each shard
+ * whitened by its own alpha. The packed combiner id has no code for an alpha in C and read it as
+ * 0, so every shard came out in the plain machine colour (saturated blue) where the N64 shows
+ * pale and white shards. Set on G_SETCOMBINE; the vertex colour is then evaluated from the raw
+ * cycle-1 inputs. FZX_CCSHADEA=0: as before. */
+static bool gfx_cc1_shadea;
+static struct RGBA gfx_blend_color;  /* G_SETBLENDCOLOR (FZX_BLENDCOL) */
+static bool gfx_blendcol_tri;        /* this triangle is drawn in the blend colour */
+static int gfx_ccshadea_on SAVESTATE_EXCLUDE = -1;
+static void gfx_cc1_shadea_set(void) {
+    const uint8_t *c = rdp.cc1;
+    if (gfx_ccshadea_on < 0) { const char *e = getenv("FZX_CCSHADEA"); gfx_ccshadea_on = !(e && e[0] == '0'); }
+    gfx_cc1_shadea = gfx_ccshadea_on && c[2] == G_CCMUX_SHADE_ALPHA &&
+                     c[0] != G_CCMUX_TEXEL0 && c[0] != G_CCMUX_TEXEL1 && c[0] != G_CCMUX_COMBINED &&
+                     c[1] != G_CCMUX_TEXEL0 && c[1] != G_CCMUX_TEXEL1 && c[1] != G_CCMUX_COMBINED &&
+                     c[3] != G_CCMUX_TEXEL0 && c[3] != G_CCMUX_TEXEL1 && c[3] != G_CCMUX_COMBINED;
+}
+
 static void gfx_eval_cycle2(const struct RGBA *shade, int lod, struct RGBA *out) {
     uint8_t comb[4] = { out->r, out->g, out->b, out->a };
     uint8_t *o = (uint8_t *) out;
@@ -3708,6 +3742,23 @@ static inline void gfx_emit_vertex(const struct LoadedVertex *cv, uint32_t cc_id
             }
             break;
     }
+    if (gfx_blendcol_tri) {
+        out->color = gfx_blend_color; /* FZX_BLENDCOL (gfx_sp_tri1) */
+        out->color.a = 255;
+    } else if (gfx_cc1_shadea && !tri_state.cc2) {
+        /* FZX_CCSHADEA: the rgb multiplier is the shade alpha (see gfx_cc1_shadea_set): the
+         * colour from cycle 1's own inputs, per vertex. */
+        uint8_t *o = (uint8_t *) &out->color;
+        const uint8_t sh[4] = { cv->color.r, cv->color.g, cv->color.b, cv->color.a };
+        for (int ch = 0; ch < 3; ch++) {
+            const int a = cc2_rgb_input(rdp.cc1[0], 0, &cv->color, lod, sh, ch);
+            const int b = cc2_rgb_input(rdp.cc1[1], 1, &cv->color, lod, sh, ch);
+            const int c = cc2_rgb_input(rdp.cc1[2], 2, &cv->color, lod, sh, ch);
+            const int d = cc2_rgb_input(rdp.cc1[3], 3, &cv->color, lod, sh, ch);
+            const int v = ((a - b) * c) / 255 + d;
+            o[ch] = (uint8_t) (v < 0 ? 0 : v > 255 ? 255 : v);
+        }
+    }
     if (tri_state.post_fog) {
         out->color.a = cv->color.a; // the fog factor; the backend blends after the texture
     } else if (tri_state.use_fog) {
@@ -3910,7 +3961,12 @@ static void gfx_ge_tl_near_clip(const struct LoadedVertex *a, const struct Loade
 }
 #endif
 
-static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
+static int gfx_flatshade SAVESTATE_EXCLUDE = -1;
+static inline bool gfx_flatshade_on(void) {
+    if (gfx_flatshade < 0) { const char *e = getenv("FZX_FLATSHADE"); gfx_flatshade = !(e && e[0] == '0'); }
+    return gfx_flatshade != 0;
+}
+static void gfx_sp_tri1_raw(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
 #ifdef PORT_EXP_NOTRI
     return;
 #endif
@@ -3920,6 +3976,16 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
     struct LoadedVertex *v1 = &rsp.loaded_vertices[vtx1_idx];
     struct LoadedVertex *v2 = &rsp.loaded_vertices[vtx2_idx];
     struct LoadedVertex *v3 = &rsp.loaded_vertices[vtx3_idx];
+    /* FZX_FLATSHADE: with G_SHADING_SMOOTH clear the microcode gives all three vertices the
+     * first one's colour (flat shading, gbi.h). The machines' explosion debris (racer.c) sets
+     * only vertex 0's colour and leaves the other two with whatever an earlier effect left in
+     * the buffer: interpolated, the shards ran into yellow and white gradients, where the N64
+     * draws each one in a single shade. FZX_FLATSHADE=0: always smooth, as before. */
+    struct LoadedVertex flat2, flat3;
+    if (!(rsp.geometry_mode & G_SHADING_SMOOTH) && gfx_flatshade_on()) {
+        if (memcmp(&v2->color, &v1->color, sizeof(v1->color)) != 0) { flat2 = *v2; flat2.color = v1->color; v2 = &flat2; }
+        if (memcmp(&v3->color, &v1->color, sizeof(v1->color)) != 0) { flat3 = *v3; flat3.color = v1->color; v3 = &flat3; }
+    }
     struct LoadedVertex *v_arr[3] = {v1, v2, v3};
 
     {
@@ -4223,6 +4289,35 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
 }
 
 /* This will be going away possibly, it all depends on how we end up treating hw sprites */
+/* FZX_BLENDCOL: a blender whose pixel input is the blend colour, P = CLR_BL with M = CLR_BL too or
+ * no FORCE_BL (full coverage writes P): every pixel the triangle covers is the blend colour,
+ * whatever the combiner says. F-Zero X's attack highlight (racer.c, D_303A7D8: the machine
+ * drawn again, scaled up, Z_CMP without Z_UPD, blend colour = the highlight) is a solid red rim
+ * round the machine on the N64; the port knew no blend colour and drew the scaled model with its
+ * own textures, a thin blue-white edge. The draw goes through as an untextured SHADE triangle
+ * with the blend colour as its vertex colour. FZX_BLENDCOL=0: as before. */
+static int gfx_blendcol_on SAVESTATE_EXCLUDE = -1;
+static inline uint32_t color_comb(uint32_t a, uint32_t b, uint32_t c, uint32_t d);
+static void gfx_dp_set_combine_mode(uint32_t rgb, uint32_t alpha, uint32_t flags);
+static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
+    const bool two = (rdp.other_mode_h & (3U << G_MDSFT_CYCLETYPE)) == G_CYC_2CYCLE;
+    const uint32_t p = two ? (rdp.other_mode_l >> 28) & 3 : (rdp.other_mode_l >> 30) & 3;
+    const uint32_t m = two ? (rdp.other_mode_l >> 20) & 3 : (rdp.other_mode_l >> 22) & 3;
+    if (gfx_blendcol_on < 0) { const char *e = getenv("FZX_BLENDCOL"); gfx_blendcol_on = !(e && e[0] == '0'); }
+    if (!gfx_blendcol_on || p != G_BL_CLR_BL || (m != G_BL_CLR_BL && (rdp.other_mode_l & FORCE_BL))) {
+        gfx_sp_tri1_raw(vtx1_idx, vtx2_idx, vtx3_idx);
+        return;
+    }
+    {
+        const uint32_t saved = rdp.combine_mode;
+        gfx_dp_set_combine_mode(color_comb(0, 0, 0, G_CCMUX_SHADE), color_comb(0, 0, 0, G_ACMUX_SHADE), 0);
+        gfx_blendcol_tri = true;
+        gfx_sp_tri1_raw(vtx1_idx, vtx2_idx, vtx3_idx);
+        gfx_blendcol_tri = false;
+        gfx_dp_set_combine_mode(saved & 0x00FFFFFF, 0, saved & 0xFF000000u);
+    }
+}
+
 static void gfx_sp_tri1_2d(uint8_t vtx1_idx, uint8_t vtx2_idx, UNUSED uint8_t vtx3_idx) {
     struct VertexColor *v1 = &rsp.loaded_vertices_2D[vtx1_idx];
     struct VertexColor *v2 = &rsp.loaded_vertices_2D[vtx2_idx];
@@ -5688,6 +5783,10 @@ static void gfx_run_dl(Gfx* cmd) {
             case G_SETFOGCOLOR:
                 gfx_dp_set_fog_color(C1(24, 8), C1(16, 8), C1(8, 8), C1(0, 8));
                 break;
+            case G_SETBLENDCOLOR:
+                gfx_blend_color.r = C1(24, 8); gfx_blend_color.g = C1(16, 8);
+                gfx_blend_color.b = C1(8, 8); gfx_blend_color.a = C1(0, 8);
+                break;
             case G_SETFILLCOLOR:
                 gfx_dp_set_fill_color(cmd->words.w1);
                 break;
@@ -5710,6 +5809,7 @@ static void gfx_run_dl(Gfx* cmd) {
                             memcpy(rdp.cc1, c1, 8);
                             tri_state.valid = false;
                         }
+                        gfx_cc1_shadea_set();
                     }
                     if (memcmp(c2, rdp.cc2, 8) != 0 || rdp.cc2_pass != (rgb_pass && a_pass)) {
                         memcpy(rdp.cc2, c2, 8);

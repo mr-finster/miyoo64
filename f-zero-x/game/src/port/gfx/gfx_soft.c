@@ -2999,6 +2999,7 @@ typedef struct __attribute__((aligned(16))) {
  * pixel centre. Shrunk sprites (the HUD at 240) keep the area filter, 1:1 ones the copy.
  * FZX_2DBILIN=0: nearest, as before. */
 bool gfx_soft_2d_bilin SAVESTATE_EXCLUDE;
+static int sStaticFade SAVESTATE_EXCLUDE = -1; /* FZX_STATICFADE (the solid-rect loop of the 2D path) */
 static int sBilin2DOn SAVESTATE_EXCLUDE = -1;
 int gfx_soft_hudswar SAVESTATE_EXCLUDE = -1; /* FZX_HUDSWAR=0: the HUD box loop with /255 and a channel at a time (A/B) */
 void gfx_scegu_draw_triangles_2d(float buf_vbo[], size_t buf_vbo_len, size_t num_sprites) {
@@ -3044,6 +3045,8 @@ void gfx_scegu_draw_triangles_2d(float buf_vbo[], size_t buf_vbo_len, size_t num
          * prim, which is what nearly every HUD sprite and menu tile uses). */
         const bool use_alpha = sUseAlpha;
         const int amin = use_alpha ? ((sCurShader && sCurShader->cc.opt_texture_edge) ? 0x55 : 8) : 0;
+        if (sStaticFade < 0) { const char *e = getenv("FZX_STATICFADE"); sStaticFade = !(e && e[0] == '0'); }
+        const bool dither_ac = sStaticFade && use_alpha && sCurShader && sCurShader->cc.opt_noise;
         const bool rgb_tex = tex && sCurShader && sCurShader->rgb_tex, rgb_in = !sCurShader || sCurShader->rgb_in || sForceIn;
         const bool a_tex = tex && sCurShader && sCurShader->a_tex, a_in = !sCurShader || sCurShader->a_in || sForceIn;
         const bool rgb_texa = sCurShader && sCurShader->rgb_texa, rgb_decal = sCurShader && sCurShader->rgb_decal;
@@ -3076,6 +3079,21 @@ void gfx_scegu_draw_triangles_2d(float buf_vbo[], size_t buf_vbo_len, size_t num
                 if (!use_alpha || ca >= 255) {
                     const uint32_t c = argb((uint8_t)cr, (uint8_t)cg, (uint8_t)cb2, 255);
                     for (int x = cx0; x < cx1; x++) row[x] = c;
+                } else if (ca >= amin && dither_ac) {
+                    /* FZX_STATICFADE: alpha compare against the RDP's random value (G_AC_DITHER): a pixel is
+                     * blended only where its alpha is at least a fresh 8-bit random number, so the static
+                     * fade (transition.c, machine settings -> race) eats the picture away in specks, and
+                     * the rest stays untouched, as on the N64 (angrylion). A counter hash per pixel and
+                     * frame keeps fixed-clock runs repeatable. FZX_STATICFADE=0: a plain even fade. */
+                    const uint32_t fr = (uint32_t)port_os_vi_count() * 0x9E3779B1u;
+                    for (int x = cx0; x < cx1; x++) {
+                        uint32_t h = fr ^ ((uint32_t)y * 0x85EBCA77u) ^ ((uint32_t)x * 0xC2B2AE3Du);
+                        h ^= h >> 15; h *= 0x2C1B3C6Du; h ^= h >> 12; h *= 0x297A2D39u; h ^= h >> 15;
+                        if (ca < (int)(h & 0xFF)) continue;
+                        const uint32_t d = row[x];
+                        const int dr=(d>>16)&0xff, dg=(d>>8)&0xff, db=d&0xff;
+                        row[x] = argb((uint8_t)((cr*ca + dr*(255-ca))/255), (uint8_t)((cg*ca + dg*(255-ca))/255), (uint8_t)((cb2*ca + db*(255-ca))/255), 255);
+                    }
                 } else if (ca >= amin) {
                     for (int x = cx0; x < cx1; x++) {
                         const uint32_t d = row[x];
