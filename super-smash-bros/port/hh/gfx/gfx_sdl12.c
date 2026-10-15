@@ -583,7 +583,7 @@ static int present_thread(void *arg) {
         blit_stage_to_screen();
         SDL_mutexV(sPresentLock);          /* the flip may block: never hold the lock */
         const uint32_t t0 = port_time_us();
-        SDL_Flip(sScreen);
+        miyoo_panel_flip(); /* sScreen's SDL_Flip, plus SSB64_PANEL_DUMP */
         gPortProfFlipUs += port_time_us() - t0;
         SDL_mutexP(sPresentLock);
         sPresentBusy = 0;
