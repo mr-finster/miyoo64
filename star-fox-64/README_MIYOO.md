@@ -121,7 +121,12 @@ Environment variables for testing (set them in `launch.sh`): `SF64_MIYOO_MODE=<w
 `SF64_THREADS=1`; `SF64_CPUCLOCK=<MHz>`; `SF64_SPLITPX=<px>` / `SF64_SPLITROWS=<n>`, the smallest triangle
 shared with the second core (1600 px of bounding box, 8 rows); `SF64_LOADPIC=0` shows the game's boot frames
 before RESUME GAME's load; `SF64_PANEL_CHECK=1` compares the first 30 presented frames with a scalar
-reference (the log says how many pixels differ); `SF64_LOG=-` keeps the output on the terminal.
+reference (the log says how many pixels differ); `SF64_LOG=-` keeps the output on the terminal;
+`SF64_GAMMADITHER=0` the plain gamma curve (blacks pure black; on, the N64 VI's gamma dither as its average:
+black a dark grey of 10, as the console shows space, the map and the fades). Reference-shot tests:
+`SF64_LEVEL=<n>` holds the level as mupen64plus's Level Select cheat does, `SF64_KEYS_RATE=vi` runs a
+`SF64_KEYS` script on the N64's clock (two polls a retrace, so menus and play both line up), and
+`SF64_TRACE_AT=<frame>` traces one rendered frame's display list.
 
 ## Building
 

@@ -1112,6 +1112,13 @@ static void gfx_sdl12_swap_buffers_begin(void) {
                 fclose(f);
             }
         }
+        { /* SF64_TRACE_AT=<frame> (tests): gfx_pc's per-draw trace for that rendered frame (the desktop
+           * backend's switch, on the dump's frame count) */
+            static long sTraceAt SAVESTATE_EXCLUDE = -2;
+            if (sTraceAt == -2) { const char *e = getenv("SF64_TRACE_AT"); sTraceAt = e ? atol(e) : -1; }
+            extern int gfx_trace_frames;
+            if (sTraceAt >= 0 && sFrame + 1 == sTraceAt) gfx_trace_frames = 1;
+        }
         sFrame++;
     }
 }

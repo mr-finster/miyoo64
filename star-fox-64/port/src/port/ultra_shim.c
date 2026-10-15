@@ -331,10 +331,26 @@ void osViSetSpecialFeatures(u32 func) {
 static unsigned char sGamma8[256] SAVESTATE_EXCLUDE;
 static unsigned short* sGamma565 SAVESTATE_EXCLUDE;
 static int sGammaBuilt SAVESTATE_EXCLUDE;
+/* SF64_GAMMADITHER: the game turns the VI's gamma dither on with the gamma (sys_main.c): the VI puts
+ * 6 random bits under each 8-bit colour before the square root ((c << 6) | rand, 0..16383), so black
+ * comes out as noise of 0..16 (about 10 on average) and the darkest tones a little lighter -- every
+ * black of the game (space, the map, the briefings, fades) is a dark grey on the N64 (angrylion: a
+ * median of 10-11 where the port showed 0). The table takes the dither's average (no grain); from
+ * c = 16 up it changes nothing by more than 1. SF64_GAMMADITHER=0: the plain curve, as before. */
 static void gamma_build(void) {
     int i;
+    const char* e = getenv("SF64_GAMMADITHER");
+    const int dither = !(e && e[0] == '0');
     for (i = 0; i < 256; i++) {
-        int v = (int) (sqrtf((float) i / 255.0f) * 255.0f + 0.5f);
+        int v;
+        if (dither) {
+            float sum = 0.0f;
+            int d;
+            for (d = 0; d < 64; d++) sum += sqrtf((float) ((i << 6) | d) / 16383.0f) * 255.0f;
+            v = (int) (sum / 64.0f + 0.5f);
+        } else {
+            v = (int) (sqrtf((float) i / 255.0f) * 255.0f + 0.5f);
+        }
         sGamma8[i] = (unsigned char) (v > 255 ? 255 : v);
     }
     sGammaBuilt = 1;

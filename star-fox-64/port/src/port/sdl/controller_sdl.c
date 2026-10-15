@@ -85,11 +85,21 @@ static bool replay_read(OSContPad *pad) {
         const char *r = getenv("SF64_KEYS_RATE"), *o = getenv("SF64_KEYS_OFFSET");
         sReplay = getenv("SF64_KEYS");
         sReplayOn = sReplay != NULL && sReplay[0] != 0;
-        if (r) sReplayRate = atol(r);
+        if (r) sReplayRate = strcmp(r, "vi") == 0 ? 0 : atol(r);
         if (o) sReplayOffset = atol(o);
     }
     if (!sReplayOn) return false;
-    {
+    if (sReplayRate == 0) {
+        /* SF64_KEYS_RATE=vi (tests): the N64 clock of mupen64plus's m64ref input plugin, two polls a
+         * retrace, whatever the game's frame rate: 2 x gVIsPerFrame polls a read (the menus run at
+         * one retrace a frame, play at two), so menu presses and in-play presses both land where a
+         * reference run put them. */
+        extern u8 gVIsPerFrame;
+        static long sClock SAVESTATE_EXCLUDE;
+        sClock += 2 * (gVIsPerFrame ? gVIsPerFrame : 1);
+        const long t = sClock + sReplayOffset;
+        target = t > 0 ? (unsigned long) t : 0;
+    } else {
         const long t = (long) sFrame * sReplayRate + sReplayOffset; /* sFrame: reads so far, this one included */
         target = t > 0 ? (unsigned long) t : 0;                  /* a negative offset starts the script later */
     }
@@ -210,6 +220,12 @@ void controller_psp_read(OSContPad *pad) {
     pad->stick_x = axis(dx, &sHeldX);
     pad->stick_y = axis(dy, &sHeldY);
     replay_read(pad); /* SF64_KEYS: the script's pad instead */
+    { /* SF64_LEVEL=<n> (tests): gCurrentLevel held at n on every read, as mupen64plus's "Level Select" cheat
+       * (80178237) holds it on the N64, so the first level started is that one on both (reference shots) */
+        static int lvl SAVESTATE_EXCLUDE = -2;
+        if (lvl == -2) { const char *e = getenv("SF64_LEVEL"); lvl = e && *e ? atoi(e) : -1; }
+        if (lvl >= 0) { extern s32 gCurrentLevel; gCurrentLevel = lvl; }
+    }
 }
 
 /* Some callers use the generic name. */
