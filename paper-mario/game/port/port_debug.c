@@ -158,9 +158,41 @@ static void port_debug_demoripple(void) {
     for (i = 0; i < 11; i++) b_area_dig_dig_03_script[i] = patch[i];
 }
 
+/* PM64_DEMOSCENE=<map>,<entry>,<story progress>,<partner>: as GameShark writes to the attract demo's first scene
+ * (state_demo.c DemoScenes[0], 0x80077AE0 in the real game: 81077AE2 entry, 80077AE5 partner, 80077AE6 story,
+ * 81077AE8/81077AEA the map name's address in gAreas' tables), once a game frame: the demo's first scene is that
+ * map, with no demo script (the scene stays). The same scene on both sides, for effect checks against the N64. */
+typedef struct { s16 sceneType; u16 index; char u4; s8 partnerID; s8 storyProgress; char u7; char *mapName; } PortDemoScene;
+extern PortDemoScene DemoScenes[];
+static void port_debug_demoscene(void) {
+    static s32 on = -1, entry, story, partner;
+    static char *name;
+    if (on < 0) {
+        const char *e = getenv("PM64_DEMOSCENE"), *p;
+        s32 n, a, m;
+        on = 0;
+        if (e == NULL || e[0] == 0) return;
+        for (n = 0; e[n] != 0 && e[n] != ','; n++) {}
+        p = e + n;
+        if (*p == ',') { p++; entry = port_atoi(&p); }
+        if (*p == ',') { p++; story = port_atoi(&p); }
+        if (*p == ',') { p++; partner = port_atoi(&p); }
+        for (a = 0; gAreas[a].maps != NULL && !on; a++)
+            for (m = 0; m < gAreas[a].mapCount && !on; m++)
+                if (same_name(gAreas[a].maps[m].id, e, n)) { name = gAreas[a].maps[m].id; on = 1; }
+        port_log("PM64_DEMOSCENE: %s entry %d story %d partner %d%s\n", e, entry, story, partner, on ? "" : ": no such map");
+    }
+    if (!on) return;
+    DemoScenes[0].index = entry;
+    DemoScenes[0].partnerID = partner;
+    DemoScenes[0].storyProgress = story;
+    DemoScenes[0].mapName = name;
+}
+
 /* PM64_SHROUD, once per game frame (port_host.c): as FadeBackgroundDarken (battle/common) turns the shroud on */
 void port_debug_frame(void) {
     static s32 amount = -2, at;
+    port_debug_demoscene();
     port_debug_underwater();
     port_debug_demotidal();
     port_debug_demoripple();

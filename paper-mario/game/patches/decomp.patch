@@ -1141,7 +1141,7 @@ index 072e36068..991b88269 100644
      if (data != ASCII_TO_U32('I', 'S', '6', '4')) {
          return (char*) 1;
 diff --git a/src/model.c b/src/model.c
-index a68a06b44..fcb6266ac 100644
+index a68a06b44..5f05fff6b 100644
 --- a/src/model.c
 +++ b/src/model.c
 @@ -1,4 +1,5 @@
@@ -1150,7 +1150,17 @@ index a68a06b44..fcb6266ac 100644
  #include "ld_addrs.h"
  #include "model.h"
  #include "effects.h"
-@@ -2062,6 +2063,9 @@ void load_texture_by_name(ModelNodeProperty* propertyName, s32 romOffset, s32 si
+@@ -1347,6 +1348,9 @@ BSS u16 mtg_MinChild;
+ BSS u16 mtg_MaxChild;
+ BSS s32 D_80153378[2];
+ BSS u16 DepthCopyBuffer[16];
++#ifdef PM64_PORT
++s32 port_depth_query(u16* dst, s32 x, s32 y); // game/port/port_gfx.c
++#endif
+ BSS RenderTask* RenderTaskLists[3];
+ BSS s32 RenderTaskListIdx;
+ BSS s32 RenderTaskCount;
+@@ -2062,6 +2066,9 @@ void load_texture_by_name(ModelNodeProperty* propertyName, s32 romOffset, s32 si
  
      while (romOffset < startOffset + size) {
          dma_copy((u8*)romOffset, (u8*)romOffset + sizeof(gCurrentTextureHeader), &gCurrentTextureHeader);
@@ -1160,7 +1170,7 @@ index a68a06b44..fcb6266ac 100644
          header = &gCurrentTextureHeader;
  
          rasterSize = header->mainW * header->mainH;
-@@ -2183,6 +2187,9 @@ void load_texture_variants(u32 romOffset, s32 textureID, s32 baseOffset, s32 siz
+@@ -2183,6 +2190,9 @@ void load_texture_variants(u32 romOffset, s32 textureID, s32 baseOffset, s32 siz
  
      for (offset = romOffset; offset < baseOffset + size;) {
          dma_copy((u8*)offset, (u8*)offset + sizeof(iterTextureHeader), &iterTextureHeader);
@@ -1170,7 +1180,7 @@ index a68a06b44..fcb6266ac 100644
          header = &iterTextureHeader;
  
          if (!header->isVariant) {
-@@ -3996,7 +4003,7 @@ void mdl_get_vertex_count(Gfx* gfx, s32* numVertices, Vtx** baseVtx, s32* gfxCou
+@@ -3996,7 +4006,7 @@ void mdl_get_vertex_count(Gfx* gfx, s32* numVertices, Vtx** baseVtx, s32* gfxCou
  
              if (cmd == G_VTX) {
                  vtxStartAddr = w1;
@@ -1179,7 +1189,7 @@ index a68a06b44..fcb6266ac 100644
                      vtxStartAddr = (vtxStartAddr & 0xFFFF) + (s32)baseAddr;
                  }
                  vtxCount = _SHIFTR(w0,12,8);
-@@ -4026,7 +4033,11 @@ void mdl_local_gfx_update_vtx_pointers(Gfx *nodeDlist, Vtx *baseVtx, Gfx *arg2,
+@@ -4026,7 +4036,11 @@ void mdl_local_gfx_update_vtx_pointers(Gfx *nodeDlist, Vtx *baseVtx, Gfx *arg2,
      u32 w0;
      Vtx* w1;
      do {
@@ -1191,6 +1201,50 @@ index a68a06b44..fcb6266ac 100644
          w1 = (Vtx*)nodeDlist->words.w1;
          if (w0 >> 0x18 == G_VTX) {
              w1 = arg3 + (w1 - baseVtx);
+@@ -4332,6 +4346,13 @@ s32 is_model_center_visible(u16 modelID, s32 depthQueryID, f32* screenX, f32* sc
+         }
+     }
+     if (outX >= 0.0f && outY >= 0.0f && outX < 320.0f && outY < 240.0f) {
++#ifdef PM64_PORT
++        /* The port's renderer keeps its depth in its own buffer, not in nuGfxZBuffer's memory: the one-pixel copy
++         * (the texrect below) is made from that buffer at the frame's end instead (game/port/port_gfx.c), so the
++         * star rod's and Watt's glows (bulb_glow) see what is in front of them, as on the N64 */
++        if (!port_depth_query(&DepthCopyBuffer[depthQueryID], (s32) outX, (s32) outY))
++#endif
++        {
+         gDPPipeSync(gMainGfxPos++);
+         // Load a 4x1 pixel tile of the depth buffer
+         gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(&nuGfxZBuffer[(s32) outY * SCREEN_WIDTH]), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 1,
+@@ -4365,6 +4386,7 @@ s32 is_model_center_visible(u16 modelID, s32 depthQueryID, f32* screenX, f32* sc
+         gDPPipeSync(gMainGfxPos++);
+         // Reconfigure the frame's normal scissor.
+         gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW, camera->viewportStartY + camera->viewportH);
++        }
+ 
+         // The following code will use last frame's depth value, since the copy that was just written won't be executed until the current frame is drawn.
+ 
+@@ -4438,6 +4460,13 @@ bool is_point_visible(f32 x, f32 y, f32 z, s32 depthQueryID, f32* screenX, f32*
+         return outZ > 0.0f;
+     }
+     if (outX >= 0.0f && outY >= 0.0f && outX < 320.0f && outY < 240.0f) {
++#ifdef PM64_PORT
++        /* The port's renderer keeps its depth in its own buffer, not in nuGfxZBuffer's memory: the one-pixel copy
++         * (the texrect below) is made from that buffer at the frame's end instead (game/port/port_gfx.c), so the
++         * star rod's and Watt's glows (bulb_glow) see what is in front of them, as on the N64 */
++        if (!port_depth_query(&DepthCopyBuffer[depthQueryID], (s32) outX, (s32) outY))
++#endif
++        {
+         gDPPipeSync(gMainGfxPos++);
+         // Load a 4x1 pixel tile of the depth buffer
+         gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(&nuGfxZBuffer[(s32) outY * SCREEN_WIDTH]), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 1,
+@@ -4471,6 +4500,7 @@ bool is_point_visible(f32 x, f32 y, f32 z, s32 depthQueryID, f32* screenX, f32*
+         gDPPipeSync(gMainGfxPos++);
+         // Reconfigure the frame's normal scissor.
+         gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW, camera->viewportStartY + camera->viewportH);
++        }
+ 
+         // The following code will use last frame's depth value, since the copy that was just written won't be executed until the current frame is drawn.
+ 
 diff --git a/src/msg.c b/src/msg.c
 index ba82fe8be..a49f46984 100644
 --- a/src/msg.c

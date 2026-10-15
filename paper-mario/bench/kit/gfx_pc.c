@@ -3337,9 +3337,28 @@ static void gfx_ge_tl_near_clip(const struct LoadedVertex *a, const struct Loade
 static bool pm64_zimg_pending; /* the depth image as a colour target, below (pm64_zimg_begin) */
 static bool pm64_zimg_begin(void);
 #endif
+#ifdef PM64
+/* A blender whose P and M are both the memory colour (and that does not add a second share: FORCE_BL off, or
+ * B = 1 - A) leaves the colour as it was: the RDP writes only coverage and depth (from the pixel's own depth: the
+ * prim-depth case is pm_primz_sync's). The intro's Bowser close-up draws a 32x32 I4 mask built in the display list
+ * that way (FCFFFFFF FFFCF279, othermode L 50553378: P = M = CLR_MEM, CVG_X_ALPHA, Z_UPD); this renderer has no
+ * coverage and drew the mask's texels, a white box over Bowser's face. Those triangles are left out (their depth
+ * writes too: nothing seen in the N64's frames depends on them). PM64_KEEPMEM=0: drawn, as before. */
+static bool pm_keeps_mem(void) {
+    static int on SAVESTATE_EXCLUDE = -1;
+    if (on < 0) { const char *e = getenv("PM64_KEEPMEM"); on = !(e && e[0] == '0'); }
+    const uint32_t l = rdp.other_mode_l;
+    if (!on || (l & G_ZS_PRIM)) return false;
+    const bool two = (rdp.other_mode_h & (3U << G_MDSFT_CYCLETYPE)) == G_CYC_2CYCLE;
+    const uint32_t p = two ? (l >> 28) & 3 : (l >> 30) & 3, m = two ? (l >> 20) & 3 : (l >> 22) & 3;
+    const uint32_t b = two ? (l >> 16) & 3 : (l >> 18) & 3;
+    return p == 1 && m == 1 && (!(l & FORCE_BL) || b == 0);
+}
+#endif
 static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
 #ifdef PM64
     if (pm64_zimg_pending) pm64_zimg_begin(); /* the first triangle into the depth image begins its target */
+    if (pm_keeps_mem()) return;
 #endif
 #ifdef PORT_EXP_NOTRI
     return;
@@ -4977,7 +4996,9 @@ static void gfx_run_dl(Gfx* cmd) {
     Gfx* const list = cmd;
     for (;;) {
         uint32_t opcode = cmd->words.w0 >> 24;
-        if (gfx_trace_frames > 0 && gfx_cmd_budget < 4000) {
+        static int sTraceCmds SAVESTATE_EXCLUDE = -1; /* PM64_TRACE_CMDS=<n>: the traced commands a frame (4000) */
+        if (sTraceCmds < 0) { const char *e = getenv("PM64_TRACE_CMDS"); sTraceCmds = e && atoi(e) > 0 ? atoi(e) : 4000; }
+        if (gfx_trace_frames > 0 && gfx_cmd_budget < sTraceCmds) {
             port_log("dl %p: %08X %08X\n", cmd, (unsigned) cmd->words.w0, (unsigned) cmd->words.w1);
         }
         if (++gfx_cmd_budget > 400000) {

@@ -208,9 +208,15 @@ static uint32_t sShot, sShotEvery = 1; /* PM64_SHOTS_EVERY=<n>: every nth frame 
 static void save_ppm(void) {
     char path[600];
     int w, h;
-    if (sShot++ % sShotEvery != 0) return;
+    /* PM64_SHOTS_GAMEFRAME=1: named and picked (every nth) by the game frame (port_frame), not by the shown frame: the
+     * frames a slow host leaves undrawn differ from run to run, so two runs' shots then pair by name (renderer A/Bs) */
+    static int byGame = -1;
+    if (byGame < 0) { const char *e = getenv("PM64_SHOTS_GAMEFRAME"); byGame = e && e[0] == '1'; }
+    const uint32_t n = byGame ? port_frame : sShot;
+    sShot++;
+    if (n % sShotEvery != 0) return;
     const uint32_t *fb = gfx_soft_get_framebuffer(&w, &h);
-    snprintf(path, sizeof path, "%s/frame_%05u.ppm", sShotDir, sShot - 1);
+    snprintf(path, sizeof path, "%s/frame_%05u.ppm", sShotDir, n);
     FILE *f = fopen(path, "wb");
     if (!f) { port_log("gfx: cannot write %s\n", path); return; }
     static int raw = -1; /* PM64_SHOTS_RAW=1: the renderer's own frame (320x240), before the panel's squeeze */
@@ -235,12 +241,51 @@ void port_gfx_init(void) {
     port_log("gfx: renderer ready%s%s\n", sShotDir ? ", frames to " : "", sShotDir ? sShotDir : "");
 }
 
+/* Paper Mario's depth queries (model.c is_point_visible / is_model_center_visible, decomp.patch): the N64 copies one
+ * pixel of nuGfxZBuffer into DepthCopyBuffer[id] with a texture rectangle drawn into that buffer, and the next frame
+ * decodes it (DepthFloatLookupTable) and compares it with the point's own depth: in front, the bulb glow (the star rod's
+ * bloom, Watt, the lightning's flash, the lantern ghost) is drawn. This renderer keeps its depth in its own buffer, so
+ * that memory never held a depth and every glow tested as hidden. Now the query is noted while the list is built
+ * and answered when the frame is drawn, from the renderer's depth in the RDP's format: 18-bit z (0..32704 x 8 for
+ * z/w * 0.5 + 0.5 = 0..1, the viewport's G_MAXZ range) as a 3-bit exponent and 11-bit mantissa, dz 0.
+ * PM64_DEPTHQUERY=0: the old way (the texrect, which never wrote that memory). */
+int gfx_soft_depth_at(int x, int y);
+static struct { uint16_t *dst; int x, y; } sDq[16] SAVESTATE_EXCLUDE;
+static int sDqN SAVESTATE_EXCLUDE;
+int32_t port_depth_query(uint16_t *dst, int32_t x, int32_t y) {
+    static int on SAVESTATE_EXCLUDE = -1;
+    if (on < 0) { const char *e = getenv("PM64_DEPTHQUERY"); on = !(e && e[0] == '0'); }
+    if (!on) return 0;
+    if (sDqN < 16) { sDq[sDqN].dst = dst; sDq[sDqN].x = x; sDq[sDqN].y = y; sDqN++; }
+    return 1;
+}
+static uint16_t n64_depth_encode(int z16) {
+    static const uint32_t bias[8] = { 0, 0x20000, 0x30000, 0x38000, 0x3C000, 0x3E000, 0x3F000, 0x3F800 };
+    static const uint8_t shift[8] = { 6, 5, 4, 3, 2, 1, 0, 0 };
+    const uint32_t z18 = (uint32_t) ((uint64_t) (uint32_t) z16 * (32704u * 8u) / 65535u);
+    int e = 7;
+    while (e > 0 && z18 < bias[e]) e--;
+    uint32_t m = (z18 - bias[e]) >> shift[e];
+    if (m > 0x7FF) m = 0x7FF;
+    return (uint16_t) (e << 13 | m << 2);
+}
+static void depth_query_resolve(void) {
+    for (int i = 0; i < sDqN; i++) {
+        const int z = gfx_soft_depth_at(sDq[i].x, sDq[i].y);
+        if (z >= 0) *sDq[i].dst = n64_depth_encode(z);
+    }
+    sDqN = 0;
+}
+
 void port_gfx_task(void *gfx_list, int swap) {
     /* PM64_TRACE_AT=<frame>[,<tasks>]: the renderer's command trace (PM64_TRILOG=1 adds every triangle) for that
      * frame's tasks, frames counted as the shots are (the file select's window flip, M2) */
-    static uint32_t sFrame, sTraceAt, sTraceN = 1;
-    static int sTraceInit;
+    /* With PM64_SHOTS_GAMEFRAME=1 the frame is the game frame (port_frame), and the switch is read again after a state
+     * load (these are kept out of states), so a trace can start from a PM64_STATE_LOAD */
+    static uint32_t sFrame, sTraceAt SAVESTATE_EXCLUDE, sTraceN SAVESTATE_EXCLUDE = 1;
+    static int sTraceInit SAVESTATE_EXCLUDE, sTraceGame SAVESTATE_EXCLUDE;
     if (!sTraceInit) {
+        { const char *g = getenv("PM64_SHOTS_GAMEFRAME"); sTraceGame = g && g[0] == '1'; }
         const char *t = getenv("PM64_TRACE_AT");
         sTraceInit = 1;
         if (t && t[0]) {
@@ -249,7 +294,7 @@ void port_gfx_task(void *gfx_list, int swap) {
             if (c) sTraceN = (uint32_t) strtoul(c + 1, NULL, 10);
         }
     }
-    if (sTraceAt && sFrame == sTraceAt) {
+    if (sTraceAt && (sTraceGame ? port_frame : sFrame) == sTraceAt) {
         extern int gfx_trace_frames;
         gfx_trace_frames = (int) sTraceN;
         sTraceAt = 0;
@@ -264,6 +309,7 @@ void port_gfx_task(void *gfx_list, int swap) {
     port_video_present();
 #endif
     port_perf_gfx_us += port_time_us() - perfT0;
+    depth_query_resolve();
     if (sShotDir) save_ppm();
 }
 

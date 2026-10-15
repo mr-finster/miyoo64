@@ -582,6 +582,19 @@ void gfx_soft_pm_generic(bool on, uint32_t w0, uint32_t w1, bool two_cycle, cons
     gen_classify_fast();
 }
 static inline int gm_clamp(int v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
+/* The RDP's combiner works in 9 bits (angrylion's color/alpha_combiner_equation): A, B and D are read through
+ * special_9bit_exttable (0x180..0x1FF are negative), C is a signed 9-bit value, each cycle keeps
+ * ((A - B) x C + D x 256 + 0x80) >> 8 in 9 bits with no clamp, so the second cycle sees COMBINED past 255 or below 0,
+ * and only the pixel is clamped (special_9bit_clamptable: 0x100..0x17F -> 255, 0x180..0x1FF -> 0). A sum past 383
+ * wraps to "negative" and comes out 0, not 255. The intro's Star Spirit glow (FC10E5E0 230B157F: cycle 1 (T0 - T1) x
+ * T0 + 1, alpha (1 - T0) x T1 + T1, then ENV - PRIM x COMBINED, alpha COMBINED x T1) is drawn by that wrap: saturating
+ * at 255 instead made a yellow haze over the N64's white cloud. Only the generic combiner's table path (pm_gen_eval);
+ * the fast paths (gen_classify_fast) keep their clamp. PM64_CC9BIT=0: the saturating clamp of each cycle, as before. */
+static int sCc9 SAVESTATE_EXCLUDE = 1;
+static int sT1Rect SAVESTATE_EXCLUDE = 1; /* PM64_T1RECT (the rectangles' TEXEL1, raster_rect) */
+static inline int cc_ext9(int v) { v &= 0x1ff; return v >= 0x180 ? v - 0x200 : v; }
+static inline int cc_sext9(int v) { v &= 0x1ff; return v >= 0x100 ? v - 0x200 : v; }
+static inline int cc_clamp9(int v) { v &= 0x1ff; return v < 0x100 ? v : v < 0x180 ? 255 : 0; }
 /* Per-draw operand table: every (cycle, channel, operand) points at an int that is
  * either a per-draw constant or one of the per-pixel values below, so a pixel costs
  * four loads and one multiply-add per channel and cycle. */
@@ -847,6 +860,17 @@ static inline uint32_t pm_gen_eval(uint32_t t0, uint32_t t1, int sr, int sg, int
     sGenPix[2][0] = sr; sGenPix[2][1] = sg; sGenPix[2][2] = sb; sGenPix[2][3] = sa;
     sGenPix[3][0] = sGenPix[3][1] = sGenPix[3][2] = sGenPix[3][3] = 0;
     const int nk = sGen.two ? 2 : 1;
+    if (sCc9) { /* PM64_CC9BIT: the RDP's 9-bit combiner (see cc_ext9) */
+        for (int k = 0; k < nk; k++) {
+            int out[4];
+            for (int ch = 0; ch < 4; ch++) {
+                const int *const *o = sGenOp[k][ch];
+                out[ch] = (((cc_ext9(*o[0]) - cc_ext9(*o[1])) * cc_sext9(*o[2]) + (cc_ext9(*o[3]) << 8) + 0x80) >> 8) & 0x1ff;
+            }
+            sGenPix[3][0] = out[0]; sGenPix[3][1] = out[1]; sGenPix[3][2] = out[2]; sGenPix[3][3] = out[3];
+        }
+        for (int ch = 0; ch < 4; ch++) sGenPix[3][ch] = cc_clamp9(sGenPix[3][ch]);
+    } else
     for (int k = 0; k < nk; k++) {
         int out[4];
         for (int ch = 0; ch < 4; ch++) {
@@ -2394,8 +2418,17 @@ static void draw_2d_impl(float buf_vbo[], size_t buf_vbo_len, size_t num_sprites
                 for (int x = cx0; x < cx1; x++, guf += duf) {
                     uint32_t t0 = 0, t1 = 0;
                     if (tex) { const uint32_t tt = texel_at(texpx, t16, giv * tw + wrapf((guf >> 16) + gso, tw, ws2, mu)); if (sGen.t0) t0 = tt; else t1 = tt; }
-                    if (gtex1) t1 = texel_at(gtex1->px, gtex1->is16, wrapf(ifloorf(gv) + sGen.dt, gtex1->h, gtex1->wrap_t, pow2mask(gtex1->h)) * gtex1->w +
-                                                                     wrapf((guf >> 16) + sGen.ds, gtex1->w, gtex1->wrap_s, pow2mask(gtex1->w)));
+                    if (gtex1) {
+                        /* TEXEL1 at its own tile's shift and corner (gen_t1, as the triangles take it), not at tile 0's
+                         * scale plus the corners' whole-texel difference: the bulb glow (effects/bulb_glow.c: the
+                         * star rod's bloom, Watt, Kammy's orb) reads the frame through tile 1 at shift 0 while its
+                         * glow texture's tile 0 has shift 1, so the frame inside the glow came out at half scale and
+                         * moved left by the corners' difference. PM64_T1RECT=0: the old offset. */
+                        const int t1u = sT1Rect ? gen_t1(guf, 0) >> 16 : (guf >> 16) + sGen.ds;
+                        const int t1v = sT1Rect ? gen_t1(to_fix16(gv), 1) >> 16 : ifloorf(gv) + sGen.dt;
+                        t1 = texel_at(gtex1->px, gtex1->is16, wrapf(t1v, gtex1->h, gtex1->wrap_t, pow2mask(gtex1->h)) * gtex1->w +
+                                                              wrapf(t1u, gtex1->w, gtex1->wrap_s, pow2mask(gtex1->w)));
+                    }
                     const uint32_t c = gfast ? pm_gen_fast(gfast, t0, t1, cr, cg, cb2, ca) : pm_gen_eval(t0, t1, cr, cg, cb2, ca);
                     int fr = (c >> 16) & 255, fg = (c >> 8) & 255, fb = c & 255, fa = (int)(c >> 24);
                     if (use_alpha) {
@@ -2543,6 +2576,19 @@ static void build_maps(void) {
 }
 /* Presented image: always the native target (composited at end_frame). */
 uint32_t *gfx_soft_get_framebuffer(int *w, int *h) { if (w) *w = sNatW; if (h) *h = sNatH; return sNatFB; }
+#ifdef PM64
+/* The 3D depth at a native pixel (0..65535, larger = farther: z/w * 0.5 + 0.5 of the whole range), -1 off screen: Paper
+ * Mario's depth queries (port_gfx.c port_depth_query) */
+int gfx_soft_depth_at(int x, int y) {
+    const bool intz = !sUnified && sIntZB;
+    const int w = intz ? sIntW : sNatW, h = intz ? sIntH : sNatH;
+    const uint16_t *zb = intz ? sIntZB : sNatZB;
+    if (!zb || sNatW <= 0 || sNatH <= 0) return -1;
+    x = x * w / sNatW; y = y * h / sNatH;
+    if (x < 0 || y < 0 || x >= w || y >= h) return -1;
+    return zb[y * w + x];
+}
+#endif
 
 static void alloc_target(uint32_t **fb, uint16_t **zb, int *w, int *h, int nw, int nh) {
     if (*fb && *w == nw && *h == nh) return;
@@ -2747,6 +2793,8 @@ static void gfx_soft_init(void) {
 #endif
     { const char *e = getenv("PM64_MAGBILIN"); if (e && e[0]) gfx_soft_magbilin = e[0] != '0'; }
     { const char *e = getenv("PM64_HUDEXACT"); sHudExact = !(e && e[0] == '0'); }
+    { const char *e = getenv("PM64_CC9BIT"); sCc9 = !(e && e[0] == '0'); }
+    { const char *e = getenv("PM64_T1RECT"); sT1Rect = !(e && e[0] == '0'); }
     if (!sTexArena) {
         sTexArena = aligned_alloc(16, TEXARENA_SZ);
         if (!sTexArena) { fprintf(stderr, "gfx_soft: cannot allocate the %u MB texture arena\n", (unsigned) (TEXARENA_SZ >> 20)); abort(); }
