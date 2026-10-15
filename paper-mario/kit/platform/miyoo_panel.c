@@ -120,6 +120,56 @@ static void check_frame(const uint32_t *src, int w, int h, int k, int ox, int oy
     if (++sChecked == 30) fprintf(stderr, "miyoo: panel check: 30 frames, %ld pixels differ\n", sCheckBad);
 }
 
+/* Mini v4 / Mini Flip (750x560 panel, 752x560 framebuffer): a game frame at most half the panel is scaled to the
+ * panel's full height, centred, nearest (752x560: 320x240 -> 746x560 at x 3; a 240x240 frame -> 560x560), black at
+ * the sides. A 640x480 Mini keeps the exact 2x below (h * 2 == the panel's height); the menus' 640x480 stays centred.
+ * <GAME>_FLIPFILL=0: the 2x picture centred with a border, as before. */
+static int sFill SAVESTATE_EXCLUDE = -1;
+static int fill_on(void) {
+    if (sFill < 0) { const char *e = getenv(HH_ENV("FLIPFILL")); sFill = !(e && e[0] == '0'); }
+    return sFill;
+}
+static void present_fill(uint8_t *base, int dw, int dh, int dp, int rot, uint32_t a, const uint32_t *src, int w, int h) {
+    static uint16_t xmap[2048] SAVESTATE_EXCLUDE, ymap[2048] SAVESTATE_EXCLUDE;
+    static int mw SAVESTATE_EXCLUDE, mh SAVESTATE_EXCLUDE, mdw SAVESTATE_EXCLUDE, mdh SAVESTATE_EXCLUDE;
+    int fw = dh * w / h;
+    if (fw > dw) fw = dw;
+    const int ox = (dw - fw) / 2;
+    if (mw != w || mh != h || mdw != fw || mdh != dh) {
+        for (int x = 0; x < fw; x++) { const int sx = (x * w + w / 2) / fw; xmap[x] = (uint16_t)(sx < w ? sx : w - 1); }
+        for (int y = 0; y < dh; y++) ymap[y] = (uint16_t)(y * h / dh);
+        mw = w; mh = h; mdw = fw; mdh = dh;
+    }
+    const uint32_t *prev = NULL;
+    uint32_t *prevrow = NULL;
+    for (int y = 0; y < dh; y++) {
+        uint32_t *d = (uint32_t *)(base + (rot ? dh - 1 - y : y) * dp);
+        const uint32_t *s = src + ymap[y] * w;
+        if (s == prev) { memcpy(d, prevrow, (size_t)dw * 4); continue; } /* the same source row: the row above, as is */
+        if (rot) {
+            for (int x = 0; x < dw - ox - fw; x++) d[x] = a;
+            uint32_t *e = d + dw - 1 - ox;
+            for (int x = 0; x < fw; x++) e[-x] = s[xmap[x]] | a;
+            for (int x = dw - ox; x < dw; x++) d[x] = a;
+        } else {
+            for (int x = 0; x < ox; x++) d[x] = a;
+            for (int x = 0; x < fw; x++) d[ox + x] = s[xmap[x]] | a;
+            for (int x = ox + fw; x < dw; x++) d[x] = a;
+        }
+        prev = s; prevrow = d;
+    }
+}
+
+void miyoo_panel_area(int w, int h, int *ox, int *oy, int *pw, int *ph) {
+    const int dw = sPanel ? sPanel->w : 640, dh = sPanel ? sPanel->h : 480;
+    int k = w > 0 && h > 0 ? (dw / w < dh / h ? dw / w : dh / h) : 1;
+    if (k < 1) k = 1;
+    if (w > 0 && h > 0 && k >= 2 && h * k != dh && fill_on()) { /* present_fill's */
+        *ph = dh; *pw = dh * w / h; if (*pw > dw) *pw = dw;
+    } else { *pw = w * k; *ph = h * k; }
+    *ox = (dw - *pw) / 2; *oy = (dh - *ph) / 2;
+}
+
 static void present(uint32_t *src, int w, int h) {
     if (!sPanel || !src || w <= 0 || h <= 0) return;
     const int dw = sPanel->w, dh = sPanel->h, dp = sPanel->pitch, rot = miyoo_panel_rotated();
@@ -130,7 +180,10 @@ static void present(uint32_t *src, int w, int h) {
     const uint32_t a = f->Amask;
     uint8_t *const base = (uint8_t *)sPanel->pixels;
     if (SDL_MUSTLOCK(sPanel)) SDL_LockSurface(sPanel);
-    if (f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0 && k == 2 && w <= dw / 2 && h <= dh / 2) {
+    const int xrgb = f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0;
+    if (xrgb && k >= 2 && h * k != dh && fill_on()) {
+        present_fill(base, dw, dh, dp, rot, a, src, w, h);
+    } else if (xrgb && k == 2 && w <= dw / 2 && h <= dh / 2) {
         for (int y = 0; y < h; y++) {
             const uint32_t *s = src + y * w;
             const int py = oy + y * 2;
@@ -140,7 +193,15 @@ static void present(uint32_t *src, int w, int h) {
                 row_x2((uint32_t *)(base + py * dp) + ox, (uint32_t *)(base + (py + 1) * dp) + ox, s, w, a);
         }
         check_frame(src, w, h, k, ox, oy);
-    } else if (f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0 && k == 1) {
+    } else if (xrgb && k == 1) {
+        if (w < dw || h < dh) /* the menus' 640x480 on a bigger panel: the filled game frame around it cleared */
+            for (int y = 0; y < dh; y++) {
+                uint32_t *d = (uint32_t *)(base + y * dp);
+                const int py = rot ? dh - 1 - y : y, l = rot ? dw - ox - w : ox; /* the menu's first column here */
+                if (py < oy || py >= oy + h) { for (int x = 0; x < dw; x++) d[x] = a; continue; }
+                for (int x = 0; x < l; x++) d[x] = a;
+                for (int x = l + w; x < dw; x++) d[x] = a;
+            }
         for (int y = 0; y < h; y++) { /* the menus' 640x480 on a 640x480 panel */
             const uint32_t *s = src + y * w;
             if (rot) {
@@ -180,7 +241,29 @@ void miyoo_panel_present32(uint32_t *src, int w, int h) {
     present(src, w, h);
 }
 
-void miyoo_panel_flip(void) { if (sPanel) SDL_Flip(sPanel); }
+/* <GAME>_PANEL_DUMP=<dir>: every 150th flip, the panel surface as the display gets it (turn, scale and all) to
+ * <dir>/panel_NNNNNN.ppm (as DKR's and MK64's): checks the Mini's 2x and the Mini v4 / Flip fill off the device. */
+static void panel_dump(void) {
+    static const char *sDir SAVESTATE_EXCLUDE; static int sInit SAVESTATE_EXCLUDE; static long sN SAVESTATE_EXCLUDE;
+    if (!sInit) { sDir = getenv(HH_ENV("PANEL_DUMP")); sInit = 1; }
+    if (!sDir || (sN++ % 150) != 0 || sPanel->format->BitsPerPixel != 32) return;
+    char path[512];
+    snprintf(path, sizeof(path), "%s/panel_%06ld.ppm", sDir, sN - 1);
+    FILE *f = fopen(path, "wb");
+    if (!f) return;
+    fprintf(f, "P6\n%d %d\n255\n", sPanel->w, sPanel->h);
+    for (int y = 0; y < sPanel->h; y++) {
+        const uint32_t *row = (const uint32_t *)((const uint8_t *)sPanel->pixels + y * sPanel->pitch);
+        for (int x = 0; x < sPanel->w; x++) {
+            Uint8 rgb[3];
+            SDL_GetRGB(row[x], sPanel->format, &rgb[0], &rgb[1], &rgb[2]);
+            fwrite(rgb, 1, 3, f);
+        }
+    }
+    fclose(f);
+}
+
+void miyoo_panel_flip(void) { if (sPanel) { panel_dump(); SDL_Flip(sPanel); } }
 
 void miyoo_panel_show_full(SDL_Surface *s) {
     if (!sPanel || !s || s->format->BitsPerPixel != 32) return;

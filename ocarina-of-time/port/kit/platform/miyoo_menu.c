@@ -161,6 +161,18 @@ static void show(SDL_Surface *screen) {
             for (int x = 0; x < SCREEN_W; x++) dst[SCREEN_W - 1 - x] = src[x] | 0xFF000000u;
         }
         if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
+    } else if (screen->format->BitsPerPixel == 32 && (screen->w > SCREEN_W || screen->h > SCREEN_H)) {
+        /* a larger panel (Mini v4 / Flip, gfx_sdl12.c <GAME>_FLIPFILL): the 640x480 menu centred on black, turned */
+        const int W = screen->w, H = screen->h, ox = (W - SCREEN_W) / 2, oy = (H - SCREEN_H) / 2, rot = gfx_miyoo_rotate();
+        if (SDL_MUSTLOCK(screen)) SDL_LockSurface(screen);
+        for (int y = 0; y < H; y++) memset((uint8_t *)screen->pixels + y * screen->pitch, 0, (size_t)W * 4);
+        for (int y = 0; y < SCREEN_H; y++) {
+            const uint32_t *src = (const uint32_t *)((uint8_t *)sDraw->pixels + y * sDraw->pitch);
+            const int dy = rot ? H - 1 - (oy + y) : oy + y;
+            uint32_t *dst = (uint32_t *)((uint8_t *)screen->pixels + dy * screen->pitch);
+            for (int x = 0; x < SCREEN_W; x++) dst[rot ? W - 1 - (ox + x) : ox + x] = src[x] | 0xFF000000u;
+        }
+        if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
     } else {
         SDL_BlitSurface(sDraw, NULL, screen, NULL);
     }

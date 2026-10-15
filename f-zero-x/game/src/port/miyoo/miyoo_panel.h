@@ -76,4 +76,8 @@ int  miyoo_text_w(const char *t, int k);
 #define MIYOO_KEY_START  13   /* SDLK_RETURN */
 #define MIYOO_KEY_MENU   27   /* SDLK_ESCAPE: the menu (the handheld's 'q') */
 
+/* The panel area (first column and row, width, height; unturned) that present shows a w x h frame in: the
+ * Mini v4 / Flip full-height fill (<GAME>_FLIPFILL) or the whole-number scale, centred. */
+void miyoo_panel_area(int w, int h, int *ox, int *oy, int *pw, int *ph);
+
 #endif

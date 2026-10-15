@@ -118,9 +118,8 @@ static void fill_present(uint32_t *src, const float r[4]) {
     if (sWrap) miyoo_menu_overlay(sWrap); /* the notice, as miyoo_panel_present32 draws it */
     SDL_Surface *const p = sScreen;
     const int dw = p->w, dh = p->h, rot = miyoo_panel_rotated();
-    int k = dw / MW < dh / MH ? dw / MW : dh / MH;
-    if (k < 1) k = 1;
-    const int tw = MW * k, th = MH * k, ox = (dw - tw) / 2, oy = (dh - th) / 2;
+    int ox, oy, tw, th; /* the kit's picture area: 2x on a Mini, the full-height fill on a Mini v4 / Flip */
+    miyoo_panel_area(MW, MH, &ox, &oy, &tw, &th);
     if (tw > 2048 || th > 2048) return;
     sharp_axis(sFxL, sFxW, tw, r[0], r[2], MW, sFxKey);
     sharp_axis(sFyT, sFyW, th, r[1], r[3], MH, sFyKey);
@@ -128,6 +127,11 @@ static void fill_present(uint32_t *src, const float r[4]) {
     int rowsrc[2] = { -1, -1 };
     const uint32_t a = p->format->Amask;
     if (SDL_MUSTLOCK(p)) SDL_LockSurface(p);
+    if (ox > 0) /* the sides of a filled Mini v4 / Flip panel: black (the menu or an earlier mode may have drawn there) */
+        for (int y = 0; y < dh; y++) {
+            uint32_t *d = (uint32_t *) ((uint8_t *) p->pixels + (size_t) y * p->pitch);
+            for (int x = 0; x < ox; x++) d[x] = d[dw - 1 - x] = a;
+        }
     for (int y = 0; y < th; y++) {
         const uint32_t *h2[2];
         for (int q = 0; q < 2; q++) { /* source rows sFyT[y] and the one below, across (a two-row cache) */
@@ -223,7 +227,7 @@ void port_video_init(void) {
     SDL_ShowCursor(SDL_DISABLE);
     sScreen = miyoo_panel_open();
     if (!sScreen) { port_log("video: no panel: %s\n", SDL_GetError()); exit(1); }
-    port_log("video: panel %dx%d, %d bpp%s, the 320x240 frame doubled\n", sScreen->w, sScreen->h, sScreen->format->BitsPerPixel,
+    port_log("video: panel %dx%d, %d bpp%s, the 320x240 frame doubled (filled on a bigger panel)\n", sScreen->w, sScreen->h, sScreen->format->BitsPerPixel,
              miyoo_panel_rotated() ? ", turned 180" : "");
     miyoo_clock_boost(); /* PM64_CPUCLOCK (debug.cfg too): 1500 MHz on the Mini, 1800 on the Mini Plus; put back at exit */
     sPresLock = SDL_CreateMutex();

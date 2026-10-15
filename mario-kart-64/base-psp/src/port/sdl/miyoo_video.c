@@ -24,6 +24,23 @@
 static SDL_Surface *sReal SAVESTATE_EXCLUDE;   /* the panel */
 static SDL_Surface *sShadow SAVESTATE_EXCLUDE; /* what everything draws into */
 static int sScale SAVESTATE_EXCLUDE, sOx SAVESTATE_EXCLUDE, sOy SAVESTATE_EXCLUDE, sRot SAVESTATE_EXCLUDE;
+/* Mini v4 / Mini Flip (750x560 panel, 752x560 framebuffer): the shadow scaled to the panel's full height, centred,
+ * nearest (320x240 -> 746x560 at x 3; a 240x240 screen -> 560x560), black at the sides, instead of the 2x picture
+ * in a border. A 640x480 Mini keeps the exact 2x (the shadow's height x 2 is the panel's). MK64_FLIPFILL=0: the
+ * bordered 2x as before. sFill: on for this shadow; sFw/sFx the picture's width and first column on the panel. */
+static int sFill SAVESTATE_EXCLUDE, sFw SAVESTATE_EXCLUDE, sFx SAVESTATE_EXCLUDE;
+static uint16_t sXmap[2048] SAVESTATE_EXCLUDE, sYmap[2048] SAVESTATE_EXCLUDE;
+static void fill_setup(int w, int h) {
+    const char *e = getenv("MK64_FLIPFILL");
+    const int dw = sReal->w, dh = sReal->h;
+    sFill = !(e && e[0] == '0') && sScale >= 2 && h * sScale != dh && dw <= 2048 && dh <= 2048;
+    if (!sFill) return;
+    sFw = dh * w / h; if (sFw > dw) sFw = dw;
+    sFx = (dw - sFw) / 2;
+    for (int x = 0; x < sFw; x++) { const int sx = (x * w + w / 2) / sFw; sXmap[x] = (uint16_t) (sx < w ? sx : w - 1); }
+    for (int y = 0; y < dh; y++) sYmap[y] = (uint16_t) (y * h / dh);
+    fprintf(stderr, "miyoo: %dx%d filled to %dx%d at x %d\n", w, h, sFw, dh, sFx);
+}
 
 static void panel_size(int *w, int *h) {
     *w = 640; *h = 480;
@@ -75,6 +92,7 @@ SDL_Surface *miyoo_set_video_mode(int w, int h, int bpp, Uint32 flags) {
         sOx = (sReal->w - w * sScale) / 2; if (sOx < 0) sOx = 0;
         sOy = (sReal->h - h * sScale) / 2; if (sOy < 0) sOy = 0;
         fprintf(stderr, "miyoo: %dx%d drawn x%d at %d,%d\n", w, h, sScale, sOx, sOy);
+        fill_setup(w, h);
         clear_real();
     }
     return sShadow;
@@ -99,6 +117,22 @@ static void scale_to_real32(void) {
     const int vis_w = sw * k <= dw - sOx ? sw * k : dw - sOx, vis_h = sh * k <= dh - sOy ? sh * k : dh - sOy;
     uint8_t *const dbase = (uint8_t *) sReal->pixels;
     const int dp = sReal->pitch;
+    if (sFill) { /* the full-height fill (fill_setup) */
+        const uint32_t black = sLut565[0];
+        for (int y = 0; y < dh; y++) {
+            const int dy = sRot ? dh - 1 - y : y;
+            uint32_t *d = (uint32_t *) (dbase + dy * dp);
+            if (y > 0 && sYmap[y] == sYmap[y - 1]) { /* the same source row as the line before: copy it */
+                memcpy(d, dbase + (sRot ? dy + 1 : dy - 1) * dp, (size_t) dw * 4);
+                continue;
+            }
+            const uint16_t *s = (const uint16_t *) ((const uint8_t *) sShadow->pixels + sYmap[y] * sShadow->pitch);
+            for (int x = 0; x < dw; x++) d[x] = black;
+            if (sRot) { uint32_t *o = d + dw - 1 - sFx; for (int x = 0; x < sFw; x++) o[-x] = sLut565[s[sXmap[x]]]; }
+            else      { uint32_t *o = d + sFx;          for (int x = 0; x < sFw; x++) o[x]  = sLut565[s[sXmap[x]]]; }
+        }
+        return;
+    }
     for (int y = 0; y < vis_h; y++) {
         const int dy = sRot ? dh - 1 - (sOy + y) : sOy + y;
         uint32_t *d = (uint32_t *) (dbase + dy * dp);
@@ -153,10 +187,10 @@ static void row_x2_rot(uint32_t *d0, uint32_t *d1, const uint32_t *src, int n, u
 }
 
 int miyoo_can_draw32(int w, int h) {
-    if (!sReal || !sShadow || sScale != 2 || w != sShadow->w || h != sShadow->h) return 0;
+    if (!sReal || !sShadow || (sScale != 2 && !sFill) || w != sShadow->w || h != sShadow->h) return 0;
     const SDL_PixelFormat *f = sReal->format;
     return f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0 &&
-           sOx + w * 2 <= sReal->w && sOy + h * 2 <= sReal->h;
+           (sFill || (sOx + w * 2 <= sReal->w && sOy + h * 2 <= sReal->h));
 }
 
 /* MK64_D32_CHECK=1: the first 30 frames compared, pixel by pixel, with a scalar reference of the
@@ -165,7 +199,7 @@ static void draw32_check(const uint32_t *src, int w, int h) {
     static int sOn SAVESTATE_EXCLUDE = -1, sDone SAVESTATE_EXCLUDE;
     static long sBad SAVESTATE_EXCLUDE;
     if (sOn < 0) { const char *e = getenv("MK64_D32_CHECK"); sOn = e && e[0] == '1'; }
-    if (!sOn || sDone >= 30) return;
+    if (!sOn || sDone >= 30 || sFill) return;
     const int dw = sReal->w, dh = sReal->h;
     const uint32_t a = sReal->format->Amask;
     for (int y = 0; y < h * 2; y++)
@@ -190,6 +224,20 @@ void miyoo_draw32(uint32_t *src, int w, int h) {
     const uint32_t a = sReal->format->Amask;
     uint8_t *const base = (uint8_t *) sReal->pixels;
     if (SDL_MUSTLOCK(sReal)) SDL_LockSurface(sReal);
+    if (sFill) { /* the full-height fill (fill_setup) */
+        for (int y = 0; y < dh; y++) {
+            const int dy = sRot ? dh - 1 - y : y;
+            uint32_t *d = (uint32_t *) (base + dy * dp);
+            if (y > 0 && sYmap[y] == sYmap[y - 1]) { memcpy(d, base + (sRot ? dy + 1 : dy - 1) * dp, (size_t) dw * 4); continue; }
+            const uint32_t *s = src + sYmap[y] * w;
+            for (int x = 0; x < dw; x++) d[x] = a;
+            if (sRot) { uint32_t *o = d + dw - 1 - sFx; for (int x = 0; x < sFw; x++) o[-x] = s[sXmap[x]] | a; }
+            else      { uint32_t *o = d + sFx;          for (int x = 0; x < sFw; x++) o[x]  = s[sXmap[x]] | a; }
+        }
+        if (SDL_MUSTLOCK(sReal)) SDL_UnlockSurface(sReal);
+        panel_dump();
+        return;
+    }
     for (int y = 0; y < h; y++) {
         const uint32_t *s = src + y * w;
         const int py = sOy + y * 2;
@@ -215,6 +263,17 @@ static void scale_to_real16(void) {
     const int vis_w = sw * k <= dw - sOx ? sw * k : dw - sOx, vis_h = sh * k <= dh - sOy ? sh * k : dh - sOy;
     uint8_t *const dbase = (uint8_t *) sReal->pixels;
     const int dp = sReal->pitch;
+    if (sFill) { /* the full-height fill (fill_setup) */
+        for (int y = 0; y < dh; y++) {
+            const int dy = sRot ? dh - 1 - y : y;
+            const uint16_t *s = (const uint16_t *) ((const uint8_t *) sShadow->pixels + sYmap[y] * sShadow->pitch);
+            uint16_t *d = (uint16_t *) (dbase + dy * dp);
+            for (int x = 0; x < dw; x++) d[x] = 0;
+            if (sRot) for (int x = 0; x < sFw; x++) d[dw - 1 - (sFx + x)] = s[sXmap[x]];
+            else      for (int x = 0; x < sFw; x++) d[sFx + x] = s[sXmap[x]];
+        }
+        return;
+    }
     for (int y = 0; y < vis_h; y++) {
         const int dy = sRot ? dh - 1 - (sOy + y) : sOy + y;
         const uint16_t *s = (const uint16_t *) ((const uint8_t *) sShadow->pixels + (y / k) * sShadow->pitch);
@@ -231,6 +290,20 @@ void miyoo_show_full(SDL_Surface *s) {
     const int same = bpp == 32 && sReal->format->Rshift == 16 && sReal->format->Gshift == 8 && sReal->format->Bshift == 0;
     const Uint32 amask = sReal->format->Amask;
     if (SDL_MUSTLOCK(sReal)) SDL_LockSurface(sReal);
+    if ((s->w < dw || s->h < dh) && (bpp == 32 || bpp == 16)) {
+        /* a menu smaller than the panel (640x480 on a 752x560 Mini v4 / Flip): the filled game frame around it to
+         * black (on the 2x picture's panel the border was black already) */
+        const int l = sRot ? dw - ox - s->w : ox, t = sRot ? dh - oy - s->h : oy; /* the menu's place on the panel */
+        const Uint32 black = SDL_MapRGB(sReal->format, 0, 0, 0) | amask;
+        for (int y = 0; y < dh; y++) {
+            uint8_t *row = (uint8_t *) sReal->pixels + y * sReal->pitch;
+            const int in = y >= t && y < t + s->h;
+            for (int x = 0; x < dw; x++) {
+                if (in && x >= l && x < l + s->w) { x = l + s->w - 1; continue; }
+                if (bpp == 32) ((uint32_t *) row)[x] = black; else ((uint16_t *) row)[x] = (uint16_t) black;
+            }
+        }
+    }
     for (int y = 0; y < s->h; y++) {
         const int py = oy + y;
         if (py < 0 || py >= dh) continue;

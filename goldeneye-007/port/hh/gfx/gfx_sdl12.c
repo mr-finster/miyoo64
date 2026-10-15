@@ -199,7 +199,31 @@ static void gfx_sdl12_init(const char *game_name, bool start_in_fullscreen) {
     }
     SDL_ShowCursor(SDL_DISABLE);
     /* the Mini's SDL (MI_GFX) is 32 bpp and turns the picture for the panel itself */
-    sScreen = SDL_SetVideoMode(SCREEN_W, SCREEN_H, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
+    sScreen = NULL;
+    { /* Mini v4 / Mini Flip: a 750x560 panel (752x560 framebuffer). GE_FLIPFILL (default on): the panel opened at
+       * /dev/fb0's visible size (GE_MIYOO_MODE=<w>x<h> forces one, tests) and the picture scaled to its full height
+       * (blit_stage_to_screen); a Mini's 640x480 keeps the exact 2x. GE_FLIPFILL=0: 640x480 as before (the OS
+       * shows it with a border). */
+        int mw = 0, mh = 0;
+        const char *e = getenv("GE_FLIPFILL");
+        const int fill = !(e && e[0] == '0');
+        const char *m = getenv("GE_MIYOO_MODE");
+        if (m && sscanf(m, "%dx%d", &mw, &mh) != 2) mw = mh = 0;
+        if (!mw) {
+            const int fd = open("/dev/fb0", O_RDONLY);
+            if (fd >= 0) {
+                struct fb_var_screeninfo vi;
+                if (ioctl(fd, FBIOGET_VSCREENINFO, &vi) == 0) { mw = (int)vi.xres; mh = (int)vi.yres; }
+                close(fd);
+            }
+        }
+        fprintf(stderr, "gfx_sdl12: panel %dx%d%s\n", mw, mh, m ? " (GE_MIYOO_MODE)" : " (/dev/fb0)");
+        if (fill && mw >= SCREEN_W && mh >= SCREEN_H && (mw != SCREEN_W || mh != SCREEN_H) && mw <= 1280 && mh <= 960) {
+            sScreen = SDL_SetVideoMode(mw, mh, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
+            if (!sScreen) fprintf(stderr, "gfx_sdl12: %dx%d refused (%s); 640x480\n", mw, mh, SDL_GetError());
+        }
+    }
+    if (!sScreen) sScreen = SDL_SetVideoMode(SCREEN_W, SCREEN_H, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
     if (!sScreen) {
         sScreen = SDL_SetVideoMode(SCREEN_W, SCREEN_H, 16, SDL_HWSURFACE | SDL_DOUBLEBUF);
     }
@@ -600,12 +624,38 @@ static void blit_stage_to_screen(void) {
     uint8_t *const pix = (uint8_t *)sScreen->pixels;
     const int pitch = sScreen->pitch;
     const SDL_PixelFormat *f = sScreen->format;
-    if (f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0 && sw * 2 == SCREEN_W && sh * 2 == SCREEN_H) {
+    if (f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0 && sw * 2 == SCREEN_W && sh * 2 == SCREEN_H &&
+        sScreen->w == SCREEN_W && sScreen->h == SCREEN_H) {
         for (int y = 0; y < sh; y++) {
             const int oy = rot ? SCREEN_H - 2 - y * 2 : y * 2;
             row_x2_32((uint32_t *)(pix + oy * pitch), (uint32_t *)(pix + (oy + 1) * pitch), stage + y * sw, sw, rot);
         }
         if (sPresSrc) miyoo_menu_overlay_turned(sScreen, rot); /* the notice, on the screen (the frame is the renderer's) */
+    } else if (f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0 &&
+               (sScreen->w != SCREEN_W || sScreen->h != SCREEN_H)) {
+        /* A larger panel (Mini v4 / Flip, GE_FLIPFILL): the 4:3 frame at the panel's full height, centred (750x560:
+         * 746x560 and two black columns a side), nearest by precomputed maps (the 2.33x has no exact form; bilinear
+         * would blur the HUD). The black sides are written every frame (cheap, and a menu may have drawn there). */
+        static int mapW SAVESTATE_EXCLUDE, mapH SAVESTATE_EXCLUDE, mapSw SAVESTATE_EXCLUDE, mapSh SAVESTATE_EXCLUDE;
+        static uint16_t xmap[1280] SAVESTATE_EXCLUDE, ymap[960] SAVESTATE_EXCLUDE;
+        static int dw SAVESTATE_EXCLUDE, dx SAVESTATE_EXCLUDE;
+        const int W = sScreen->w, H = sScreen->h;
+        if (mapW != W || mapH != H || mapSw != sw || mapSh != sh) {
+            dw = H * 4 / 3; if (dw > W) dw = W;
+            dx = (W - dw) / 2;
+            for (int x = 0; x < dw; x++) xmap[x] = (uint16_t)((x * sw + sw / 2) / dw < sw ? (x * sw + sw / 2) / dw : sw - 1);
+            for (int y = 0; y < H; y++) ymap[y] = (uint16_t)((y * sh) / H);
+            mapW = W; mapH = H; mapSw = sw; mapSh = sh;
+            fprintf(stderr, "gfx_sdl12: %dx%d frame to %dx%d at x %d on the %dx%d panel\n", sw, sh, dw, H, dx, W, H);
+        }
+        for (int y = 0; y < H; y++) {
+            uint32_t *dst = (uint32_t *)(pix + (rot ? H - 1 - y : y) * pitch);
+            const uint32_t *src = stage + ymap[y] * sw;
+            for (int x = 0; x < dx; x++) dst[x] = 0xFF000000u;
+            for (int x = dx + dw; x < W; x++) dst[x] = 0xFF000000u;
+            if (rot) { for (int x = 0; x < dw; x++) dst[W - 1 - dx - x] = src[xmap[x]] | 0xFF000000u; }
+            else     { for (int x = 0; x < dw; x++) dst[dx + x] = src[xmap[x]] | 0xFF000000u; }
+        }
     } else if (f->BitsPerPixel == 32) {
         for (int y = 0; y < SCREEN_H; y++) {
             uint32_t *dst = (uint32_t *)(pix + (rot ? SCREEN_H - 1 - y : y) * pitch);
@@ -671,7 +721,8 @@ static void present(void) {
         if (sPresCopy < 0) {
             const SDL_PixelFormat *f = sScreen->format;
             const char *e = getenv("GE_PRESCOPY");
-            sPresCopy = (e && e[0] == '1') || !(f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0);
+            sPresCopy = (e && e[0] == '1') || !(f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0) ||
+                        sScreen->w != SCREEN_W || sScreen->h != SCREEN_H; /* a larger panel scales the copy */
         }
         SDL_mutexP(sPresentLock);
         while (sPresentPending) SDL_CondWait(sPresentCond, sPresentLock);
