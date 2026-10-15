@@ -43,7 +43,7 @@ Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/l
 
 Every game has 9 save-state slots plus an auto save, and picks up where you left off after a power-off.
 
-On the Mini v4 and Mini Flip (750x560 screens) the picture is shown at 640x480 with a border for now; filling those screens is next.
+On the Mini v4 and Mini Flip (752x560 screens) every game fills the whole screen (`<GAME>_FLIPFILL=0` in the game's launch.sh brings back the 640x480 picture with a border). Not tested on a real Flip yet.
 
 | Game | Folder | Built from |
 |---|---|---|
@@ -78,7 +78,7 @@ Each folder is one game and builds on its own.
 
 ### Which ROM
 
-Each game checks the dump and refuses any other version (the screen says which one it found).
+Each game checks the dump and refuses any other version (the screen says which one it found). Perfect Dark checks the header only, so make sure yours is Rev 1.
 
 | Game | ROM folder | Version | SHA-1 |
 |---|---|---|---|
