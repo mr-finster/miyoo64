@@ -121,7 +121,7 @@ static void check_frame(const uint32_t *src, int w, int h, int k, int ox, int oy
 }
 
 /* Mini v4 / Mini Flip (750x560 panel, 752x560 framebuffer): a game frame at most half the panel is scaled to the
- * panel's full height, centred, nearest (752x560: 320x240 -> 746x560 at x 3; a 240x240 frame -> 560x560), black at
+ * panel's full height, centred, nearest (752x560: 320x240 -> all 752x560, 0.8% wider than 4:3; a 240x240 frame -> 560x560), black at
  * the sides. A 640x480 Mini keeps the exact 2x below (h * 2 == the panel's height); the menus' 640x480 stays centred.
  * <GAME>_FLIPFILL=0: the 2x picture centred with a border, as before. */
 static int sFill SAVESTATE_EXCLUDE = -1;
@@ -133,7 +133,7 @@ static void present_fill(uint8_t *base, int dw, int dh, int dp, int rot, uint32_
     static uint16_t xmap[2048] SAVESTATE_EXCLUDE, ymap[2048] SAVESTATE_EXCLUDE;
     static int mw SAVESTATE_EXCLUDE, mh SAVESTATE_EXCLUDE, mdw SAVESTATE_EXCLUDE, mdh SAVESTATE_EXCLUDE;
     int fw = dh * w / h;
-    if (fw > dw) fw = dw;
+    if (fw > dw || (dw - fw) * 50 <= dw) fw = dw; /* a gap of 2% or less (752x560: 3 columns a side): the full width, 0.8% wider, no black slivers */
     const int ox = (dw - fw) / 2;
     if (mw != w || mh != h || mdw != fw || mdh != dh) {
         for (int x = 0; x < fw; x++) { const int sx = (x * w + w / 2) / fw; xmap[x] = (uint16_t)(sx < w ? sx : w - 1); }
@@ -165,7 +165,7 @@ void miyoo_panel_area(int w, int h, int *ox, int *oy, int *pw, int *ph) {
     int k = w > 0 && h > 0 ? (dw / w < dh / h ? dw / w : dh / h) : 1;
     if (k < 1) k = 1;
     if (w > 0 && h > 0 && k >= 2 && h * k != dh && fill_on()) { /* present_fill's */
-        *ph = dh; *pw = dh * w / h; if (*pw > dw) *pw = dw;
+        *ph = dh; *pw = dh * w / h; if (*pw > dw || (dw - *pw) * 50 <= dw) *pw = dw;
     } else { *pw = w * k; *ph = h * k; }
     *ox = (dw - *pw) / 2; *oy = (dh - *ph) / 2;
 }

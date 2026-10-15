@@ -642,14 +642,14 @@ static void blit_stage_to_screen(void) {
     } else if (f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0 &&
                (sScreen->w != PANEL_W || sScreen->h != PANEL_H)) {
         /* A larger panel (Mini v4 / Flip, OOT_FLIPFILL): the 4:3 frame at the panel's full height, centred (752x560:
-         * 746x560 at x 3), nearest by precomputed maps (the 2.33x has no exact form; bilinear would blur the HUD).
+         * the whole 752x560, 0.8% wider than 4:3), nearest by precomputed maps (the 2.33x has no exact form; bilinear would blur the HUD).
          * The black sides are written every frame (cheap, and a menu may have drawn there). */
         static int mapW SAVESTATE_EXCLUDE, mapH SAVESTATE_EXCLUDE, mapSw SAVESTATE_EXCLUDE, mapSh SAVESTATE_EXCLUDE;
         static uint16_t xmap[1280] SAVESTATE_EXCLUDE, ymap[960] SAVESTATE_EXCLUDE;
         static int dw SAVESTATE_EXCLUDE, dx SAVESTATE_EXCLUDE;
         const int W = sScreen->w, H = sScreen->h;
         if (mapW != W || mapH != H || mapSw != sw || mapSh != sh) {
-            dw = H * sw / sh; if (dw > W) dw = W;
+            dw = H * sw / sh; if (dw > W || (W - dw) * 50 <= W) dw = W; /* a gap of 2% or less: the full width */
             dx = (W - dw) / 2;
             for (int x = 0; x < dw; x++) xmap[x] = (uint16_t)((x * sw + sw / 2) / dw < sw ? (x * sw + sw / 2) / dw : sw - 1);
             for (int y = 0; y < H; y++) ymap[y] = (uint16_t)((y * sh) / H);

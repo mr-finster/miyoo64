@@ -25,7 +25,7 @@ static SDL_Surface *sReal SAVESTATE_EXCLUDE;   /* the panel */
 static SDL_Surface *sShadow SAVESTATE_EXCLUDE; /* what everything draws into */
 static int sScale SAVESTATE_EXCLUDE, sOx SAVESTATE_EXCLUDE, sOy SAVESTATE_EXCLUDE, sRot SAVESTATE_EXCLUDE;
 /* Mini v4 / Mini Flip (750x560 panel, 752x560 framebuffer): the shadow scaled to the panel's full height, centred,
- * nearest (320x240 -> 746x560 at x 3; a 240x240 screen -> 560x560), black at the sides, instead of the 2x picture
+ * nearest (320x240 -> all 752x560, 0.8% wider than 4:3; a 240x240 screen -> 560x560), black at the sides, instead of the 2x picture
  * in a border. A 640x480 Mini keeps the exact 2x (the shadow's height x 2 is the panel's). MK64_FLIPFILL=0: the
  * bordered 2x as before. sFill: on for this shadow; sFw/sFx the picture's width and first column on the panel. */
 static int sFill SAVESTATE_EXCLUDE, sFw SAVESTATE_EXCLUDE, sFx SAVESTATE_EXCLUDE;
@@ -35,7 +35,7 @@ static void fill_setup(int w, int h) {
     const int dw = sReal->w, dh = sReal->h;
     sFill = !(e && e[0] == '0') && sScale >= 2 && h * sScale != dh && dw <= 2048 && dh <= 2048;
     if (!sFill) return;
-    sFw = dh * w / h; if (sFw > dw) sFw = dw;
+    sFw = dh * w / h; if (sFw > dw || (dw - sFw) * 50 <= dw) sFw = dw; /* a gap of 2% or less (752x560: 3 columns a side): the full width, 0.8% wider, no black slivers */
     sFx = (dw - sFw) / 2;
     for (int x = 0; x < sFw; x++) { const int sx = (x * w + w / 2) / sFw; sXmap[x] = (uint16_t) (sx < w ? sx : w - 1); }
     for (int y = 0; y < dh; y++) sYmap[y] = (uint16_t) (y * h / dh);
