@@ -467,6 +467,13 @@ static uint32_t pace_wait_ms(uint32_t ms) {
 static bool gfx_sdl12_start_frame(void) {
     if (sResEnabled) ladder_step();
 
+    { /* SM64_RENDER_EVERY=<n> (tests): never sleep, and draw only every nth game frame (the game runs every
+       * frame): long qemu captures against the N64 in a fraction of the time. Same frames as SM64_NOPACE, fewer. */
+        static int sEvery SAVESTATE_EXCLUDE = -1;
+        static uint32_t sIter SAVESTATE_EXCLUDE;
+        if (sEvery < 0) { const char *e = getenv("SM64_RENDER_EVERY"); sEvery = e && atoi(e) > 1 ? atoi(e) : 0; }
+        if (sEvery) { sDoRender = (sIter++ % (uint32_t)sEvery) == 0; sSkipsInARow = 0; return sDoRender; }
+    }
     { /* SM64_NOPACE=1: render every iteration, never sleep or skip (profiling
        * under emulation, where every frame is "late": repeatable runs). */
         static int sNoPace SAVESTATE_EXCLUDE = -1;

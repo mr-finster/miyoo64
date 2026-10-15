@@ -32,6 +32,7 @@
 #include "savestate.h"
 
 #define HH_MAX_DROPS 3
+static int sRenderEvery = 1; /* SSB64_RENDER_EVERY (tests) */
 #include "romdata.h"
 #include "audio_out.h"
 
@@ -620,6 +621,9 @@ int main(int argc, char **argv)
     sRunStartUs = port_time_us();
     sRunAudioUs0 = gPortAudioUsTotal;
     free_run = getenv("SSB64_FREERUN") != NULL;
+    /* SSB64_RENDER_EVERY=<n> (tests, with SSB64_FREERUN): only every nth tick's picture is drawn, the game itself
+     * runs every tick, so a long qemu capture (the attract run against the N64) takes a fraction of the time */
+    { const char *e = getenv("SSB64_RENDER_EVERY"); sRenderEvery = (e != NULL && atoi(e) > 1) ? atoi(e) : 1; }
 
     port_log_always("SSB64: Super Smash Bros., save dir %s\n", port_save_dir());
 #if defined(HANDHELD)
@@ -693,6 +697,8 @@ int main(int argc, char **argv)
                 sDroppedFrames++;
                 sRunDropped++;
                 sDroppedRun++;
+            } else if (free_run && sRenderEvery > 1 && sFrameCount % sRenderEvery != 0) {
+                sPendingDL = NULL; /* SSB64_RENDER_EVERY: not drawn */
             } else {
                 render_pending();
                 sDroppedRun = 0;

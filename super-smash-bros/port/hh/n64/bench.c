@@ -94,3 +94,14 @@ void hh_bench_setup(void)
                         kinds[0], kinds[1], kinds[2], kinds[3], stage, bs->time_limit, hh_neon_enabled() ? "on" : "off (bench.cfg neon=0)");
     }
 }
+
+/* SSB64_DEMOSTAGE=<n> (tests): at every pad read, the attract demo's next stage (gSCManagerSceneData.demo_gkind_order,
+ * an index into dSCAutoDemoGroundOrder: 0 Dream Land, 1 Planet Zebes, 2 Peach's Castle, 3 Kongo Jungle, 4 Sector Z,
+ * 5 Yoshi's Island, 6 Saffron City, 7 Hyrule Castle), as the GameShark code 800A4B10 00nn makes the real game do every
+ * retrace: the same attract demo stage on both, for checks against the N64 (input.c). */
+void hh_demo_stage_poll(void)
+{
+    static int n = -2;
+    if (n == -2) { const char *e = getenv("SSB64_DEMOSTAGE"); n = (e != NULL && *e != '\0') ? atoi(e) : -1; }
+    if (n >= 0 && n < 8) gSCManagerSceneData.demo_gkind_order = (u8)n;
+}

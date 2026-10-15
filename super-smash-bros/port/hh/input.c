@@ -94,6 +94,7 @@ void controller_handheld_key(int sym, int down)
  * A/B as is, X = C (jump), Y = Z (shield), L = R trigger, Select = L (taunt). */
 void hh_input_read(HhPad *pad)
 {
+    { extern void hh_demo_stage_poll(void); hh_demo_stage_poll(); } /* SSB64_DEMOSTAGE (n64/bench.c) */
     int mag = sKeys[K_R] ? STICK_HALF : STICK_FULL;
     int sx = 0, sy = 0;
     uint16_t b = 0;
