@@ -12,6 +12,7 @@
   <a href="https://github.com/mr-finster/miyoo64/releases/latest">Download</a> ·
   <a href="#status">Status</a> ·
   <a href="#controls">Controls</a> ·
+  <a href="CHANGELOG.md">Changelog</a> ·
   <a href="https://github.com/mr-finster/miyoo64/issues">Report a bug</a>
 </p>
 
@@ -24,7 +25,7 @@
 
 Native ports of ten N64 games to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip). No emulation: each game's C code, rebuilt by its decompilation community, runs on the Mini's ARM CPU and is drawn by a software renderer that uses both of its cores. Every game has save states (9 slots and an auto save), the same in-game menu (MENU: resume, save, load, exit), and picks up where you left off after a power-off.
 
-Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/latest), or https://miyoo-n64.pages.dev.
+Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/latest), or https://miyoo-n64.pages.dev. What changed in each release: [Changelog](CHANGELOG.md).
 
 ## Status
 
@@ -123,7 +124,7 @@ Each game's own button layout is in its folder's README:
 
 ## How it's built
 
-Each game is its decompilation project's C code compiled for the Mini's ARM CPU, with a port layer per game: a software renderer descended from the Super Mario 64 PC port's Fast3D (reworked to split each frame's drawing across both cores), audio through the Mini's SDL 1.2, and a shared kit for the panel, the game menu, save states and the CPU clock. On first start each game rebuilds its data from your ROM using recipes (numbers only, no game data) shipped in the zip.
+Each game is its decompilation project's C code compiled for the Mini's ARM CPU, with a port layer per game: a software renderer descended from the Super Mario 64 PC port's Fast3D (reworked to split each frame's drawing across both cores), audio through the Mini's SDL 1.2, and a shared kit for the panel, the game menu, save states and the CPU clock (which it puts back after the Mini sleeps: [Sleep and wake](docs/SLEEP-AND-WAKE.md)). On first start each game rebuilds its data from your ROM using recipes (numbers only, no game data) shipped in the zip.
 
 ## Build it yourself
 

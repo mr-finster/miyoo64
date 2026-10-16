@@ -43,6 +43,7 @@ The ports were written with Claude Code, Anthropic's coding agent.
 | Text drawn as solid blocks | IA16 palette entries read in the wrong byte order | Palette reads match the game's layout |
 | Gun drawn through walls | A mid-frame depth clear was a no-op in the renderer | Depth is cleared when the game asks for it |
 | Game won't start with a ROM whose SHA-1 is right | The copy on the SD card was damaged in transfer | The log shows the data check failing; recopy the file |
+| Slow game and choppy sound after the Mini sleeps and wakes | Onion's sleep left the CPU at 400 MHz on wake | A watch thread puts the clock back within a second of waking: [Sleep and wake](SLEEP-AND-WAKE.md) |
 
 ## Where to look in the code
 
@@ -54,7 +55,7 @@ The ports were written with Claude Code, Anthropic's coding agent.
 | `goldeneye-007/port/hh/gfx/gfx_pc.c` | Display-list interpreter (the Fast3D descendant) |
 | `goldeneye-007/port/hh/gfx/gfx_soft.c` | Software rasteriser, with the two-core row split |
 | `goldeneye-007/port/hh/gfx/gfx_sdl12.c` | Panel output, input and pacing on SDL 1.2 |
-| `goldeneye-007/port/kit/platform/` | Shared kit: menu, save states, CPU clock, worker thread |
+| `goldeneye-007/port/kit/platform/` | Shared kit: menu, save states, CPU clock (and its watch after a sleep), worker thread |
 | `goldeneye-007/port/hh/hh_os.c` | The N64 OS layer: threads, timers, retrace |
 | `goldeneye-007/tools/build_miyoo.sh` | Build plus release gates |
 | `goldeneye-007/tools/leak_scan.py` | Refuses a zip that contains anything matching the ROM |
