@@ -185,7 +185,11 @@ static inline void romdataWrongRomError(const char *fmt, ...)
 	vsnprintf(reason, sizeof(reason), fmt, args);
 	va_end(args);
 
+#ifdef PLATFORM_MIYOO
+	sysFatalError("Wrong ROM file: %s\n%s\nThis port needs Perfect Dark (USA) Rev 1.\nTo look for your ROM again, put a file named rebuild in App/PerfectDark/data.", romName, reason);
+#else
 	sysFatalError("Wrong ROM file.\n%s\nEnsure that you have the correct " ROMDATA_ROM_DESC " ROM in z64 format.", reason);
+#endif
 }
 
 static inline void romdataLoadRom(void)
@@ -193,11 +197,9 @@ static inline void romdataLoadRom(void)
 	sysLogPrintf(LOG_NOTE, "ROM file: %s", romName);
 
 #ifdef PLATFORM_MIYOO
-	// the Miyoo zips' contract: the player's ROM sits beside the game as rom.z64
-	if (fsFileSize(romName) <= 0) {
-		romName = "rom.z64";
-		sysLogPrintf(LOG_NOTE, "ROM file: %s", romName);
-	}
+	// pd_card.c found it (rom.z64 in the game's folder, the checked copy in the save folder, or the
+	// card's dump in any byte order, SHA-1 checked and copied in z64 order), unless --rom-file named one.
+	// Mapped for the whole run, never swapped in memory: always a z64 file.
 	g_RomFile = fsFileMap(romName, &g_RomFileSize);
 #else
 	g_RomFile = fsFileLoad(romName, &g_RomFileSize);
@@ -394,6 +396,12 @@ s32 romdataInit(void)
 	if (altRomName) {
 		romName = altRomName;
 	}
+#ifdef PLATFORM_MIYOO
+	else {
+		extern const char *pdCardRom(void); // port/miyoo/pd_card.c
+		romName = pdCardRom();
+	}
+#endif
 
 	romdataLoadRom();
 

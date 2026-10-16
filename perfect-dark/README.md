@@ -10,8 +10,9 @@ Download `PerfectDark-miyoo.zip` from https://miyoo-n64.pages.dev, and install i
 
 - **Perfect Dark (USA), Rev 1 (version 1.1)**
 - SHA-1 `af8788ac4d1a57260eae9c53ffe851fcf2a3319b`
-- .z64 (big-endian), renamed to `App/PerfectDark/rom.z64`. The game reads it from there only, and reads it while it runs, so keep it on the card.
-- Nothing is built from it on the first start: the game reads what it needs from the ROM each time.
+- Any byte order (.z64, .v64 or .n64), under any file name, anywhere on the card down to two folders deep (the root, `Roms/`, `Roms/N64/`, ...), or as `App/PerfectDark/rom.z64`.
+- On the first start the game finds it, checks its SHA-1 and saves a .z64 copy as `App/PerfectDark/data/perfectdark.z64` (a `rom.z64` in the game's folder is used where it is, checked once). The screen shows the progress, and says why a dump is refused: the PAL or Japanese version, the USA 1.0 (Rev 0), damaged or modified, or no ROM found.
+- The game reads the ROM while it runs, so keep that copy (or the `rom.z64`) on the card. To look for your ROM again, put a file named `rebuild` in `App/PerfectDark/data/`.
 
 ## Controls
 

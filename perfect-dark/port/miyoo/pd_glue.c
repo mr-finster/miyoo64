@@ -166,13 +166,16 @@ void port_audio_out_set_muted(int muted) { SDL_PauseAudio(muted ? 1 : 0); }
 extern int g_StageNum;
 int bossGetStageNum(void) { return g_StageNum; }
 
-/* sysFatalError's screen. TODO: show it on the panel (the GE port's hh_romscreen). */
+/* sysFatalError's screen: the message on the panel until a button (pd_romscreen.c; before 1.0.1 the
+ * log only), then back to the OS. */
 void miyooFatalScreen(const char *msg)
 {
 	extern int gfx_wm_shutdown(void) __attribute__((weak));
+	extern void pd_romscreen_fatal(const char *msg);
 	fprintf(stderr, "FATAL: %s\n", msg);
 	fflush(stderr);
 	fflush(stdout);
+	pd_romscreen_fatal(msg);
 	/* back to the OS's menu in a usable state: SDL 1.2's fbcon down, the clock as found
 	 * (sysFatalError exits right after) */
 	if (gfx_wm_shutdown) gfx_wm_shutdown();

@@ -65,7 +65,7 @@ Each folder is one game and builds on its own.
 1. Download the game's zip from the [latest release](https://github.com/mr-finster/miyoo64/releases/latest) or https://miyoo-n64.pages.dev.
 2. Put your Miyoo's SD card in your computer.
 3. Unzip the download and copy the folders your OS needs to the root of the card, merging them with the folders already there (Onion: `App` and `Roms`; MinUI: `App`, `Emus` and `Roms`; Allium: `App` and `Apps`; stock and spruce: `App`). On Windows, drag them onto the card and choose to replace the files. On a Mac, don't drag folders in Finder (Replace deletes the whole folder on the card); unzip with Terminal instead: `unzip -o <zip> -d /Volumes/<card>`.
-4. Put your ROM in the game's folder as `App/<Game>/rom.z64`. Any .z64, .v64 or .n64 dump works, renamed to rom.z64 (Perfect Dark: a .z64 dump only). The table below has the version each game needs.
+4. Put your ROM in the game's folder as `App/<Game>/rom.z64`. Any .z64, .v64 or .n64 dump works, renamed to rom.z64. The table below has the version each game needs.
 5. Eject the card, put it back in the Miyoo and start the game. The first start takes a minute.
 
 | OS | Where the game shows up |
@@ -78,7 +78,7 @@ Each folder is one game and builds on its own.
 
 ### Which ROM
 
-Each game checks the dump and refuses any other version (the screen says which one it found). Perfect Dark checks the header only, so make sure yours is Rev 1.
+Each game checks the dump and refuses any other version (the screen says which one it found).
 
 | Game | ROM folder | Version | SHA-1 |
 |---|---|---|---|
@@ -96,8 +96,7 @@ Each game checks the dump and refuses any other version (the screen says which o
 The SHA-1 is of the big-endian `.z64` byte order; `.v64` and `.n64` dumps of the same ROM are
 converted. Besides `App/<Game>/rom.z64`, each game also looks in `Roms/N64/` and anywhere on the
 card down to two folders deep, under any file name. F-Zero X, Paper Mario and Perfect Dark read
-the ROM while they run, so keep it on the card for those three. Perfect Dark reads only
-`App/PerfectDark/rom.z64`, and only a `.z64` dump.
+the ROM while they run, so keep it on the card for those three.
 
 ## Controls
 

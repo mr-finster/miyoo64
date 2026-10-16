@@ -750,6 +750,11 @@ static void present_acquire(void) {
 }
 static void present_release(void) { if (sPresentLock) SDL_mutexV(sPresentLock); }
 
+/* pd_romscreen.c (the ROM screens before the first frame, sysFatalError's message): the screen for
+ * direct drawing, the present thread idle until gfx_miyoo_direct_end. NULL: no screen. */
+SDL_Surface *gfx_miyoo_direct_begin(void) { present_acquire(); return sScreen; }
+void gfx_miyoo_direct_end(void) { present_release(); }
+
 /* A clean end for a process that is followed by another SDL process on the same screen (the
  * device bench's runs, hh_bench.c): the present thread idle and held, the panel back on page 1,
  * then SDL_Quit, which gives the console back its text mode and keyboard. Without it the next
