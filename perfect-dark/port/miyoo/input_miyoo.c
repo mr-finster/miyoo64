@@ -6,7 +6,7 @@
  *   in a stage (not the title, no menu open):
  *     D-pad      walk forward/back, turn (a tap turns a little, holding ramps up)
  *     B          fire (Z)
- *     A          action / reload (B); hold A + B: alternate fire mode (B+Z)
+ *     A          action / reload (B); hold A (B held): switch fire mode; A + B: the same at once (B+Z)
  *     X          next weapon (A); hold X: the weapon/inventory wheel
  *     Y (hold)   aim (R): the d-pad moves the crosshair, past its edge the view turns
  *     L1 / R1    strafe left / right (C-left / C-right)

@@ -18,7 +18,7 @@ Download `PerfectDark-miyoo.zip` from https://miyoo-n64.pages.dev, and install i
 | Miyoo | Does |
 |---|---|
 | D-pad | Walk and turn |
-| A | Action, reload (with B: alt fire) |
+| A | Action, reload. Hold: switch fire mode (or A + B) |
 | B | Fire |
 | X | Next weapon (hold: wheel) |
 | Y (hold) | Aim: the D-pad moves the crosshair |
