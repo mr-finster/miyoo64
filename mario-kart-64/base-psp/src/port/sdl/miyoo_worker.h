@@ -55,5 +55,7 @@ int miyoo_worker_thread(pthread_t *t);
 /* The watchdog's recovery: wake both futexes (a spurious wake is harmless: each side re-checks its
  * counter and sleeps again), in case a wake-up was lost. */
 void miyoo_worker_kick(void);
+/* The worker's task id (for sched_setaffinity from another thread), 0 if none. */
+int miyoo_worker_tid(void);
 
 #endif

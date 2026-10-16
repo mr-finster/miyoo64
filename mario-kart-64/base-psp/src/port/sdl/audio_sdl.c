@@ -90,6 +90,9 @@ static void audio_callback(void *userdata, Uint8 *stream, int len) {
     u32 want = (u32)len / 4; // stereo frames
     u32 have = fifo_count();
     if (have == 0) sUnderruns++;
+#if defined(MIYOO)
+    { extern volatile u32 gAudioDiagLow, gAudioDiagCalls, gAudioDiagOut; if (have < gAudioDiagLow) gAudioDiagLow = have; gAudioDiagCalls++; gAudioDiagOut += want; } /* the sleep diagnostic */
+#endif
     if (sDeclick && !hhd_ready(&sDk, have, want)) { /* after a gap: wait for the cushion */
         memset(out, 0, (size_t)len);
         return;
@@ -171,6 +174,9 @@ int port_audio_backstop_running(void) { return sOpened && sBackstop && sLoadMixe
 
 static int load_mixer_thread(void *arg) {
     (void)arg;
+#if defined(MIYOO)
+    { extern void miyoo_sleepdiag_tid(int role); miyoo_sleepdiag_tid(2); }
+#endif
     for (;;) {
         const u32 cnt = fifo_count();
         if (sOpened && sBackstop && (sLoading ? cnt < CUSHION_OUT : cnt < LOW_WATER_OUT)) {
@@ -254,6 +260,18 @@ int miyoo_wd_detail_audio(char *buf, int n) {
     return snprintf(buf, n, "opened %d, %u Hz out, ring %u samples (read %u, written %u), underruns %u, muted %d, backstop %d, loading %d, load mixer %s (%u mixes)",
                     sOpened, (unsigned) OUT_FREQ, (unsigned) fifo_count(), (unsigned) sFifoRead, (unsigned) sFifoWrite, (unsigned) sUnderruns,
                     sMuted, sBackstop, sLoading, sLoadMixer ? "started" : "not started", (unsigned) sThreadMixes);
+}
+#endif
+#if defined(MIYOO)
+/* the sleep diagnostic (miyoo_sleepdiag.c): the ring's fill now, and its low point since the last call */
+volatile u32 gAudioDiagLow SAVESTATE_EXCLUDE = 0xFFFFFFFFu;
+volatile u32 gAudioDiagCalls SAVESTATE_EXCLUDE, gAudioDiagOut SAVESTATE_EXCLUDE; /* SDL callbacks and the samples they asked for */
+unsigned port_audio_diag_rate(void) { return sOpened ? (unsigned) OUT_FREQ : 0; }
+void port_audio_diag(unsigned *fill, unsigned *fill_min) {
+    *fill = fifo_count();
+    const u32 lo = gAudioDiagLow;
+    gAudioDiagLow = 0xFFFFFFFFu;
+    *fill_min = lo == 0xFFFFFFFFu ? *fill : lo;
 }
 #endif
 /* osAiGetLength(): bytes of audio still queued (FIFO + device buffer est.). */

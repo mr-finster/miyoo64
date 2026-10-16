@@ -28,4 +28,21 @@ void miyoo_clock_restore(void);
 /* The CPU clock now, in MHz, read from the PLL (0 if it can't be read). */
 int miyoo_clock_mhz(void);
 
+
+/* The watch, for a sleep and wake (Onion's keymon sets the governor to powersave and back, and runs its
+ * cpuclock): about once a second from the main loop, or at once after a wake. It checks that the governor is
+ * still the one kept (the boost's userspace, else what launch.sh set: performance), the PLL still at the
+ * boost's clock, and cpu1 online. mode 0 off, 1 report a drift (once per change), 2 re-apply what drifted.
+ * Writes the line (e.g. "wake: governor powersave->userspace, clock 1200->1500 MHz, cpu1 0->1") to line
+ * (or stderr if line is NULL); returns the drift seen: 1 governor, 2 clock, 4 cpu1. Only on a Mini / Mini
+ * Plus, or with MIYOO_SYSFS_ROOT=<dir> (every sysfs path under <dir>: tests). miyoo_clock_restore stops it. */
+int miyoo_clock_watch(int mode, char *line, int n);
+typedef struct {
+    char gov[32], online[32];
+    long cur_khz, min_khz, max_khz, setspeed_khz; /* -1: unreadable */
+    int cpu1;                                      /* cpu1/online, -1 unreadable */
+    int pll_mhz;                                   /* 0: unreadable */
+} MiyooClockState;
+void miyoo_clock_read_state(MiyooClockState *st);
+
 #endif
