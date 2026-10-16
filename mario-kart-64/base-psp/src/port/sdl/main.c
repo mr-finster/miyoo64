@@ -518,6 +518,9 @@ static void run_one_iteration(void) {
         gPmuCyc += p1[0] - p0[0]; gPmuIns += p1[1] - p0[1]; gPmuMiss += p1[2] - p0[2];
     }
     prof_iteration_end(port_time_us() - t0, did_render);
+#if defined(MIYOO)
+    { extern void miyoo_sleepdiag_iter(unsigned iter_us, const unsigned *last, int rendered); miyoo_sleepdiag_iter(gPortProfLast[PROF_ITER], gPortProfLast, did_render); }
+#endif
     sFrame++;
 }
 
@@ -569,6 +572,7 @@ static void port_set_priority(void) {
 int main(int argc, char **argv) {
 #if defined(MIYOO)
     miyoo_console_setup(argc > 0 ? argv[0] : NULL);
+    { extern const char *miyoo_sleepdiag_version(void); fprintf(stderr, "Mario Kart 64 %s\n", miyoo_sleepdiag_version()); } /* the release (miyoo_sleepdiag.c MK64_VERSION_TAG) */
 #endif
     port_set_priority();
     port_clock_pick(); /* MK64_VDSOCLOCK: before any other thread reads the clock */
@@ -583,6 +587,7 @@ int main(int argc, char **argv) {
             if (f) { if (fscanf(f, "%ld", &khz) != 1) khz = 0; fclose(f); }
             if (khz > 0) fprintf(stderr, "clock: %ld MHz (cpufreq)\n", khz / 1000);
         }
+        { extern void miyoo_sleepdiag_start(void); miyoo_sleepdiag_start(); } /* MK64_SLEEPDIAG=1|2: the sleep/wake diagnostic (off by default) */
     }
 #endif
     { /* MK64_HEAPSHIFT=<bytes>: debug -- start the heap somewhere else, as the

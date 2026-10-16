@@ -136,7 +136,7 @@ C_FILES := $(filter-out %.inc.c,$(foreach dir,$(GAME_SRC_DIRS) $(PORT_SRC_DIRS),
            $(OS_C_FILES) $(COURSE_FILES)
 # The Mini's second core (miyoo_worker.c): the Miyoo build's only, so the other builds link as before.
 ifneq ($(PLAT),miyoo)
-  C_FILES := $(filter-out src/port/sdl/miyoo_worker.c src/port/sdl/miyoo_watchdog.c src/port/sdl/miyoo_clock.c,$(C_FILES))
+  C_FILES := $(filter-out src/port/sdl/miyoo_worker.c src/port/sdl/miyoo_watchdog.c src/port/sdl/miyoo_clock.c src/port/sdl/miyoo_sleepdiag.c,$(C_FILES))
 endif
 
 S_FILES := $(filter-out $(DATA_DIR)/rsp.s,$(wildcard $(DATA_DIR)/*.s)) \
@@ -244,6 +244,11 @@ $(BUILD_DIR)/src/port/sdl/miyoo_worker.o: CFLAGS += -U_GNU_SOURCE '-DMIYOO_WORKE
 $(BUILD_DIR)/src/port/sdl/miyoo_watchdog.o: CFLAGS += -U_GNU_SOURCE '-DMIYOO_WD_ENV="MK64_WATCHDOG"'
 # miyoo_clock.c (the shared miyoo/kit 27a1311, the CPU clock): MK64_CPUCLOCK=<MHz>, 0 = left alone
 $(BUILD_DIR)/src/port/sdl/miyoo_clock.o: CFLAGS += '-DMIYOO_CLOCK_ENV="MK64_CPUCLOCK"'
+# miyoo_sleepdiag.c (the sleep/wake diagnostic, MK64_SLEEPDIAG=1|2): make SLEEPDIAG=1 builds the owner's test
+# binary, the light diagnostic on by default and 1.1.1-test on the first log line (rebuild the .o between the two)
+ifeq ($(SLEEPDIAG),1)
+$(BUILD_DIR)/src/port/sdl/miyoo_sleepdiag.o: CFLAGS += -DMK64_SLEEPDIAG_DEFAULT=1 '-DMK64_VERSION_TAG="1.1.1-test"'
+endif
 
 #==============================================================================#
 # Targets                                                                      #

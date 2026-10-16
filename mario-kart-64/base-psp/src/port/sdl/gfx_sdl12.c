@@ -615,7 +615,7 @@ static int present_thread(void *arg) {
         while (!sPresentPending) SDL_CondWait(sPresentCond, sPresentLock);
 #if defined(MIYOO)
         gMiyooWdPresent = WD_PRESENT_DRAW;
-        if (!sWdPresent) { sWdPresent = 1; miyoo_wd_register("present"); }
+        if (!sWdPresent) { sWdPresent = 1; miyoo_wd_register("present"); { extern void miyoo_sleepdiag_tid(int role); miyoo_sleepdiag_tid(1); } }
         if (sPinPresent) { sPinPresent = 0; miyoo_worker_pin_self(1); } /* core 1, beside the worker: core 0 is the game's */
 #endif
         sPresentPending = 0;
@@ -635,6 +635,9 @@ static int present_thread(void *arg) {
 #endif
         HH_Flip(sScreen);
         gPortProfFlipUs += port_time_us() - t0;
+#if defined(MIYOO)
+        { extern volatile unsigned gDiagFlipUs, gDiagFlips; gDiagFlipUs += port_time_us() - t0; gDiagFlips++; } /* the sleep diagnostic */
+#endif
         SDL_mutexP(sPresentLock);
         sPresentBusy = 0;
         SDL_CondBroadcast(sPresentCond);

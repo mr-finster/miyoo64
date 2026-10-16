@@ -87,8 +87,12 @@ void miyoo_worker_pin_self(int cpu) {
     sched_setaffinity(0, sizeof(set), &set);
 }
 
+static volatile int sWorkerTid SAVESTATE_EXCLUDE; /* the worker's task id (miyoo_worker_tid) */
+int miyoo_worker_tid(void) { return sReady == 1 ? sWorkerTid : 0; }
+
 static void *worker_main(void *unused) {
     (void) unused;
+    sWorkerTid = (int) syscall(SYS_gettid);
     miyoo_worker_pin_self(1);
     int seen = 0;
     for (;;) {

@@ -3,6 +3,7 @@
 #define _GNU_SOURCE
 #include "miyoo_watchdog.h"
 #include "miyoo_worker.h"
+#include "miyoo_clock.h"
 /* SAVESTATE_EXCLUDE (the port's savestate.h, as miyoo_worker.c): a port that saves its whole data
  * section must not save these (a state loaded in another session would bring back dead thread ids). */
 #if defined(__has_include)
@@ -271,10 +272,29 @@ static void *wd_main(void *unused) {
         sched_setaffinity(0, sizeof(all), &all);
     }
     int reports = 0, recovered = 0;
-    long long last_report = 0, stall_start = 0, recover_at = 0;
+    long long last_report = 0, stall_start = 0, recover_at = 0, prev_t = now_ns();
+    unsigned wakes = miyoo_clock_wakes();
     for (;;) {
         usleep(250000);
         const long long t = now_ns();
+        {   /* A sleep is no stall (Onion's keymon stops the game for as long as the Mini sleeps; the device log
+             * 2026-10-16: "no picture for 6811 ms" on every wake): this thread's own tick over 1 s late (it was
+             * stopped too), or the clock watch's wake (miyoo_clock.c), restarts the count from now. */
+            const long long late = t - prev_t - 250000000LL;
+            const unsigned w = miyoo_clock_wakes();
+            prev_t = t;
+            if (late > 1000000000LL || w != wakes) {
+                wakes = w;
+                __atomic_store_n(&sLastFrameNs, t, __ATOMIC_RELAXED);
+                if (late > 1000000000LL) { /* (the clock watch's count alone: the same wake, seen later) */
+                    char line[120];
+                    const int n = snprintf(line, sizeof(line), "WATCHDOG: a sleep or stop (this thread %lld ms late), not a stall\n", late / 1000000);
+                    outl(line, n, (int) sizeof(line));
+                }
+                reports = recovered = 0;
+                continue;
+            }
+        }
         if (!sFrames) continue; /* not armed before the first picture */
         if (gMiyooWdGame == WD_MENU) { __atomic_store_n(&sLastFrameNs, t, __ATOMIC_RELAXED); continue; }
         const long long last = __atomic_load_n(&sLastFrameNs, __ATOMIC_RELAXED);
