@@ -22,7 +22,7 @@
 #      recipes.bin, the icon and the launch script templates;
 #   3. no host paths or authoring metadata in anything shipped (the packer checks every zip entry too);
 #   4. only what the game needs: the staged files are exactly miyoo/game.json's "files"; the zip's
-#      App/GoldenEye/ holds those plus launch.sh, config.json and icon.png; no README, *.md or *.txt;
+#      App/GoldenEye/ holds those plus launch.sh, config.json, icon.png and full_resolution; no README, *.md or *.txt;
 #      a public zip has no ROM.
 #
 # PERSONAL=1: a copy for your own card only. The dump goes in as App/GoldenEye/rom.z64 (the game looks
@@ -128,7 +128,7 @@ python3 - "$WORK/out.zip" "$GAME" "$PERSONAL" <<'PY'
 import json, sys, zipfile
 z, game, personal = zipfile.ZipFile(sys.argv[1]), json.load(open(sys.argv[2])), sys.argv[3] == '1'
 app = 'App/%s/' % game['folder']
-want = sorted(game['files'] + ['launch.sh', 'config.json', 'icon.png'] + (['rom.z64'] if personal else []))
+want = sorted(game['files'] + ['launch.sh', 'config.json', 'icon.png', 'full_resolution'] + (['rom.z64'] if personal else []))
 have = sorted(n[len(app):] for n in z.namelist() if n.startswith(app))
 rom = [n for n in z.namelist() if n.lower().endswith(('.z64', '.n64', '.v64'))]
 bad = [n for n in z.namelist() if n.lower().endswith(('.md', '.txt')) or n.split('/')[-1].upper().startswith(('README', 'NOTICE'))]

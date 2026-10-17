@@ -28,7 +28,7 @@
 #      into the save-state range (__data_start to the asset region, the dontsave section aside) but glibc's stdin,
 #      stdout and stderr (savestate.c keeps the live ones);
 #   3. only what the game needs to run: App/PaperMario holds exactly game.json's files plus the packer's launch.sh,
-#      config.json and icon.png (and rom.z64 in a PERSONAL zip); no text files anywhere;
+#      config.json, icon.png, full_resolution (and rom.z64 in a PERSONAL zip); no text files anywhere;
 #   4. leak scan: no 32-byte window of any file in the zip matches the ROM inside an asset-region symbol, and the rest
 #      (the decompiled code's own tables) stays within the handheld's budget (tools/assets/leak_scan.py);
 #   5. no authoring metadata or host paths in any file in the zip.
@@ -164,7 +164,7 @@ want=$(python3 -c 'import json,sys; print(" ".join(sorted(json.load(open(sys.arg
 have=$(cd "$STAGE" && ls -A | sort | tr '\n' ' ' | sed 's/ $//')
 [ "$have" = "$want" ] || { echo "ERROR: staged files '$have' are not exactly '$want'"; exit 1; }
 extra=""; [ "$PERSONAL" = 1 ] && extra=rom.z64
-WANT_APP=$(printf '%s\n' $want launch.sh config.json icon.png $extra | sort | tr '\n' ' ')
+WANT_APP=$(printf '%s\n' $want launch.sh config.json icon.png full_resolution $extra | sort | tr '\n' ' ')
 GOT_APP=$(cd "$UNPACK/App/$FOLDER" && ls -A | sort | tr '\n' ' ')
 [ "$GOT_APP" = "$WANT_APP" ] || { echo "ERROR: App/$FOLDER holds [$GOT_APP], not [$WANT_APP]"; exit 1; }
 TEXT=$(cd "$UNPACK" && find . -type f | grep -i -E '(\.md|\.txt|/readme[^/]*|/notice[^/]*|/licen[cs]e[^/]*)$' || true)

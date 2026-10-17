@@ -19,7 +19,7 @@
 #      an include-list, so they must land outside it, and savestate.c keeps the live ones anyway);
 #   3. only what the game needs to run -- the staged files are exactly game.json's "files", and the
 #      game's folder in the zip holds exactly those plus the packer's launch.sh, config.json and
-#      icon.png: no README, NOTICE, LICENSE or other text file;
+#      icon.png (and the empty full_resolution): no README, NOTICE, LICENSE or other text file;
 #   4. leak scan -- no 32-byte window of any file in the zip matches the ROM's asset region, raw or
 #      inflated, in any byte order (tools/leak_scan.py). NEEDS THE ROM (never shipped);
 #   5. no authoring metadata (image XMP) or host paths in any file in the zip.
@@ -116,7 +116,7 @@ want=$(python3 -c 'import json,sys; print(" ".join(sorted(json.load(open(sys.arg
 have=$(cd "$STAGE" && ls -A | sort | tr '\n' ' ' | sed 's/ $//')
 [ "$have" = "$want" ] || { echo "ERROR: staged files '$have' are not exactly '$want'"; exit 1; }
 extra=""; [ "$PERSONAL" = 1 ] && extra=rom.z64
-WANT_APP=$(printf '%s\n' $want launch.sh config.json icon.png $extra | sort | tr '\n' ' ')
+WANT_APP=$(printf '%s\n' $want launch.sh config.json icon.png full_resolution $extra | sort | tr '\n' ' ')
 GOT_APP=$(cd "$UNPACK/App/$FOLDER" && ls -A | sort | tr '\n' ' ')
 [ "$GOT_APP" = "$WANT_APP" ] || { echo "ERROR: App/$FOLDER holds [$GOT_APP], not [$WANT_APP]"; exit 1; }
 TEXT=$(cd "$UNPACK" && find . -type f | grep -i -E '(\.md|\.txt|/readme[^/]*|/notice[^/]*|/licen[cs]e[^/]*)$' || true)

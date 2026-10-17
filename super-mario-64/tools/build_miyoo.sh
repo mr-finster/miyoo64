@@ -94,7 +94,7 @@ z = zipfile.ZipFile(sys.argv[1]); game = json.load(open(sys.argv[2])); personal 
 app = 'App/%s/' % game['folder']
 names = [n for n in z.namelist() if not n.endswith('/')]
 got = set(n for n in names if n.startswith(app))
-want = set(app + f for f in game['files'] + ['launch.sh', 'config.json', 'icon.png'] + (['rom.z64'] if personal else []))
+want = set(app + f for f in game['files'] + ['launch.sh', 'config.json', 'icon.png', 'full_resolution'] + (['rom.z64'] if personal else []))
 if got != want: sys.exit('ERROR: %s holds %s, want %s' % (app, sorted(got), sorted(want)))
 roms = [n for n in names if n.lower().endswith(('.z64', '.n64', '.v64'))]
 if roms != ([app + 'rom.z64'] if personal else []): sys.exit('ERROR: ROM files in the zip: %s' % roms)

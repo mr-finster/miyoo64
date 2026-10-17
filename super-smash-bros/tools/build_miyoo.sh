@@ -21,7 +21,7 @@
 #      byte order, and the executable's matches (the decomp's own tracked C tables) stay under the 144 KB cap
 #      (tools/leak_scan.py). NEEDS THE ROM (read, never shipped);
 #   4. contents: the staged files are exactly game.json's "files", App/SuperSmashBros holds exactly those plus the
-#      packer's launch.sh, config.json and icon.png, and no README, NOTICE, LICENSE or other text file is in the zip;
+#      packer's launch.sh, config.json, icon.png and full_resolution, and no README, NOTICE, LICENSE or other text file is in the zip;
 #   5. no authoring metadata (image XMP/Photoshop) or host path in any file in the zip.
 #
 # NO_LEAK_SCAN=1 (no ROM at hand): gates 1, 2, 4 and 5 run, gate 3 is skipped, and the output is
@@ -114,7 +114,7 @@ want=$(python3 -c 'import json,sys; print(" ".join(sorted(json.load(open(sys.arg
 have=$(cd "$STAGE" && ls -A | sort | tr '\n' ' ' | sed 's/ $//')
 [ "$have" = "$want" ] || { echo "ERROR: staged files '$have' are not exactly '$want'"; exit 1; }
 extra=""; [ "$PERSONAL" = 1 ] && extra=rom.z64
-WANT_APP=$(printf '%s\n' $want launch.sh config.json icon.png $extra | sort | tr '\n' ' ')
+WANT_APP=$(printf '%s\n' $want launch.sh config.json icon.png full_resolution $extra | sort | tr '\n' ' ')
 GOT_APP=$(cd "$UNPACK/App/$FOLDER" && ls -A | sort | tr '\n' ' ')
 [ "$GOT_APP" = "$WANT_APP" ] || { echo "ERROR: App/$FOLDER holds [$GOT_APP], not [$WANT_APP]"; exit 1; }
 TEXT=$(cd "$UNPACK" && find . -type f | grep -i -E '(\.md|\.txt|/readme[^/]*|/notice[^/]*|/licen[cs]e[^/]*)$' || true)

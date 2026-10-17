@@ -123,7 +123,7 @@ import json, sys, zipfile
 out, game, personal = sys.argv[1], json.load(open(sys.argv[2])), sys.argv[3] == '1'
 app = 'App/%s/' % game['folder']
 names = zipfile.ZipFile(out).namelist()
-want = set(app + f for f in game['files'] + ['launch.sh', 'config.json', 'icon.png'] + (['rom.z64'] if personal else []))
+want = set(app + f for f in game['files'] + ['launch.sh', 'config.json', 'icon.png', 'full_resolution'] + (['rom.z64'] if personal else []))
 have = set(n for n in names if n.startswith(app))
 bad = sorted(have ^ want)
 bad += [n for n in names if n.lower().endswith(('.md', '.txt')) or n.rsplit('/', 1)[-1].upper().startswith(('README', 'NOTICE'))]

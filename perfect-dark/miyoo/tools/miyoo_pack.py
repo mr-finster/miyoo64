@@ -199,6 +199,11 @@ def main():
     z.add(app + 'launch.sh', tpl('launch.sh', **kv), exe=True)
     z.add(app + 'config.json', tpl('app_config.json', **kv))
     z.add(app + 'icon.png', icon)
+    # Onion on a Mini v4 / Mini Flip (752x560 panel, /tmp/new_res_available) switches the screen to 752x560
+    # before an Apps launch only when App/<folder>/full_resolution exists, and puts 640x480 back after any
+    # launch (Onion 07505ea runtime.sh:400-423, get_full_resolution_path :586-611). An empty marker; on a
+    # 640x480 Mini, Onion never reads it.
+    z.add(app + 'full_resolution', '')
     if a.rom:
         z.add(app + 'rom.z64', rom_z64(a.rom, g['rom']['sha1'], g['rom'].get('size')), store=g.get('rom_store', True))
 
@@ -220,6 +225,7 @@ def main():
         z.add(sysd + 'config.json', json.dumps(cfg, indent=1) + '\n')
         z.add(sysd + 'launch.sh', tpl('forward.sh', WHO='Onion Games', EXTRA='', **kv), exe=True)
         z.add(sysd + 'icon.png', icon)
+        z.add(sysd + 'full_resolution', '')   # the v4 / Flip 752x560 switch (Onion: next to launch.sh)
         z.add(roms + '%s.%s' % (title, ext), '%s: picking this starts App/%s (Emu/%s/launch.sh)\n' % (title, folder, g['system']))
         z.add(roms + 'miyoogamelist.xml', '<?xml version="1.0"?>\n<gameList>\n\t<game>\n\t\t<path>./%s.%s</path>\n'
               '\t\t<name>%s</name>\n\t\t<image>./Imgs/%s.png</image>\n\t</game>\n</gameList>\n' % (title, ext, title, title))
@@ -252,7 +258,9 @@ def main():
             sys.exit('game.json ports_category: letters, digits, space . _ -')
         port = tpl('forward.sh', WHO='Onion Ports', EXTRA=(
             '# for Onion\'s ~Import ports (Emu/PORTS/import.sh): the game is at /mnt/SDCARD/App/%s\n'
-            'GameName="%s"\nGameDir="../../../App/%s"\nGameDataFile="launch.sh"\n') % (folder, title, folder), **kv)
+            'GameName="%s"\nGameDir="../../../App/%s"\nGameDataFile="launch.sh"\n'
+            '# for Onion on a Mini v4 / Mini Flip: the screen at 752x560 for this game (runtime.sh looks for this line)\n'
+            'FullResolution=1\n') % (folder, title, folder), **kv)
         z.add('Roms/PORTS/Shortcuts/%s%s.port' % (cat + '/' if cat else '', title), port, exe=True)
         z.add('Roms/PORTS/Imgs/%s.png' % title, boxart(icon_src))
         z.mkdir('Roms/PORTS/Games')
