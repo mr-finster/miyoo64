@@ -182,8 +182,15 @@ static void fatal_handler(int sig, siginfo_t *si, void *uc) {
  * the game loop for an exit save and a quit, as EXIT GAME does, so RESUME GAME picks up there next
  * time. */
 static volatile sig_atomic_t sTermRequested SAVESTATE_EXCLUDE;
-static void term_handler(int sig) { (void)sig; sTermRequested = 1; }
-int handheld_power_pending(void) { return 0; }
+/* When it came (CLOCK_MONOTONIC, ms; clock_gettime is async-signal-safe): the log says how long the game took
+ * to reach the frame boundary that saves. Onion SIGKILLs ~1.4 s after its SIGTERM (onion_sim, 2026-10-16). */
+static volatile long sTermAtMs SAVESTATE_EXCLUDE;
+static long term_now_ms(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return (long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000; }
+static void term_handler(int sig) { (void)sig; if (!sTermRequested) sTermAtMs = term_now_ms(); sTermRequested = 1; }
+/* The MENU overlay and the RESUME GAME prompt step aside when it comes (as in the other ports' kits): up to
+ * 1.1.1 they ignored it, and with the menu open Onion's power-off (a sleep left with the menu up) killed the
+ * game ~1.4 s later with no auto save. */
+int handheld_power_pending(void) { return sTermRequested; }
 
 static void gfx_sdl12_init(const char *game_name, bool start_in_fullscreen) {
     (void)game_name; (void)start_in_fullscreen;
@@ -316,7 +323,7 @@ static void gfx_sdl12_handle_events(void) {
 #if defined(MIYOO)
     if (sTermRequested) {
         sTermRequested = 0;
-        fprintf(stderr, "gfx_sdl12: SIGTERM, exit save\n");
+        fprintf(stderr, "gfx_sdl12: SIGTERM %ld ms ago, exit save\n", term_now_ms() - sTermAtMs);
         savestate_request_exit_save();
     }
 #endif

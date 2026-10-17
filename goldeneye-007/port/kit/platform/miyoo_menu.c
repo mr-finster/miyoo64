@@ -276,6 +276,7 @@ void handheld_menu_run(struct SDL_Surface *screen_) {
     int cur = I_RESUME, confirm = 0, running = 1, dirty = 1, exiting = 0;
     while (running) {
         const uint32_t t0 = SDL_GetTicks();
+        if (handheld_power_pending()) break; /* SIGTERM: back to the game loop, which exit-saves */
         SDL_Event ev;
         while (running && SDL_PollEvent(&ev)) {
             if (ev.type == SDL_QUIT) { port_request_exit(); exiting = 1; running = 0; break; }
@@ -357,6 +358,7 @@ int handheld_menu_resume_prompt(void) {
             show(screen);
             dirty = 0;
         }
+        if (handheld_power_pending()) { result = -1; break; } /* the OS is ending the game (SIGTERM) */
         if (!SDL_PollEvent(&ev)) { SDL_Delay(15); continue; }
         if (ev.type == SDL_QUIT) { port_request_exit(); result = 1; break; }
         if (ev.type == SDL_KEYUP) { pass_key_up(&ev); continue; }
