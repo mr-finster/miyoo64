@@ -3,6 +3,16 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## 1.1.3 (Perfect Dark 1.0.4)
+
+- All ten games, Mini v4 and Mini Flip on Onion: a game started from the GameSwitcher (the recent games list)
+  now fills the 752x560 screen, as it does from Ports or Apps. Before, it ran in a small 640x480 picture. Onion
+  sets the screen to 752x560 only for a game that says it supports it, and puts it back to 640x480 after every
+  game; the zips now carry Onion's two markers (`App/<Game>/full_resolution`, and `FullResolution=1` in the
+  Ports shortcut). Nothing changes on a Mini or Mini Plus (640x480 screen).
+- All ten games: on a 752x560 Mini, `data/launch.log` notes the screen mode the game found at start.
+- Mario Kart 64: 1.1.3 on the first line of `console.log`.
+
 ## 1.1.2 (Perfect Dark 1.0.3)
 
 - All ten games: the auto save is written when the Mini goes to sleep (a POWER press, or 50 s with no
