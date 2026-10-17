@@ -22,6 +22,9 @@
 #include "handheld_menu.h"
 #include "savestate.h"
 #include "miyoo_font.h"
+#if defined(MIYOO)
+#include "miyoo_sleepsave.h"
+#endif
 
 #ifndef HH_GAME_TITLE
 #define HH_GAME_TITLE HH_GAME_ID /* the heading: hh_game.h's HH_GAME_TITLE ("OCARINA OF TIME") */
@@ -248,6 +251,9 @@ void handheld_menu_run(struct SDL_Surface *screen_) {
     int cur = I_RESUME, confirm = 0, running = 1, dirty = 1, exiting = 0;
     while (running) {
         if (gfx_miyoo_term_pending()) break; /* SIGTERM: back to the game loop, which exit-saves */
+#if defined(MIYOO)
+        if (miyoo_sleepsave_menu_should_close()) break; /* POWER: the game loop writes the resume state, then reopens this */
+#endif
         const uint32_t t0 = SDL_GetTicks();
         SDL_Event ev;
         while (running && SDL_PollEvent(&ev)) {

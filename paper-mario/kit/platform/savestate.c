@@ -24,6 +24,12 @@
 #include <fcntl.h>
 #include "hh_game.h"
 #include "handheld_menu.h" /* the resume prompt, notify, power-off helpers (stubs off the handheld) */
+#if defined(HANDHELD) && defined(MIYOO)
+#include "miyoo_sleepsave.h" /* the resume state at a POWER press and when idle */
+#define SS_SLEEP_JOIN() miyoo_sleepsave_join()
+#else
+#define SS_SLEEP_JOIN() ((void) 0)
+#endif
 
 #ifndef HH_BOOT_LOAD_FRAME
 #define HH_BOOT_LOAD_FRAME 3 /* game init has run; the title screen has drawn */
@@ -444,6 +450,7 @@ static int save_finish(int slot, SaveJob *j) {
 static int do_load_file_locked(const char *path, int slot);
 static int do_save(int slot) {
     SaveJob j;
+    SS_SLEEP_JOIN(); /* a sleep save still syncing (it may be this slot's .tmp) */
     const int backstop = backstop_park();
     port_audio_mix_lock();
     save_begin(slot, &j);
@@ -451,6 +458,7 @@ static int do_save(int slot) {
     return save_finish(slot, &j);
 }
 static int do_load_file(const char *path, int slot) {
+    SS_SLEEP_JOIN(); /* a sleep save still syncing: its state is the one on the card */
     const int backstop = backstop_park();
     port_audio_mix_lock();
     const int ok = do_load_file_locked(path, slot);
@@ -574,6 +582,28 @@ static void power_save(void) {
 
 int savestate_power_ready(void) { return sLoopRunning; }
 
+#if defined(HANDHELD) && defined(MIYOO)
+/* The sleep save (miyoo_sleepsave.h): the auto save RESUME GAME offers, written as the Mini goes to sleep. The
+ * game waits only for the snapshot into the page cache (save_begin, as any save); the fsync, the rename and the
+ * folder's fsync (save_finish) run on the kit's helper thread while the game goes on. A SIGSTOP or SIGKILL in
+ * either half leaves the previous state as it was (the .tmp is renamed only once whole and synced). */
+static SaveJob sSleepJob SAVESTATE_EXCLUDE;
+static int sSleepKind SAVESTATE_EXCLUDE;
+static void sleep_finish(void *arg) {
+    (void) arg;
+    miyoo_sleepsave_done(sSleepKind, save_finish(QUICKSAVE_SLOT, &sSleepJob));
+}
+static void sleep_save(int kind) {
+    miyoo_sleepsave_join();
+    const int backstop = backstop_park();
+    port_audio_mix_lock();
+    save_begin(QUICKSAVE_SLOT, &sSleepJob);
+    port_audio_mix_unlock(); port_audio_backstop_enable(backstop);
+    sSleepKind = kind;
+    miyoo_sleepsave_async(sleep_finish, NULL);
+}
+#endif
+
 /* The OS notification for a menu SAVE or LOAD, composed from what happened
  * rather than what was asked for (B7: MK64 showed SAVED SLOT n before the save
  * had run, and even when it failed). */
@@ -600,6 +630,15 @@ void savestate_check(void) {
         if (r > 0) notify_result(1, r, do_save(r));
         else       notify_result(0, -r, do_load(-r));
     }
+#if defined(HANDHELD) && defined(MIYOO)
+    /* A POWER press, or no button for a while: the auto save now, before Onion's sleep freezes the game (and
+     * maybe powers off). Not before a resume has loaded, not with a quit's save coming, never two at once. */
+    miyoo_sleepsave_start("PM64_SLEEPSAVE");
+    if (!sBootPath[0] && !sExitSave && !miyoo_sleepsave_busy()) {
+        const int k = miyoo_sleepsave_due();
+        if (k) sleep_save(k);
+    }
+#endif
     if (sPowerSave) {
         sPowerSave = 0;
         power_save(); /* does not return */
@@ -624,6 +663,7 @@ void savestate_check(void) {
 /* After the game loop. */
 void savestate_shutdown(void) {
     sLoopRunning = 0;
+    SS_SLEEP_JOIN();
 }
 
 /* A save interrupted by a power cut leaves <slot>.tmp behind; nothing reads it. */

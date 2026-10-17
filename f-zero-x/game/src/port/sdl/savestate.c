@@ -34,6 +34,12 @@
 #include "port_platform.h"
 #include "savestate.h"
 #include "handheld_menu.h"
+#if defined(MIYOO)
+#include "miyoo_sleepsave.h" /* the resume state at a POWER press and when idle (src/port/miyoo) */
+#define SS_SLEEP_JOIN() miyoo_sleepsave_join()
+#else
+#define SS_SLEEP_JOIN() ((void) 0)
+#endif
 
 extern char __ss_game_start[], __ss_game_end[], __ss_ram_start[], __ss_ram_end[];
 extern const unsigned int port_build_stamp; /* build/<plat>/gen/build_stamp.c */
@@ -289,67 +295,81 @@ int savestate_slot_valid(int slot) {
 int port_errno(void); /* port_errno.c: <errno.h> clashes with the N64 headers */
 void port_errno_clear(void);
 
-static int do_save(int slot) {
-    char path[512], tmp[520], mi[64];
+/* A save in two halves (the kit's sleep save, miyoo_sleepsave.h): save_begin writes the state into the page cache
+ * (the game's memory is read here, between retraces); save_finish waits on the card (fsync, rename, fsync, the
+ * folder) and logs. A menu SAVE and EXIT GAME run both at once (do_save); the sleep save runs save_finish on the
+ * kit's helper thread while the game goes on. */
+typedef struct {
+    char path[512], tmp[520];
+    u32 t0, tw, tc, tf, tr;
+    int sparse, ok, keep; /* keep: a copy of the state's descriptor (gzclose closes the first) for the fsyncs */
+    size_t skipped;
+    const char* fail;     /* the stage that failed and why (the lead's matrix X4, kit 88210e7) */
+    int ferr;
+} SaveJob;
+#define SS_FAIL(stage) do { if (!j->fail) { j->fail = (stage); j->ferr = port_errno(); } } while (0)
+static void save_begin(int slot, SaveJob* j) {
     SaveHeader h;
-    const u32 t0 = port_time_us();
-    u32 tw = t0, tc = t0, tf = t0, tr = t0;
     const size_t gs = game_size(), rs = ram_size();
-    const int sparse = ss_sparse_on();
-    size_t skipped = 0;
-    struct stat st;
-    int ok = 0, keep = -1; /* keep: a copy of the state's descriptor (gzclose closes the first) for the fsyncs */
-    const char* fail = NULL; /* the stage that failed and why (the lead's matrix X4, kit 88210e7) */
-    int ferr = 0;
-#define SS_FAIL(stage) do { if (!fail) { fail = (stage); ferr = port_errno(); } } while (0)
-    slot_path(slot, path, sizeof(path));
-    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    memset(j, 0, sizeof(*j));
+    j->t0 = j->tw = j->tc = j->tf = j->tr = port_time_us();
+    j->sparse = ss_sparse_on();
+    j->keep = -1;
+    slot_path(slot, j->path, sizeof(j->path));
+    snprintf(j->tmp, sizeof(j->tmp), "%s.tmp", j->path);
     header_make(&h);
-    if (sparse) {
+    if (j->sparse) {
         h.reserved = SS_FLAG_SPARSE;
     }
     {
-        const int fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        const int fd = open(j->tmp, O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (fd < 0) {
             SS_FAIL("open");
         } else {
             gzFile gz;
-            keep = dup(fd); /* gzclose closes fd; fsync through the copy, before and after the rename */
-            if (keep < 0) SS_FAIL("dup");
+            j->keep = dup(fd); /* gzclose closes fd; fsync through the copy, before and after the rename */
+            if (j->keep < 0) SS_FAIL("dup");
             port_errno_clear();
             gz = gzdopen(fd, "wb1");
             if (gz != NULL) {
                 port_errno_clear();
-                ok = gzwrite(gz, &h, sizeof(h)) == (int) sizeof(h) &&
-                     range_write(gz, (const uint8_t*) __ss_game_start, gs, sparse, &skipped) &&
-                     range_write(gz, (const uint8_t*) __ss_ram_start, rs, sparse, &skipped);
-                if (!ok) SS_FAIL("write");
-                tw = port_time_us();
+                j->ok = gzwrite(gz, &h, sizeof(h)) == (int) sizeof(h) &&
+                        range_write(gz, (const uint8_t*) __ss_game_start, gs, j->sparse, &j->skipped) &&
+                        range_write(gz, (const uint8_t*) __ss_ram_start, rs, j->sparse, &j->skipped);
+                if (!j->ok) SS_FAIL("write");
+                j->tw = port_time_us();
                 port_errno_clear();
                 if (gzclose(gz) != Z_OK) {
                     SS_FAIL("close");
-                    ok = 0;
+                    j->ok = 0;
                 }
             } else {
                 SS_FAIL("gzdopen");
                 close(fd);
-                tw = port_time_us();
+                j->tw = port_time_us();
             }
-            tc = port_time_us();
-            if (keep < 0 || fsync(keep) != 0) {
-                if (keep >= 0) SS_FAIL("fsync");
-                ok = 0;
-            }
-            tf = port_time_us();
+            j->tc = port_time_us();
         }
     }
-    if (ok && rename(tmp, path) != 0) {
+}
+static int save_finish(int slot, SaveJob* j) {
+    char mi[64];
+    struct stat st;
+    int ok = j->ok;
+    if (j->keep >= 0 || ok) {
+        if (j->keep < 0 || fsync(j->keep) != 0) {
+            if (j->keep >= 0) SS_FAIL("fsync");
+            ok = 0;
+        }
+    }
+    j->tf = port_time_us();
+    if (ok && rename(j->tmp, j->path) != 0) {
         SS_FAIL("rename");
         ok = 0;
     }
     if (ok) {
         int dir;
-        if (fsync(keep) != 0) { /* the renamed file's directory slot (see above) */
+        if (fsync(j->keep) != 0) { /* the renamed file's directory slot (see above) */
             port_log("savestate: fsync after the rename: %s (the state is saved)\n", strerror(port_errno()));
         }
         dir = open(port_data_path(""), O_RDONLY);
@@ -360,25 +380,33 @@ static int do_save(int slot) {
             close(dir);
         }
     } else {
-        remove(tmp);
-        port_log("savestate: slot %d FAILED at %s: %s\n", slot == QUICKSAVE_SLOT ? 0 : slot, fail ? fail : "?",
-                 fail && ferr ? strerror(ferr) : "unknown error");
+        remove(j->tmp);
+        port_log("savestate: slot %d FAILED at %s: %s\n", slot == QUICKSAVE_SLOT ? 0 : slot, j->fail ? j->fail : "?",
+                 j->fail && j->ferr ? strerror(j->ferr) : "unknown error");
     }
-    if (keep >= 0) {
-        close(keep);
+    if (j->keep >= 0) {
+        close(j->keep);
+        j->keep = -1;
     }
-#undef SS_FAIL
-    tr = port_time_us();
+    j->tr = port_time_us();
     ss_meminfo(mi, sizeof(mi));
     port_log("savestate: slot %d %s, %u KB (%s, %u KB of zero pages left out) in %u ms: write %u close %u fsync %u rename %u | %s\n",
              slot == QUICKSAVE_SLOT ? 0 : slot, ok ? "saved" : "FAILED, previous state kept",
-             ok && stat(path, &st) == 0 ? (unsigned) (st.st_size / 1024) : 0, sparse ? "sparse" : "full", (unsigned) (skipped / 1024),
-             (unsigned) ((tr - t0) / 1000), (unsigned) ((tw - t0) / 1000), (unsigned) ((tc - tw) / 1000),
-             (unsigned) ((tf - tc) / 1000), (unsigned) ((tr - tf) / 1000), mi);
+             ok && stat(j->path, &st) == 0 ? (unsigned) (st.st_size / 1024) : 0, j->sparse ? "sparse" : "full", (unsigned) (j->skipped / 1024),
+             (unsigned) ((j->tr - j->t0) / 1000), (unsigned) ((j->tw - j->t0) / 1000), (unsigned) ((j->tc - j->tw) / 1000),
+             (unsigned) ((j->tf - j->tc) / 1000), (unsigned) ((j->tr - j->tf) / 1000), mi);
     if (ok) {
         port_audio_wav_mark("save");
     }
     return ok;
+}
+#undef SS_FAIL
+
+static int do_save(int slot) {
+    SaveJob j;
+    SS_SLEEP_JOIN(); /* a sleep save still syncing (it may be this slot's .tmp) */
+    save_begin(slot, &j);
+    return save_finish(slot, &j);
 }
 
 /* The checked state over game memory, page by page of memory: a page that is zero in the state and
@@ -454,6 +482,7 @@ static int do_load_file_locked(const char* path, int slot) {
 
 static int do_load_file(const char* path, int slot) {
     int ok;
+    SS_SLEEP_JOIN(); /* a sleep save still syncing: its state is the one on the card */
     port_audio_out_gap(1);
     ok = do_load_file_locked(path, slot);
     port_audio_out_gap(0);
@@ -538,6 +567,26 @@ void savestate_parse_args(int argc, char** argv) {
     test_hook("FZX_MENU_AT", &sTestMenuAt, &sTestMenuSlot);
 }
 
+#if defined(MIYOO)
+/* The sleep save (miyoo_sleepsave.h): the auto save RESUME GAME offers, written as the Mini goes to sleep. The
+ * game waits only for the snapshot into the page cache (save_begin: the gzip stream, between retraces); the
+ * fsync, the rename and the folder's fsync (save_finish) run on the kit's helper thread while the game goes on.
+ * A SIGSTOP or SIGKILL in either half leaves the previous state as it was (the .tmp is renamed only once whole
+ * and synced). */
+static SaveJob sSleepJob;
+static int sSleepKind;
+static void sleep_finish(void* arg) {
+    (void) arg;
+    miyoo_sleepsave_done(sSleepKind, save_finish(QUICKSAVE_SLOT, &sSleepJob));
+}
+static void sleep_save(int kind) {
+    miyoo_sleepsave_join();
+    save_begin(QUICKSAVE_SLOT, &sSleepJob);
+    sSleepKind = kind;
+    miyoo_sleepsave_async(sleep_finish, NULL);
+}
+#endif
+
 /* The OS notification for a menu SAVE or LOAD, composed from what happened rather than what was
  * asked for (B7, handheld-kit k1): the menu showed SAVED SLOT n as it closed, before the save had
  * run, and even when it then failed (a full card, a damaged state: the log said FAILED, the screen
@@ -602,6 +651,17 @@ void savestate_check(void) {
             notify_result(0, -r, do_load(-r));
         }
     }
+#if defined(MIYOO)
+    /* A POWER press, or no button for a while: the auto save now, before Onion's sleep freezes the game (and
+     * maybe powers off). Not before a resume has loaded, not with a quit's save coming, never two at once. */
+    miyoo_sleepsave_start("FZX_SLEEPSAVE");
+    if (!sBootPath[0] && !sExitSave && !miyoo_sleepsave_busy()) {
+        const int k = miyoo_sleepsave_due();
+        if (k) {
+            sleep_save(k);
+        }
+    }
+#endif
     if (sExitSave) {
         /* EXIT GAME keeps your place, as the OS shutting the game down does, so RESUME GAME is
          * always the last session.
@@ -623,6 +683,7 @@ void savestate_check(void) {
 /* After the game loop. */
 void savestate_shutdown(void) {
     sLoopRunning = 0;
+    SS_SLEEP_JOIN();
 }
 
 /* A save cut short by a power cut leaves <slot>.tmp behind; nothing reads it. */

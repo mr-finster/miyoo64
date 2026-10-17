@@ -136,7 +136,7 @@ C_FILES := $(filter-out %.inc.c,$(foreach dir,$(GAME_SRC_DIRS) $(PORT_SRC_DIRS),
            $(OS_C_FILES) $(COURSE_FILES)
 # The Mini's second core (miyoo_worker.c): the Miyoo build's only, so the other builds link as before.
 ifneq ($(PLAT),miyoo)
-  C_FILES := $(filter-out src/port/sdl/miyoo_worker.c src/port/sdl/miyoo_watchdog.c src/port/sdl/miyoo_clock.c src/port/sdl/miyoo_sleepdiag.c,$(C_FILES))
+  C_FILES := $(filter-out src/port/sdl/miyoo_worker.c src/port/sdl/miyoo_watchdog.c src/port/sdl/miyoo_clock.c src/port/sdl/miyoo_sleepdiag.c src/port/sdl/miyoo_sleepsave.c,$(C_FILES))
 endif
 
 S_FILES := $(filter-out $(DATA_DIR)/rsp.s,$(wildcard $(DATA_DIR)/*.s)) \

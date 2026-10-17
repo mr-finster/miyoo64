@@ -177,6 +177,8 @@ $(BUILD_DIR)/src/%.dataonly.o: $(BUILD_DIR)/src/%.o
 $(BUILD_DIR)/src/port/miyoo/miyoo_worker.o: PORT_CFLAGS += -D_GNU_SOURCE '-DMIYOO_WORKER_ENV="FZX_THREADS"'
 # the kit's switches under the port's prefix (FZX_THREADS, FZX_CPUCLOCK)
 $(BUILD_DIR)/src/port/miyoo/miyoo_clock.o: PORT_CFLAGS += '-DMIYOO_CLOCK_ENV="FZX_CPUCLOCK"'
+# the kit's sleep save logs through port_log (the binary must not name stderr: gate 2b)
+$(BUILD_DIR)/src/port/miyoo/miyoo_sleepsave.o: PORT_CFLAGS += -DMIYOO_SLEEPSAVE_PORT_LOG
 
 # The commit a log came from: port_main.o only (FZX_BUILD_ID; "+" = uncommitted changes).
 BUILD_ID := $(shell git rev-parse --short HEAD 2>/dev/null)$(shell git diff --quiet HEAD 2>/dev/null || echo +)

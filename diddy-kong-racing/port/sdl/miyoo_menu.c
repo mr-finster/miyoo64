@@ -27,6 +27,9 @@
 #include "miyoo_video.h"
 #include "savestate.h"
 #include "miyoo_font.h"
+#if defined(MIYOO)
+#include "miyoo_sleepsave.h"
+#endif
 
 #define MENU_W 640
 #define MENU_H 480
@@ -214,6 +217,9 @@ void handheld_menu_run(struct SDL_Surface *screen) {
     while (running) {
         const uint32_t t0 = SDL_GetTicks();
         if (handheld_power_pending()) break; /* SIGTERM: back to the game loop, which exit-saves */
+#if defined(MIYOO)
+        if (miyoo_sleepsave_menu_should_close()) break; /* POWER: the game loop writes the resume state, then reopens this */
+#endif
         SDL_Event ev;
         while (running && SDL_PollEvent(&ev)) {
             if (ev.type == SDL_QUIT) { port_request_exit(); exiting = 1; running = 0; break; }

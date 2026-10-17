@@ -67,7 +67,7 @@ ifeq ($(PLAT),miyoo)
   SDL_LIBS   := -L$(MM_SYSROOT)/usr/lib -Wl,-rpath-link,$(MM_SYSROOT)/usr/lib -lSDL
   PLAT_DEFINES := TARGET_HANDHELD=1 HANDHELD=1 TARGET_MIYOO=1 MIYOO=1
   PLAT_SRC := src/port/sdl/gfx_sdl12.c src/port/sdl/miyoo_panel.c src/port/sdl/miyoo_menu.c \
-              src/port/sdl/miyoo_worker.c src/port/sdl/miyoo_clock.c
+              src/port/sdl/miyoo_worker.c src/port/sdl/miyoo_clock.c src/port/sdl/miyoo_sleepsave.c
 else
   CC      := gcc
   OBJCOPY := objcopy

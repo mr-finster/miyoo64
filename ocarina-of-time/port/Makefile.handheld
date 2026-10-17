@@ -88,7 +88,7 @@ HH_PORT_SOURCES := $(sort $(wildcard src/port/hh/*.c)) src/port/hh/gfx/gfx_pc.c 
 # handheld-kit (port/kit, a git subtree at a tagged version): save states, the Miyoo menu, the second core
 # and the CPU clock.
 HH_KIT_SOURCES := kit/platform/savestate.c kit/platform/hh_priority.c \
-                  $(if $(filter miyoo,$(PLAT)),kit/platform/miyoo_menu.c kit/platform/miyoo_worker.c kit/platform/miyoo_clock.c)
+                  $(if $(filter miyoo,$(PLAT)),kit/platform/miyoo_menu.c kit/platform/miyoo_worker.c kit/platform/miyoo_clock.c kit/platform/miyoo_sleepsave.c)
 HH_PORT_SOURCES += $(HH_KIT_SOURCES)
 
 C_FILES := $(HH_GAME_SOURCES) $(HH_PORT_SOURCES)
