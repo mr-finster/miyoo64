@@ -403,6 +403,13 @@ s32 romdataInit(void)
 	}
 #endif
 
+#ifdef PLATFORM_MIYOO
+	// the data segment, fonts and audio banks made here are pointed at by save states: from a pool at a
+	// fixed address (port/miyoo/pd_fixed.c), as the ROM mapping
+	extern void pdFixedPoolBegin(void);
+	pdFixedPoolBegin();
+#endif
+
 	romdataLoadRom();
 
 	// set segments to point to the rom or load them externally
@@ -412,6 +419,11 @@ s32 romdataInit(void)
 
 	// load file table from the files segment
 	romdataInitFiles();
+
+#ifdef PLATFORM_MIYOO
+	extern void pdFixedPoolEnd(void);
+	pdFixedPoolEnd();
+#endif
 
 	sysLogPrintf(LOG_NOTE, "romdataInit: loaded rom, size = %u", g_RomFileSize);
 

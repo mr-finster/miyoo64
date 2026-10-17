@@ -148,7 +148,21 @@ int main(int argc, const char **argv)
 	g_OsMemSize = osGetMemSize();
 
 	g_MempHeapSize = g_OsMemSize;
+#ifdef PLATFORM_MIYOO
+	// at a fixed address (port/miyoo/pd_fixed.c): a save state holds the heap and its address must not move
+	// between runs (it did: a thread's glibc arena racing this calloc, TEST1 device log)
+	{
+		extern void *pdFixedHeap(size_t size);
+		extern void pdFixedLog(void);
+		g_MempHeap = pdFixedHeap(g_MempHeapSize);
+		if (!g_MempHeap) g_MempHeap = sysMemZeroAlloc(g_MempHeapSize);
+		pdFixedLog();
+		extern void hh_game_log_maps(const char *why);
+		hh_game_log_maps("start");
+	}
+#else
 	g_MempHeap = sysMemZeroAlloc(g_MempHeapSize);
+#endif
 	if (!g_MempHeap) {
 		sysFatalError("Could not alloc %u bytes for memp heap.", g_MempHeapSize);
 	}

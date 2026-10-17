@@ -43,6 +43,19 @@ int hh_game_extra_range(char **base, size_t *size)
 	return 1;
 }
 
+/* PD_MAPS=1: /proc/self/maps in the log (at startup and at each save), to see where every pointer a
+ * state holds can point. */
+void hh_game_log_maps(const char *why)
+{
+	const char *e = getenv("PD_MAPS");
+	if (!e || e[0] != '1') return;
+	FILE *f = fopen("/proc/self/maps", "r");
+	if (!f) return;
+	char line[512];
+	while (fgets(line, sizeof(line), f)) fprintf(stderr, "maps(%s): %s", why, line);
+	fclose(f);
+}
+
 static int sQuiet = -1;
 
 void port_log(const char *fmt, ...)

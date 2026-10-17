@@ -164,7 +164,12 @@ static long __stdcall crashHandler(PEXCEPTION_POINTERS exinfo)
 #include <dlfcn.h>
 #include <sys/fcntl.h>
 
+#ifdef PLATFORM_MIYOO
+#include "kit/savestate.h"
+static struct sigaction prevSigAction SAVESTATE_EXCLUDE; // points into libc/ld.so: this run's, never a state's
+#else
 static struct sigaction prevSigAction;
+#endif
 
 static s32 crashIsDebuggerPresent(void)
 {

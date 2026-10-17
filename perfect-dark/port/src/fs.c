@@ -238,7 +238,9 @@ void *fsFileMap(const char *name, u32 *outSize)
 		close(fd);
 		return NULL;
 	}
-	void *p = mmap(NULL, (size_t)size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+	extern void *pdFixedMapRom(int fd, size_t size); // port/miyoo/pd_fixed.c: at a fixed address (save states)
+	void *p = pdFixedMapRom(fd, (size_t)size);
+	if (!p) p = mmap(NULL, (size_t)size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
 	close(fd);
 	if (p == MAP_FAILED) {
 		sysLogPrintf(LOG_ERROR, "fsFileMap: mmap failed for %s", fullName);

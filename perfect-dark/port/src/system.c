@@ -303,23 +303,56 @@ void sysGetHomePath(char *outPath, const u32 outLen)
 #endif
 }
 
+#ifdef PLATFORM_MIYOO
+// port/miyoo/pd_fixed.c: while romdataInit runs, the buffers it keeps come from a pool at a fixed address
+// (save states point into them); pool blocks are never freed.
+extern void *pdFixedPoolAlloc(size_t size);
+extern int pdFixedPoolOwns(const void *p);
+extern size_t pdFixedPoolSize(const void *p);
+extern void pdFixedPoolFree(void *p);
+#endif
+
 void *sysMemAlloc(const u32 size)
 {
+#ifdef PLATFORM_MIYOO
+	void *p = pdFixedPoolAlloc(size);
+	if (p) return p;
+#endif
 	return malloc(size);
 }
 
 void *sysMemZeroAlloc(const u32 size)
 {
+#ifdef PLATFORM_MIYOO
+	void *p = pdFixedPoolAlloc(size); // zeroed
+	if (p) return p;
+#endif
 	return calloc(1, size);
 }
 
 void *sysMemRealloc(void *ptr, const u32 newSize)
 {
+#ifdef PLATFORM_MIYOO
+	if (ptr && pdFixedPoolOwns(ptr)) {
+		const size_t old = pdFixedPoolSize(ptr);
+		void *p = pdFixedPoolAlloc(newSize);
+		if (!p) p = malloc(newSize);
+		if (p) memcpy(p, ptr, old < newSize ? old : newSize);
+		return p;
+	}
+	if (!ptr) return sysMemAlloc(newSize);
+#endif
 	return realloc(ptr, newSize);
 }
 
 void sysMemFree(void *ptr)
 {
+#ifdef PLATFORM_MIYOO
+	if (pdFixedPoolOwns(ptr)) {
+		pdFixedPoolFree(ptr);
+		return;
+	}
+#endif
 	free(ptr);
 }
 

@@ -258,6 +258,9 @@ void videoSetOverexposureScale(f32 scale) { vidOverexposureScale = scale; }
  * game take its plain paths (bondview.c, menugfx.c). */
 #define MAX_FBS 32
 static struct { u8 *px; s32 w, h; } sFbs[MAX_FBS]; /* id = index + 1 */
+/* The pixels in .bss beside sFbs, not calloc'd: a save state holds sFbs, and a calloc'd pointer from the
+ * run that wrote it means nothing in a later run. Sparse states skip the unused (zero) pages. */
+static u8 sFbPixels[MAX_FBS][64 * 64 * 2] __attribute__((aligned(16)));
 
 s32 videoCreateFramebuffer(u32 w, u32 h, s32 upscale, s32 autoresize)
 {
@@ -271,8 +274,8 @@ s32 videoCreateFramebuffer(u32 w, u32 h, s32 upscale, s32 autoresize)
 	}
 	for (s32 i = 0; i < MAX_FBS; ++i) {
 		if (!sFbs[i].px) {
-			sFbs[i].px = calloc(w * h, 2);
-			if (!sFbs[i].px) return -1;
+			sFbs[i].px = sFbPixels[i];
+			memset(sFbs[i].px, 0, w * h * 2);
 			sFbs[i].w = w;
 			sFbs[i].h = h;
 			return i + 1;
