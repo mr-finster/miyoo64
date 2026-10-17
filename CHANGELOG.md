@@ -3,6 +3,26 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## 1.1.2 (Perfect Dark 1.0.3)
+
+- All ten games: the auto save is written when the Mini goes to sleep (a POWER press, or 50 s with no
+  button, before Onion's idle sleep). If the Mini then powers itself off while asleep, RESUME GAME at the next
+  start puts you back where you were, even when Onion's power-off is too quick for the exit save. How it works:
+  [Sleep and wake](docs/SLEEP-AND-WAKE.md#the-sleep-save-112). `<GAME>_SLEEPSAVE=0` in launch.sh turns it off.
+- GoldenEye 007 and Perfect Dark: a power-off with the MENU open (or at the RESUME GAME prompt) now saves the
+  auto save, as in the other games.
+- Perfect Dark: the game save (`eeprom.bin`) is written safely (a new file, synced, then renamed), so a
+  power-off during a save can no longer empty it or roll it back. RESUME GAME is offered every time: about half
+  the starts used to throw the auto save away as "from another build".
+- All ten games: an auto save that doesn't match the game is no longer deleted. It is kept as
+  `state_quick.sav.rejected`, and `console.log` says why.
+- Super Smash Bros.: a save from an emulator or a flash cart (`.sra`, `.srm`, `.sav`, any byte order) dropped
+  into `App/SuperSmashBros/data` is imported at the next start; the old save is kept as a backup. Before, the
+  game always started fresh. How: [Bringing a save](super-smash-bros/README_MIYOO.md#bringing-a-save-from-an-emulator-or-a-flash-cart).
+- Ocarina of Time and GoldenEye 007: the first-start screen fills the Mini Flip / Mini v4 screen instead of
+  showing squashed.
+- Mario Kart 64: 1.1.2 on the first line of `console.log`.
+
 ## 1.1.1 (Perfect Dark 1.0.2)
 
 - All ten games: no more slowdown and choppy sound after the Mini sleeps and wakes. Onion's sleep left the CPU

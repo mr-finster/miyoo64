@@ -20,6 +20,9 @@ the power-off save and RESUME, the two cores frame for frame. It hasn't run on a
   the CPU runs at 1500 MHz on the Mini and 1800 MHz on the Mini Plus while the game is up (the stock clock is 1200).
 - **Power:** when the OS shuts the game down (the power button, or any kill), the game writes
   the auto save and quits. The next start asks RESUME GAME or NEW GAME, the same as after EXIT GAME in the menu.
+- **Sleep:** a POWER press to sleep, or 50 s with no button, writes the auto save first, so RESUME
+  GAME brings you back even if the Mini then powers itself off while asleep (`PM64_SLEEPSAVE=0` in
+  launch.sh turns it off; [Sleep and wake](../docs/SLEEP-AND-WAKE.md)).
 - **Menu:** the same menu as the other Miyoo ports: RESUME, SAVE STATE, LOAD STATE, EXIT GAME, in a built-in font.
   The OS handles volume and brightness. Notices like SAVED SLOT 1 show in the top-left corner for two seconds.
 - **Buttons:** SELECT or R2 is C-up, and L2 is N64 R (the full table is under Controls).

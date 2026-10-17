@@ -21,6 +21,9 @@ Ocarina of Time and GoldenEye Miyoo ports).
 - **Power:** when the OS shuts the game down (the power button, or any kill), the
   game saves the auto save and quits, and the next start asks RESUME GAME or NEW GAME, the same as EXIT GAME
   in the menu.
+- **Sleep:** a POWER press to sleep, or 50 s with no button, writes the auto save first, so RESUME
+  GAME brings you back even if the Mini then powers itself off while asleep (`SF64_SLEEPSAVE=0` in
+  launch.sh turns it off; [Sleep and wake](../docs/SLEEP-AND-WAKE.md)).
 - **Menu:** the menu every Miyoo port shares: RESUME, SAVE STATE, LOAD STATE, EXIT GAME, in a built-in font.
   Volume and brightness are the OS's. Notices like SAVED SLOT 1 show in the top-left corner for two seconds.
 - **Buttons:** C-right (SELECT), C-up (L2) and the menu-only L (R2) are plain buttons.

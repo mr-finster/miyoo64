@@ -29,7 +29,7 @@ Download `PerfectDark-miyoo.zip` from https://miyoo-n64.pages.dev, and install i
 | START | Pause |
 | MENU | Game menu: save, load, exit |
 
-In the menu, up and down pick an entry, left and right change the save slot, A or START selects, and B or MENU closes it. The power button saves the auto save on the way out; the next start offers RESUME GAME or NEW GAME.
+In the menu, up and down pick an entry, left and right change the save slot, A or START selects, and B or MENU closes it. The power button saves the auto save on the way out (also with the menu open); the next start offers RESUME GAME or NEW GAME. A POWER press to sleep, or 50 s with no button, writes the auto save first, so RESUME GAME brings you back even if the Mini then powers itself off while asleep (`PD_SLEEPSAVE=0` in launch.sh turns it off; [Sleep and wake](../docs/SLEEP-AND-WAKE.md)). Your game save (`eeprom.bin`) is written safely: a power-off during a save can't empty it.
 
 ## Settings
 

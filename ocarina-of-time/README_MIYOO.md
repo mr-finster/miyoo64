@@ -16,10 +16,14 @@ run on a device. Onion's Ports list, MinUI, Allium and spruce still need a first
   SIGTERM), the game saves the auto save and quits, and the next start asks RESUME GAME or NEW
   GAME, the same as EXIT GAME in the menu. (At that question itself, a shutdown just quits and
   keeps the auto save.)
+- **Sleep:** a POWER press to sleep, or 50 s with no button, writes the auto save first, so RESUME
+  GAME brings you back even if the Mini then powers itself off while asleep (`OOT_SLEEPSAVE=0` in
+  launch.sh turns it off; [Sleep and wake](../docs/SLEEP-AND-WAKE.md)).
 - **Menu:** the same menu as the other Miyoo ports (GoldenEye's `miyoo_menu.c`): RESUME, SAVE
   STATE, LOAD STATE, EXIT GAME, in a built-in 8x8 font. Volume and brightness are left to the OS.
   Notices like SAVED SLOT 1 show in the top-left corner for two seconds.
-- **First start:** screens while it looks for the ROM and builds the data, in the menu's font.
+- **First start:** screens while it looks for the ROM and builds the data, in the menu's font; full screen on
+  a Mini v4 or Mini Flip too.
 - **Both cores:** the Mini has two CPU cores. The big 3D triangles are drawn
   half by each core, with the picture the same pixel for pixel. `threads=1` in `debug.cfg` (below)
   draws on one core, for comparing.

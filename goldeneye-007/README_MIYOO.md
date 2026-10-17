@@ -16,7 +16,10 @@ spruce.
   the bands back).
 - **Power:** when the OS shuts the game down (the power button, or any
   kill), the game saves the auto save and quits, and the next start asks RESUME GAME or NEW GAME,
-  the same as EXIT GAME in the menu.
+  the same as EXIT GAME in the menu (also with the menu open, since 1.1.2).
+- **Sleep:** a POWER press to sleep, or 50 s with no button, writes the auto save first, so RESUME
+  GAME brings you back even if the Mini then powers itself off while asleep (`GE_SLEEPSAVE=0` in
+  launch.sh turns it off; [Sleep and wake](../docs/SLEEP-AND-WAKE.md)).
 - **Speed:** the Mini has two processor cores, and the second one shares the 3D drawing (the
   picture is the same pixel for pixel either way). The game raises the CPU clock while it runs (1500 MHz on the Mini,
   1800 MHz on the Mini Plus, from the OS's 1200; below what Onion itself asks for its heaviest games) and puts it
@@ -39,7 +42,7 @@ spruce.
 3. Start **GoldenEye 007**. The first start shows a progress screen while it checks the dump and keeps
    a copy as `App/GoldenEye/data/goldeneye.z64` (after that the original dump can go; keep the copy).
    A problem (no ROM found, the wrong dump, a full card) stays on the screen until you press a
-   button. Later starts go straight to the game. To redo the first start, put an empty file named
+   button. It fills the screen on a Mini v4 or Mini Flip too. Later starts go straight to the game. To redo the first start, put an empty file named
    `rebuild` in `App/GoldenEye/data/`.
 
 The same zip works on every Miyoo OS. The game itself is in `App/GoldenEye/`, and every other entry

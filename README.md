@@ -42,7 +42,7 @@ Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/l
 | Super Smash Bros. | ✅ Playable | Hit flashes, shields and costume colours as on the N64 |
 | Super Mario 64 | ✅ Playable | Metal Mario, coloured fog and the castle window fixed, both cores drawing |
 
-Every game has 9 save-state slots plus an auto save, and picks up where you left off after a power-off.
+Every game has 9 save-state slots plus an auto save, and picks up where you left off after a power-off, also when the Mini sleeps and then powers itself off ([Sleep and wake](docs/SLEEP-AND-WAKE.md)). Super Smash Bros. can take a save from an emulator or a flash cart ([how](super-smash-bros/README_MIYOO.md#bringing-a-save-from-an-emulator-or-a-flash-cart)).
 
 On the Mini v4 and Mini Flip (752x560 screens) every game fills the whole screen (`<GAME>_FLIPFILL=0` in the game's launch.sh brings back the 640x480 picture with a border). Not tested on a real Flip yet.
 
@@ -108,7 +108,7 @@ the ROM while they run, so keep it on the card for those three.
 | <kbd>Left</kbd> / <kbd>Right</kbd> | Change the save slot |
 | <kbd>A</kbd> / <kbd>START</kbd> | Select |
 | <kbd>B</kbd> / <kbd>MENU</kbd> | Close the menu |
-| <kbd>Power</kbd> | Saves the auto save on the way out |
+| <kbd>Power</kbd> | Saves the auto save on the way out, and before the Mini sleeps |
 
 Each game's own button layout is in its folder's README:
 [Perfect Dark](perfect-dark/README.md#controls),

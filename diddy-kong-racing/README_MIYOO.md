@@ -17,6 +17,9 @@ the same files.
 - **Power:** when the OS shuts the game down (the power button, or any
   kill), the game saves the auto save and quits, and the next start asks RESUME GAME or NEW GAME,
   the same as EXIT GAME in the menu.
+- **Sleep:** a POWER press to sleep, or 50 s with no button, writes the auto save first, so RESUME
+  GAME brings you back even if the Mini then powers itself off while asleep (`DKR_SLEEPSAVE=0` in
+  launch.sh turns it off; [Sleep and wake](../docs/SLEEP-AND-WAKE.md)).
 - **Menu:** the same menu as the other Miyoo ports (GoldenEye's `miyoo_menu.c`): RESUME, SAVE
   STATE, LOAD STATE, EXIT GAME, in a built-in 8x8 font at 640x480. Volume and brightness are
   left to the OS. Notices like SAVED SLOT 1 show in the top-left corner for two seconds.
