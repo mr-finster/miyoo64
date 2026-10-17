@@ -36,7 +36,7 @@
 #include "savestate.h"
 
 #ifndef MK64_VERSION_TAG
-#define MK64_VERSION_TAG "1.1.1"
+#define MK64_VERSION_TAG "1.1.2"
 #endif
 #ifndef MK64_SLEEPDIAG_DEFAULT
 #define MK64_SLEEPDIAG_DEFAULT 0
