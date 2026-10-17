@@ -11,7 +11,8 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   game; the zips now carry Onion's two markers (`App/<Game>/full_resolution`, and `FullResolution=1` in the
   Ports shortcut). Nothing changes on a Mini or Mini Plus (640x480 screen).
 - All ten games: on a 752x560 Mini, `data/launch.log` notes the screen mode the game found at start.
-- Mario Kart 64: 1.1.3 on the first line of `console.log`.
+- The game builds are unchanged from 1.1.2 (the same binaries, so RESUME GAME carries over from 1.1.2); only the
+  packaging changed (the markers above, the Ports shortcut and `launch.sh`).
 
 ## 1.1.2 (Perfect Dark 1.0.3)
 
