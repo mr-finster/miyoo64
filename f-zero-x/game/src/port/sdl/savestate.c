@@ -123,16 +123,32 @@ static int ss_sparse_on(void) {
     }
     return s;
 }
+/* Why the last check said STATE_MISMATCH (logged; a rejected auto save is kept, never deleted). */
+static char sMismatch[160];
 /* The header this build wrote, full or sparse; *sparse says which. */
 static int header_ok(const SaveHeader* h, int* sparse) {
     SaveHeader want, c = *h;
     header_make(&want);
-    if (h->reserved != 0 && h->reserved != SS_FLAG_SPARSE) {
+    if (h->magic != want.magic || h->version != want.version || (h->reserved != 0 && h->reserved != SS_FLAG_SPARSE)) {
+        snprintf(sMismatch, sizeof(sMismatch), "not a state of this layout (magic %08X version %u)", (unsigned) h->magic,
+                 (unsigned) h->version);
         return 0;
     }
     *sparse = h->reserved == SS_FLAG_SPARSE;
     c.reserved = 0;
-    return memcmp(&c, &want, sizeof(c)) == 0;
+    if (h->stamp != want.stamp) {
+        snprintf(sMismatch, sizeof(sMismatch), "another build (stamp %08X, this is %08X)", (unsigned) h->stamp,
+                 (unsigned) want.stamp);
+        return 0;
+    }
+    if (memcmp(&c, &want, sizeof(c)) != 0) {
+        snprintf(sMismatch, sizeof(sMismatch), "layout: game 0x%08X+0x%X ram 0x%08X+0x%X in the state, "
+                 "0x%08X+0x%X 0x%08X+0x%X now", (unsigned) h->game_start, (unsigned) h->game_size,
+                 (unsigned) h->ram_start, (unsigned) h->ram_size, (unsigned) want.game_start,
+                 (unsigned) want.game_size, (unsigned) want.ram_start, (unsigned) want.ram_size);
+        return 0;
+    }
+    return 1;
 }
 /* One range out of the stream into dst (NULL: read and check only). Sparse: dst must be zeroed. */
 static int range_read(gzFile gz, uint8_t* dst, size_t n, int sparse) {
@@ -230,7 +246,7 @@ static void slot_path(int slot, char* out, size_t n) {
 }
 
 /* 1 = a state this build can load, 0 = another build's or damaged, -1 = can't be read
- * (a read error is never a mismatch: only a 0 may ever delete a file). `full` also
+ * (a read error is never a mismatch; a mismatching auto save is renamed .rejected, not deleted). `full` also
  * decompresses the rest, checking its length and CRC: the launch prompt must not offer
  * RESUME for a state cut short (mk64 checked the file size; a gzip state has none to
  * check). The menu's "Used" reads the header only. */
@@ -248,10 +264,14 @@ static int state_file_check(const char* path, int full) {
         return STATE_UNREADABLE;
     }
     (void) want;
+    snprintf(sMismatch, sizeof(sMismatch), "?");
     n = gzread(gz, &h, sizeof(h));
     if (n < 0) {
         st = gz_failed(gz);
-    } else if (n != (int) sizeof(h) || !header_ok(&h, &sparse)) {
+    } else if (n != (int) sizeof(h)) {
+        snprintf(sMismatch, sizeof(sMismatch), "shorter than a header");
+        st = STATE_MISMATCH;
+    } else if (!header_ok(&h, &sparse)) {
         st = STATE_MISMATCH;
     } else if (full) {
         uint8_t end;
@@ -259,9 +279,13 @@ static int state_file_check(const char* path, int full) {
             int err = Z_OK;
             gzerror(gz, &err);
             st = err == Z_ERRNO ? STATE_UNREADABLE : STATE_MISMATCH; /* cut short or damaged */
+            snprintf(sMismatch, sizeof(sMismatch), "cut short or damaged (gzip)");
         } else {
             n = gzread(gz, &end, 1); /* 0 only at a clean end, CRC checked */
             st = n == 0 ? STATE_OK : n < 0 ? gz_failed(gz) : STATE_MISMATCH;
+            if (st == STATE_MISMATCH) {
+                snprintf(sMismatch, sizeof(sMismatch), n > 0 ? "longer than its layout" : "damaged (gzip CRC)");
+            }
         }
     }
     gzclose(gz);
@@ -443,8 +467,9 @@ static int do_load_file_locked(const char* path, int slot) {
         return 0;
     }
     (void) want;
+    snprintf(sMismatch, sizeof(sMismatch), "shorter than a header");
     if (gzread(gz, &h, sizeof(h)) != (int) sizeof(h) || !header_ok(&h, &sparse)) {
-        port_log("savestate: slot %d rejected (another build, or damaged)\n", slot == QUICKSAVE_SLOT ? 0 : slot);
+        port_log("savestate: slot %d rejected (%s)\n", slot == QUICKSAVE_SLOT ? 0 : slot, sMismatch);
         gzclose(gz);
         return 0;
     }
@@ -710,7 +735,7 @@ static void clean_state_tmp(void) {
  * - a cold start with an auto save on the card (EXIT GAME, or the OS shutting the game
  *   down) asks RESUME GAME / NEW GAME; NEW deletes it.
  * The resume loads a few retraces in (savestate_check). An auto save from another build
- * is removed; one that can't be read is left alone. The desktop build has no prompt and
+ * is kept as state_quick.sav.rejected; one that can't be read is left alone. The desktop build has no prompt and
  * never deletes: only an explicit --loadStateFile. */
 void savestate_boot_prompt(void) {
     clean_state_tmp();
@@ -736,8 +761,14 @@ void savestate_boot_prompt(void) {
         st = state_file_check(sBootPath, 1);
         if (st != STATE_OK) {
             if (st == STATE_MISMATCH && is_quick) {
-                port_log("savestate: auto save is from another build, or damaged; removed\n");
-                remove(sBootPath);
+                /* Not deleted: kept (one) as state_quick.sav.rejected, so nothing is lost while a mismatch
+                 * is looked into. A newer rejected state replaces the older one. */
+                char rej[540];
+                int kept;
+                snprintf(rej, sizeof(rej), "%s.rejected", sBootPath);
+                kept = rename(sBootPath, rej) == 0;
+                port_log("savestate: auto save not loaded: %s; %s\n", sMismatch,
+                         kept ? "kept as state_quick.sav.rejected" : "left in place (rename failed)");
             } else {
                 port_log("savestate: %s can't be read; not loaded\n", sBootPath);
             }

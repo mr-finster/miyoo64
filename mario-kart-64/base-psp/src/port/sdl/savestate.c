@@ -190,16 +190,34 @@ static void layout(size_t *region, size_t *hole_off, size_t *hole_size) {
  * mid-write). Leaves f just past the header. A read error is not a mismatch --
  * only a mismatch may ever delete a file. */
 enum { STATE_OK = 1, STATE_MISMATCH = 0, STATE_UNREADABLE = -1 };
+static char sMismatch[160] SAVESTATE_EXCLUDE; /* why the last state_check said STATE_MISMATCH */
 static int state_check(FILE *f) {
     size_t region, hole_off, hole_size;
     layout(&region, &hole_off, &hole_size);
     SaveHeader h;
     char id[32];
     build_id(id);
-    if (fread(&h, sizeof(h), 1, f) != 1) return ferror(f) ? STATE_UNREADABLE : STATE_MISMATCH;
-    if ((h.magic != SS_MAGIC && h.magic != SS_MAGIC_SPARSE) || h.region_size != region || h.hole_off != hole_off ||
-        h.hole_size != hole_size || h.data_start != (uint32_t)(uintptr_t)__data_start ||
-        strncmp(h.build, id, sizeof(h.build)) != 0) return STATE_MISMATCH;
+    snprintf(sMismatch, sizeof(sMismatch), "?");
+    if (fread(&h, sizeof(h), 1, f) != 1) {
+        snprintf(sMismatch, sizeof(sMismatch), "shorter than a header");
+        return ferror(f) ? STATE_UNREADABLE : STATE_MISMATCH;
+    }
+    if (h.magic != SS_MAGIC && h.magic != SS_MAGIC_SPARSE) {
+        snprintf(sMismatch, sizeof(sMismatch), "not a state (magic %08X)", (unsigned) h.magic);
+        return STATE_MISMATCH;
+    }
+    if (strncmp(h.build, id, sizeof(h.build)) != 0) {
+        snprintf(sMismatch, sizeof(sMismatch), "another build (\"%.31s\", this is \"%s\")", h.build, id);
+        return STATE_MISMATCH;
+    }
+    if (h.region_size != region || h.hole_off != hole_off || h.hole_size != hole_size ||
+        h.data_start != (uint32_t)(uintptr_t)__data_start) {
+        snprintf(sMismatch, sizeof(sMismatch), "layout: data at 0x%08X size 0x%X hole 0x%X+0x%X in the state, "
+                 "0x%08X size 0x%X hole 0x%X+0x%X now", (unsigned) h.data_start, (unsigned) h.region_size,
+                 (unsigned) h.hole_off, (unsigned) h.hole_size, (unsigned) (uintptr_t) __data_start,
+                 (unsigned) region, (unsigned) hole_off, (unsigned) hole_size);
+        return STATE_MISMATCH;
+    }
     long want = (long) (sizeof(SaveHeader) + region - hole_size);
     const long pos = ftell(f);
     if (h.magic == SS_MAGIC_SPARSE) { /* the bitmaps say how long the file must be */
@@ -221,6 +239,7 @@ static int state_check(FILE *f) {
     if (pos < 0 || fseek(f, 0, SEEK_END) != 0) return STATE_UNREADABLE;
     const long len = ftell(f);
     if (len < 0 || fseek(f, pos, SEEK_SET) != 0) return STATE_UNREADABLE;
+    if (len != want) snprintf(sMismatch, sizeof(sMismatch), "%ld bytes, the header says %ld (cut off)", len, want);
     return len == want ? STATE_OK : STATE_MISMATCH;
 }
 static int state_file_check(const char *path) {
@@ -394,7 +413,7 @@ static int do_load_file_locked(const char *path, int slot) {
 
     const int st = state_check(f); /* before a single byte of game memory is touched */
     if (st != STATE_OK) {
-        fprintf(stderr, "savestate: slot %d rejected (%s)\n", slot, st == STATE_MISMATCH ? "another build, or truncated" : "read error");
+        fprintf(stderr, "savestate: slot %d rejected (%s)\n", slot, st == STATE_MISMATCH ? sMismatch : "read error");
         fclose(f);
         return 0;
     }
@@ -594,7 +613,7 @@ static void clean_state_tmp(void) {
  * - Started with an auto save on the card (EXIT GAME, or a power-off):
  *   ask RESUME GAME / NEW GAME. New deletes it.
  * Resume loads it a few frames in (savestate_check). An auto save from another
- * build is removed; one that can't be read is left alone. The desktop build has
+ * build is kept as state_quick.sav.rejected; one that can't be read is left alone. The desktop build has
  * no prompt and never deletes: only an explicit --loadStateFile. */
 void savestate_boot_prompt(void) {
     clean_state_tmp();
@@ -616,8 +635,13 @@ void savestate_boot_prompt(void) {
     const int st = state_file_check(sBootPath);
     if (st != STATE_OK) {
         if (st == STATE_MISMATCH && is_quick) {
-            fprintf(stderr, "savestate: auto save is from another build; removed\n");
-            remove(sBootPath);
+            /* Not deleted: kept (one) as state_quick.sav.rejected, so nothing is lost while a mismatch is
+             * looked into. A newer rejected state replaces the older one. */
+            char rej[540];
+            snprintf(rej, sizeof(rej), "%s.rejected", sBootPath);
+            const int kept = rename(sBootPath, rej) == 0;
+            fprintf(stderr, "savestate: auto save not loaded: %s; %s\n", sMismatch,
+                    kept ? "kept as state_quick.sav.rejected" : "left in place (rename failed)");
         } else {
             fprintf(stderr, "savestate: %s can't be read; not loaded\n", sBootPath);
         }
