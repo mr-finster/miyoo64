@@ -192,21 +192,11 @@ static void term_handler(int sig) { (void)sig; if (!sTermRequested) sTermAtMs = 
  * game ~1.4 s later with no auto save. */
 int handheld_power_pending(void) { return sTermRequested; }
 
-static void gfx_sdl12_init(const char *game_name, bool start_in_fullscreen) {
-    (void)game_name; (void)start_in_fullscreen;
-    /* No SDL_INIT_TIMER: nothing uses SDL timers (SDL_GetTicks/SDL_Delay work
-     * without it), and SDL 1.2's threaded timer wakes every 1 ms for good. */
-    SDL_Init(SDL_INIT_VIDEO);
-    { /* debug.cfg bilinear=0 / magbilin=0 (-> OOT_*): the desktop backend's A/B switches */
-        extern int gfx_soft_bilinear, gfx_soft_magbilin;
-        const char *b = getenv("GE_BILINEAR");
-        if (b && b[0]) gfx_soft_bilinear = (b[0] == '1');
-        b = getenv("GE_MAGBILIN");
-        if (b && b[0]) gfx_soft_magbilin = (b[0] == '1');
-    }
-    SDL_ShowCursor(SDL_DISABLE);
+/* The panel, opened at its size (also hh_romscreen.c's first-start screens, so they fill a Mini v4 / Flip as the game
+ * does and the game's mode switch keeps the size). */
+SDL_Surface *gfx_miyoo_open_panel(void) {
     /* the Mini's SDL (MI_GFX) is 32 bpp and turns the picture for the panel itself */
-    sScreen = NULL;
+    SDL_Surface *s = NULL;
     { /* Mini v4 / Mini Flip: a 750x560 panel (752x560 framebuffer). GE_FLIPFILL (default on): the panel opened at
        * /dev/fb0's visible size (GE_MIYOO_MODE=<w>x<h> forces one, tests) and the picture scaled to its full height
        * (blit_stage_to_screen); a Mini's 640x480 keeps the exact 2x. GE_FLIPFILL=0: 640x480 as before (the OS
@@ -226,15 +216,32 @@ static void gfx_sdl12_init(const char *game_name, bool start_in_fullscreen) {
         }
         fprintf(stderr, "gfx_sdl12: panel %dx%d%s\n", mw, mh, m ? " (GE_MIYOO_MODE)" : " (/dev/fb0)");
         if (fill && mw >= SCREEN_W && mh >= SCREEN_H && (mw != SCREEN_W || mh != SCREEN_H) && mw <= 1280 && mh <= 960) {
-            sScreen = SDL_SetVideoMode(mw, mh, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
-            if (!sScreen) fprintf(stderr, "gfx_sdl12: %dx%d refused (%s); 640x480\n", mw, mh, SDL_GetError());
+            s = SDL_SetVideoMode(mw, mh, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
+            if (!s) fprintf(stderr, "gfx_sdl12: %dx%d refused (%s); 640x480\n", mw, mh, SDL_GetError());
         }
     }
-    if (!sScreen) sScreen = SDL_SetVideoMode(SCREEN_W, SCREEN_H, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
-    if (!sScreen) {
-        sScreen = SDL_SetVideoMode(SCREEN_W, SCREEN_H, 16, SDL_HWSURFACE | SDL_DOUBLEBUF);
+    if (!s) s = SDL_SetVideoMode(SCREEN_W, SCREEN_H, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
+    if (!s) {
+        s = SDL_SetVideoMode(SCREEN_W, SCREEN_H, 16, SDL_HWSURFACE | SDL_DOUBLEBUF);
     }
-    if (sScreen) fprintf(stderr, "gfx_sdl12: %dx%d, %d bpp, pitch %d\n", sScreen->w, sScreen->h, sScreen->format->BitsPerPixel, sScreen->pitch);
+    if (s) fprintf(stderr, "gfx_sdl12: %dx%d, %d bpp, pitch %d\n", s->w, s->h, s->format->BitsPerPixel, s->pitch);
+    return s;
+}
+
+static void gfx_sdl12_init(const char *game_name, bool start_in_fullscreen) {
+    (void)game_name; (void)start_in_fullscreen;
+    /* No SDL_INIT_TIMER: nothing uses SDL timers (SDL_GetTicks/SDL_Delay work
+     * without it), and SDL 1.2's threaded timer wakes every 1 ms for good. */
+    SDL_Init(SDL_INIT_VIDEO);
+    { /* debug.cfg bilinear=0 / magbilin=0 (-> OOT_*): the desktop backend's A/B switches */
+        extern int gfx_soft_bilinear, gfx_soft_magbilin;
+        const char *b = getenv("GE_BILINEAR");
+        if (b && b[0]) gfx_soft_bilinear = (b[0] == '1');
+        b = getenv("GE_MAGBILIN");
+        if (b && b[0]) gfx_soft_magbilin = (b[0] == '1');
+    }
+    SDL_ShowCursor(SDL_DISABLE);
+    sScreen = gfx_miyoo_open_panel();
     if (!sScreen) {
         fprintf(stderr, "gfx_sdl12: SDL_SetVideoMode failed: %s\n", SDL_GetError());
         exit(1);

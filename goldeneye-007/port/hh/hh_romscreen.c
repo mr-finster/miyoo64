@@ -27,14 +27,17 @@
 #define HH_LAZY_MS 1500 /* a later start's fill shows the screen only past this (GE_LAZY_MS=<ms>: a test knob) */
 
 #if defined(TARGET_MIYOO)
-/* The Miyoo Mini: the same screens at 640x480, 32 bpp (the mode gfx_sdl12.c then keeps), in the
- * menu's 8x8 font (miyoo_font.h; the Mini has no handheld OS fonts), every coordinate the handheld's
- * doubled, and turned 180 degrees as the game is (gfx_miyoo_rotate: GE_ROTATE). */
+/* The Miyoo Mini: the same screens drawn at 640x480, 32 bpp, in the menu's 8x8 font (miyoo_font.h; the
+ * Mini has no handheld OS fonts), every coordinate the handheld's doubled, and turned 180 degrees as the
+ * game is (gfx_miyoo_rotate: GE_ROTATE). The screen is opened as the game opens it (gfx_miyoo_open_panel,
+ * the mode gfx_sdl12.c then keeps): 640x480 on a Mini; on a Mini v4 / Flip the panel's own 752x560, the
+ * picture at its full height as the game's (GE_FLIPFILL). */
 #include <SDL/SDL.h>
 #include "miyoo_font.h"
 #define MW 640
 #define MH 480
 extern int gfx_miyoo_rotate(void); /* gfx_sdl12.c */
+extern SDL_Surface *gfx_miyoo_open_panel(void); /* gfx_sdl12.c */
 static SDL_Surface *sScr, *sDraw;
 static int sTried;
 
@@ -47,9 +50,7 @@ static void ui_begin(void)
         printf("[card] screen: SDL_Init: %s (the log only)\n", SDL_GetError());
         return;
     }
-    sScr = SDL_SetVideoMode(MW, MH, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
-    if (sScr == NULL)
-        sScr = SDL_SetVideoMode(MW, MH, 16, SDL_HWSURFACE | SDL_DOUBLEBUF);
+    sScr = gfx_miyoo_open_panel();
     sDraw = SDL_CreateRGBSurface(SDL_SWSURFACE, MW, MH, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0);
     if (sScr == NULL || sDraw == NULL) {
         printf("[card] screen: SDL_SetVideoMode: %s (the log only)\n", SDL_GetError());
@@ -135,6 +136,32 @@ static void ui_show(void)
             Uint32 *dst = (Uint32 *)((Uint8 *)sScr->pixels + (MH - 1 - y) * sScr->pitch);
             for (x = 0; x < MW; x++)
                 dst[MW - 1 - x] = src[x] | 0xFF000000u;
+        }
+        if (SDL_MUSTLOCK(sScr))
+            SDL_UnlockSurface(sScr);
+    } else if (sScr->format->BitsPerPixel == 32 && (sScr->w != MW || sScr->h != MH)) {
+        /* a larger panel (Mini v4 / Flip): at its full height, centred, nearest, as gfx_sdl12.c's
+         * blit_stage_to_screen (a width within 2% of the panel's takes all of it: 752x560 whole) */
+        const int W = sScr->w, H = sScr->h, rot = gfx_miyoo_rotate();
+        int dw = H * MW / MH, ox;
+        if (dw > W || (W - dw) * 50 <= W)
+            dw = W;
+        ox = (W - dw) / 2;
+        if (SDL_MUSTLOCK(sScr))
+            SDL_LockSurface(sScr);
+        for (y = 0; y < H; y++) {
+            const Uint32 *src = (const Uint32 *)((Uint8 *)sDraw->pixels + (y * MH / H) * sDraw->pitch);
+            Uint32 *dst = (Uint32 *)((Uint8 *)sScr->pixels + (rot ? H - 1 - y : y) * sScr->pitch);
+            for (x = 0; x < W; x++) {
+                Uint32 p = 0xFF000000u;
+                if (x >= ox && x < ox + dw) {
+                    int sx = ((x - ox) * MW + MW / 2) / dw;
+                    if (sx >= MW)
+                        sx = MW - 1;
+                    p = src[sx] | 0xFF000000u;
+                }
+                dst[rot ? W - 1 - x : x] = p;
+            }
         }
         if (SDL_MUSTLOCK(sScr))
             SDL_UnlockSurface(sScr);

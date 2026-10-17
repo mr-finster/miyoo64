@@ -301,6 +301,11 @@ static SDL_Surface *set_video_mode(int w, int h) {
     return s;
 #endif
 }
+#if defined(MIYOO)
+/* hh_romscreen.c: the first-start screens open the panel as the game does (a Mini v4 / Flip: its own 752x560, not
+ * a 640x480 the OS shows boxed), so they fill it the same way and the game's mode switch keeps the size. */
+SDL_Surface *gfx_miyoo_open_panel(void) { return set_video_mode(0, 0); }
+#endif
 
 static void gfx_sdl12_init(const char *game_name, bool start_in_fullscreen) {
     (void)game_name; (void)start_in_fullscreen;

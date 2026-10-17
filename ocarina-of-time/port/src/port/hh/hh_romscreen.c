@@ -12,8 +12,9 @@ void HhRomScreen_NoData(void);
 
 #if defined(MIYOO)
 /* Miyoo Mini: the same layout at 320x240 in the menus' bitmap font (kit miyoo_menu.c: 2x for the
- * title, 1x for the rest), no font file; each screen is doubled onto the 640x480 32 bpp panel and
- * turned as the game is (gfx_sdl12.c). A "font" here is just its scale. */
+ * title, 1x for the rest), no font file; each screen goes onto the panel as the game's picture does
+ * (gfx_sdl12.c): doubled on a Mini's 640x480, at full height on a Mini v4 / Flip's 752x560 (OOT_FLIPFILL),
+ * and turned. A "font" here is just its scale. */
 #include <stdint.h>
 #include <SDL/SDL.h>
 #include "handheld_menu.h"
@@ -24,12 +25,12 @@ static SDL_Surface* sPanel; /* the panel */
 static TTF_Font *sFontBig, *sFontSmall;
 static char sSub[64];
 extern int gfx_miyoo_rotate(void);
+extern SDL_Surface* gfx_miyoo_open_panel(void); /* gfx_sdl12.c: the mode the game then keeps */
 
 static void ui_begin(void) {
     if (sScr) return;
     if (SDL_Init(SDL_INIT_VIDEO) < 0) { fprintf(stderr, "hh: SDL_Init: %s\n", SDL_GetError()); return; }
-    sPanel = SDL_SetVideoMode(640, 480, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
-    if (!sPanel) sPanel = SDL_SetVideoMode(640, 480, 16, SDL_HWSURFACE | SDL_DOUBLEBUF);
+    sPanel = gfx_miyoo_open_panel(); /* 640x480 on a Mini, the panel's own size on a Mini v4 / Flip */
     if (!sPanel) { fprintf(stderr, "hh: SDL_SetVideoMode: %s\n", SDL_GetError()); return; }
     sScr = SDL_CreateRGBSurface(SDL_SWSURFACE, 320, 240, 16, 0xF800, 0x07E0, 0x001F, 0);
     SDL_ShowCursor(SDL_DISABLE);
@@ -45,17 +46,27 @@ static void ui_text(int y, const char* s, TTF_Font* f, int gray) {
     const unsigned int c = 0xFF000000u | ((unsigned)gray << 16) | ((unsigned)gray << 8) | (unsigned)gray;
     miyoo_text(sScr, (sScr->w - miyoo_text_w(fit, f->k)) / 2, y + (f->k == 1 ? 2 : 1), f->k, fit, c);
 }
-/* sScr doubled onto the panel, turned as the game is */
+/* sScr onto the panel, turned, as the game's picture (gfx_sdl12.c blit_stage_to_screen): at the panel's full
+ * height, centred, nearest; a width within 2% of the panel's takes all of it. 640x480: the exact 2x. */
 static void ui_flip(void) {
     if (!sPanel || !sScr) return;
-    const int rot = gfx_miyoo_rotate(), pw = sPanel->w, ph = sPanel->h;
+    const int rot = gfx_miyoo_rotate(), pw = sPanel->w, ph = sPanel->h, sw = sScr->w, sh = sScr->h;
+    int dw = ph * sw / sh;
+    if (dw > pw || (pw - dw) * 50 <= pw) dw = pw;
+    const int ox = (pw - dw) / 2;
+    const Uint32 black = SDL_MapRGB(sPanel->format, 0, 0, 0) | sPanel->format->Amask;
     if (SDL_MUSTLOCK(sPanel)) SDL_LockSurface(sPanel);
-    for (int y = 0; y < ph && y / 2 < sScr->h; y++) {
-        const uint16_t* src = (const uint16_t*) ((const uint8_t*) sScr->pixels + (y / 2) * sScr->pitch);
+    for (int y = 0; y < ph; y++) {
+        const uint16_t* src = (const uint16_t*) ((const uint8_t*) sScr->pixels + (y * sh / ph) * sScr->pitch);
         uint8_t* row = (uint8_t*) sPanel->pixels + (rot ? ph - 1 - y : y) * sPanel->pitch;
-        for (int x = 0; x < pw && x / 2 < sScr->w; x++) {
-            const uint16_t p = src[x / 2];
-            const Uint32 m = SDL_MapRGB(sPanel->format, (Uint8) ((p >> 8) & 0xF8), (Uint8) ((p >> 3) & 0xFC), (Uint8) (p << 3)) | sPanel->format->Amask;
+        for (int x = 0; x < pw; x++) {
+            Uint32 m = black;
+            if (x >= ox && x < ox + dw) {
+                int sx = ((x - ox) * sw + sw / 2) / dw;
+                if (sx >= sw) sx = sw - 1;
+                const uint16_t p = src[sx];
+                m = SDL_MapRGB(sPanel->format, (Uint8) ((p >> 8) & 0xF8), (Uint8) ((p >> 3) & 0xFC), (Uint8) (p << 3)) | sPanel->format->Amask;
+            }
             const int dx = rot ? pw - 1 - x : x;
             if (sPanel->format->BitsPerPixel == 32) ((Uint32*) row)[dx] = m;
             else ((Uint16*) row)[dx] = (Uint16) m;
