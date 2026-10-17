@@ -4,6 +4,8 @@
 #include <sc/scene.h>
 #include <sys/video.h>
 #ifdef PORT
+#include <stddef.h>
+#include <stdio.h>
 #include <sys/audio.h>
 #include <sys/dma.h>
 #endif
@@ -151,6 +153,161 @@ s32 lbBackupPortReapply(const u8 *sram, u32 size)
     gSCManagerBackupData = card;
 
     return ret;
+}
+
+/* Save import (hh/sram.c's hh_sram_import, 2026-10-16). sram.bin is NOT a cartridge image: the game's
+ * syDmaReadSram/syDmaWriteSram (sys/dma.c) are a plain memcpy of gSCManagerBackupData, so sram.bin holds
+ * this struct in the host's (little-endian) byte order, two copies (0x000 and 0x5F0). A save from an
+ * emulator or a flash cart has the cartridge's big-endian fields: copied in as it is, every u16/u32 is
+ * reversed, the checksum fails and lbBackupIsSramValid formats it (the player's "fresh game"). A whole-file
+ * swap cannot fix it (u8, u16 and u32 fields sit side by side): each field is swapped here, then the
+ * checksum is made again the game's way.
+ * lbBackupPortImportCart: cart = a 32 KB SRAM image in the cartridge's byte order. Takes copy 0 if its
+ * checksum (the game's formula, on the cartridge's bytes) and signature hold, else copy 1, converts it and
+ * writes it as both copies into out (32 KB, the rest zero), as lbBackupWrite would. Returns the copy used
+ * (0 or 1), or -1 (neither valid: nothing written). info: a short summary for the log.
+ * lbBackupPortIsNativeValid: the port's own sram.bin check (lbBackupIsSramValid's): 0 or 1 the copy, -1. */
+#define LBBACKUP_PORT_CS_OFF (sizeof(LBBackupData) - sizeof(gSCManagerBackupData.checksum))
+_Static_assert(sizeof(LBBackupData) == 0x5EC, "LBBackupData is the cartridge's 0x5EC bytes");
+_Static_assert(offsetof(LBBackupData, signature) == 0x5E4, "signature at the cartridge's offset");
+_Static_assert(offsetof(LBBackupData, checksum) == 0x5E8, "checksum at the cartridge's offset");
+
+static void lbBackupPortSwap16(void *p)
+{
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+    (void)p;
+#else
+    u8 *b = p, t = b[0];
+
+    b[0] = b[1];
+    b[1] = t;
+#endif
+}
+
+static void lbBackupPortSwap32(void *p)
+{
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+    (void)p;
+#else
+    u8 *b = p, t;
+
+    t = b[0]; b[0] = b[3]; b[3] = t;
+    t = b[1]; b[1] = b[2]; b[2] = t;
+#endif
+}
+
+static sb32 lbBackupPortIsCartValid(const u8 *blk)
+{
+    u32 i, sum = 0;
+
+    for (i = 0; i < LBBACKUP_PORT_CS_OFF; i++)
+    {
+        sum += blk[i] * (i + 1);
+    }
+    return (sum == (((u32)blk[0x5E8] << 24) | ((u32)blk[0x5E9] << 16) | ((u32)blk[0x5EA] << 8) | blk[0x5EB])) &&
+           ((((u32)blk[0x5E4] << 8) | blk[0x5E5]) == 666);
+}
+
+s32 lbBackupPortIsNativeValid(const u8 *sram, u32 size)
+{
+    const u32 copy1 = ALIGN(sizeof(LBBackupData), 0x10);
+    LBBackupData b;
+
+    if (size < copy1 + sizeof(LBBackupData))
+    {
+        return -1;
+    }
+    memcpy(&b, sram, sizeof(b));
+
+    if (lbBackupPortIsValid(&b) != FALSE)
+    {
+        return 0;
+    }
+    memcpy(&b, sram + copy1, sizeof(b));
+
+    return (lbBackupPortIsValid(&b) != FALSE) ? 1 : -1;
+}
+
+s32 lbBackupPortImportCart(const u8 *cart, u32 size, u8 *out, u32 out_size, char *info, u32 info_size)
+{
+    const u32 copy1 = ALIGN(sizeof(LBBackupData), 0x10);
+    LBBackupData b;
+    s32 i, j, which;
+
+    if ((size < copy1 + sizeof(LBBackupData)) || (out_size < copy1 + sizeof(LBBackupData)))
+    {
+        return -1;
+    }
+    if (lbBackupPortIsCartValid(cart) != FALSE)
+    {
+        which = 0;
+    }
+    else if (lbBackupPortIsCartValid(cart + copy1) != FALSE)
+    {
+        which = 1;
+    }
+    else return -1;
+
+    memcpy(&b, cart + ((which != 0) ? copy1 : 0), sizeof(b));
+
+    for (i = 0; i < ARRAY_COUNT(b.vs_records); i++)
+    {
+        LBBackupVSRecord *r = &b.vs_records[i];
+
+        for (j = 0; j < GMCOMMON_FIGHTERS_PLAYABLE_NUM; j++)
+        {
+            lbBackupPortSwap16(&r->ko_count[j]);
+            lbBackupPortSwap16(&r->player_count_tallies[j]);
+            lbBackupPortSwap16(&r->played_against[j]);
+        }
+        lbBackupPortSwap32(&r->time_used);
+        lbBackupPortSwap32(&r->damage_given);
+        lbBackupPortSwap32(&r->damage_taken);
+        lbBackupPortSwap16(&r->unk);
+        lbBackupPortSwap16(&r->selfdestructs);
+        lbBackupPortSwap16(&r->games_played);
+        lbBackupPortSwap16(&r->player_count_tally);
+    }
+    lbBackupPortSwap16(&b.screen_adjust_h);
+    lbBackupPortSwap16(&b.screen_adjust_v);
+    lbBackupPortSwap16(&b.fighter_mask);
+
+    for (i = 0; i < ARRAY_COUNT(b.spgame_records); i++)
+    {
+        LBBackup1PRecord *r = &b.spgame_records[i];
+
+        lbBackupPortSwap32(&r->spgame_hiscore);
+        lbBackupPortSwap32(&r->spgame_continues);
+        lbBackupPortSwap32(&r->spgame_total_bonuses);
+        lbBackupPortSwap32(&r->bonus1_time);
+        lbBackupPortSwap32(&r->bonus2_time);
+    }
+    lbBackupPortSwap16(&b.ground_mask);
+    lbBackupPortSwap16(&b.vs_total_battles);
+    lbBackupPortSwap16(&b.signature);
+    b.checksum = lbBackupCreateChecksum(&b);
+
+    if (lbBackupPortIsValid(&b) == FALSE)
+    {
+        return -1;
+    }
+    memset(out, 0, out_size);
+    memcpy(out, &b, sizeof(b));
+    memcpy(out + copy1, &b, sizeof(b));
+
+    if ((info != NULL) && (info_size != 0))
+    {
+        s32 fighters = 0, done = 0;
+
+        for (i = 0; i < GMCOMMON_FIGHTERS_PLAYABLE_NUM; i++)
+        {
+            fighters += ((b.fighter_mask | LBBACKUP_CHARACTER_MASK_STARTER) >> i) & 1;
+            done += b.spgame_records[i].is_spgame_complete != FALSE;
+        }
+        snprintf(info, info_size, "%d of 12 fighters, unlocks 0x%02X, 1P cleared with %d, %u VS battles",
+                 fighters, b.unlock_mask, done, b.vs_total_battles);
+    }
+    return which;
 }
 
 /* main.c's SSB64_SAVEWRITE_AT (test hook): the title screen's save write, as mnTitleStartScene does it on a

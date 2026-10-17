@@ -68,6 +68,22 @@ Folders for other OSes just sit unused. Everything the game writes stays in
 you make one), `console.log` from the last session plus the one before it, and `launch.log` and
 `games_launch.log`, which record each start.
 
+### Bringing a save from an emulator or a flash cart
+
+Drop your `.sra`, `.srm` or `.sav` into `App/SuperSmashBros/data/` and start the game. It finds the
+file, works out its byte order, converts it and installs it as `sram.bin`; the old `sram.bin` is kept
+as `sram.bin.bak-<date>`, and your file is renamed `<name>.imported` so it is not applied twice.
+`console.log` has one line saying what it found (`save import: ...: OK, ...` or why not). If a save
+state or the auto save is older than the import, loading it keeps the imported unlocks and records.
+
+`sram.bin` is not a cartridge image (it holds the game's save in the handheld's byte order), so do
+not rename a `.sra` to `sram.bin` yourself; if you already did, the next start converts that too.
+
+Checked: Project64 and mupen64plus `.sra`, RetroArch Mupen64Plus-Next / ParaLLEl `.srm` (the whole
+combined file), EverDrive / flash-cart `.sav` (the cartridge's own byte order), and 16-bit swapped
+files. The save must be from the USA version: a PAL or Japanese save, a blank one or another game's
+is refused and nothing is changed. The save states (`state_*.sav`) are never touched by this.
+
 The zip comes from `miyoo/tools/miyoo_pack.py` (shared by all the ports, from the shared Miyoo kit)
 with this port's `miyoo/game.json`. Given `--rom`, it checks the dump and puts it in as
 `App/SuperSmashBros/rom.z64`. (The name has no full stop on the Mini: the OSes' entries add their own

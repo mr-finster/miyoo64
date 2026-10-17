@@ -648,6 +648,10 @@ int main(int argc, char **argv)
         port_log_always("SSB64: %s\n", err);
         return 1;
     }
+    /* A .sra/.srm/.sav the player dropped into the data folder becomes sram.bin (sram.c), before the boot
+     * resume can load a state (whose save then gives way to it: hh_game_save_reapply) and before the game
+     * first reads its save. */
+    { extern void hh_sram_import(void); hh_sram_import(); }
     gfx_init(&gfx_sdl, &gfx_soft_api, "Super Smash Bros.", false);
     hh_audio_init();
     /* Save states need the ROM slice at its fixed address: the restored game memory points into it. */

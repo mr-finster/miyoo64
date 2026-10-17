@@ -11,4 +11,7 @@
 #define HH_SRAM_SIZE 0x8000u
 int hh_sram_read(uint32_t offset, void *dst, uint32_t size);
 int hh_sram_write(uint32_t offset, const void *src, uint32_t size);
+/* A .sra/.srm/.sav dropped into the data folder (or a cartridge save renamed sram.bin) converted into
+ * sram.bin, once, at start-up (sram.c says how). */
+void hh_sram_import(void);
 #endif
