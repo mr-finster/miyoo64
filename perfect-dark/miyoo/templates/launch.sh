@@ -32,6 +32,14 @@ CPU1=/sys/devices/system/cpu/cpu1/online
 [ -f "$CPU1" ] && [ "$(cat "$CPU1" 2>/dev/null)" = 0 ] && { echo 1 > "$CPU1"; } 2>/dev/null
 echo "cores online: $(cat /sys/devices/system/cpu/online 2>/dev/null)" >> data/launch.log
 echo "LD_PRELOAD=$LD_PRELOAD @ENV@_ROTATE=$@ENV@_ROTATE" >> data/launch.log
+# Onion on a Mini v4 / Mini Flip (752x560 panel) leaves /tmp/new_res_available and sets the screen to 752x560
+# for this game (App/@FOLDER@/full_resolution, FullResolution=1 in the Ports shortcut). If the screen is still
+# 640x480 here, the game opens that and shows small: logged, not changed (the game takes the screen as it is).
+if [ -f /tmp/new_res_available ]; then
+    FB0=$(cat /sys/class/graphics/fb0/virtual_size 2>/dev/null)
+    echo "752x560 panel (Onion /tmp/new_res_available); fb0 at start: ${FB0:-unknown}" >> data/launch.log
+    case "$FB0" in 640,*) echo "WARNING: the screen is 640x480 on a 752x560 panel: the game will not fill it" >> data/launch.log ;; esac
+fi
 chmod +x ./@EXE@ 2>/dev/null
 # exec: the OS's SIGTERM / SIGSTOP must reach the game itself (Allium signals only the process it
 # started; spruce kills it outright, so the game saves often anyway).
