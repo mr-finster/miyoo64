@@ -271,6 +271,93 @@ static inline void osEepromSetPath(void)
 	}
 }
 
+#ifdef PLATFORM_MIYOO
+/* The Miyoo: eeprom.bin is all of the player's progress, and the OS can end the game without a clean quit
+ * (Onion's power-off after a sleep SIGKILLs it ~1.4 s after its SIGTERM; a flat battery cuts the power).
+ * Each game save goes to the card at once and never truncates the only copy, as in the other nine ports
+ * (SM64 hh_eeprom.c, GoldenEye hh_hw.c): eeprom.bin.tmp, fsync, rename over eeprom.bin, fsync the renamed
+ * file (vfat writes the new directory slot only at that inode's writeback or its own fsync: k1.7), fsync
+ * the folder. A failure keeps the old eeprom.bin. A cut between vfat's two rename steps leaves only the
+ * .tmp, fsynced whole: the load takes it. Up to 1.1.1 this was a truncating fopen("wb") with no fsync. */
+#include <fcntl.h>
+#include <unistd.h>
+
+/* 1 = a whole image read from path into eeprom (a short file is left zero-padded) */
+static s32 eepromReadFile(const char *path)
+{
+	size_t n = 0;
+	FILE *fp = fopen(path, "rb");
+	memset(eeprom, 0, sizeof(eeprom));
+	if (fp) {
+		n = fread(eeprom, 1, EEPROM_SIZE, fp);
+		fclose(fp);
+	}
+	return n == EEPROM_SIZE;
+}
+
+static inline void osEeepromLoad(const char *fname)
+{
+	char path[FS_MAXPATH + 1], tmp[FS_MAXPATH + 8];
+	if (eepromLoaded) {
+		return;
+	}
+	eepromLoaded = 1;
+	snprintf(path, sizeof(path), "%s", fsFullPath(fname));
+	snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+	if (eepromReadFile(path)) {
+		return;
+	}
+	if (eepromReadFile(tmp)) {
+		sysLogPrintf(LOG_NOTE, "EEPROM: `%s` missing or short, using the .tmp of an unfinished save", path);
+		rename(tmp, path);
+		return;
+	}
+	/* no save yet (zeros: the game formats it), or a short file: what is there, as before */
+	if (!eepromReadFile(path)) {
+		sysLogPrintf(LOG_NOTE, "could not read a whole EEPROM from `%s`: %s", path, strerror(errno));
+	}
+}
+
+static inline void osEeepromSave(const char *fname)
+{
+	char path[FS_MAXPATH + 1], tmp[FS_MAXPATH + 8], dir[FS_MAXPATH + 1];
+	const char *stage = NULL;
+	char *slash;
+	int err = 0;
+	FILE *fp;
+	const u64 t0 = sysGetMicroseconds();
+	snprintf(path, sizeof(path), "%s", fsFullPath(fname));
+	snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+	fp = fopen(tmp, "wb");
+	if (!fp) stage = "open";
+	else if (fwrite(eeprom, 1, EEPROM_SIZE, fp) != EEPROM_SIZE) stage = "write";
+	else if (fflush(fp) != 0) stage = "flush";
+	else if (fsync(fileno(fp)) != 0) stage = "fsync";
+	else if (rename(tmp, path) != 0) stage = "rename";
+	if (stage) {
+		err = errno;
+		if (fp) fclose(fp);
+		remove(tmp);
+		sysLogPrintf(LOG_ERROR, "could not save EEPROM to `%s` (%s: %s); the previous save is kept", path, stage, strerror(err));
+		return;
+	}
+	fsync(fileno(fp)); /* the renamed file's directory slot (see above) */
+	fclose(fp);
+	snprintf(dir, sizeof(dir), "%s", path);
+	slash = strrchr(dir, '/');
+	if (slash) {
+		int d;
+		if (slash == dir) slash[1] = '\0'; else *slash = '\0';
+		d = open(dir, O_RDONLY);
+		if (d >= 0) {
+			fsync(d);
+			close(d);
+		}
+	}
+	/* one line per game save in console.log: when the game last saved, and the card's time for it */
+	sysLogPrintf(LOG_NOTE, "EEPROM: saved to the card (%u ms)", (unsigned)((sysGetMicroseconds() - t0) / 1000));
+}
+#else
 static inline void osEeepromLoad(const char *fname)
 {
 	if (!eepromLoaded) {
@@ -295,6 +382,7 @@ static inline void osEeepromSave(const char *fname)
 		sysLogPrintf(LOG_ERROR, "could not save EEPROM to `%s`: %s", fsFullPath(fname), strerror(errno));
 	}
 }
+#endif
 
 s32 osEepromProbe(OSMesgQueue *mq)
 {
