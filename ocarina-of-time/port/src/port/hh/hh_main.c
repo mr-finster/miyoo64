@@ -826,6 +826,10 @@ int main(int argc, char** argv) {
     OotPspControls_Load();
     OotPspGame_Init();
     Graph_Init(&L->gfxCtx);
+    {
+        extern void HhOvl_LogInit(void);
+        HhOvl_LogInit(); /* hh_ovl.c: overlay reloads, as the N64 does them */
+    }
     L->nextInit = Setup_Init;
     L->nextSize = sizeof(SetupState);
 
@@ -838,6 +842,11 @@ int main(int argc, char** argv) {
         printf("hh: gamestate init=%p size=%u\n", (void*)L->nextInit, (unsigned)L->nextSize);
         L->curInit = L->nextInit;
         gHhLoopStage = "game state init"; /* a scene load: no frame drawn until it ends */
+        {   /* the N64 loads a game state's overlay as the state starts and frees it as it ends (graph.c): its
+             * .data/.bss as that fresh load would leave them (hh_ovl.c) */
+            extern void HhOvl_GameStateLoad(void* init);
+            HhOvl_GameStateLoad((void*)L->nextInit);
+        }
         GameState_Init(L->gameState, L->nextInit, &L->gfxCtx);
 
         while (GameState_IsRunning(L->gameState)) {

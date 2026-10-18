@@ -128,8 +128,10 @@ CFLAGS := $(OPT_FLAGS) $(MARCH) -std=gnu11 -fsigned-char -fno-strict-aliasing -f
 
 # -Ttext-segment=0x40000000: real pointers stay above the N64 segment window
 # (0x01000000-0x0FFFFFFF) AND the packed-asset handles (0x20000000+).
-# gamestate.ld: the save-state include list (the .game_data/.game_bss ranges).
-LDFLAGS := $(MARCH) -no-pie -Wl,--gc-sections -Wl,-Ttext-segment=0x40000000 -Wl,-T,gamestate.ld \
+# gamestate.ld: the save-state include list (the .game_data/.game_bss ranges), linked as build/hh-gen/gamestate.ld:
+# the same with each overlay's .data/.bss between symbols (tools/handheld/ovl_ld.py; hh_ovl.c: overlay reloads).
+OVL_LD  := build/hh-gen/gamestate.ld
+LDFLAGS := $(MARCH) -no-pie -Wl,--gc-sections -Wl,-Ttext-segment=0x40000000 -Wl,-T,$(OVL_LD) \
            -Wl,--defsym=_ftext=__executable_start -Wl,--defsym=_fbss=__bss_start \
            -Wl,--defsym=__assets_start=__bss_start -Wl,--defsym=__assets_end=__bss_start
 LIBS    := $(SDL_LIBS) -lz -lm -lpthread -ldl
@@ -224,6 +226,10 @@ EMBED_BIN   := $(BUILD_DIR)/embedded.bin
 STAMP_C := $(BUILD_DIR)/build_stamp.c
 STAMP_O := $(STAMP_C:.c=.o)
 
+$(OVL_LD): gamestate.ld tools/handheld/ovl_ld.py $(wildcard src/overlays/*/*)
+	@mkdir -p $(dir $@)
+	$(V)$(PYTHON) tools/handheld/ovl_ld.py src/overlays gamestate.ld $@
+
 $(LD_NOLOAD): Makefile.handheld
 	@mkdir -p $(dir $@)
 	$(V)printf '$(call EMBED_LD_SCRIPT,(NOLOAD))' > $@
@@ -231,16 +237,16 @@ $(LD_PROGBITS): Makefile.handheld
 	@mkdir -p $(dir $@)
 	$(V)printf '$(call EMBED_LD_SCRIPT,)' > $@
 # port_build_stamp: the same value under the name handheld-kit's savestate.c reads.
-$(STAMP_C): $(O_FILES) $(GEN_O) $(LD_NOLOAD) gamestate.ld
+$(STAMP_C): $(O_FILES) $(GEN_O) $(LD_NOLOAD) $(OVL_LD)
 	$(V)S=$$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n'); printf '/* generated per link */\n#include <stdint.h>\nconst uint32_t hh_build_stamp = 0x%s;\nconst uint32_t port_build_stamp = 0x%s;\n' "$$S" "$$S" > $@
 $(STAMP_O): $(STAMP_C)
 	$(V)$(CC) -c $(MARCH) -o $@ $<
 
-$(ELF): $(O_FILES) $(GEN_O) $(STAMP_O) $(LD_NOLOAD) gamestate.ld
+$(ELF): $(O_FILES) $(GEN_O) $(STAMP_O) $(LD_NOLOAD) $(OVL_LD)
 	$(V)$(CC) $(LDFLAGS) -Wl,-T,$(LD_NOLOAD) -o $@ $(O_FILES) $(GEN_O) $(STAMP_O) $(LIBS)
 	@ls -lh $@
 
-$(ELF_EMBED): $(O_FILES) $(GEN_O) $(STAMP_O) $(LD_PROGBITS) $(ELF) gamestate.ld
+$(ELF_EMBED): $(O_FILES) $(GEN_O) $(STAMP_O) $(LD_PROGBITS) $(ELF) $(OVL_LD)
 	$(V)$(CC) $(LDFLAGS) -Wl,-T,$(LD_PROGBITS) -o $@ $(O_FILES) $(GEN_O) $(STAMP_O) $(LIBS)
 
 $(EMBED_BIN): $(ELF_EMBED) $(ELF)

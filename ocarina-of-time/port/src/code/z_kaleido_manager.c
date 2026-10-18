@@ -31,6 +31,12 @@ void KaleidoManager_LoadOvl(KaleidoMgrOverlay* ovl) {
     if (ovl != NULL) {
         ovl->loadedRamAddr = NULL;
         ovl->offset = 0;
+#ifdef TARGET_HANDHELD
+        { /* linked in: its .data/.bss as a fresh load into the kaleido area would leave them (hh_ovl.c) */
+            extern void HhOvl_KaleidoLoad(s32 index);
+            HhOvl_KaleidoLoad(ovl - gKaleidoMgrOverlayTable);
+        }
+#endif
     }
     gKaleidoMgrCurOvl = ovl;
 }

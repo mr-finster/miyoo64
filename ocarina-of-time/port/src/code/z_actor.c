@@ -2369,6 +2369,12 @@ void Actor_InitContext(PlayState* play, ActorContext* actorCtx, ActorEntry* play
         overlayEntry->numLoaded = 0;
         overlayEntry++;
     }
+#ifdef TARGET_HANDHELD
+    { /* a new arena: every actor overlay is loaded afresh (hh_ovl.c) */
+        extern void HhOvl_ActorFreeAll(void);
+        HhOvl_ActorFreeAll();
+    }
+#endif
 
     actorCtx->flags.chest = savedSceneFlags->chest;
     actorCtx->flags.swch = savedSceneFlags->swch;
@@ -3184,6 +3190,12 @@ Actor* Actor_RemoveFromCategory(PlayState* play, ActorContext* actorCtx, Actor* 
 
 void Actor_FreeOverlay(ActorOverlay* actorOverlay) {
     PRINTF_COLOR_CYAN();
+#ifdef TARGET_HANDHELD
+    { /* a failed spawn: with no instances left the overlay is freed, the next spawn reloads it (hh_ovl.c) */
+        extern void HhOvl_ActorRelease(s32 id, s32 persistent, s32 drop);
+        HhOvl_ActorRelease(actorOverlay - gActorOverlayTable, actorOverlay->allocType & ACTOROVL_ALLOC_PERSISTENT, 0);
+    }
+#endif
 
     if (actorOverlay->numLoaded == 0) {
         ACTOR_DEBUG_PRINTF(T("アクタークライアントが０になりました\n", "Actor clients are now 0\n"));
@@ -3248,6 +3260,12 @@ Actor* Actor_Spawn(ActorContext* actorCtx, PlayState* play, s16 actorId, f32 pos
 
     if (overlayEntry->vramStart == NULL) {
         ACTOR_DEBUG_PRINTF(T("オーバーレイではありません\n", "Not an overlay\n"));
+#ifdef TARGET_HANDHELD
+        { /* linked in: its .data/.bss as a fresh load would leave them (hh_ovl.c) */
+            extern void HhOvl_ActorLoad(s32 id);
+            HhOvl_ActorLoad(actorId);
+        }
+#endif
 
         profile = overlayEntry->profile;
     } else {
@@ -3334,6 +3352,12 @@ Actor* Actor_Spawn(ActorContext* actorCtx, PlayState* play, s16 actorId, f32 pos
     ASSERT(overlayEntry->numLoaded < 255, "actor_dlftbl->clients < 255", "../z_actor.c", 7031);
 
     overlayEntry->numLoaded++;
+#ifdef TARGET_HANDHELD
+    { /* one more instance of this overlay (hh_ovl.c) */
+        extern void HhOvl_ActorRef(s32 id);
+        HhOvl_ActorRef(actorId);
+    }
+#endif
 
     if (1) {}
 
@@ -3481,6 +3505,12 @@ Actor* Actor_Delete(ActorContext* actorCtx, Actor* actor, PlayState* play) {
 
     if (overlayEntry->vramStart == NULL) {
         ACTOR_DEBUG_PRINTF(T("オーバーレイではありません\n", "Not an overlay\n"));
+#ifdef TARGET_HANDHELD
+        { /* one instance fewer: with none left the overlay is freed, the next spawn reloads it (hh_ovl.c) */
+            extern void HhOvl_ActorRelease(s32 id, s32 persistent, s32 drop);
+            HhOvl_ActorRelease(overlayEntry - gActorOverlayTable, overlayEntry->allocType & ACTOROVL_ALLOC_PERSISTENT, 1);
+        }
+#endif
     } else {
         ASSERT(overlayEntry->loadedRamAddr != NULL, "actor_dlftbl->allocp != NULL", "../z_actor.c", 7251);
         ASSERT(overlayEntry->numLoaded > 0, "actor_dlftbl->clients > 0", "../z_actor.c", 7252);

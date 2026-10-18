@@ -41,6 +41,12 @@ void EffectSs_InitInfo(PlayState* play, s32 tableSize) {
         overlay->loadedRamAddr = NULL;
         overlay++;
     }
+#ifdef TARGET_HANDHELD
+    { /* a new arena: every effect overlay is loaded afresh (hh_ovl.c) */
+        extern void HhOvl_EffectFreeAll(void);
+        HhOvl_EffectFreeAll();
+    }
+#endif
 }
 
 void EffectSs_ClearAll(PlayState* play) {
@@ -69,6 +75,12 @@ void EffectSs_ClearAll(PlayState* play) {
         overlay->loadedRamAddr = NULL;
         overlay++;
     }
+#ifdef TARGET_HANDHELD
+    { /* freed: reloaded on their next spawn (hh_ovl.c) */
+        extern void HhOvl_EffectFreeAll(void);
+        HhOvl_EffectFreeAll();
+    }
+#endif
 }
 
 void EffectSs_Delete(EffectSs* effectSs) {
@@ -197,6 +209,12 @@ void EffectSs_Spawn(PlayState* play, s32 type, s32 priority, void* initParams) {
     if (overlayEntry->vramStart == NULL) {
         PRINTF(T("EffectSoftSprite2_makeEffect():オーバーレイではありません。\n",
                  "EffectSoftSprite2_makeEffect(): Not an overlay.\n"));
+#ifdef TARGET_HANDHELD
+        { /* linked in: its .data/.bss as a fresh load would leave them (hh_ovl.c) */
+            extern void HhOvl_EffectLoad(s32 type);
+            HhOvl_EffectLoad(type);
+        }
+#endif
         profile = overlayEntry->profile;
     } else {
         if (overlayEntry->loadedRamAddr == NULL) {
