@@ -3,6 +3,22 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## 1.1.4 (Perfect Dark 1.0.4)
+
+A hotfix for Ocarina of Time; the other nine games are exactly the 1.1.3 zips.
+
+- Ocarina of Time: the diving game Zora (Silver Scale) now comes back every time you visit Zora's Domain. Before,
+  he was only there on your first visit after starting the game, so if you left without the Silver Scale you
+  could not win it until you quit and restarted.
+- Ocarina of Time: when the Ganon's Tower escape timer runs out, you are sent back to the start of the escape
+  every time, as on the N64 (before: only the first time after starting the game).
+- Ocarina of Time: more of the same kind. On the N64, each character's or object's code and data are loaded
+  fresh when it appears; the port keeps them all in memory, so some of them remembered things from an earlier
+  visit (counters, "already done" flags). They now start fresh where the N64's would, which also fixes the
+  Arwing (a cheat-only character) crashing the game when shot down. `OOT_OVLRESET=0` in launch.sh turns it off.
+- Ocarina of Time is a new build, so a RESUME GAME auto save from 1.1.3 is not offered after the update (it is
+  kept as `state_quick.sav.rejected`). Your in-game saves are kept.
+
 ## 1.1.3 (Perfect Dark 1.0.4)
 
 - All ten games, Mini v4 and Mini Flip on Onion: a game started from the GameSwitcher (the recent games list)
