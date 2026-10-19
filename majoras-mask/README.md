@@ -65,8 +65,13 @@ matching N64 build (its generated files and the symbols of every asset), builds 
 the game's assets compiled for ARM), the game, and the first-start recipe (`hh/tools/mm_recipes.py`: how the Miyoo
 rebuilds the pack from the ROM, as op numbers only). Everything read from the ROM stays in `<dir>`.
 
+The decompilation also compiles some ROM data into the game's code (overlay textures, the debug font: about 86 KB in
+120 arrays). The executable that ships has those arrays zeroed, with a table of where each one's bytes are in the data
+pack (`hh/tools/mm_embed.py`); the game copies them back at boot and checks each one's CRC. The arrays stay where they
+are, so save states are not affected.
+
 `tools/build_miyoo.sh` runs the release gates: the recipe is derived again from the pack and must match byte for
-byte; a leak scan of every shipped file against the ROM and the decompressed ROM (none at all in the recipe, at most
+byte; no ROM data left in any texture, palette or font of the executable; a leak scan of every shipped file against the ROM and the decompressed ROM (none at all in the recipe, at most
 8 KB of decomp-built tables in the executable); no host paths or authoring metadata; and exactly the files
 `miyoo/game.json` lists (no ROM, no pack).
 
