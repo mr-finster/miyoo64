@@ -1,0 +1,223 @@
+# Majora's Mask port build: the Miyoo Mini (PLAT=miyoo). Run from the decomp root:
+#
+#   make -f hh/Makefile.handheld PLAT=miyoo -j4
+#
+# Game code: the zeldaret/mm decomp (with hh/decomp.patch), compiled natively for 32-bit ARM, every overlay
+# linked statically. The port layer is hh/src (the Ocarina of Time Miyoo port's hh layer: renderer, SDL 1.2,
+# libultra on pthreads, input, audio mixer) and hh/kit (the shared Miyoo kit).
+#
+# Needs, from the decomp's own build of this tree (make setup / make assets / make rom): the extracted
+# assets, the generated headers and .inc.c files in build/n64-us, and the matching N64 ELF, whose symbols
+# give every asset symbol (segmented address) and every ROM file's vrom (hh/tools/mm_syms.py).
+
+PLAT    ?= miyoo
+.DEFAULT_GOAL := all
+SHELL := /bin/bash
+VERSION := n64-us
+N64_BUILD_DIR := build/$(VERSION)
+N64_ELF       := $(N64_BUILD_DIR)/mm-$(VERSION).elf
+EXTRACTED_DIR := extracted/$(VERSION)
+BUILD_DIR     := build/hh-$(PLAT)
+ELF           := $(BUILD_DIR)/mm
+PYTHON        ?= .venv/bin/python3
+HH            := hh
+
+VERBOSE ?= 0
+ifeq ($(VERBOSE),0)
+  V := @
+endif
+
+MIYOO_TOOLCHAIN ?= /opt/miyoomini-toolchain
+MM_SYSROOT := $(MIYOO_TOOLCHAIN)/usr/arm-linux-gnueabihf/sysroot
+MM_CROSS   := $(MIYOO_TOOLCHAIN)/usr/bin/arm-linux-gnueabihf-
+CC      := $(MM_CROSS)gcc
+OBJCOPY := $(MM_CROSS)objcopy
+NM      := $(MM_CROSS)nm
+MARCH   := -march=armv7ve+neon-vfpv4 -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+OPT_FLAGS = -O2 -g -fno-math-errno -ffp-contract=off $(EXTRA_CFLAGS)
+SDL_CFLAGS := -I$(MM_SYSROOT)/usr/include -I$(MM_SYSROOT)/usr/include/SDL -D_REENTRANT -D_FILE_OFFSET_BITS=64
+SDL_LIBS   := -L$(MM_SYSROOT)/usr/lib -Wl,-rpath-link,$(MM_SYSROOT)/usr/lib -lSDL -lrt
+HH_VERSION ?= dev
+HH_RELEASE ?= 1.0.0
+PLAT_DEFINES := -DHH_VERSION=\"$(HH_VERSION)\" -DHH_RELEASE=\"$(HH_RELEASE)\" -DTARGET_HANDHELD=1 -DHANDHELD=1 -DTARGET_MIYOO=1 -DMIYOO=1
+
+#==============================================================================#
+# Sources                                                                      #
+#==============================================================================#
+# The decomp's own list (the spec), without what the port layer replaces: the N64 OS (libultra's io/os/vi/
+# voice and the assembly), the boot and idle threads, the DMA manager, the IRQ/pad/scheduler threads, the
+# fault screen, the flash chip, the audio cache ops; the libc that glibc provides.
+HH_EXCLUDE := ^src/libultra/(io|os|vimodes|voice|debug|mgu)/|^src/libultra/libc/(string|ll|llcvt|ldiv)\.c|^src/boot/(boot_main|idle|viconfig|carthandle|z_std_dma|irqmgr|CIC6105|fault|fault_drawer|syncprintf)\.c|^src/boot/libc/|^src/boot/libc64/sprintf|^src/code/(main|sched|padmgr|osFlash|sys_ucode)\.c|^src/audio/lib/(dcache|aisetnextbuf)\.c|^src/makerom|^src/dmadata
+HH_GAME_SOURCES := $(shell gcc -E -P -xc -fno-dollars-in-identifiers -DMM_VERSION=N64_US -I. spec/spec | \
+                     sed -n -E 's/^[ \t]*include[ \t]*"\$$\(BUILD_DIR\)\/(src\/[a-zA-Z0-9/_.-]+)\.o"/\1.c/p' | \
+                     grep -v _reloc | while read f; do [ -f $$f ] && echo $$f; done | grep -vE '$(HH_EXCLUDE)')
+# libultra's matrix helpers are MIPS assembly in MM: the C versions (the same functions as OoT's libultra)
+HH_GAME_SOURCES += $(HH)/libultra/mtxutil.c $(HH)/libultra/scale.c $(HH)/libultra/translate.c $(HH)/libultra/normalize.c
+
+HH_PORT_SOURCES := $(sort $(wildcard $(HH)/src/*.c)) \
+                   $(HH)/src/gfx/gfx_pc.c $(HH)/src/gfx/gfx_cc.c $(HH)/src/gfx/gfx_soft.c $(HH)/src/gfx/gfx_sdl12.c
+HH_KIT_SOURCES  := $(HH)/kit/platform/savestate.c $(HH)/kit/platform/hh_priority.c $(HH)/kit/platform/miyoo_menu.c \
+                   $(HH)/kit/platform/miyoo_worker.c $(HH)/kit/platform/miyoo_clock.c $(HH)/kit/platform/miyoo_sleepsave.c
+HH_PORT_SOURCES += $(HH_KIT_SOURCES)
+
+GAME_O := $(patsubst %.c,$(BUILD_DIR)/%.o,$(HH_GAME_SOURCES))
+PORT_O := $(patsubst %.c,$(BUILD_DIR)/%.o,$(HH_PORT_SOURCES))
+O_FILES := $(GAME_O) $(PORT_O)
+DEP_FILES := $(O_FILES:.o=.d)
+
+#==============================================================================#
+# Flags                                                                        #
+#==============================================================================#
+DEFINES := -D_LANGUAGE_C -DNON_MATCHING -DAVOID_UB -DCOMPILER_GCC -DMM_VERSION=N64_US \
+           -DMML_VERSION=MML_VERSION_MM -DF3DEX_GBI_2 -DF3DEX_GBI_PL -DGBI_DOWHILE \
+           -DBUILD_CREATOR=\"zelda@srd44\" -DBUILD_DATE=\"00-07-31\" -DBUILD_TIME=\"17:04:16\" \
+           $(PLAT_DEFINES)
+
+# Code-embedded textures byte-swapped so they compile to N64 byte order (hh/tools/texbe.py): searched first.
+TEXBE_DIR := build/hh-texbe
+INCLUDES := -I$(TEXBE_DIR) -Iinclude -Iinclude/libc -Isrc -I$(N64_BUILD_DIR) -I. -I$(EXTRACTED_DIR) \
+            -I$(HH)/src -I$(HH)/src/shim -I$(HH)/psp -I$(HH)/src/compat
+
+# -funsigned-char: MM's char is unsigned (IDO, and the decomp's own GCC build: -funsigned-char). With signed char the
+# message code's u16 character = schar[i] turned 0xBF (END) into 0xFFBF: text ran past its end, the box types and
+# the name codes were missed (ALPHA2's garbled text). The port layer (the OoT hh layer) keeps -fsigned-char.
+# -fno-builtin-sinf/-cosf: every sinf/cosf call reaches the game's own (no host libm folding).
+CFLAGS := $(OPT_FLAGS) $(MARCH) -std=gnu11 -funsigned-char -fno-strict-aliasing -fwrapv -fno-common \
+          -ffunction-sections -fdata-sections \
+          -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function -Wno-unused-label \
+          -Wno-unused-parameter -Wno-missing-braces -Wno-format-security -Wno-int-to-pointer-cast \
+          -Wno-pointer-to-int-cast -Wno-array-bounds -Wno-stringop-overflow -Wno-multichar -Wno-unknown-pragmas \
+          -Wno-misleading-indentation -Wno-format -Wno-parentheses -Wno-maybe-uninitialized \
+          -Werror=implicit-function-declaration \
+          -fno-builtin-sinf -fno-builtin-cosf \
+          -include $(HH)/src/hh_compat.h \
+          $(DEFINES) $(INCLUDES) $(SDL_CFLAGS)
+
+# The game's own libc64 (the arena malloc, sleep) under other names: as a non-PIE executable's symbols they
+# would otherwise replace glibc's for SDL and glibc itself (SDL_Init failed: the arena had no heap yet).
+GAME_RENAMES := -Dmalloc=MmMalloc -Dfree=MmFree -Dcalloc=MmCalloc -Drealloc=MmRealloc -Dsleep=MmSleep -Dusleep=MmUsleep
+$(GAME_O): CFLAGS += $(GAME_RENAMES)
+comma := ,
+# Float -> unsigned conversions as the N64 does them (negative values wrap, ARM saturates at 0): hh/tools/cc_mipscvt.sh
+# compiles the game code to assembly and makes those conversions signed. MM_MIPSCVT=0: plain gcc (A/B).
+ifneq ($(MM_MIPSCVT),0)
+$(GAME_O): CC := $(HH)/tools/cc_mipscvt.sh $(MM_CROSS)gcc
+endif
+
+# The port layer uses POSIX/SDL headers: the game's include dirs (which hold a libc/ and a sched.h-like
+# set of names) must not shadow <system> headers there, so they see them through -iquote only.
+HH_PORT_INCLUDES := -I$(HH)/src/gfx -I$(HH)/kit/platform $(patsubst -I%,-iquote %,$(filter -I%,$(INCLUDES))) -I$(HH)/src/shim
+$(BUILD_DIR)/$(HH)/src/%.o: CFLAGS := $(filter-out $(INCLUDES) -funsigned-char,$(CFLAGS)) -fsigned-char $(HH_PORT_INCLUDES)
+$(BUILD_DIR)/$(HH)/kit/%.o: CFLAGS := $(filter-out $(INCLUDES) -funsigned-char,$(CFLAGS)) -fsigned-char $(HH_PORT_INCLUDES)
+# The audio tables are a header followed by its entries, read as one AudioTable: kept together and in order (with
+# -fdata-sections and --gc-sections the entries, never named, were dropped and the reads ran into the next table).
+$(BUILD_DIR)/src/audio/tables/%.o: CFLAGS += -fno-data-sections -fno-toplevel-reorder
+$(BUILD_DIR)/$(HH)/src/hh_trig.o: CFLAGS += -D_GNU_SOURCE
+$(BUILD_DIR)/$(HH)/kit/platform/miyoo_worker.o: CFLAGS += -D_GNU_SOURCE=
+
+# Linked above the N64 segment window (0x01000000-0x0FFFFFFF): real pointers are >= 0x40000000.
+LDFLAGS := $(MARCH) -no-pie -Wl,--gc-sections -Wl,-Ttext-segment=0x40000000 -Wl,-T,build/hh-gen/gamestate.ld \
+           -Wl,--defsym=_ftext=__executable_start -Wl,--defsym=_fbss=__bss_start \
+           -Wl,--defsym=__assets_start=__bss_start -Wl,--defsym=__assets_end=__bss_start
+LIBS    := $(SDL_LIBS) -lz -lm -lpthread -ldl
+
+#==============================================================================#
+# Generated                                                                    #
+#==============================================================================#
+GEN_DIR  := build/hh-gen
+# Every asset symbol = its segmented address, every ROM file's vrom start/end, from the N64 ELF; overlay
+# VRAM/ROM symbols = 0 (overlays are linked in: the game's "internal" paths)
+SYMS_LD  := $(GEN_DIR)/mm_syms.ld
+# The save-state linker script with each overlay's .data/.bss between symbols (hh/src/hh_ovl.c: overlay reloads)
+OVL_LD   := $(GEN_DIR)/gamestate.ld
+$(OVL_LD): $(HH)/gamestate.ld $(HH)/tools/mm_ovl_ld.py $(wildcard src/overlays/*/*)
+	@mkdir -p $(GEN_DIR)
+	$(V)$(PYTHON) $(HH)/tools/mm_ovl_ld.py src/overlays $(HH)/gamestate.ld $@
+$(SYMS_LD): $(N64_ELF) $(HH)/tools/mm_syms.py
+	@mkdir -p $(GEN_DIR)
+	$(V)$(PYTHON) $(HH)/tools/mm_syms.py $(N64_ELF) $@
+
+TEXBE_STAMP := $(TEXBE_DIR)/.stamp
+$(TEXBE_STAMP): $(HH)/tools/texbe.py
+	@mkdir -p $(TEXBE_DIR)
+	$(V)cd $(N64_BUILD_DIR) && find assets -name '*.inc.c' > ../texbe_list.txt
+	$(V)python3 $(HH)/tools/texbe.py $(N64_BUILD_DIR) $(TEXBE_DIR) $$(cat build/texbe_list.txt)
+	@touch $@
+
+# The data pack (ROM-derived, local only): build/hh-pack.bin
+PACK := build/hh-pack.bin
+$(PACK): $(N64_ELF) $(TEXBE_STAMP) $(HH)/tools/mm_pack.py
+	$(V)$(PYTHON) $(HH)/tools/mm_pack.py $(N64_ELF) $(N64_BUILD_DIR)/mm-$(VERSION).z64 $(N64_BUILD_DIR)/spec $@ build/hh-packwork -j4 || true
+pack: $(PACK)
+
+#==============================================================================#
+# Targets                                                                      #
+#==============================================================================#
+# the sequence -> soundfont table: the decomp's generated assembly, assembled for ARM (native .half)
+SEQFONT_O := $(BUILD_DIR)/gen/sequence_font_table.o
+$(SEQFONT_O): $(N64_BUILD_DIR)/assets/audio/sequence_font_table.s
+	@mkdir -p $(dir $@)
+	$(V)sed "s/\.half/.hword/" $< | $(MM_CROSS)as -o $@ -
+O_FILES += $(SEQFONT_O)
+
+all: $(ELF)
+
+objs: $(O_FILES)
+
+# Per-link random build stamp: save states must come from this exact executable (the kit's savestate.c)
+STAMP_C := $(BUILD_DIR)/build_stamp.c
+STAMP_O := $(STAMP_C:.c=.o)
+$(STAMP_C): $(O_FILES) $(SYMS_LD) $(OVL_LD)
+	$(V)S=$$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n'); printf '/* generated per link */\n#include <stdint.h>\nconst uint32_t hh_build_stamp = 0x%s;\nconst uint32_t port_build_stamp = 0x%s;\n' "$$S" "$$S" > $@
+$(STAMP_O): $(STAMP_C)
+	$(V)$(CC) -c $(MARCH) -o $@ $<
+
+# Save states of an earlier release (hh/src/hh_state_compat.c). PIN_BASE=<dir>: that release's link map, port
+# objects, ELF, the default linker script and its build id (base.txt), kept outside git (they are build products of a
+# tree with the ROM's assets); the link then puts every unchanged input section at that release's address
+# (tools/mm_pin_ld.py), checks it (tools/mm_pin_check.py) and lists the .game_data words that still differ
+# (tools/mm_compat_fix.py) for the loader. Without PIN_BASE the table is empty: only this build's own states load.
+COMPAT_C := $(GEN_DIR)/mm_compat_fix.c
+COMPAT_O := $(BUILD_DIR)/hh-gen/mm_compat_fix.o
+define compat_cc
+	$(V)$(CC) -c $(MARCH) -O2 -o $(COMPAT_O) $(COMPAT_C)
+endef
+ifneq ($(PIN_BASE),)
+PIN_LD := $(GEN_DIR)/pinned.ld
+# the overflow sections add program headers: the headers and the dynamic-link sections start 64 KB lower, so the
+# pinned .text keeps its address (nothing a state holds points at them)
+PIN_LDFLAGS := $(subst -Wl$(comma)-Ttext-segment=0x40000000,-Wl$(comma)-Ttext-segment=0x3FFF0000,$(subst -Wl$(comma)-T$(comma)build/hh-gen/gamestate.ld,-Wl$(comma)-T$(comma)$(PIN_LD),$(LDFLAGS)))
+$(ELF): $(O_FILES) $(SYMS_LD) $(STAMP_O) $(OVL_LD) $(HH)/tools/mm_pin_ld.py $(HH)/tools/mm_pin_check.py $(HH)/tools/mm_compat_fix.py
+	@mkdir -p $(GEN_DIR) $(dir $(COMPAT_O))
+	$(V)$(PYTHON) $(HH)/tools/mm_pin_ld.py $(PIN_BASE)/mm.map $(PIN_BASE)/objs $(PIN_BASE)/default.ld $(PIN_LD) $(GEN_DIR)/pin_report.txt
+	$(V)$(PYTHON) $(HH)/tools/mm_compat_fix.py - - - $(COMPAT_C)
+	$(compat_cc)
+	$(V)$(CC) $(PIN_LDFLAGS) -Wl,-Map=$(GEN_DIR)/mm.map -o $@ $(O_FILES) $(STAMP_O) $(COMPAT_O) $(SYMS_LD) $(LIBS)
+	$(V)$(PYTHON) $(HH)/tools/mm_pin_check.py $(PIN_BASE)/mm.elf $(PIN_BASE)/mm.map $@ | tail -5
+	$(V)$(PYTHON) $(HH)/tools/mm_compat_fix.py $(PIN_BASE)/mm.elf $@ "$$(cat $(PIN_BASE)/base.txt)" $(COMPAT_C)
+	$(compat_cc)
+	$(V)$(CC) $(PIN_LDFLAGS) -Wl,-Map=$(GEN_DIR)/mm.map -o $@ $(O_FILES) $(STAMP_O) $(COMPAT_O) $(SYMS_LD) $(LIBS)
+	$(V)$(PYTHON) $(HH)/tools/mm_pin_check.py $(PIN_BASE)/mm.elf $(PIN_BASE)/mm.map $@ | tail -5
+	$(V)$(PYTHON) $(HH)/tools/mm_compat_fix.py $(PIN_BASE)/mm.elf $@ "$$(cat $(PIN_BASE)/base.txt)" $(COMPAT_C).check && cmp $(COMPAT_C) $(COMPAT_C).check
+	@ls -lh $@
+else
+$(ELF): $(O_FILES) $(SYMS_LD) $(STAMP_O) $(OVL_LD)
+	@mkdir -p $(GEN_DIR) $(dir $(COMPAT_O))
+	$(V)$(PYTHON) $(HH)/tools/mm_compat_fix.py - - - $(COMPAT_C)
+	$(compat_cc)
+	$(V)$(CC) $(LDFLAGS) -o $@ $(O_FILES) $(STAMP_O) $(COMPAT_O) $(SYMS_LD) $(LIBS)
+	@ls -lh $@
+endif
+.PHONY: $(ELF)
+
+$(BUILD_DIR)/%.o: %.c | $(TEXBE_STAMP)
+	@mkdir -p $(dir $@)
+	$(V)$(CC) -c $(CFLAGS) -MMD -MP -MF $(@:.o=.d) -o $@ $<
+
+clean:
+	$(RM) -r $(BUILD_DIR)
+
+print-%: ; @echo '$*=$($*)'
+
+.PHONY: all objs clean pack
+-include $(DEP_FILES)

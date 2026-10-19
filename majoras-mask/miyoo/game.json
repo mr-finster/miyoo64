@@ -1,0 +1,13 @@
+{
+  "id": "mm",
+  "title": "Majora's Mask",
+  "folder": "MajorasMask",
+  "exe": "mm",
+  "files": ["mm"],
+  "icon": "icon.png",
+  "env": "MM",
+  "data": "data",
+  "rom": {"name": "The Legend of Zelda: Majora's Mask (USA)", "sha1": "d6133ace5afaa0882cf214cf88daba39e266c078", "size": 33554432},
+  "system": "MAJORASMASK",
+  "minui_tag": "MM"
+}

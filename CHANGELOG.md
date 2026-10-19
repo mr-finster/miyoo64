@@ -3,6 +3,23 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## 1.2.0 (Majora's Mask 1.0.0 beta)
+
+A new game: The Legend of Zelda: Majora's Mask (USA ROM), version 1.0.0, a beta. The other ten games are exactly the
+1.1.4 zips (nothing changed, RESUME GAME carries over). Perfect Dark stays 1.0.4.
+
+- Majora's Mask: the whole game, built from the [zeldaret/mm](https://github.com/zeldaret/mm) decompilation on the
+  Ocarina of Time port's renderer and audio. Save states, the game menu, the auto save on power-off and before
+  sleep, and the Mini v4 / Flip full screen, as in the other games. 20 fps, the N64's own rate.
+- Compared scene by scene against an N64 renderer (angrylion): Clock Town by day, by night, on the second day and
+  in the final hours, the four regions and their temples, the bosses' rooms, the pause screens, the Song of Time,
+  the transformations.
+- The first start builds the game data (about 49 MB) from your ROM, once; put it in `App/MajorasMask/` as
+  `rom.z64`, or anywhere on the card ([README](majoras-mask/README.md#your-rom)).
+- Known issues: the Astral Observatory's tunnel is drawn about twice as bright as on the N64; the picture is a
+  little sharper than the N64's (no copy of the N64's video filter, as in the other games; snow and ice show it
+  most); a faint second image of Link in close-ups of the Giants' Chamber cutscenes.
+
 ## 1.1.4 (Perfect Dark 1.0.4)
 
 A hotfix for Ocarina of Time; the other nine games are exactly the 1.1.3 zips.

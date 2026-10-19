@@ -1,0 +1,21 @@
+# ALLOWLIST. A build tree (tools/setup.sh <dir>) holds the ROM and everything made from it; none of it belongs here.
+# Only source, scripts and docs are tracked -- everything else is ignored by the leading "*" and has to be
+# re-included explicitly below.
+*
+!.gitignore
+!README.md
+!README_MIYOO.md
+!decomp.patch
+!hh/
+!hh/**
+!miyoo/
+!miyoo/**
+!tools/
+!tools/*.sh
+*.z64
+*.n64
+*.v64
+*.bin
+*.zip
+*.log
+__pycache__/

@@ -1,0 +1,1347 @@
+diff --git a/include/audio/playback.h b/include/audio/playback.h
+index cd01bc6..858a3fb 100644
+--- a/include/audio/playback.h
++++ b/include/audio/playback.h
+@@ -25,12 +25,23 @@ typedef enum AudioError {
+ 
+ typedef union {
+     struct {
++#if defined(TARGET_HANDHELD) && defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
++        // the handheld's bit-fields fill from the low bit: reversed, so asByte (set from sequence data) keeps the
++        // N64's meaning
++        /* 0x0 */ u8 strongReverbLeft : 1;
++        /* 0x0 */ u8 strongReverbRight : 1;
++        /* 0x0 */ u8 strongLeft : 1;
++        /* 0x0 */ u8 strongRight : 1;
++        /* 0x0 */ u8 type : 2;
++        /* 0x0 */ u8 unused : 2;
++#else
+         /* 0x0 */ u8 unused : 2;
+         /* 0x0 */ u8 type : 2;
+         /* 0x0 */ u8 strongRight : 1;
+         /* 0x0 */ u8 strongLeft : 1;
+         /* 0x0 */ u8 strongReverbRight : 1;
+         /* 0x0 */ u8 strongReverbLeft : 1;
++#endif
+     };
+     /* 0x0 */ u8 asByte;
+ } StereoData; // size = 0x1
+diff --git a/include/audio/seqplayer.h b/include/audio/seqplayer.h
+index 6e656f5..1066137 100644
+--- a/include/audio/seqplayer.h
++++ b/include/audio/seqplayer.h
+@@ -169,6 +169,24 @@ typedef struct SequenceLayer {
+     /* 0x09 */ u8 targetReverbVol;
+     union {
+         struct {
++#if defined(TARGET_HANDHELD) && defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
++            /* 0x0A */ u16 bit_F : 1;
++            /* 0x0A */ u16 bit_E : 1;
++            /* 0x0A */ u16 bit_D : 1;
++            /* 0x0A */ u16 bit_C : 1;
++            /* 0x0A */ u16 bit_B : 1;
++            /* 0x0A */ u16 bit_A : 1;
++            /* 0x0A */ u16 bit_9 : 1;
++            /* 0x0A */ u16 bit_8 : 1;
++            /* 0x0A */ u16 bit_7 : 1;
++            /* 0x0A */ u16 bit_6 : 1;
++            /* 0x0A */ u16 bit_5 : 1;
++            /* 0x0A */ u16 bit_4 : 1;
++            /* 0x0A */ u16 useVibrato : 1;
++            /* 0x0A */ u16 bit_2 : 1;
++            /* 0x0A */ u16 bit_1 : 1;
++            /* 0x0A */ u16 bit_0 : 1;
++#else
+             /* 0x0A */ u16 bit_0 : 1;
+             /* 0x0A */ u16 bit_1 : 1;
+             /* 0x0A */ u16 bit_2 : 1;
+@@ -185,6 +203,7 @@ typedef struct SequenceLayer {
+             /* 0x0A */ u16 bit_D : 1;
+             /* 0x0A */ u16 bit_E : 1;
+             /* 0x0A */ u16 bit_F : 1;
++#endif
+         } s;
+         /* 0x0A */ u16 asByte;
+     } unk_0A;
+diff --git a/include/color.h b/include/color.h
+index f7e7a9d..aedb00d 100644
+--- a/include/color.h
++++ b/include/color.h
+@@ -28,7 +28,13 @@ typedef struct {
+ // only use when necessary for alignment purposes
+ typedef union Color_RGBA8_u32 {
+     struct {
++#if defined(TARGET_HANDHELD) && defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
++        // the handheld: rgba keeps RGBA8()'s packing (r in the top byte, as on the N64), so the bytes go backwards
++        // (with r first, a black fade RGBA8(0, 0, 0, 255) read back as r = 255: the red transitions)
++        u8 a, b, g, r;
++#else
+         u8 r, g, b, a;
++#endif
+     };
+     u32 rgba;
+ } Color_RGBA8_u32;
+@@ -43,10 +49,17 @@ typedef struct {
+ 
+ typedef union {
+     struct {
++#if defined(TARGET_HANDHELD) && defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
++        u16 a : 1; // the handheld's bit-fields fill from the bottom: RGBA5551's r is the top 5 bits
++        u16 b : 5;
++        u16 g : 5;
++        u16 r : 5;
++#else
+         u16 r : 5;
+         u16 g : 5;
+         u16 b : 5;
+         u16 a : 1;
++#endif
+     };
+     u16 rgba;
+ } Color_RGBA16;
+diff --git a/include/command_macros_base.h b/include/command_macros_base.h
+index 4a866c2..062ba87 100644
+--- a/include/command_macros_base.h
++++ b/include/command_macros_base.h
+@@ -6,6 +6,17 @@
+  * Each macro packs bytes (B), halfwords (H) and words (W, for consistency) into a single word
+  */
+ 
++#ifdef TARGET_HANDHELD
++// the port: the data is compiled little-endian and read through native structs, so the first-named part goes
++// at the lowest address (as the Ocarina of Time port's oot-PSP base does)
++#define CMD_BBBB(a, b, c, d) (_SHIFTL(a, 0, 8) | _SHIFTL(b, 8, 8) | _SHIFTL(c, 16, 8) | _SHIFTL(d, 24, 8))
++
++#define CMD_BBH(a, b, c) (_SHIFTL(a, 0, 8) | _SHIFTL(b, 8, 8) | _SHIFTL(c, 16, 16))
++
++#define CMD_HBB(a, b, c) (_SHIFTL(a, 0, 16) | _SHIFTL(b, 16, 8) | _SHIFTL(c, 24, 8))
++
++#define CMD_HH(a, b) (_SHIFTL(a, 0, 16) | _SHIFTL(b, 16, 16))
++#else
+ #define CMD_BBBB(a, b, c, d) (_SHIFTL(a, 24, 8) | _SHIFTL(b, 16, 8) | _SHIFTL(c, 8, 8) | _SHIFTL(d, 0, 8))
+ 
+ #define CMD_BBH(a, b, c) (_SHIFTL(a, 24, 8) | _SHIFTL(b, 16, 8) | _SHIFTL(c, 0, 16))
+@@ -14,6 +25,8 @@
+ 
+ #define CMD_HH(a, b) (_SHIFTL(a, 16, 16) | _SHIFTL(b, 0, 16))
+ 
++#endif
++
+ #define CMD_W(a) (a)
+ 
+ #ifdef __GNUC__
+diff --git a/include/libc/stddef.h b/include/libc/stddef.h
+index 604352f..05eb4bd 100644
+--- a/include/libc/stddef.h
++++ b/include/libc/stddef.h
+@@ -1,4 +1,6 @@
+-#ifndef LIBC_STDDEF_H
++#if defined(TARGET_HANDHELD)
++#include_next <stddef.h>
++#elif !defined(LIBC_STDDEF_H)
+ #define LIBC_STDDEF_H
+ 
+ #ifndef NULL
+diff --git a/include/libc/stdint.h b/include/libc/stdint.h
+index fdc1668..57642ff 100644
+--- a/include/libc/stdint.h
++++ b/include/libc/stdint.h
+@@ -1,6 +1,11 @@
+ #ifndef LIBC_STDINT_H
+ #define LIBC_STDINT_H
+ 
++#ifdef TARGET_HANDHELD
++/* the port: the host C library's own (glibc), which the port layer shares */
++#include_next <stdint.h>
++#else
++
+ typedef signed long intptr_t;
+ typedef unsigned long uintptr_t;
+ 
+@@ -24,4 +29,6 @@ typedef unsigned long uintptr_t;
+ #define UINTPTR_MAX 0xFFFFFFFF
+ 
+ 
++#endif /* TARGET_HANDHELD */
++
+ #endif /* STDINT_H */
+diff --git a/include/libc/stdlib.h b/include/libc/stdlib.h
+index 08d313f..13bf4f2 100644
+--- a/include/libc/stdlib.h
++++ b/include/libc/stdlib.h
+@@ -1,6 +1,11 @@
+ #ifndef LIBC_STDLIB_H
+ #define LIBC_STDLIB_H
+ 
++#ifdef TARGET_HANDHELD
++/* the port: the host C library's own (glibc), which the port layer shares */
++#include_next <stdlib.h>
++#else
++
+ #include "stddef.h"
+ 
+ typedef struct {
+@@ -25,4 +30,6 @@ typedef long wchar_t;
+ ldiv_t ldiv(long numer, long denom);
+ lldiv_t lldiv(long long numer, long long denom);
+ 
++#endif /* TARGET_HANDHELD */
++
+ #endif /* STDLIB_H */
+diff --git a/include/libc/string.h b/include/libc/string.h
+index fa95a53..f4f274c 100644
+--- a/include/libc/string.h
++++ b/include/libc/string.h
+@@ -1,6 +1,11 @@
+ #ifndef LIBC_STRING_H
+ #define LIBC_STRING_H
+ 
++#ifdef TARGET_HANDHELD
++/* the port: the host C library's own (glibc), which the port layer shares */
++#include_next <string.h>
++#else
++
+ #include "stddef.h"
+ 
+ char* strchr(const char* s, int c);
+@@ -12,4 +17,6 @@ int strcmp(const char* str1, const char* str2);
+ char* strcpy(char* dst, const char* src);
+ void* memmove(void* dst, const void* src, size_t size);
+ 
++#endif /* TARGET_HANDHELD */
++
+ #endif
+diff --git a/include/segmented_address.h b/include/segmented_address.h
+index faa6f26..634e4a0 100644
+--- a/include/segmented_address.h
++++ b/include/segmented_address.h
+@@ -7,6 +7,17 @@
+ 
+ extern uintptr_t gSegments[NUM_SEGMENTS];
+ 
++#ifdef TARGET_HANDHELD
++/* the port: host pointers (>= 0x40000000) are already virtual (hh/src/hh_mm.c) */
++void* HhSegmentedToVirtual(uintptr_t addr);
++#define SEGMENTED_TO_K0(addr) HhSegmentedToVirtual((uintptr_t)(addr))
++/* An address handed to the RSP (a gSPSegment base): the N64 passes the physical address, the port's renderer the host
++ * pointer. OS_K0_TO_PHYSICAL on a host pointer gave ptr - 0x80000000 (0x41455B80 -> 0xC1455B80): the bubble and
++ * splash effects' textures read through it (the multi-scene soak: SIGSEGV in Deku Palace's water). */
++#define K0_TO_DL_ADDR(addr) ((uintptr_t)(addr))
++#else
++#define K0_TO_DL_ADDR(addr) OS_K0_TO_PHYSICAL(addr)
+ #define SEGMENTED_TO_K0(addr) (void*)((gSegments[SEGMENT_NUMBER(addr)] + K0BASE) + SEGMENT_OFFSET(addr))
++#endif
+ 
+ #endif
+diff --git a/include/z64cutscene_commands.h b/include/z64cutscene_commands.h
+index 2bcb8f6..78cdfe6 100644
+--- a/include/z64cutscene_commands.h
++++ b/include/z64cutscene_commands.h
+@@ -237,8 +237,16 @@
+  *   ttttssss eeeeUUUU
+  *   size = 0x8
+  */
++#ifdef TARGET_HANDHELD
++// the port: CsCmdLightSetting reads the first halfword as settingPlusOne; the N64's CMD_BBH(0, setting + 1, ...)
++// is that halfword big-endian, so little-endian data needs it as a halfword (CMD_BBH's bytes read 0x100 * (setting
++// + 1): no override, and every cutscene's light setting was dropped -- the Giants' green chamber came out grey)
++#define CS_LIGHT_SETTING(lightSetting, startFrame, endFrame) \
++    { CMD_HH((lightSetting + 1), startFrame) }, { CMD_HH(endFrame, endFrame) }
++#else
+ #define CS_LIGHT_SETTING(lightSetting, startFrame, endFrame) \
+     { CMD_BBH(0, (lightSetting + 1), startFrame) }, { CMD_HH(endFrame, endFrame) }
++#endif
+ 
+ 
+ /**
+diff --git a/src/audio/lib/heap.c b/src/audio/lib/heap.c
+index ab477a0..24558e4 100644
+--- a/src/audio/lib/heap.c
++++ b/src/audio/lib/heap.c
+@@ -127,8 +127,13 @@ void* AudioHeap_WritebackDCache(void* addr, size_t size) {
+     Audio_WritebackDCache(addr, size);
+     if (addr) {}
+ 
++#ifdef TARGET_HANDHELD
++    // the port: no uncached alias, the address itself
++    return addr;
++#else
+     // KSEG0 to KSEG1 (ensures data is written straight to ram instead of the data cache)
+     return OS_PHYSICAL_TO_K1(OS_K0_TO_PHYSICAL(addr));
++#endif
+ }
+ 
+ /**
+diff --git a/src/audio/lib/playback.c b/src/audio/lib/playback.c
+index a59dea5..8e74386 100644
+--- a/src/audio/lib/playback.c
++++ b/src/audio/lib/playback.c
+@@ -194,9 +194,18 @@ void AudioPlayback_ProcessNotes(void) {
+         sampleState = &gAudioCtx.sampleStateList[gAudioCtx.sampleStateOffset + i];
+         playbackState = &note->playbackState;
+         if (playbackState->parentLayer != NO_LAYER) {
++#ifdef TARGET_HANDHELD
++            // the port: the N64 tests for a KSEG0 pointer (0x80000000 and up); the handheld's real pointers are
++            // anywhere above the N64 segment window (0x40000000 for the game's own data), and every note with a
++            // layer was skipped: notes sounded only once released (quiet music, silent long notes and SFX)
++            if ((uintptr_t)playbackState->parentLayer < 0x01000000) {
++                continue;
++            }
++#else
+             if ((u32)playbackState->parentLayer < 0x7FFFFFFF) {
+                 continue;
+             }
++#endif
+ 
+             if ((note != playbackState->parentLayer->note) && (playbackState->status == PLAYBACK_STATUS_0)) {
+                 playbackState->adsr.action.s.release = true;
+diff --git a/src/audio/lib/seqplayer.c b/src/audio/lib/seqplayer.c
+index df3d8ca..4b3e0ba 100644
+--- a/src/audio/lib/seqplayer.c
++++ b/src/audio/lib/seqplayer.c
+@@ -1601,7 +1601,12 @@ void AudioScript_SequenceChannelProcessScript(SequenceChannel* channel) {
+ 
+                 case ASEQ_OP_CHAN_LDSEQTOPTR: // channel: dynread sequence large
+                     cmdArgU16 = (u16)cmdArgs[0];
++#if defined(TARGET_HANDHELD) /* sequence data is big-endian: read the halfword byte by byte */
++                    channel->unk_22 = (seqPlayer->seqData[(u32)(cmdArgU16 + scriptState->value * 2)] << 8) |
++                                      seqPlayer->seqData[(u32)(cmdArgU16 + scriptState->value * 2) + 1];
++#else
+                     channel->unk_22 = *(u16*)(seqPlayer->seqData + (u32)(cmdArgU16 + scriptState->value * 2));
++#endif
+                     break;
+ 
+                 case ASEQ_OP_CHAN_PTRTODYNTBL: // channel: set dyntable large
+@@ -1609,7 +1614,12 @@ void AudioScript_SequenceChannelProcessScript(SequenceChannel* channel) {
+                     break;
+ 
+                 case ASEQ_OP_CHAN_DYNTBLTOPTR: // channel: read dyntable large
++#if defined(TARGET_HANDHELD) /* big-endian halfwords in the sequence */
++                    channel->unk_22 = ((*channel->dynTable)[scriptState->value][0] << 8) |
++                                      (*channel->dynTable)[scriptState->value][1];
++#else
+                     channel->unk_22 = ((u16*)(channel->dynTable))[scriptState->value];
++#endif
+                     break;
+ 
+                 case ASEQ_OP_CHAN_DYNTBLV: // channel: read dyntable
+@@ -2112,7 +2122,11 @@ void AudioScript_SequencePlayerProcessSequence(SequencePlayer* seqPlayer) {
+                         temp = AudioScript_ScriptReadS16(seqScript);
+                         if (seqScript->value != -1) {
+                             new_var = (u16*)(seqPlayer->seqData + (u32)(temp + seqScript->value * 2));
++#if defined(TARGET_HANDHELD) /* big-endian halfword in the sequence */
++                            temp = (((u8*)new_var)[0] << 8) | ((u8*)new_var)[1];
++#else
+                             temp = *new_var;
++#endif
+ 
+                             for (i = 0; i < ARRAY_COUNT(seqPlayer->channels); i++) {
+                                 seqPlayer->channels[i]->muted = temp & 1;
+diff --git a/src/audio/lib/thread.c b/src/audio/lib/thread.c
+index 38f0ca8..6f11fae 100644
+--- a/src/audio/lib/thread.c
++++ b/src/audio/lib/thread.c
+@@ -391,7 +391,14 @@ void AudioThread_InitMesgQueuesInternal(void) {
+ void AudioThread_QueueCmd(u32 opArgs, void** data) {
+     AudioCmd* cmd = &gAudioCtx.threadCmdBuf[gAudioCtx.threadCmdWritePos & 0xFF];
+ 
++#if defined(TARGET_HANDHELD) /* little-endian: op, arg0..2 are the bytes of opArgs from the top */
++    cmd->op = (opArgs >> 24) & 0xFF;
++    cmd->arg0 = (opArgs >> 16) & 0xFF;
++    cmd->arg1 = (opArgs >> 8) & 0xFF;
++    cmd->arg2 = opArgs & 0xFF;
++#else
+     cmd->opArgs = opArgs;
++#endif
+     cmd->data = *data;
+ 
+     gAudioCtx.threadCmdWritePos++;
+@@ -410,13 +417,21 @@ void AudioThread_QueueCmdS32(u32 opArgs, s32 data) {
+ }
+ 
+ void AudioThread_QueueCmdS8(u32 opArgs, s8 data) {
++#if defined(TARGET_HANDHELD) /* little-endian: asSbyte is the low byte */
++    u32 uData = (u8)data;
++#else
+     u32 uData = data << 0x18;
++#endif
+ 
+     AudioThread_QueueCmd(opArgs, (void**)&uData);
+ }
+ 
+ void AudioThread_QueueCmdU16(u32 opArgs, u16 data) {
++#if defined(TARGET_HANDHELD) /* little-endian: asUShort is the low half */
++    u32 uData = data;
++#else
+     u32 uData = data << 0x10;
++#endif
+ 
+     AudioThread_QueueCmd(opArgs, (void**)&uData);
+ }
+diff --git a/src/boot/libu64/mtxuty-cvt.c b/src/boot/libu64/mtxuty-cvt.c
+index f96de80..8bfb525 100644
+--- a/src/boot/libu64/mtxuty-cvt.c
++++ b/src/boot/libu64/mtxuty-cvt.c
+@@ -1,6 +1,13 @@
+ #include "global.h"
+ 
+ void MtxConv_F2L(Mtx* mtx, MtxF* mf) {
++#ifdef TARGET_HANDHELD
++    // the port: the Mtx words as libultra writes them (the renderer reads words)
++    guMtxF2L(mf->mf, mtx);
++    if (1) {
++        return;
++    }
++#endif
+     s32 i;
+     s32 j;
+ 
+diff --git a/src/boot/yaz0.c b/src/boot/yaz0.c
+index 82d7016..c097db3 100644
+--- a/src/boot/yaz0.c
++++ b/src/boot/yaz0.c
+@@ -82,7 +82,12 @@ s32 Yaz0_DecompressImpl(u8* src, u8* dst) {
+     u8* backPtr;
+     size_t chunkSize;
+     u32 off;
++#ifdef TARGET_HANDHELD
++    // the port: the header's words are the ROM's (big-endian) bytes
++    u32 magic = __builtin_bswap32(((Yaz0Header*)src)->magic);
++#else
+     u32 magic = ((Yaz0Header*)src)->magic;
++#endif
+ 
+     if (magic != YAZ0_MAGIC) {
+         PRINTF(T("slidstart_szs IDが違います (%02x %02x %02x %02x %08x)\n",
+@@ -91,7 +96,11 @@ s32 Yaz0_DecompressImpl(u8* src, u8* dst) {
+         return -1;
+     }
+ 
++#ifdef TARGET_HANDHELD
++    dstEnd = dst + __builtin_bswap32(((Yaz0Header*)src)->decSize);
++#else
+     dstEnd = dst + ((Yaz0Header*)src)->decSize;
++#endif
+     src += sizeof(Yaz0Header);
+ 
+     do {
+diff --git a/src/code/PreRender.c b/src/code/PreRender.c
+index 1b9bd0b..f740110 100644
+--- a/src/code/PreRender.c
++++ b/src/code/PreRender.c
+@@ -24,6 +24,13 @@
+ /**
+  * Assigns the "save" values in PreRender
+  */
++#ifdef TARGET_HANDHELD
++/* The saved screens (fbufSave) are in the N64's byte order, as the renderer stores and imports RGBA16. */
++#define PRERENDER_PX(v) ((u16)__builtin_bswap16((u16)(v)))
++#else
++#define PRERENDER_PX(v) (v)
++#endif
++
+ void PreRender_SetValuesSave(PreRender* this, u32 width, u32 height, void* fbuf, void* zbuf, void* cvg) {
+     this->widthSave = width;
+     this->heightSave = height;
+@@ -437,7 +444,7 @@ void PreRender_AntiAliasFilterPixel(PreRender* this, s32 x, s32 y) {
+         }
+ 
+         // Extract color channels for each pixel, convert 5-bit color channels to 8-bit
+-        pxIn.rgba = this->fbufSave[xi + yi * this->width];
++        pxIn.rgba = PRERENDER_PX(this->fbufSave[xi + yi * this->width]);
+         buffR[i] = (pxIn.r << 3) | (pxIn.r >> 2);
+         buffG[i] = (pxIn.g << 3) | (pxIn.g >> 2);
+         buffB[i] = (pxIn.b << 3) | (pxIn.b >> 2);
+@@ -522,7 +529,7 @@ void PreRender_AntiAliasFilterPixel(PreRender* this, s32 x, s32 y) {
+     pxOut.g = outG >> 3;
+     pxOut.b = outB >> 3;
+     pxOut.a = 1;
+-    this->fbufSave[x + y * this->width] = pxOut.rgba;
++    this->fbufSave[x + y * this->width] = PRERENDER_PX(pxOut.rgba);
+ }
+ 
+ /**
+@@ -629,7 +636,7 @@ void PreRender_DivotFilter(PreRender* this) {
+     // Fill line buffers for first 2 rows
+     for (y = 0; y < 2; y++) {
+         for (x = 0; x < width; x++) {
+-            inPx.rgba = this->fbufSave[x + y * this->width];
++            inPx.rgba = PRERENDER_PX(this->fbufSave[x + y * this->width]);
+ 
+             redRow[y][x] = inPx.r;
+             greenRow[y][x] = inPx.g;
+@@ -650,7 +657,7 @@ void PreRender_DivotFilter(PreRender* this) {
+         // Obtain next row from current line, current line becomes the bottom row?? (weird, you would expect this to
+         // sample the NEXT line?)
+         for (x = 0; x < width; x++) {
+-            inPx.rgba = linePx[x];
++            inPx.rgba = PRERENDER_PX(linePx[x]);
+ 
+             redRow2[x] = inPx.r;
+             greenRow2[x] = inPx.g;
+@@ -675,7 +682,7 @@ void PreRender_DivotFilter(PreRender* this) {
+             outPx.b = PreRender_Get5bMedian9(&blueRow[0][x - 1], &blueRow[1][x - 1], &blueRow[2][x - 1]);
+             outPx.a = 1;
+ 
+-            this->fbufSave[x + y * this->width] = outPx.rgba;
++            this->fbufSave[x + y * this->width] = PRERENDER_PX(outPx.rgba);
+         }
+ 
+         // Shuffle row 1 -> 0
+diff --git a/src/code/graph.c b/src/code/graph.c
+index 2c9efee..ac517d8 100644
+--- a/src/code/graph.c
++++ b/src/code/graph.c
+@@ -358,6 +358,54 @@ void Graph_Update(GraphicsContext* gfxCtx, GameState* gameState) {
+     Graph_ExecuteAndDraw(gfxCtx, gameState);
+ }
+ 
++#if defined(TARGET_HANDHELD)
++/* The handheld's game loop: Graph_ThreadEntry's own, with its state in game memory (a save state holds it and a
++ * load resumes the loop exactly there) and the port's boundary between two whole frames (hh_mm.c HhMm_Boundary:
++ * save states, MENU's EXIT, SIGTERM, the watchdog's heartbeat). */
++GraphicsContext gHhGfxCtx;
++GameStateOverlay* volatile gHhOvl;
++GameStateOverlay* volatile gHhNextOvl;
++GameState* volatile gHhGameState;
++s32 HhMm_Boundary(GameStateOverlay* ovl);
++void HhMm_StateEvent(const char* what, GameStateOverlay* ovl);
++
++void Graph_ThreadEntry(void* arg) {
++    gZBufferLoRes = malloc(sizeof(*gZBufferLoRes) + sizeof(*gWorkBufferLoRes) + 64 - 1);
++    gZBufferLoRes = (void*)ALIGN64((uintptr_t)gZBufferLoRes);
++    gWorkBufferLoRes = (void*)((u8*)gZBufferLoRes + sizeof(*gZBufferLoRes));
++    gGfxSPTaskOutputBufferHiRes = gGfxSPTaskOutputBufferLoRes = malloc(sizeof(*gGfxSPTaskOutputBufferLoRes));
++    gGfxSPTaskOutputBufferEndLoRes = (u8*)gGfxSPTaskOutputBufferLoRes + sizeof(*gGfxSPTaskOutputBufferLoRes);
++    gGfxSPTaskOutputBufferEndHiRes = (u8*)gGfxSPTaskOutputBufferHiRes + sizeof(*gGfxSPTaskOutputBufferHiRes);
++
++    SysCfb_Init();
++    Fault_SetFrameBuffer(gWorkBuffer, SCREEN_WIDTH, SCREEN_HEIGHT);
++    Graph_Init(&gHhGfxCtx);
++
++    gHhNextOvl = &gGameStateOverlayTable[0];
++    while (gHhNextOvl != NULL) {
++        gHhOvl = gHhNextOvl;
++        Overlay_LoadGameState(gHhOvl);
++        HhMm_StateEvent("init", gHhOvl);
++        gHhGameState = malloc(gHhOvl->instanceSize);
++        bzero(gHhGameState, gHhOvl->instanceSize);
++        GameState_Init(gHhGameState, gHhOvl->init, &gHhGfxCtx);
++        HhMm_StateEvent("running", gHhOvl);
++
++        while (GameState_IsRunning(gHhGameState)) {
++            if (HhMm_Boundary(gHhOvl)) { /* quit: no destroy (the process ends) */
++                return;
++            }
++            Graph_Update(&gHhGfxCtx, gHhGameState);
++        }
++        HhMm_StateEvent("done", gHhOvl);
++        gHhNextOvl = Graph_GetNextGameState(gHhGameState);
++        GameState_Destroy(gHhGameState);
++        free(gHhGameState);
++        Overlay_FreeGameState(gHhOvl);
++    }
++    Graph_Destroy(&gHhGfxCtx);
++}
++#else
+ void Graph_ThreadEntry(void* arg) {
+     GraphicsContext gfxCtx;
+     GameStateOverlay* nextOvl = &gGameStateOverlayTable[0];
+@@ -416,3 +464,4 @@ void Graph_ThreadEntry(void* arg) {
+ 
+     PRINTF(T("グラフィックスレッド実行終了\n", "End of graphic thread execution\n"));
+ }
++#endif
+diff --git a/src/code/su_mtx.c b/src/code/su_mtx.c
+index 27173a4..ac3af8e 100644
+--- a/src/code/su_mtx.c
++++ b/src/code/su_mtx.c
+@@ -52,6 +52,14 @@
+ #include "su_mtx.h"
+ #include "z64math.h"
+ 
++#if defined(TARGET_HANDHELD) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
++// the port: an Mtx word holds two N64 half-words, the first-named in the high half (the renderer reads words); on a
++// little-endian CPU that half is the second u16 in memory, so a half-word store goes to the other one of the pair
++#define SU_MTX_HALF(part, i, j) ((part)[i][(j) ^ 1])
++#else
++#define SU_MTX_HALF(part, i, j) ((part)[i][j])
++#endif
++
+ /**
+  * Constructs a matrix \$f ST \$f, i.e. a scaling \$f S \$f followed by a translation \$f T \$f.
+  *
+@@ -92,7 +100,7 @@ void Mtx_SetTranslateScaleMtx(Mtx* mtx, f32 scaleX, f32 scaleY, f32 scaleZ, f32
+                                                           //
+     fixedPoint = scaleX * 0x10000;                        //
+     mtx->m[0][0] = fixedPoint;                            // [i00, i01] == [scaleX.i, scaleX.f]; i01 is now "dirty"
+-    mu->intPart[0][1] = 0;                                // Clean i01 by zeroing it: [i00, i01] == [scaleX.i, 0]
++    SU_MTX_HALF(mu->intPart, 0, 1) = 0;                                // Clean i01 by zeroing it: [i00, i01] == [scaleX.i, 0]
+     mtx->m[2][0] = (u32)fixedPoint << 16;                 // [f00, f01] == [scaleX.f, 0]
+                                                           //
+     fixedPoint = scaleY * 0x10000;                        //
+@@ -101,22 +109,22 @@ void Mtx_SetTranslateScaleMtx(Mtx* mtx, f32 scaleX, f32 scaleY, f32 scaleZ, f32
+                                                           //
+     fixedPoint = scaleZ * 0x10000;                        //
+     mtx->m[1][1] = fixedPoint;                            // [i22, i23] == [scaleZ.i, scaleZ.f]
+-    mu->intPart[2][3] = 0;                                // [i22, i23] == [scaleZ.i, 0]
++    SU_MTX_HALF(mu->intPart, 2, 3) = 0;                                // [i22, i23] == [scaleZ.i, 0]
+     mtx->m[3][1] = (u32)fixedPoint << 16;                 // [f22, f23] == [scaleZ.f, 0]
+                                                           //
+     mtx->m[3][0] = 0;                                     // [f20, f21] == [0, 0]
+                                                           //
+     fixedPoint = translateX * 0x10000;                    //
+-    mu->intPart[3][0] = ((u32)fixedPoint >> 16) & 0xFFFF; // [i30, i31] == [translateX.i, ?]
+-    mu->fracPart[3][0] = fixedPoint & 0xFFFF;             // [f30, f31] == [translateX.f, ?]
++    SU_MTX_HALF(mu->intPart, 3, 0) = ((u32)fixedPoint >> 16) & 0xFFFF; // [i30, i31] == [translateX.i, ?]
++    SU_MTX_HALF(mu->fracPart, 3, 0) = fixedPoint & 0xFFFF;             // [f30, f31] == [translateX.f, ?]
+                                                           //
+     fixedPoint = translateY * 0x10000;                    //
+-    mu->intPart[3][1] = ((u32)fixedPoint >> 16) & 0xFFFF; // [i30, i31] == [translateX.i, translateY.i]
+-    mu->fracPart[3][1] = fixedPoint & 0xFFFF;             // [f30, f31] == [translateX.f, translateY.f]
++    SU_MTX_HALF(mu->intPart, 3, 1) = ((u32)fixedPoint >> 16) & 0xFFFF; // [i30, i31] == [translateX.i, translateY.i]
++    SU_MTX_HALF(mu->fracPart, 3, 1) = fixedPoint & 0xFFFF;             // [f30, f31] == [translateX.f, translateY.f]
+                                                           //
+     fixedPoint = translateZ * 0x10000;                    //
+-    mu->intPart[3][2] = ((u32)fixedPoint >> 16) & 0xFFFF; // [i30, i31] == [translateZ.i, ?]
+-    mu->intPart[3][3] = 1;                                // [i32, i33] == [translateZ.i, 1]
++    SU_MTX_HALF(mu->intPart, 3, 2) = ((u32)fixedPoint >> 16) & 0xFFFF; // [i30, i31] == [translateZ.i, ?]
++    SU_MTX_HALF(mu->intPart, 3, 3) = 1;                                // [i32, i33] == [translateZ.i, 1]
+     mtx->m[3][3] = (u32)fixedPoint << 16;                 // [f32, f33] == [translateZ.f, 0]
+ 
+     // So we end up with
+@@ -187,16 +195,16 @@ void Mtx_SetRotationMtx(Mtx* mtx, s32 angle, f32 axisX, f32 axisY, f32 axisZ) {
+ 
+     // i00 and f00
+     fixedPoint = (((1.0f - tempXX) * cos) + tempXX) * 0x10000;
+-    mtx->intPart[0][0] = ((u32)fixedPoint >> 0x10) & 0xFFFF;
+-    mtx->fracPart[0][0] = fixedPoint & 0xFFFF;
++    SU_MTX_HALF(mtx->intPart, 0, 0) = ((u32)fixedPoint >> 0x10) & 0xFFFF;
++    SU_MTX_HALF(mtx->fracPart, 0, 0) = fixedPoint & 0xFFFF;
+ 
+     tempZ = ((axisX * axisY) * (1.0f - cos));
+     tempZZ = axisZ * axisZ;
+ 
+     // i21 and f21
+     fixedPoint = (tempX - (axisX * sin)) * 0x10000;
+-    mtx->intPart[2][1] = ((u32)fixedPoint >> 0x10) & 0xFFFF;
+-    mtx->fracPart[2][1] = fixedPoint & 0xFFFF;
++    SU_MTX_HALF(mtx->intPart, 2, 1) = ((u32)fixedPoint >> 0x10) & 0xFFFF;
++    SU_MTX_HALF(mtx->fracPart, 2, 1) = fixedPoint & 0xFFFF;
+ 
+     tempY = (axisZ * axisX) * (1.0f - cos);
+     tempYY = axisY * axisY;
+@@ -204,42 +212,42 @@ void Mtx_SetRotationMtx(Mtx* mtx, s32 angle, f32 axisX, f32 axisY, f32 axisZ) {
+     // [i12, i13] and [f12, f13]
+     fixedPoint = (tempX + (axisX * sin)) * 0x10000;
+     mtx->m[0][3] = fixedPoint; // i13 dirty
+-    mtx->intPart[1][3] = 0;    // clean i13
++    SU_MTX_HALF(mtx->intPart, 1, 3) = 0;    // clean i13
+     mtx->m[2][3] = fixedPoint << 0x10;
+ 
+     // i11 and f11
+     fixedPoint = ((((1.0f - tempYY) * cos) + tempYY) * 0x10000);
+-    mtx->intPart[1][1] = ((u32)fixedPoint >> 0x10) & 0xFFFF;
+-    mtx->fracPart[1][1] = fixedPoint & 0xFFFF;
++    SU_MTX_HALF(mtx->intPart, 1, 1) = ((u32)fixedPoint >> 0x10) & 0xFFFF;
++    SU_MTX_HALF(mtx->fracPart, 1, 1) = fixedPoint & 0xFFFF;
+ 
+     //! @bug The sign of the `axisY * sin` term is wrong on the next two elements (i/f20 and i/f02), which causes the
+     //! matrix to not be a rotation matrix (and indeed not even necessarily invertible).
+     // i20 and f20
+     fixedPoint = (tempY - (axisY * sin)) * 0x10000;
+-    mtx->intPart[2][0] = ((u32)fixedPoint >> 0x10) & 0xFFFF;
+-    mtx->fracPart[2][0] = fixedPoint & 0xFFFF;
++    SU_MTX_HALF(mtx->intPart, 2, 0) = ((u32)fixedPoint >> 0x10) & 0xFFFF;
++    SU_MTX_HALF(mtx->fracPart, 2, 0) = fixedPoint & 0xFFFF;
+ 
+     // [i02, i03] and [f02, f03]
+     fixedPoint = (tempY + (axisY * sin)) * 0x10000;
+     mtx->m[0][1] = fixedPoint; // i03 dirty
+-    mtx->intPart[0][3] = 0;    // clean i03
++    SU_MTX_HALF(mtx->intPart, 0, 3) = 0;    // clean i03
+     mtx->m[2][1] = fixedPoint << 0x10;
+ 
+     // [i22, i23] and [f22, f23]
+     fixedPoint = ((((1.0f - tempZZ) * cos) + tempZZ) * 0x10000);
+     mtx->m[1][1] = fixedPoint; // i23 dirty
+-    mtx->intPart[2][3] = 0;    // clean i23
++    SU_MTX_HALF(mtx->intPart, 2, 3) = 0;    // clean i23
+     mtx->m[3][1] = fixedPoint << 0x10;
+ 
+     // i10 and f10
+     fixedPoint = (tempZ - axisZ * sin) * 0x10000;
+-    mtx->intPart[1][0] = ((u32)fixedPoint >> 0x10) & 0xFFFF;
+-    mtx->fracPart[1][0] = fixedPoint & 0xFFFF;
++    SU_MTX_HALF(mtx->intPart, 1, 0) = ((u32)fixedPoint >> 0x10) & 0xFFFF;
++    SU_MTX_HALF(mtx->fracPart, 1, 0) = fixedPoint & 0xFFFF;
+ 
+     // i01 and f01
+     fixedPoint = (tempZ + axisZ * sin) * 0x10000;
+-    mtx->intPart[0][1] = ((u32)fixedPoint >> 0x10) & 0xFFFF;
+-    mtx->fracPart[0][1] = fixedPoint & 0xFFFF;
++    SU_MTX_HALF(mtx->intPart, 0, 1) = ((u32)fixedPoint >> 0x10) & 0xFFFF;
++    SU_MTX_HALF(mtx->fracPart, 0, 1) = fixedPoint & 0xFFFF;
+ }
+ 
+ /**
+@@ -297,71 +305,71 @@ void Mtx_SetTranslationRotationScaleMtx(Mtx* mtx, f32 scaleX, f32 scaleY, f32 sc
+ 
+     // i00 and f00
+     fixedPoint = (tempXX + (1.0f - tempXX) * cos) * scaleX * 0x10000;
+-    mtx->intPart[0][0] = ((u32)fixedPoint >> 0x10) & 0xFFFF;
+-    mtx->fracPart[0][0] = fixedPoint & 0xFFFF;
++    SU_MTX_HALF(mtx->intPart, 0, 0) = ((u32)fixedPoint >> 0x10) & 0xFFFF;
++    SU_MTX_HALF(mtx->fracPart, 0, 0) = fixedPoint & 0xFFFF;
+ 
+     tempY = axisZ * axisX * (1.0f - cos);
+ 
+     // i21 and f21
+     fixedPoint = (tempX - axisX * sin) * scaleZ * 0x10000;
+-    mtx->intPart[2][1] = ((u32)fixedPoint >> 0x10) & 0xFFFF;
+-    mtx->fracPart[2][1] = fixedPoint & 0xFFFF;
++    SU_MTX_HALF(mtx->intPart, 2, 1) = ((u32)fixedPoint >> 0x10) & 0xFFFF;
++    SU_MTX_HALF(mtx->fracPart, 2, 1) = fixedPoint & 0xFFFF;
+ 
+     tempZ = axisX * axisY * (1.0f - cos);
+ 
+     // [i12, i13] and [f12, f13]
+     fixedPoint = (tempX + axisX * sin) * scaleY * 0x10000;
+     mtx->m[0][3] = fixedPoint; // i13 dirty
+-    mtx->intPart[1][3] = 0;    // clean i13
++    SU_MTX_HALF(mtx->intPart, 1, 3) = 0;    // clean i13
+     mtx->m[2][3] = fixedPoint << 0x10;
+ 
+     // i11 and f11
+     fixedPoint = (tempYY + (1.0f - tempYY) * cos) * scaleY * 0x10000;
+-    mtx->intPart[1][1] = ((u32)fixedPoint >> 0x10) & 0xFFFF;
+-    mtx->fracPart[1][1] = fixedPoint & 0xFFFF;
++    SU_MTX_HALF(mtx->intPart, 1, 1) = ((u32)fixedPoint >> 0x10) & 0xFFFF;
++    SU_MTX_HALF(mtx->fracPart, 1, 1) = fixedPoint & 0xFFFF;
+ 
+     //! @bug The sign of the `axisY * sin` term is wrong on the next two elements (i/f20 and i/f02), which causes the
+     //! matrix to not be a rotation matrix (and indeed not even necessarily invertible).
+     // i20, f20
+     fixedPoint = (tempY - axisY * sin) * scaleZ * 0x10000;
+-    mtx->intPart[2][0] = ((u32)fixedPoint >> 0x10) & 0xFFFF;
+-    mtx->fracPart[2][0] = fixedPoint & 0xFFFF;
++    SU_MTX_HALF(mtx->intPart, 2, 0) = ((u32)fixedPoint >> 0x10) & 0xFFFF;
++    SU_MTX_HALF(mtx->fracPart, 2, 0) = fixedPoint & 0xFFFF;
+ 
+     // [i02, i03] and [f02, f03]
+     fixedPoint = (tempY + axisY * sin) * scaleX * 0x10000;
+     mtx->m[0][1] = fixedPoint;         // [i03, i03], i03 dirty
+-    mtx->intPart[0][3] = 0;            // clean i03
++    SU_MTX_HALF(mtx->intPart, 0, 3) = 0;            // clean i03
+     mtx->m[2][1] = fixedPoint << 0x10; // [f02, f03]
+ 
+     // [i22, i23] and [f22, f23]
+     fixedPoint = (tempZZ + (1.0f - tempZZ) * cos) * scaleZ * 0x10000;
+     mtx->m[1][1] = fixedPoint;
+-    mtx->intPart[2][3] = 0;
++    SU_MTX_HALF(mtx->intPart, 2, 3) = 0;
+     mtx->m[3][1] = fixedPoint << 0x10;
+ 
+     // i10 and f10
+     fixedPoint = (tempZ - axisZ * sin) * scaleY * 0x10000;
+-    mtx->intPart[1][0] = ((u32)fixedPoint >> 0x10) & 0xFFFF;
+-    mtx->fracPart[1][0] = fixedPoint & 0xFFFF;
++    SU_MTX_HALF(mtx->intPart, 1, 0) = ((u32)fixedPoint >> 0x10) & 0xFFFF;
++    SU_MTX_HALF(mtx->fracPart, 1, 0) = fixedPoint & 0xFFFF;
+ 
+     // i01 and f01
+     fixedPoint = (tempZ + axisZ * sin) * scaleX * 0x10000;
+-    mtx->intPart[0][1] = ((u32)fixedPoint >> 0x10) & 0xFFFF;
+-    mtx->fracPart[0][1] = fixedPoint & 0xFFFF;
++    SU_MTX_HALF(mtx->intPart, 0, 1) = ((u32)fixedPoint >> 0x10) & 0xFFFF;
++    SU_MTX_HALF(mtx->fracPart, 0, 1) = fixedPoint & 0xFFFF;
+ 
+     // [i30, i31] and f30
+     fixedPoint = translateX * 0x10000;
+     mtx->m[1][2] = fixedPoint;                 // [i30, i31], i31 dirty
+-    mtx->fracPart[3][0] = fixedPoint & 0xFFFF; // f30
++    SU_MTX_HALF(mtx->fracPart, 3, 0) = fixedPoint & 0xFFFF; // f30
+ 
+     // i31 and f31
+     fixedPoint = translateY * 0x10000;
+-    mtx->intPart[3][1] = ((u32)fixedPoint >> 0x10) & 0xFFFF; // overwrite i31
+-    mtx->fracPart[3][1] = fixedPoint & 0xFFFF;               // overwrite f31
++    SU_MTX_HALF(mtx->intPart, 3, 1) = ((u32)fixedPoint >> 0x10) & 0xFFFF; // overwrite i31
++    SU_MTX_HALF(mtx->fracPart, 3, 1) = fixedPoint & 0xFFFF;               // overwrite f31
+ 
+     // [i32, i33] and [f32, f33]
+     fixedPoint = translateZ * 0x10000;
+     mtx->m[1][3] = fixedPoint;           // [i32, i33]
+-    mtx->intPart[3][3] = 1;              // clean i33
++    SU_MTX_HALF(mtx->intPart, 3, 3) = 1;              // clean i33
+     mtx->m[3][3] = (fixedPoint << 0x10); // [f32, f33]
+ }
+diff --git a/src/code/sys_cmpdma.c b/src/code/sys_cmpdma.c
+index 6103142..76bfc67 100644
+--- a/src/code/sys_cmpdma.c
++++ b/src/code/sys_cmpdma.c
+@@ -21,6 +21,21 @@ typedef struct {
+ 
+ CmpDmaBuffer sDmaBuffer;
+ 
++#ifdef TARGET_HANDHELD
++// the port: the archive's offset table is the ROM's (big-endian) words
++#define CMPDMA_READ(rom, dst, size)                             \
++    do {                                                        \
++        u32* w_ = (u32*)(dst);                                  \
++        size_t i_;                                              \
++        DmaMgr_DmaRomToRam(rom, dst, size);                     \
++        for (i_ = 0; i_ < (size) / sizeof(u32); i_++) {         \
++            w_[i_] = __builtin_bswap32(w_[i_]);                 \
++        }                                                       \
++    } while (0)
++#else
++#define CMPDMA_READ(rom, dst, size) DmaMgr_DmaRomToRam(rom, dst, size)
++#endif
++
+ void func_80178AC0(u16* src, void* dst, size_t size) {
+     Color_RGBA8_u32 spC;
+     Color_RGBA16_2 tc;
+@@ -53,7 +68,7 @@ void CmpDma_GetFileInfo(uintptr_t segmentRom, s32 id, uintptr_t* outFileRom, siz
+     uintptr_t dataStart;
+     uintptr_t refOff;
+ 
+-    DmaMgr_DmaRomToRam(segmentRom, &sDmaBuffer.dataStart, sizeof(sDmaBuffer.dataStart));
++    CMPDMA_READ(segmentRom, &sDmaBuffer.dataStart, sizeof(sDmaBuffer.dataStart));
+ 
+     dataStart = sDmaBuffer.dataStart;
+     refOff = id * sizeof(u32);
+@@ -64,12 +79,12 @@ void CmpDma_GetFileInfo(uintptr_t segmentRom, s32 id, uintptr_t* outFileRom, siz
+         *size = 0;
+     } else if (refOff == 0) {
+         // get offset start of next file, i.e. size of first file
+-        DmaMgr_DmaRomToRam(segmentRom + sizeof(u32), &sDmaBuffer.dataSize, sizeof(sDmaBuffer.dataSize));
++        CMPDMA_READ(segmentRom + sizeof(u32), &sDmaBuffer.dataSize, sizeof(sDmaBuffer.dataSize));
+         *outFileRom = segmentRom + dataStart;
+         *size = sDmaBuffer.dataSize;
+     } else {
+         // get offset start, end from dataStart
+-        DmaMgr_DmaRomToRam(refOff + segmentRom, &sDmaBuffer.offset, sizeof(sDmaBuffer.offset));
++        CMPDMA_READ(refOff + segmentRom, &sDmaBuffer.offset, sizeof(sDmaBuffer.offset));
+         *outFileRom = sDmaBuffer.offset.start + segmentRom + dataStart;
+         *size = sDmaBuffer.offset.end - sDmaBuffer.offset.start;
+     }
+@@ -112,7 +127,7 @@ void CmpDma_LoadAllFiles(uintptr_t segmentVrom, void* dst, size_t size) {
+     void* nextDst;
+     u32 dataStart;
+ 
+-    DmaMgr_DmaRomToRam(rom, &sDmaBuffer.dataStart, sizeof(sDmaBuffer.dataStart));
++    CMPDMA_READ(rom, &sDmaBuffer.dataStart, sizeof(sDmaBuffer.dataStart));
+ 
+     dataStart = sDmaBuffer.dataStart;
+     nextDst = dst;
+diff --git a/src/code/sys_flashrom.c b/src/code/sys_flashrom.c
+index 1fda136..7c7a268 100644
+--- a/src/code/sys_flashrom.c
++++ b/src/code/sys_flashrom.c
+@@ -227,9 +227,14 @@ void SysFlashrom_WriteAsync(void* addr, u32 pageNum, u32 pageCount) {
+         osCreateMesgQueue(&req->queue, req->msgBuf, ARRAY_COUNT(req->msgBuf));
+         StackCheck_Init(&sSysFlashromStackInfo, sSysFlashromStack, STACK_TOP(sSysFlashromStack), 0, 0x100,
+                         "sys_flashrom");
++#ifdef TARGET_HANDHELD
++        // the port: the flash is a file write (hh_mm.c), done here rather than on a thread of its own
++        SysFlashrom_ThreadEntry(req);
++#else
+         osCreateThread(&sSysFlashromThread, Z_THREAD_ID_FLASHROM, SysFlashrom_ThreadEntry, req,
+                        STACK_TOP(sSysFlashromStack), Z_PRIORITY_FLASHROM);
+         osStartThread(&sSysFlashromThread);
++#endif
+     }
+ }
+ 
+@@ -249,7 +254,9 @@ s32 SysFlashrom_AwaitResult(void) {
+         return -1;
+     }
+     osRecvMesg(&req->queue, NULL, OS_MESG_BLOCK);
++#ifndef TARGET_HANDHELD
+     osDestroyThread(&sSysFlashromThread);
++#endif
+     StackCheck_Cleanup(&sSysFlashromStackInfo);
+     return req->response;
+ }
+diff --git a/src/code/sys_matrix.c b/src/code/sys_matrix.c
+index 4013e08..aec910f 100644
+--- a/src/code/sys_matrix.c
++++ b/src/code/sys_matrix.c
+@@ -1157,6 +1157,13 @@ void Matrix_SetTranslateRotateYXZ(f32 x, f32 y, f32 z, Vec3s* rot) {
+  * @remark original name: "_MtxF_to_Mtx"
+  */
+ Mtx* Matrix_MtxFToMtx(MtxF* src, Mtx* dest) {
++#ifdef TARGET_HANDHELD
++    // the port: the Mtx words as libultra writes them (the renderer reads words)
++    guMtxF2L(src->mf, dest);
++    if (1) {
++        return dest;
++    }
++#endif
+     s32 temp;
+     u16* intPart = (u16*)&dest->m[0][0];
+     u16* fracPart = (u16*)&dest->m[2][0];
+@@ -1480,6 +1487,13 @@ void Matrix_MtxFCopy(MtxF* dest, MtxF* src) {
+  * @remark original name: "Matrix_MtxtoMtxF"
+  */
+ void Matrix_MtxToMtxF(Mtx* src, MtxF* dest) {
++#ifdef TARGET_HANDHELD
++    // the port: the Mtx words as libultra writes them (the renderer reads words)
++    guMtxL2F(dest->mf, src);
++    if (1) {
++        return;
++    }
++#endif
+     u16* intPart = (u16*)&src->m[0][0];
+     u16* fracPart = (u16*)&src->m[2][0];
+ 
+diff --git a/src/code/z_DLF.c b/src/code/z_DLF.c
+index e71e199..369ce09 100644
+--- a/src/code/z_DLF.c
++++ b/src/code/z_DLF.c
+@@ -15,6 +15,12 @@ void Overlay_LoadGameState(GameStateOverlay* overlayEntry) {
+     vramStart = overlayEntry->vramStart;
+     if (vramStart == NULL) {
+         overlayEntry->unk_28 = 0;
++#ifdef TARGET_HANDHELD
++        { /* linked in: the state's overlay .data/.bss as a fresh load would leave them (hh_ovl.c) */
++            extern void HhOvl_GameStateLoad(void* init);
++            HhOvl_GameStateLoad((void*)overlayEntry->init);
++        }
++#endif
+         return;
+     }
+ 
+diff --git a/src/code/z_actor.c b/src/code/z_actor.c
+index a99b37f..4108114 100644
+--- a/src/code/z_actor.c
++++ b/src/code/z_actor.c
+@@ -2517,6 +2517,12 @@ void Actor_InitContext(PlayState* play, ActorContext* actorCtx, ActorEntry* acto
+         overlayEntry->numLoaded = 0;
+         overlayEntry++;
+     }
++#ifdef TARGET_HANDHELD
++    { /* a new arena: every actor overlay is loaded afresh (hh_ovl.c) */
++        extern void HhOvl_ActorFreeAll(void);
++        HhOvl_ActorFreeAll();
++    }
++#endif
+ 
+     actorCtx->sceneFlags.chest = cycleFlags->chest;
+     actorCtx->sceneFlags.switches[0] = cycleFlags->switch0;
+@@ -3429,6 +3435,12 @@ Actor* Actor_RemoveFromCategory(PlayState* play, ActorContext* actorCtx, Actor*
+ void Actor_FreeOverlay(ActorOverlay* entry) {
+     if (entry->numLoaded == 0) {
+         PRINTF(T("アクタークライアントが０になりました\n", "Actor clients are now 0\n"));
++#ifdef TARGET_HANDHELD
++        if (!(entry->allocType & ALLOCTYPE_PERMANENT)) { /* freed: the next instance reloads it (hh_ovl.c) */
++            extern void HhOvl_ActorFree(s32 id);
++            HhOvl_ActorFree(entry - gActorOverlayTable);
++        }
++#endif
+ 
+         if (entry->loadedRamAddr != NULL) {
+             if (entry->allocType & ALLOCTYPE_PERMANENT) {
+@@ -3462,6 +3474,12 @@ ActorProfile* Actor_LoadOverlay(ActorContext* actorCtx, s16 index) {
+     overlaySize = (uintptr_t)overlayEntry->vramEnd - (uintptr_t)overlayEntry->vramStart;
+ 
+     if (overlayEntry->vramStart == NULL) {
++#ifdef TARGET_HANDHELD
++        { /* linked in: its .data/.bss as a fresh load would leave them (hh_ovl.c) */
++            extern void HhOvl_ActorLoad(s32 id);
++            HhOvl_ActorLoad(index);
++        }
++#endif
+         profile = overlayEntry->profile;
+     } else {
+         if (overlayEntry->loadedRamAddr == NULL) {
+diff --git a/src/code/z_effect_soft_sprite.c b/src/code/z_effect_soft_sprite.c
+index 614009c..93c462d 100644
+--- a/src/code/z_effect_soft_sprite.c
++++ b/src/code/z_effect_soft_sprite.c
+@@ -27,6 +27,12 @@ void EffectSs_InitInfo(PlayState* play, s32 tableSize) {
+         overlay->loadedRamAddr = NULL;
+         overlay++;
+     }
++#ifdef TARGET_HANDHELD
++    { /* a new arena: every effect overlay is loaded afresh (hh_ovl.c) */
++        extern void HhOvl_EffectFreeAll(void);
++        HhOvl_EffectFreeAll();
++    }
++#endif
+ }
+ 
+ void EffectSs_ClearAll(PlayState* play) {
+@@ -55,6 +61,12 @@ void EffectSs_ClearAll(PlayState* play) {
+         overlay->loadedRamAddr = NULL;
+         overlay++;
+     }
++#ifdef TARGET_HANDHELD
++    { /* freed: reloaded on their next spawn (hh_ovl.c) */
++        extern void HhOvl_EffectFreeAll(void);
++        HhOvl_EffectFreeAll();
++    }
++#endif
+ }
+ 
+ EffectSs* EffectSs_GetTable(void) {
+@@ -182,6 +194,12 @@ void EffectSs_Spawn(PlayState* play, s32 type, s32 priority, void* initData) {
+     if (overlayEntry->vramStart == NULL) {
+         PRINTF(T("EffectSoftSprite2_makeEffect():オーバーレイではありません。\n",
+                  "EffectSoftSprite2_makeEffect(): Not an overlay.\n"));
++#ifdef TARGET_HANDHELD
++        { /* linked in: its .data/.bss as a fresh load would leave them (hh_ovl.c) */
++            extern void HhOvl_EffectLoad(s32 type);
++            HhOvl_EffectLoad(type);
++        }
++#endif
+         profile = overlayEntry->profile;
+     } else {
+         if (overlayEntry->loadedRamAddr == NULL) {
+diff --git a/src/code/z_jpeg.c b/src/code/z_jpeg.c
+index 91a9900..deae8e0 100644
+--- a/src/code/z_jpeg.c
++++ b/src/code/z_jpeg.c
+@@ -109,6 +109,12 @@ void Jpeg_CopyToZbuffer(u16* src, u16* zbuffer, s32 x, s32 y) {
+  * unaligned values in JPEG header files.
+  */
+ u16 Jpeg_GetUnalignedU16(u8* ptr) {
++#ifdef TARGET_HANDHELD
++    // the port: JPEG marker lengths are big-endian (no caller in this game; kept right for the record)
++    if (1) {
++        return (ptr[0] << 8) | ptr[1];
++    }
++#endif
+     if (((uintptr_t)ptr & 1) == 0) {
+         // Read the value normally if it's aligned to a 16-bit address.
+         return *(u16*)ptr;
+diff --git a/src/code/z_kaleido_manager.c b/src/code/z_kaleido_manager.c
+index 053a032..a919d31 100644
+--- a/src/code/z_kaleido_manager.c
++++ b/src/code/z_kaleido_manager.c
+@@ -39,6 +39,17 @@ uintptr_t KaleidoManager_FaultAddrConv(uintptr_t address, void* param) {
+ }
+ 
+ void KaleidoManager_LoadOvl(KaleidoMgrOverlay* ovl) {
++#ifdef TARGET_HANDHELD
++    // the port links the overlays in: nothing to load or relocate; their .data/.bss as a fresh load leaves them
++    {
++        extern void HhOvl_KaleidoLoad(s32 index);
++        HhOvl_KaleidoLoad(ovl - gKaleidoMgrOverlayTable);
++    }
++    ovl->loadedRamAddr = sKaleidoAreaPtr;
++    ovl->offset = 0;
++    gKaleidoMgrCurOvl = ovl;
++    return;
++#endif
+     ovl->loadedRamAddr = sKaleidoAreaPtr;
+     Overlay_Load(ovl->file.vromStart, ovl->file.vromEnd, ovl->vramStart, ovl->vramEnd, ovl->loadedRamAddr);
+     ovl->offset = (uintptr_t)ovl->loadedRamAddr - (uintptr_t)ovl->vramStart;
+@@ -46,6 +57,12 @@ void KaleidoManager_LoadOvl(KaleidoMgrOverlay* ovl) {
+ }
+ 
+ void KaleidoManager_ClearOvl(KaleidoMgrOverlay* ovl) {
++#ifdef TARGET_HANDHELD
++    ovl->offset = 0;
++    ovl->loadedRamAddr = NULL;
++    gKaleidoMgrCurOvl = NULL;
++    return;
++#endif
+     if (ovl->loadedRamAddr != NULL) {
+         ovl->offset = 0;
+         bzero(ovl->loadedRamAddr, (uintptr_t)ovl->vramEnd - (uintptr_t)ovl->vramStart);
+@@ -85,6 +102,10 @@ void KaleidoManager_Destroy(void) {
+ void* KaleidoManager_GetRamAddr(void* vram) {
+     KaleidoMgrOverlay* ovl = gKaleidoMgrCurOvl;
+ 
++#ifdef TARGET_HANDHELD
++    return vram;
++#endif
++
+     if (ovl == NULL) {
+         s32 i;
+ 
+diff --git a/src/code/z_play.c b/src/code/z_play.c
+index dc076fc..81baa08 100644
+--- a/src/code/z_play.c
++++ b/src/code/z_play.c
+@@ -145,6 +145,12 @@ void Play_DisableMotionBlur(void) {
+  * @param[in] pixelBottom Y coordinate of the bottom-right RGBA16 pixel to end with
+  * @param[in] bitDepth bit depth for the intensity image
+  */
++#ifdef TARGET_HANDHELD
++/* the saved screen is in the N64's byte order (the renderer's RGBA16) */
++#define PLAY_RGBA16_PX(v) ((u16)__builtin_bswap16((u16)(v)))
++#else
++#define PLAY_RGBA16_PX(v) (v)
++#endif
+ void Play_ConvertRgba16ToIntensityImage(void* destI, u16* srcRgba16, s32 rgba16Width, s32 pixelLeft, s32 pixelTop,
+                                         s32 pixelRight, s32 pixelBottom, s32 bitDepth) {
+     s32 i;
+@@ -162,13 +168,13 @@ void Play_ConvertRgba16ToIntensityImage(void* destI, u16* srcRgba16, s32 rgba16W
+ 
+             for (i = pixelTop; i <= pixelBottom; i++) {
+                 for (j = pixelLeft; j <= pixelRight; j += 2) {
+-                    pixel = srcRgba16[i * rgba16Width + j];
++                    pixel = PLAY_RGBA16_PX(srcRgba16[i * rgba16Width + j]);
+                     r = RGBA16_GET_R(pixel);
+                     g = RGBA16_GET_G(pixel);
+                     b = RGBA16_GET_B(pixel);
+                     upper = PLAY_INTENSITY_MIX(r, g, b, 15);
+ 
+-                    pixel = srcRgba16[i * rgba16Width + j + 1];
++                    pixel = PLAY_RGBA16_PX(srcRgba16[i * rgba16Width + j + 1]);
+                     r = RGBA16_GET_R(pixel);
+                     g = RGBA16_GET_G(pixel);
+                     b = RGBA16_GET_B(pixel);
+@@ -185,7 +191,7 @@ void Play_ConvertRgba16ToIntensityImage(void* destI, u16* srcRgba16, s32 rgba16W
+ 
+             for (i = pixelTop; i <= pixelBottom; i++) {
+                 for (j = pixelLeft; j <= pixelRight; j++) {
+-                    pixel = srcRgba16[i * rgba16Width + j];
++                    pixel = PLAY_RGBA16_PX(srcRgba16[i * rgba16Width + j]);
+                     r = RGBA16_GET_R(pixel);
+                     g = RGBA16_GET_G(pixel);
+                     b = RGBA16_GET_B(pixel);
+@@ -203,7 +209,7 @@ void Play_ConvertRgba16ToIntensityImage(void* destI, u16* srcRgba16, s32 rgba16W
+ 
+             for (i = pixelTop; i <= pixelBottom; i++) {
+                 for (j = pixelLeft; j <= pixelRight; j++) {
+-                    pixel = srcRgba16[i * rgba16Width + j];
++                    pixel = PLAY_RGBA16_PX(srcRgba16[i * rgba16Width + j]);
+ 
+                     r = RGBA16_GET_R(pixel);
+                     g = RGBA16_GET_G(pixel);
+diff --git a/src/code/z_player_lib.c b/src/code/z_player_lib.c
+index a90113c..55de6b2 100644
+--- a/src/code/z_player_lib.c
++++ b/src/code/z_player_lib.c
+@@ -3222,7 +3222,7 @@ void Player_DrawCircusLeadersMask(PlayState* play, Player* player) {
+             Matrix_Scale(scaleXZ, scaleY, scaleXZ, MTXMODE_APPLY);
+ 
+             gSPMatrix(&gfx[0], Matrix_Finalize(play->state.gfxCtx), G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+-            gSPSegment(&gfx[1], 0x08, OS_K0_TO_PHYSICAL(SEGMENTED_TO_K0(gEffBubble1Tex)));
++            gSPSegment(&gfx[1], 0x08, K0_TO_DL_ADDR(SEGMENTED_TO_K0(gEffBubble1Tex)));
+             gDPSetPrimColor(&gfx[2], 0, 0, 255, 255, 255, 255);
+             gDPSetEnvColor(&gfx[3], 150, 150, 150, 0);
+             gSPDisplayList(&gfx[4], gEffBubbleDL);
+diff --git a/src/code/z_rcp.c b/src/code/z_rcp.c
+index f475016..116a048 100644
+--- a/src/code/z_rcp.c
++++ b/src/code/z_rcp.c
+@@ -1531,7 +1531,21 @@ void func_8012CF0C(GraphicsContext* gfxCtx, s32 clearFb, s32 clearZb, u8 r, u8 g
+         if (i == 0x0E) {
+             gSPNoOp(&masterGfx[i]);
+         } else {
++#ifdef TARGET_HANDHELD
++            /* The port's renderer takes host pointers (K0_TO_DL_ADDR). gSegments holds OS_K0_TO_PHYSICAL(ptr) for most
++             * segments, but the pointer itself for 0x0E/0x0F (the master DL, the framebuffer: the RSP masks either
++             * form). Host pointers lie in [0x40000000, 0xC0000000); a physical form lies outside it. */
++            {
++                uintptr_t v = gSegments[i];
++
++                if ((v != 0) && ((v < 0x40000000u) || (v >= 0xC0000000u))) {
++                    v += K0BASE;
++                }
++                gSPSegment(&masterGfx[i], i, v);
++            }
++#else
+             gSPSegment(&masterGfx[i], i, gSegments[i]);
++#endif
+         }
+     }
+     gSPEndDisplayList(&masterGfx[i]);
+diff --git a/src/code/z_skin_matrix.c b/src/code/z_skin_matrix.c
+index 211bc16..6a978a8 100644
+--- a/src/code/z_skin_matrix.c
++++ b/src/code/z_skin_matrix.c
+@@ -510,6 +510,13 @@ void SkinMatrix_Vec3sToVec3f(Vec3s* src, Vec3f* dest) {
+ }
+ 
+ void SkinMatrix_MtxFToMtx(MtxF* src, Mtx* dest) {
++#ifdef TARGET_HANDHELD
++    // the port: the Mtx words as libultra writes them (the renderer reads words)
++    guMtxF2L(src->mf, dest);
++    if (1) {
++        return;
++    }
++#endif
+     s32 temp;
+     u16* m1 = (u16*)&dest->m[0][0];
+     u16* m2 = (u16*)&dest->m[2][0];
+diff --git a/src/code/z_vismono.c b/src/code/z_vismono.c
+index ba15bcc..c5541b5 100644
+--- a/src/code/z_vismono.c
++++ b/src/code/z_vismono.c
+@@ -140,6 +140,18 @@ Gfx* VisMono_DesaturateDList(Gfx* gfx) {
+ 
+ void VisMono_Draw(VisMono* this, Gfx** gfxP) {
+     Gfx* gfx = *gfxP;
++#ifdef TARGET_HANDHELD
++    // the port: the colour image is the renderer's target, not RAM; the renderer tints it in place at the tag
++    if (1) {
++        gDPPipeSync(gfx++);
++        gDPSetColor(gfx++, G_SETPRIMCOLOR, this->vis.primColor.rgba);
++        gDPSetColor(gfx++, G_SETENVCOLOR, this->vis.envColor.rgba);
++        gDPNoOpTag(gfx++, HH_TAG_VISMONO);
++        gDPPipeSync(gfx++);
++        *gfxP = gfx;
++        return;
++    }
++#endif
+     u16* tlut;
+     Gfx* dList;
+     Gfx* dListEnd;
+diff --git a/src/overlays/actors/ovl_En_Dg/z_en_dg.c b/src/overlays/actors/ovl_En_Dg/z_en_dg.c
+index 4a23870..ba8221f 100644
+--- a/src/overlays/actors/ovl_En_Dg/z_en_dg.c
++++ b/src/overlays/actors/ovl_En_Dg/z_en_dg.c
+@@ -108,6 +108,23 @@ static RacetrackDogInfo sRacetrackDogInfo[] = {
+  */
+ static RacetrackDogInfo sSelectedRacetrackDogInfo = { DOG_COLOR_DEFAULT, -1, 0x353E };
+ 
++#ifdef TARGET_HANDHELD
++// the port: the dogs outside the racetrack (index 20, 21, 31) read sRacetrackDogInfo past its 14 entries, i.e. the
++// N64's next data (zero colours: the default, beige). Those reads (and writes) go to the N64's values here, instead
++// of whatever the handheld's linker put after the table (the audit's UBSan run, South Clock Town's dog).
++static RacetrackDogInfo sRacetrackDogInfoN64Tail[] = {
++    { 0, -1, 0x353E }, { 0, 2577, 0x0939 }, { 4097, 0, 0x0100 }, { 0, -2097, 0xFFFF }, { 1024, 0, 0xF7CF },
++    { -1, 0, 0x0000 }, { 257, 256, 0x000D }, { 19, 0, 0x0000 }, { 0, 0, 0x0000 }, { 0, 0, 0x0000 },
++    { 256, 0, 0x0000 }, { 0, 0, 0x0000 }, { 0, 0, 0x0000 }, { 0, 0, 0x0000 }, { 0, 0, 0x0000 },
++    { 0, 0, 0x0000 }, { 1536, 8648, 0x3F80 }, { 0, 0, 0xFFFF },
++};
++#define EN_DG_INFO(i)                                                                    \
++    (*(((u32)(i) < ARRAY_COUNT(sRacetrackDogInfo)) ? &sRacetrackDogInfo[i]               \
++                                                    : &sRacetrackDogInfoN64Tail[(u32)((i) - ARRAY_COUNT(sRacetrackDogInfo)) % ARRAY_COUNT(sRacetrackDogInfoN64Tail)]))
++#else
++#define EN_DG_INFO(i) sRacetrackDogInfo[i]
++#endif
++
+ static ColliderCylinderInit sCylinderInit = {
+     {
+         COL_MATERIAL_NONE,
+@@ -351,7 +368,7 @@ void EnDg_MoveAlongPath(EnDg* this, PlayState* play) {
+             Math_ApproachF(&this->actor.speed, 3.5f, 0.2f, 1.0f);
+         } else if (play->sceneId == SCENE_CLOCKTOWER) {
+             Math_ApproachF(&this->actor.speed, 3.5f, 0.2f, 1.0f);
+-        } else if (sRacetrackDogInfo[this->index].textId & 0x11) {
++        } else if (EN_DG_INFO(this->index).textId & 0x11) {
+             Math_ApproachF(&this->actor.speed, 1.0f, 0.2f, 1.0f);
+         } else {
+             Math_ApproachF(&this->actor.speed, 3.5f, 0.2f, 1.0f);
+@@ -413,7 +430,7 @@ void EnDg_SetupIdleMove(EnDg* this, PlayState* play) {
+             EnDg_ChangeAnim(&this->skelAnime, sAnimationInfo, DOG_ANIM_RUN);
+         } else if (play->sceneId == SCENE_CLOCKTOWER) {
+             EnDg_ChangeAnim(&this->skelAnime, sAnimationInfo, DOG_ANIM_RUN);
+-        } else if (sRacetrackDogInfo[this->index].textId & 0x11) {
++        } else if (EN_DG_INFO(this->index).textId & 0x11) {
+             //! @bug: There is no bounds check on sRacetrackDogInfo access.
+             //! The dog in the Romani Ranch credits uses params of 0x03FF which means an index equal to
+             //! `ENDG_INDEX_SOUTH_CLOCK_TOWN`. Since the above condition just checks the scene not the index, this
+@@ -439,21 +456,21 @@ void EnDg_SetupIdleMove(EnDg* this, PlayState* play) {
+ void EnDg_UpdateTextId(EnDg* this) {
+     if (this->index < RACEDOG_COUNT) {
+         // This will produce a text ID in the range of 0x3538 to 0x3545.
+-        sRacetrackDogInfo[this->index].textId = GET_WEEKEVENTREG_DOG_RACE_TEXT(this->index, 0x3538);
++        EN_DG_INFO(this->index).textId = GET_WEEKEVENTREG_DOG_RACE_TEXT(this->index, 0x3538);
+     } else {
+         Actor_Kill(&this->actor);
+     }
+ 
+     // As a sanity check, this makes sure the text ID is something in the expected range of 0x3538 to 0x3546.
+-    if ((sRacetrackDogInfo[this->index].textId > 0x3546) || (sRacetrackDogInfo[this->index].textId < 0x3538)) {
+-        sRacetrackDogInfo[this->index].textId = 0x353E;
++    if ((EN_DG_INFO(this->index).textId > 0x3546) || (EN_DG_INFO(this->index).textId < 0x3538)) {
++        EN_DG_INFO(this->index).textId = 0x353E;
+     }
+ 
+     // Text ID 0x353D is the text for the Romani Ranch dog, which is in the middle of the race dog block. If
+     // the dog ends up with this text ID, adjust it so the dog says a different message indcating it's in
+     // good condition.
+-    if (sRacetrackDogInfo[this->index].textId == 0x353D) {
+-        sRacetrackDogInfo[this->index].textId = 0x3538;
++    if (EN_DG_INFO(this->index).textId == 0x353D) {
++        EN_DG_INFO(this->index).textId = 0x3538;
+     }
+ }
+ 
+@@ -467,7 +484,7 @@ void EnDg_StartTextBox(EnDg* this, PlayState* play) {
+             Message_StartTextbox(play, 0x91E, NULL);
+         }
+     } else if ((this->index >= ENDG_INDEX_RACETRACK_0) && (this->index <= ENDG_INDEX_RACETRACK_13)) {
+-        Message_StartTextbox(play, sRacetrackDogInfo[this->index].textId, NULL);
++        Message_StartTextbox(play, EN_DG_INFO(this->index).textId, NULL);
+     } else if (this->index == ENDG_INDEX_ROMANI_RANCH) {
+         // I wonder if I can stop practicing...
+         Message_StartTextbox(play, 0x353D, NULL);
+@@ -492,7 +509,7 @@ void EnDg_TryPickUp(EnDg* this, PlayState* play) {
+     if (Actor_HasParent(&this->actor, play)) {
+         Actor_PlaySfx(&this->actor, NA_SE_EV_SMALL_DOG_BARK);
+         this->grabState = DOG_GRAB_STATE_HELD;
+-        sSelectedRacetrackDogInfo = sRacetrackDogInfo[this->index];
++        sSelectedRacetrackDogInfo = EN_DG_INFO(this->index);
+         if (!sIsAnyDogHeld) {
+             this->actor.flags |= ACTOR_FLAG_LOCK_ON_DISABLED;
+             sIsAnyDogHeld = true;
+@@ -1400,7 +1417,7 @@ void EnDg_Draw(Actor* thisx, PlayState* play) {
+ 
+     gDPPipeSync(POLY_OPA_DISP++);
+ 
+-    switch (sRacetrackDogInfo[this->index].color) {
++    switch (EN_DG_INFO(this->index).color) {
+         case DOG_COLOR_BEIGE:
+             gDPSetEnvColor(POLY_OPA_DISP++, 255, 255, 200, 0);
+             break;
+diff --git a/src/overlays/actors/ovl_En_Fish2/z_en_fish2.c b/src/overlays/actors/ovl_En_Fish2/z_en_fish2.c
+index 2fc63e5..84766c7 100644
+--- a/src/overlays/actors/ovl_En_Fish2/z_en_fish2.c
++++ b/src/overlays/actors/ovl_En_Fish2/z_en_fish2.c
+@@ -1119,7 +1119,7 @@ void func_80B2ADB0(EnFish2* this, Vec3f* vec, s16 arg2) {
+                 texture = gEffBubble1Tex;
+             }
+ 
+-            ptr->unk_20 = (TexturePtr)OS_K0_TO_PHYSICAL(SEGMENTED_TO_K0(texture));
++            ptr->unk_20 = (TexturePtr)K0_TO_DL_ADDR(SEGMENTED_TO_K0(texture));
+             ptr->unk_00 = true;
+             ptr->unk_04 = *vec;
+             ptr->unk_04.x += Rand_CenteredFloat(ptr->unk_00 + (this->unk_330 * 4000.0f));
+diff --git a/src/overlays/effects/ovl_Effect_Ss_Bubble/z_eff_ss_bubble.c b/src/overlays/effects/ovl_Effect_Ss_Bubble/z_eff_ss_bubble.c
+index fe0847c..3f77898 100644
+--- a/src/overlays/effects/ovl_Effect_Ss_Bubble/z_eff_ss_bubble.c
++++ b/src/overlays/effects/ovl_Effect_Ss_Bubble/z_eff_ss_bubble.c
+@@ -34,7 +34,7 @@ u32 EffectSsBubble_Init(PlayState* play, u32 index, EffectSs* this, void* initPa
+     {
+         TexturePtr tex = (Rand_ZeroOne() < 0.5f) ? gEffBubble1Tex : gEffBubble2Tex;
+ 
+-        this->gfx = (void*)OS_K0_TO_PHYSICAL(SEGMENTED_TO_K0(tex));
++        this->gfx = (void*)K0_TO_DL_ADDR(SEGMENTED_TO_K0(tex));
+     }
+ 
+     this->pos.x = ((Rand_ZeroOne() - 0.5f) * initParams->xzPosRandScale) + initParams->pos.x;
+diff --git a/src/overlays/effects/ovl_Effect_Ss_Dt_Bubble/z_eff_ss_dt_bubble.c b/src/overlays/effects/ovl_Effect_Ss_Dt_Bubble/z_eff_ss_dt_bubble.c
+index 058d61e..bd8ec22 100644
+--- a/src/overlays/effects/ovl_Effect_Ss_Dt_Bubble/z_eff_ss_dt_bubble.c
++++ b/src/overlays/effects/ovl_Effect_Ss_Dt_Bubble/z_eff_ss_dt_bubble.c
+@@ -50,7 +50,7 @@ u32 EffectSsDtBubble_Init(PlayState* play, u32 index, EffectSs* this, void* init
+     {
+         TexturePtr tex = (Rand_ZeroOne() < 0.5f) ? gEffBubble1Tex : gEffBubble2Tex;
+ 
+-        this->gfx = (void*)OS_K0_TO_PHYSICAL(SEGMENTED_TO_K0(tex));
++        this->gfx = (void*)K0_TO_DL_ADDR(SEGMENTED_TO_K0(tex));
+     }
+ 
+     Math_Vec3f_Copy(&this->pos, &initParams->pos);
+diff --git a/src/overlays/effects/ovl_Effect_Ss_Sibuki/z_eff_ss_sibuki.c b/src/overlays/effects/ovl_Effect_Ss_Sibuki/z_eff_ss_sibuki.c
+index 0861675..23169ff 100644
+--- a/src/overlays/effects/ovl_Effect_Ss_Sibuki/z_eff_ss_sibuki.c
++++ b/src/overlays/effects/ovl_Effect_Ss_Sibuki/z_eff_ss_sibuki.c
+@@ -40,7 +40,7 @@ u32 EffectSsSibuki_Init(PlayState* play, u32 index, EffectSs* this, void* initPa
+     {
+         TexturePtr tex = (KREG(2) != 0) ? gEffBubble2Tex : gEffBubble1Tex;
+ 
+-        this->gfx = (void*)OS_K0_TO_PHYSICAL(SEGMENTED_TO_K0(tex));
++        this->gfx = (void*)K0_TO_DL_ADDR(SEGMENTED_TO_K0(tex));
+     }
+ 
+     this->life = ((s32)((Rand_ZeroOne() * (500.0f + KREG(64))) * 0.01f)) + KREG(65) + 10;
