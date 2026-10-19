@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -187,6 +188,60 @@ static int pack_current(void) {
     if (fread(id, 1, 8, f) != 8) { fclose(f); return 0; }
     fclose(f);
     return memcmp(id, "MMPI", 4) == 0 && hhr_le32(id + 4) == sR.crc;
+}
+
+/* ---- ROM data compiled into the game's code (hh/tools/mm_embed.py) */
+/* The arrays of the game's code that are the ROM's bytes (overlay textures, the debug font) are zeroed in the
+ * executable that ships; this table, written into the file by mm_embed.py strip, says where each one is and where
+ * its bytes are in the data pack (the decompressed ROM's layout: code and overlays are the ROM's bytes there), with
+ * their CRC-32. Empty (no "HHEM") in a build that was not stripped. Outside the save-state ranges. */
+#define HH_EMBED_MAX 4096
+/* mprotect as a direct system call (ARM EABI, __NR_mprotect = 125): a new library import would grow the GOT, which
+ * the pinned release layout has no room for (hh/tools/mm_pin_ld.py) */
+static int hh_mprotect(void* addr, size_t len, int prot) {
+    register long r0 __asm__("r0") = (long)addr;
+    register long r1 __asm__("r1") = (long)len;
+    register long r2 __asm__("r2") = prot;
+    register long r7 __asm__("r7") = 125;
+    __asm__ volatile("svc #0" : "+r"(r0) : "r"(r1), "r"(r2), "r"(r7) : "memory");
+    return (int)r0;
+}
+__attribute__((section(".data.hh_embed"), used)) uint32_t hh_embed_table[2 + 4 * HH_EMBED_MAX];
+
+int HhEmbed_Fill(const unsigned char* pack, size_t packSize) {
+    const uint32_t n = hh_embed_table[1];
+    uint32_t i, bytes = 0;
+    if (memcmp(hh_embed_table, "HHEM", 4) != 0) return 1; /* not stripped: the arrays are in the executable */
+    if (n > HH_EMBED_MAX) { port_log_always("mm: embedded data table broken (%u entries)\n", (unsigned)n); return 0; }
+    for (i = 0; i < n; i++) {
+        const uint32_t* e = &hh_embed_table[2 + 4 * i];
+        unsigned char* dst = (unsigned char*)(uintptr_t)e[0];
+        const uint32_t size = e[1] & 0x7FFFFFFFu, off = e[2], ro = e[1] >> 31; /* bit 31: in read-only data */
+        if (off + size > packSize || off + size < off ||
+            ((uint32_t)crc32(0L, pack + off, size) & 0xFFFFFFFFu) != e[3]) {
+            port_log_always("mm: the data pack does not match this build (array %u at %08x): delete "
+                            "data/mm_pack.bin and start the game again to rebuild it from your ROM\n", (unsigned)i, (unsigned)off);
+            return 0;
+        }
+        if (ro) { /* read-only data (it can share pages with code): writable for the copy, then as it was */
+            const uintptr_t pg = (uintptr_t)dst & ~(uintptr_t)4095, end = ((uintptr_t)dst + size + 4095) & ~(uintptr_t)4095;
+            if (hh_mprotect((void*)pg, end - pg, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) {
+                port_log_always("mm: embedded data: mprotect failed\n");
+                return 0;
+            }
+            memcpy(dst, pack + off, size);
+            hh_mprotect((void*)pg, end - pg, PROT_READ | PROT_EXEC);
+        } else {
+            memcpy(dst, pack + off, size);
+        }
+        if (((uint32_t)crc32(0L, dst, size) & 0xFFFFFFFFu) != e[3]) { /* the copy took */
+            port_log_always("mm: embedded data: array %u at %p did not take the copy\n", (unsigned)i, (void*)dst);
+            return 0;
+        }
+        bytes += size;
+    }
+    port_log_always("mm: %u arrays of ROM data (%u bytes) copied from the data pack\n", (unsigned)n, (unsigned)bytes);
+    return 1;
 }
 
 /* ---- the ROM */

@@ -8,10 +8,13 @@
 # The release gates, all fatal, on the files that ship:
 #   R. mm_recipes.bin belongs to this build: derived again from the tree's pack and ROM (hh/tools/mm_recipes.py),
 #      byte for byte;
+#   E. the ROM data the game's code compiles in (overlay textures, the debug font) zeroed in the executable that
+#      ships, and the table to copy it back from the data pack at boot written in (hh/tools/mm_embed.py);
 #   2. leak scan: every 32-byte block of the ROM and of the decompressed ROM (blocks with fewer than 8 distinct
 #      byte values skipped), against every byte offset of every shipped file. mm_recipes.bin: none at all (op
-#      numbers only). The executable: at most 256 (8 KB: tables the decompilation's own sources compile to, as
-#      in the other ports);
+#      numbers only). The executable: at most 1024 windows at 8-byte steps (about 8 KB of tables the
+#      decompilation's own sources compile to: schedule and message scripts, sine/atan tables, as in the other
+#      ports), and none at all in a texture, palette or font (mm_embed.py check);
 #   M. no authoring metadata or host paths in anything that ships;
 #   3. exactly the files miyoo/game.json lists; then the zip's own listing (no ROM, no pack, no text).
 set -euo pipefail
@@ -30,6 +33,10 @@ done
 STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE"' EXIT
 "${TC}strip" -o "$STAGE/mm" "$TREE/build/hh-miyoo/mm"
+echo "embedded ROM data: zeroed in the shipped executable, copied from the data pack at boot (hh/tools/mm_embed.py)"
+python3 "$HERE/hh/tools/mm_embed.py" strip "$TREE/build/hh-miyoo/mm" "$TREE/build/n64-us/mm-n64-us.elf" \
+    "$TREE/build/hh-pack.bin" "$STAGE/mm" "$STAGE/mm.embed" | sed 's/^/  /'
+mv "$STAGE/mm.embed" "$STAGE/mm"
 chmod +x "$STAGE/mm"
 cp "$TREE/build/mm_recipes.bin" "$STAGE/mm_recipes.bin"
 
@@ -72,11 +79,15 @@ for f in sys.argv[3:]:
         w = np.frombuffer(d[o:o + m * 8], '<u8')
         q = np.stack([w[i:len(w) - 3 + i] for i in range(4)], 1)
         hits += int(np.isin(h4(q), H).sum())
-    budget = 0 if not f.endswith('/mm') else 256
+    budget = 0 if not f.endswith('/mm') else 1024
     print('  %s: %d ROM blocks (budget %d)' % (f.rsplit('/', 1)[-1], hits, budget))
     bad |= hits > budget
 sys.exit(1 if bad else 0)
 PY
+
+echo "gate E: no ROM art left in the executable"
+python3 "$HERE/hh/tools/mm_embed.py" check "$TREE/build/hh-miyoo/mm" "$STAGE/mm" "$TREE/baseroms/n64-us/baserom-decompressed.z64" | sed 's/^/  /'
+test "${PIPESTATUS[0]}" -eq 0
 
 echo "gate M: no authoring metadata or host paths"
 if grep -l -a -E 'xmpmeta|Photoshop|/Users/|/home/|/root/' "${SHIPPED[@]}"; then

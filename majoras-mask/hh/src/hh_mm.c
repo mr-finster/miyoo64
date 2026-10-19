@@ -896,6 +896,14 @@ int main(int argc, char** argv) {
     if (!HhPack_Open()) {
         return 1;
     }
+    {   /* the arrays of ROM data the shipped executable leaves out (hh_mm_convert.c, hh/tools/mm_embed.py) */
+        extern int HhEmbed_Fill(const unsigned char* pack, size_t packSize);
+        extern void HhOvl_Refresh(void);
+        if (!HhEmbed_Fill(sPack, sPackSize)) {
+            return 1;
+        }
+        HhOvl_Refresh(); /* hh_ovl.c's overlay .data snapshots: taken before the copy */
+    }
     OotPspRenderer_Init();
     savestate_parse_args(argc, argv); /* --loadStateFile <path> (tests) */
     savestate_boot_prompt();          /* an auto save on the card: RESUME GAME / NEW GAME */

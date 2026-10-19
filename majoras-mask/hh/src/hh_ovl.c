@@ -124,6 +124,20 @@ __attribute__((constructor)) static void HhOvl_Snapshot(void) {
     snap(sStateOvl, sizeof(sStateOvl) / sizeof(sStateOvl[0]), &bytes, &count);
 }
 
+/* After the boot copies the ROM data the shipped executable leaves out back into the game's code (hh_mm_convert.c
+ * HhEmbed_Fill): the snapshots above were taken before it, with those arrays still zero, so an overlay "reloaded"
+ * later would get zeros back (an actor's textures drawn black). Taken again; nothing has run yet. */
+void HhOvl_Refresh(void) {
+    HhOvl *tabs[4] = { sActorOvl, sEffectOvl, sKaleidoOvl, sStateOvl };
+    size_t ns[4] = { N_ACTORS, N_EFFECTS, 2, sizeof(sStateOvl) / sizeof(sStateOvl[0]) };
+    for (int t = 0; t < 4; t++) {
+        for (size_t i = 0; i < ns[t]; i++) {
+            HhOvl *o = &tabs[t][i];
+            if (o->snap != NULL) memcpy(o->snap, o->ds, (size_t) (o->de - o->ds));
+        }
+    }
+}
+
 void HhOvl_LogInit(void) {
     size_t bytes = 0, count = 0, bss = 0;
     HhOvl *tabs[4] = { sActorOvl, sEffectOvl, sKaleidoOvl, sStateOvl };
