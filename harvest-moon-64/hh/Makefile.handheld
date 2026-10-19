@@ -1,0 +1,137 @@
+# Harvest Moon 64 port build: the Miyoo Mini. Run from the decomp root (harvestwhisperer/hm64-decomp, with
+# hm64-miyoo/decomp.patch applied and `make setup && make` done, so the N64 ELF/map and the transpiled bytecode exist):
+#
+#   make -f hh/Makefile.handheld -j4          build/hh/hm64 (the executable)
+#   make -f hh/Makefile.handheld pack         build/hh/hm64-pack.bin (ROM-derived, local only: the data the game DMAs)
+#
+# Game code: the decomp's src/ compiled natively for 32-bit ARM, libultra's gu (C) and the KMC rand. The port layer
+# (hh/src) replaces nusys, libultra's OS, libmus (silent for now) and the RCP: the renderer (hh/gfx, Paper Mario's
+# Miyoo renderer) draws the display lists, the Miyoo kit (hh/kit) the panel and the menu.
+
+.DEFAULT_GOAL := all
+SHELL := /bin/bash
+HH     := hh
+B      := build/hh
+ELF    := $(B)/hm64
+N64_ELF := hm64.elf
+PYTHON ?= python3
+
+MIYOO_TOOLCHAIN ?= /opt/miyoomini-toolchain
+SYSROOT := $(MIYOO_TOOLCHAIN)/usr/arm-linux-gnueabihf/sysroot
+CROSS   := $(MIYOO_TOOLCHAIN)/usr/bin/arm-linux-gnueabihf-
+CC      := $(CROSS)gcc
+AS      := $(CROSS)as
+LD      := $(CROSS)ld
+OBJCOPY := $(CROSS)objcopy
+MARCH   := -march=armv7ve+neon-vfpv4 -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+
+V := @
+ifeq ($(VERBOSE),1)
+  V :=
+endif
+
+#==============================================================================#
+# The game side: the decomp's C with its own headers only                       #
+#==============================================================================#
+# src/buffers/*.c are N64 RAM at fixed addresses: the port maps that RAM (hh_ram.c) and the linker names them there
+GAME_SRC := $(filter-out src/buffers/%,$(shell sh $(HH)/tools/game_sources.sh)) \
+            lib/libultra/src/gu/lookat.c \
+            lib/libultra/src/gu/mtxutil.c lib/libultra/src/gu/ortho.c lib/libultra/src/gu/perspective.c \
+            lib/libultra/src/gu/rotaterpy.c lib/libultra/src/gu/scale.c lib/libultra/src/gu/translate.c \
+            lib/libkmc/src/rand.c
+# sound: libmus (the music player), the nusys audio manager and libultra's n_audio synthesizer, natively; the
+# microcode's command lists run in C (hh/audio)
+GAME_SRC += lib/libultra/src/audio/heapinit.c lib/libultra/src/audio/heapalloc.c \
+            lib/libultra/src/audio/copy.c
+# (libultra's sinf/cosf keep their double constants as big-endian word pairs: the host's libm sinf/cosf instead)
+# the port's game-side files (decomp headers): nusys, libultra, libmus as the game calls them
+GAMEPORT_SRC := $(sort $(wildcard $(HH)/game/*.c))
+
+GAME_INC := -I. -Iinclude -Isrc -Ilib/nusys-1/include -Ilib/libultra/include -Ilib/libultra/include/PR \
+            -Ilib/libmus/include/PR -Ilib/libultra/src/libnaudio -Ilib/gcc/include -I$(HH)/game
+GAME_DEF := -D_LANGUAGE_C -D_MIPS_SZLONG=32 -D_MIPS_SZINT=32 -DSUPPORT_NAUDIO -DNU_SYSTEM -DF3DEX_GBI_2 -DN_MICRO \
+            -DLANG_JAPANESE=0 -DUSE_EPI -DNDEBUG -D_AUDIOVISIBLE -DN_AUDIO -DNON_MATCHING -DAVOID_UB \
+            -DTARGET_HANDHELD=1 -DHANDHELD=1 -DTARGET_MIYOO=1
+GAME_CFLAGS := $(MARCH) -O2 -g -nostdinc -std=gnu89 -funsigned-char -fno-strict-aliasing -fwrapv -fno-common \
+               -fno-math-errno -ffp-contract=off -fno-builtin -w -include $(HH)/game/hh_compat.h \
+               $(GAME_INC) $(GAME_DEF)
+
+#==============================================================================#
+# The host side: system headers, SDL 1.2, the renderer and the kit             #
+#==============================================================================#
+HOST_SRC := $(sort $(wildcard $(HH)/src/*.c)) $(HH)/gfx/gfx_pc.c $(HH)/gfx/gfx_cc.c $(HH)/gfx/gfx_soft.c \
+            $(HH)/kit/savestate.c $(HH)/kit/miyoo_panel.c $(HH)/kit/miyoo_menu.c $(HH)/kit/miyoo_worker.c \
+            $(HH)/kit/miyoo_clock.c $(HH)/kit/miyoo_sleepsave.c
+HOST_DEF := -DTARGET_HANDHELD=1 -DHM64=1 -DPM64=1 -DF3DEX_GBI_2=1 -D_LANGUAGE_C=1 -DPORT_NO_FPS=1 -DNON_MATCHING=1 \
+            -DAVOID_UB=1 -DPM64_SDL12=1 -DHANDHELD=1 -DMIYOO=1 -DTARGET_MIYOO=1 -D_FILE_OFFSET_BITS=64 \
+            -D_GNU_SOURCE=1 -D_REENTRANT
+HOST_CFLAGS := $(MARCH) -std=gnu11 -O3 -g -fomit-frame-pointer -fsigned-char -fno-strict-aliasing -fwrapv \
+               -fno-common -fno-math-errno -ffp-contract=off -fsingle-precision-constant -w \
+               -I$(HH)/gfx -I$(HH)/kit -I$(HH)/src -Ilib/libultra/include -I$(SYSROOT)/usr/include \
+               -I$(SYSROOT)/usr/include/SDL $(HOST_DEF)
+
+GAME_O := $(patsubst %.c,$(B)/%.o,$(GAME_SRC) $(GAMEPORT_SRC))
+HOST_O := $(patsubst %.c,$(B)/%.o,$(HOST_SRC))
+
+$(GAME_O): $(B)/%.o: %.c
+	@mkdir -p $(@D)
+	$(V)$(CC) -c $(GAME_CFLAGS) -MMD -MP -o $@ $<
+
+$(HOST_O): $(B)/%.o: %.c
+	@mkdir -p $(@D)
+	$(V)$(CC) -c $(HOST_CFLAGS) -MMD -MP -o $@ $<
+
+#==============================================================================#
+# Link                                                                         #
+#==============================================================================#
+# hm64_syms.ld: every ROM segment's start/end (_xxxSegmentRomStart) and every N64 RAM buffer (src/buffers) at its
+# N64 address, from the matching N64 ELF
+SYMS_LD := $(B)/hm64_syms.ld
+$(SYMS_LD): $(N64_ELF) $(HH)/tools/hm64_syms.py
+	@mkdir -p $(@D)
+	$(V)$(PYTHON) $(HH)/tools/hm64_syms.py $(N64_ELF) $@
+
+# linked at 0x40000000: the N64's RAM (0x80000000-0x807FFFFF) is mapped at its own address (hh_ram.c)
+LDFLAGS := $(MARCH) -no-pie -Wl,-Ttext-segment=0x40000000 -Wl,-T,$(HH)/gamestate.ld \
+           -Wl,--defsym=_ftext=__executable_start -Wl,--defsym=_fbss=__bss_start \
+           -Wl,--defsym=__assets_start=__bss_start -Wl,--defsym=__assets_end=__bss_start
+LIBS := -L$(SYSROOT)/usr/lib -Wl,-rpath-link,$(SYSROOT)/usr/lib -lSDL -lz -lm -lpthread -lrt
+
+# the release name (console.log's SESSION line, and what a card install greps the binary for)
+HM64_RELEASE ?= 1.0.0
+# the version: the source commit (HM64_VERSION=<commit> for a release built from a copy outside git)
+HM64_VERSION ?=
+STAMP_C := $(B)/build_stamp.c
+.PHONY: $(STAMP_C)
+$(STAMP_C):
+	$(V)S=$$(od -An -N4 -tx4 /dev/urandom | tr -d ' '); \
+	  V=$(if $(HM64_VERSION),$(HM64_VERSION),$$(git -C $(HH) rev-parse --short HEAD 2>/dev/null || echo unknown)$$(git -C $(HH) diff --quiet HEAD -- . 2>/dev/null || echo -dirty)); \
+	  printf '#include <stdint.h>\nconst uint32_t port_build_stamp = 0x%s;\nconst char hm64_version[] = "%s";\nconst char hm64_release[] = "%s";\n' $$S $$V $(HM64_RELEASE) > $@
+
+$(ELF): $(GAME_O) $(HOST_O) $(SYMS_LD) $(STAMP_C) $(HH)/gamestate.ld
+	$(V)$(CC) $(LDFLAGS) -o $@ $(GAME_O) $(HOST_O) $(STAMP_C) $(SYMS_LD) $(LIBS)
+	@ls -l $@
+
+all: $(ELF)
+
+#==============================================================================#
+# The data pack: the ROM with the bytecode and text re-assembled for ARM       #
+#==============================================================================#
+PACK := $(B)/hm64-pack.bin
+$(PACK): $(ELF) $(HH)/tools/hm64_pack.py
+	$(V)$(PYTHON) $(HH)/tools/hm64_pack.py --rom hm64.z64 --n64-map hm64.map --native $(ELF) --syms $(SYMS_LD) --out $@ --work $(B)/pack -j8
+pack: $(PACK)
+
+# The first-start recipe (hh/tools/hm64_recipe.py: op numbers, lengths and this build's addresses, no ROM data):
+# the device rebuilds the pack from the player's ROM with it (hh_convert.c)
+RECIPE := $(B)/hm64_recipes.bin
+$(RECIPE): $(PACK) $(HH)/tools/hm64_recipe.py
+	$(V)$(PYTHON) $(HH)/tools/hm64_recipe.py --rom hm64.z64 --pack $(PACK) --native $(ELF) --out $@
+recipe: $(RECIPE)
+
+clean:
+	rm -rf $(B)
+
+.PHONY: all pack recipe clean
+-include $(GAME_O:.o=.d) $(HOST_O:.o=.d)
+print-%: ; @echo $($*)

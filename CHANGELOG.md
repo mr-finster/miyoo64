@@ -3,10 +3,11 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
-## 1.2.0 (Majora's Mask 1.0.0 beta)
+## 1.2.0 (Majora's Mask 1.0.0 beta, Harvest Moon 64 1.0.0)
 
-A new game: The Legend of Zelda: Majora's Mask (USA ROM), version 1.0.0, a beta. The other ten games are exactly the
-1.1.4 zips (nothing changed, RESUME GAME carries over). Perfect Dark stays 1.0.4.
+Two new games: The Legend of Zelda: Majora's Mask (USA ROM), version 1.0.0, a beta, and Harvest Moon 64 (USA ROM),
+version 1.0.0. The other ten games are exactly the 1.1.4 zips (nothing changed, RESUME GAME carries over). Perfect
+Dark stays 1.0.4.
 
 - Majora's Mask: the whole game, built from the [zeldaret/mm](https://github.com/zeldaret/mm) decompilation on the
   Ocarina of Time port's renderer and audio. Save states, the game menu, the auto save on power-off and before
@@ -19,6 +20,16 @@ A new game: The Legend of Zelda: Majora's Mask (USA ROM), version 1.0.0, a beta.
 - Known issues: the Astral Observatory's tunnel is drawn about twice as bright as on the N64; the picture is a
   little sharper than the N64's (no copy of the N64's video filter, as in the other games; snow and ice show it
   most); a faint second image of Link in close-ups of the Giants' Chamber cutscenes.
+- Harvest Moon 64: the whole game, built from the
+  [harvestwhisperer/hm64-decomp](https://github.com/harvestwhisperer/hm64-decomp) decompilation on the Paper Mario
+  port's renderer and Miyoo kit. Save states, the game menu, the auto save on power-off and before sleep, and the
+  Mini v4 / Flip full screen, as in the other games. The diary saves go to `App/HarvestMoon64/data/hm64.sram`.
+- Compared scene by scene against two N64 renderers (angrylion and rice): the farm through the seasons, the village,
+  the shops and houses, the mountain and the beach, festivals and the menus; four in-game days played through with
+  diary saves, save states and the auto save.
+- The first start builds the game data (16 MB) from your ROM, once; put it in `App/HarvestMoon64/` as `rom.z64`, or
+  anywhere on the card ([README](harvest-moon-64/README.md#your-rom)).
+- Known issues: textures are drawn sharp (the N64 smooths them); diary saves from N64 emulators don't load.
 
 ## 1.1.4 (Perfect Dark 1.0.4)
 

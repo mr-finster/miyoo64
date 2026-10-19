@@ -1,0 +1,13 @@
+{
+  "id": "hm64",
+  "title": "Harvest Moon 64",
+  "folder": "HarvestMoon64",
+  "exe": "hm64",
+  "files": ["hm64", "hm64_recipes.bin"],
+  "icon": "icon.png",
+  "env": "HM64",
+  "data": "data",
+  "rom": {"name": "Harvest Moon 64 (USA)", "sha1": "90631460f1876a14849df0541d534012b410a34c", "size": 16777216},
+  "system": "HARVESTMOON64",
+  "minui_tag": "HM64"
+}

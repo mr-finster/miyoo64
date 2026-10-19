@@ -1,6 +1,6 @@
 <h1 align="center">Miyoo64</h1>
 
-<p align="center"><b>Eleven N64 games running natively on the Miyoo Mini family, built from the decompilation projects.</b></p>
+<p align="center"><b>Twelve N64 games running natively on the Miyoo Mini family, built from the decompilation projects.</b></p>
 
 <p align="center">
   <a href="https://github.com/mr-finster/miyoo64/releases/latest"><img src="https://img.shields.io/github/v/release/mr-finster/miyoo64" alt="Latest release"></a>
@@ -23,7 +23,7 @@
 
 ## About
 
-Native ports of eleven N64 games to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip). No emulation: each game's C code, rebuilt by its decompilation community, runs on the Mini's ARM CPU and is drawn by a software renderer that uses both of its cores. Every game has save states (9 slots and an auto save), the same in-game menu (MENU: resume, save, load, exit), and picks up where you left off after a power-off.
+Native ports of twelve N64 games to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip). No emulation: each game's C code, rebuilt by its decompilation community, runs on the Mini's ARM CPU and is drawn by a software renderer that uses both of its cores. Every game has save states (9 slots and an auto save), the same in-game menu (MENU: resume, save, load, exit), and picks up where you left off after a power-off.
 
 Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/latest), or https://miyoo-n64.pages.dev. What changed in each release: [Changelog](CHANGELOG.md).
 
@@ -42,6 +42,7 @@ Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/l
 | Super Smash Bros. | ✅ Playable | Hit flashes, shields and costume colours as on the N64 |
 | Super Mario 64 | ✅ Playable | Metal Mario, coloured fog and the castle window fixed, both cores drawing |
 | Majora's Mask | 🧪 Beta (1.0.0) | New: the whole game, compared scene by scene against the N64; known issues in its [README](majoras-mask/README.md#known-issues) |
+| Harvest Moon 64 | ✅ Playable (1.0.0) | New: the whole game, the diary saves and the farm's days as on the N64; known issues in its [README](harvest-moon-64/README.md#known-issues) |
 
 Every game has 9 save-state slots plus an auto save, and picks up where you left off after a power-off, also when the Mini sleeps and then powers itself off ([Sleep and wake](docs/SLEEP-AND-WAKE.md)). Super Smash Bros. can take a save from an emulator or a flash cart ([how](super-smash-bros/README_MIYOO.md#bringing-a-save-from-an-emulator-or-a-flash-cart)).
 
@@ -60,6 +61,7 @@ On the Mini v4 and Mini Flip (752x560 screens) every game fills the whole screen
 | Super Smash Bros. | [super-smash-bros](super-smash-bros/) | [VetriTheRetri/ssb-decomp-re](https://github.com/VetriTheRetri/ssb-decomp-re) |
 | Super Mario 64 | [super-mario-64](super-mario-64/) | [n64decomp/sm64](https://github.com/n64decomp/sm64) |
 | The Legend of Zelda: Majora's Mask | [majoras-mask](majoras-mask/) | [zeldaret/mm](https://github.com/zeldaret/mm) |
+| Harvest Moon 64 | [harvest-moon-64](harvest-moon-64/) | [harvestwhisperer/hm64-decomp](https://github.com/harvestwhisperer/hm64-decomp) |
 
 Each folder is one game and builds on its own.
 
@@ -96,6 +98,7 @@ Each game checks the dump and refuses any other version (the screen says which o
 | Super Smash Bros. | `App/SuperSmashBros/` | Super Smash Bros. (USA) | `e2929e10fccc0aa84e5776227e798abc07cedabf` |
 | Super Mario 64 | `App/SuperMario64/` | Super Mario 64 (USA) | `9bef1128717f958171a4afac3ed78ee2bb4e86ce` |
 | Majora's Mask | `App/MajorasMask/` | The Legend of Zelda: Majora's Mask (USA) | `d6133ace5afaa0882cf214cf88daba39e266c078` |
+| Harvest Moon 64 | `App/HarvestMoon64/` | Harvest Moon 64 (USA) | `90631460f1876a14849df0541d534012b410a34c` |
 
 The SHA-1 is of the big-endian `.z64` byte order; `.v64` and `.n64` dumps of the same ROM are
 converted. Besides `App/<Game>/rom.z64`, each game also looks in `Roms/N64/` and anywhere on the
@@ -124,7 +127,8 @@ Each game's own button layout is in its folder's README:
 [Paper Mario](paper-mario/README.md#controls),
 [Super Smash Bros.](super-smash-bros/README.md#controls),
 [Super Mario 64](super-mario-64/README.md#controls),
-[Majora's Mask](majoras-mask/README.md#controls).
+[Majora's Mask](majoras-mask/README.md#controls),
+[Harvest Moon 64](harvest-moon-64/README.md#controls).
 
 ## How it's built
 
@@ -154,7 +158,7 @@ Most builds read your ROM: to extract what the decomp's build needs, to derive t
 game uses to rebuild its data on the Miyoo (numbers only), and for the release gates' leak scan,
 which refuses to package a zip if any file in it matches the ROM. Nothing read from the ROM is
 written into this repository (each folder's `.gitignore` is an allowlist) or the public zip.
-GoldenEye 007, Paper Mario, Super Mario 64 and Majora's Mask fetch their decompilation's code or data at build time,
+GoldenEye 007, Paper Mario, Super Mario 64, Majora's Mask and Harvest Moon 64 fetch their decompilation's code or data at build time,
 at a pinned commit; Perfect Dark fetches the PC port's asset metadata (names and IDs) the same way,
 and builds without the ROM.
 
@@ -169,7 +173,8 @@ The steps for each game are in its README, under "Building the Miyoo zip":
 [Paper Mario](paper-mario/README.md#building-the-miyoo-zip),
 [Super Smash Bros.](super-smash-bros/README.md#building-the-miyoo-zip),
 [Super Mario 64](super-mario-64/README.md#building-the-miyoo-zip),
-[Majora's Mask](majoras-mask/README.md#building-the-miyoo-zip).
+[Majora's Mask](majoras-mask/README.md#building-the-miyoo-zip),
+[Harvest Moon 64](harvest-moon-64/README.md#building-the-miyoo-zip).
 
 ## How it's made
 
@@ -208,6 +213,8 @@ Built on the work of the decompilation communities:
   [fgsfdsfgs/sm64-port](https://github.com/fgsfdsfgs/sm64-port) and
   [DrUm78/sm64-port](https://github.com/DrUm78/sm64-port)
 - Majora's Mask: [zeldaret/mm](https://github.com/zeldaret/mm), on the Ocarina of Time port's handheld layer
+- Harvest Moon 64: [harvestwhisperer/hm64-decomp](https://github.com/harvestwhisperer/hm64-decomp) (CC0), on the
+  Paper Mario port's handheld layer
 
 The renderers descend from the Super Mario 64 PC port's Fast3D, reworked for software rendering.
 Each folder keeps its upstream licence and notice files (`LICENSE`, `LICENSE.md`, `NOTICE.md`);

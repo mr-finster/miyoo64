@@ -1,0 +1,657 @@
+diff --git a/include/common.h b/include/common.h
+index fd9a449..4bb481a 100644
+--- a/include/common.h
++++ b/include/common.h
+@@ -17,6 +17,24 @@
+ #define FALSE 0
+ 
+ typedef u32 Addr;
++
++/* A multi-byte value of the ROM's data (sprites, maps, fonts) read as the N64 reads it, big-endian. Bytecode and
++ * text are re-assembled for the host's byte order in the port's data pack, so they read natively. */
++#ifdef TARGET_HANDHELD
++#define BE16(x) ((u16)__builtin_bswap16((u16)(x)))
++#define BE32(x) ((u32)__builtin_bswap32((u32)(x)))
++#else
++#define BE16(x) (x)
++#define BE32(x) (x)
++#endif
++
++/* the native port's single thread runs the retrace while the main loop waits for it (hh/game/hh_compat.h) */
++#ifndef HH_WAIT_RETRACE
++#define HH_WAIT_RETRACE()
++#endif
++#ifndef HH_WAIT_RETRACE_MAIN
++#define HH_WAIT_RETRACE_MAIN()
++#endif
+ typedef u8 bool;
+ 
+ // FIXME: signature from ultra64.h; not getting picked up by sprite.c
+diff --git a/include/structs.h b/include/structs.h
+index 4d1f7b6..d88de67 100644
+--- a/include/structs.h
++++ b/include/structs.h
+@@ -33,9 +33,17 @@ typedef struct {
+     u32 romAddrEnd;
+ } Addresses;
+ 
++#ifdef TARGET_HANDHELD
++/* the N64's byte order kept: byte[0] is the high byte, as the decomp's byte swaps expect */
++typedef union __attribute__((scalar_storage_order("big-endian"))) {
++    u8 byte[2];
++    u16 halfword;
++} Swap16;
++#else
+ typedef union {
+     u8 byte[2];
+     u16 halfword;
+ } Swap16;
++#endif
+ 
+ #endif
+\ No newline at end of file
+diff --git a/lib/libkmc/src/rand.c b/lib/libkmc/src/rand.c
+index 5b416f2..1487273 100644
+--- a/lib/libkmc/src/rand.c
++++ b/lib/libkmc/src/rand.c
+@@ -2,9 +2,17 @@
+ #include <stdlib.h>
+ 
+ static s32 sRandNext;
++#ifdef TARGET_HANDHELD
++/* the calls so far: the release review's clock (hh/src/hh_host.c HM64_CLOCK=rand; the N64 reference counts the same
++ * calls by stepping this LCG between two reads of sRandNext) */
++unsigned int hh_rand_calls;
++#endif
+ 
+ int rand() {
+     sRandNext = sRandNext * 1103515245 + 12345;
++#ifdef TARGET_HANDHELD
++    hh_rand_calls++;
++#endif
+ 
+     return ((u32)((sRandNext + 1) >> 16) % (RAND_MAX + 1));
+ }
+diff --git a/lib/libmus/src/player.c b/lib/libmus/src/player.c
+index 4409a4d..ceed975 100644
+--- a/lib/libmus/src/player.c
++++ b/lib/libmus/src/player.c
+@@ -1106,6 +1106,61 @@ static float __MusIntPowerOf2(float x)
+   NONE
+ *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*/
+ 
++#ifdef TARGET_HANDHELD
++/* The pointer bank as the ROM has it (big-endian) to the host's order, before the remap: the header, the wave list
++ * and every wave table, ADPCM loop and codebook it reaches (each once: tables are shared). */
++static unsigned long __hhSeen[2048];
++static int __hhSeenN;
++static int __hhOnce(void *p)
++{
++  int k;
++  for (k = 0; k < __hhSeenN; k++)
++    if (__hhSeen[k] == (unsigned long)p) return 0;
++  if (__hhSeenN < 2048) __hhSeen[__hhSeenN++] = (unsigned long)p;
++  return 1;
++}
++static void __hhSwap32s(void *p, int n) { unsigned long *w = p; while (n--) { *w = __builtin_bswap32(*w); w++; } }
++static void __hhSwap16s(void *p, int n) { unsigned short *h = p; while (n--) { *h = __builtin_bswap16(*h); h++; } }
++static void __hhBankToHost(char *pptr)
++{
++  ptr_bank_t *b = (ptr_bank_t *)pptr;
++  unsigned long *wl;
++  int i;
++  __hhSeenN = 0;
++  __hhSwap32s(&b->flags, 1 + 3 + 1 + 3); /* flags, wbk_name[3], count, basenote, detune, wave_list */
++  wl = (unsigned long *)(pptr + (unsigned long)b->wave_list);
++  __hhSwap32s(wl, b->count);
++  for (i = 0; i < b->count; i++)
++  {
++    ALWaveTable *w;
++    if (!wl[i]) continue;
++    w = (ALWaveTable *)(pptr + wl[i]);
++    if (!__hhOnce(w)) continue;
++    __hhSwap32s(&w->base, 2);
++    __hhSwap32s(&w->waveInfo, 2);
++    if (w->type == AL_ADPCM_WAVE)
++    {
++      if (w->waveInfo.adpcmWave.loop && __hhOnce(pptr + (unsigned long)w->waveInfo.adpcmWave.loop))
++      {
++        ALADPCMloop *l = (ALADPCMloop *)(pptr + (unsigned long)w->waveInfo.adpcmWave.loop);
++        __hhSwap32s(l, 3);
++        __hhSwap16s(l->state, 16);
++      }
++      if (w->waveInfo.adpcmWave.book && __hhOnce(pptr + (unsigned long)w->waveInfo.adpcmWave.book))
++      {
++        ALADPCMBook *k = (ALADPCMBook *)(pptr + (unsigned long)w->waveInfo.adpcmWave.book);
++        __hhSwap32s(k, 2);
++        __hhSwap16s(k->book, k->order * k->npredictors * 8);
++      }
++    }
++    else if (w->waveInfo.rawWave.loop && __hhOnce(pptr + (unsigned long)w->waveInfo.rawWave.loop))
++    {
++      __hhSwap32s(pptr + (unsigned long)w->waveInfo.rawWave.loop, 3);
++    }
++  }
++}
++#endif
++
+ static void __MusIntRemapPtrBank(char *pptr, char *wptr)
+ {
+   int i,bankLen;
+@@ -1116,6 +1171,10 @@ static void __MusIntRemapPtrBank(char *pptr, char *wptr)
+   unsigned long base;
+ 
+   ptrfile_addr = (ptr_bank_t *)pptr;
++#ifdef TARGET_HANDHELD
++  if (!(ptrfile_addr->flags & 0x80) && !(ptrfile_addr->flags & PTRFLAG_REMAPPED)) /* raw: the flag bit sits in the top byte */
++    __hhBankToHost(pptr);
++#endif
+   /* return if already remapped */
+   if (ptrfile_addr->flags&PTRFLAG_REMAPPED)
+     return;
+diff --git a/lib/libmus/src/player_api.c b/lib/libmus/src/player_api.c
+index 4ff5bec..34fca71 100644
+--- a/lib/libmus/src/player_api.c
++++ b/lib/libmus/src/player_api.c
+@@ -205,6 +205,24 @@ unsigned long MusStartSong(void *addr)
+ 
+   song_addr = addr;
+   work_addr = addr;
++#ifdef TARGET_HANDHELD
++  /* the song as the ROM has it (big-endian): its header and the channel, volume and pitch bend offset tables to
++   * the host's order, once (a converted song's channel count reads small) */
++  if (work_addr[0] > 0xFFFF)
++  {
++    unsigned long *t;
++    int k, n;
++    for (k = 0; k < 1 + SONGTPTRS; k++)
++      work_addr[k] = __builtin_bswap32(work_addr[k]);
++    n = work_addr[0];
++    for (k = 0; k < 3; k++)
++    {
++      t = (unsigned long *)((char *)addr + work_addr[1 + k]);
++      for (i = 0; i < n; i++)
++        t[i] = __builtin_bswap32(t[i]);
++    }
++  }
++#endif
+   count = *work_addr++;
+ #ifdef SUPPORT_SONGWAVELOOKUP
+   work_addr++;
+diff --git a/lib/libmus/src/player_commands.c b/lib/libmus/src/player_commands.c
+index 678ebce..2b589aa 100644
+--- a/lib/libmus/src/player_commands.c
++++ b/lib/libmus/src/player_commands.c
+@@ -458,7 +458,12 @@ static unsigned char *Fdrums(channel_t *cp, unsigned char *ptr)
+ {
+   unsigned long addr;
+ 
++#ifdef TARGET_HANDHELD
++  /* the drum table's offsets stay as the ROM has them, big-endian (player_api.c converts only the header) */
++  addr = (unsigned long)cp->song_addr+__builtin_bswap32(cp->song_addr->DrumData[*ptr++]);
++#else
+   addr = (unsigned long)cp->song_addr+(cp->song_addr->DrumData[*ptr++]);
++#endif
+   cp->pdrums = (unsigned char *)addr;
+   return (ptr);
+ }
+diff --git a/lib/libultra/include/PR/os_convert.h b/lib/libultra/include/PR/os_convert.h
+index 096c052..a4f4ac4 100644
+--- a/lib/libultra/include/PR/os_convert.h
++++ b/lib/libultra/include/PR/os_convert.h
+@@ -43,7 +43,11 @@ extern "C" {
+ #define OS_CYCLES_TO_USEC(c)	(((u64)(c)*(1000000LL/15625LL))/(OS_CPU_COUNTER/15625LL))
+ 
+ /* OS_K?_TO_PHYSICAL macro bug fix for CodeWarrior */
+-#ifndef __MWERKS__
++#if defined(TARGET_HANDHELD)
++/* the native port: display lists hold host pointers, which the renderer reads as they are */
++#define	OS_K0_TO_PHYSICAL(x)	(u32)(x)
++#define	OS_K1_TO_PHYSICAL(x)	(u32)(x)
++#elif !defined(__MWERKS__)
+ #define	OS_K0_TO_PHYSICAL(x)	(u32)(((char *)(x)-0x80000000))
+ #define	OS_K1_TO_PHYSICAL(x)	(u32)(((char *)(x)-0xa0000000))
+ #else
+diff --git a/lib/nusys-1/src/nualstl/nuaustlmgr.c b/lib/nusys-1/src/nualstl/nuaustlmgr.c
+index 0106bb3..08985f4 100644
+--- a/lib/nusys-1/src/nualstl/nuaustlmgr.c
++++ b/lib/nusys-1/src/nualstl/nuaustlmgr.c
+@@ -330,6 +330,10 @@ void nuAuStlMgrInit(void* heap_ptr, u32 size, ALSynConfig* synConfig)
+     }
+ 
+     /* Start audio manager */
++#ifdef TARGET_HANDHELD
++    /* the native port: no audio thread; the host asks for each frame of samples (hh_au_render below) */
++    return;
++#endif
+     osCreateThread(&auMgrThread, NU_AU_MGR_THREAD_ID, nuAuMgr, (void*)NULL,
+ 		   (auMgrStack + NU_AU_STACK_SIZE/sizeof(u64)),
+ 		   NU_AU_MGR_THREAD_PRI);
+@@ -454,3 +458,20 @@ break;
+ }
+ }
+ }
++
++#ifdef TARGET_HANDHELD
++/* One audio frame for the native port: the synthesizer's command list for `samples` stereo frames (a multiple of
++ * NU_AU_NAUDIO_SAMPLES), run at once by the port's n_aspMain in C (hh_aspmain.c), into `out`. */
++void hh_aspmain_run(const unsigned int *cmd, int count);
++s32 hh_au_render(s16 *out, s32 samples)
++{
++    s32 len = 0;
++    Acmd *end;
++
++    if (nuAuTaskStop != NU_AU_TASK_RUN || auCmdList_ptr[0] == NULL) return 0;
++    end = n_alAudioFrame(auCmdList_ptr[0], &len, out, samples);
++    if (len) hh_aspmain_run((const unsigned int *)auCmdList_ptr[0], (int)(end - auCmdList_ptr[0]));
++    auCleanDMABuffers();
++    return len ? samples : 0;
++}
++#endif
+diff --git a/src/game/items.c b/src/game/items.c
+index 71a13e4..2c64b48 100644
+--- a/src/game/items.c
++++ b/src/game/items.c
+@@ -2418,7 +2418,11 @@ void useSickle(void) {
+     u8 arr3[3];
+     u8 arr4[3];
+     u8 arr5[12];
++    #ifdef TARGET_HANDHELD
++    u8 arr6[9]; /* memcpy'd 9 bytes below */
++#else
+     u8 arr6[8];
++#endif
+     
+     u32 padding[2];
+ 
+@@ -3027,7 +3031,11 @@ void useWateringCan(void) {
+     u8 arr3[3];
+     u8 arr4[3];
+     u8 arr5[12];
++    #ifdef TARGET_HANDHELD
++    u8 arr6[9]; /* memcpy'd 9 bytes below */
++#else
+     u8 arr6[8];
++#endif
+     
+     u32 padding[2];
+ 
+diff --git a/src/game/levelInteractions.c b/src/game/levelInteractions.c
+index 6906384..3bc74da 100644
+--- a/src/game/levelInteractions.c
++++ b/src/game/levelInteractions.c
+@@ -3456,7 +3456,7 @@ u8 handleSquareLevelInteractions(u16 mapIndex, u8 levelInteractionIndex) {
+ label3:
+                     showDialogueTextBox(temp);
+                     result = 1;
+-label4:
++label4: ;
+                 }
+                 
+             }
+@@ -3574,7 +3574,7 @@ label:
+                         if (checkShopItemShouldBeDisplayed(FIREWORKS_FESTIVAL_EMPTY_BOTTLE_ITEM)) {
+                             pauseAllCutsceneExecutors();   
+                             handlePickUpShopItem(FIREWORKS_FESTIVAL_EMPTY_BOTTLE_ITEM);
+-label5:
++label5: ;
+                         }
+                         
+                         result = 2;
+diff --git a/src/game/title.c b/src/game/title.c
+index 2a8da45..63433d8 100644
+--- a/src/game/title.c
++++ b/src/game/title.c
+@@ -443,6 +443,11 @@ static inline bool handleFrameIncrement() {
+         return 1;
+ 
+     }
++
++#ifdef TARGET_HANDHELD
++    /* the N64 build falls off the end here with 0 in v0; on ARM the register held anything (START was ignored) */
++    return 0;
++#endif
+     
+ }
+ 
+diff --git a/src/mainLoop.c b/src/mainLoop.c
+index 3612e5d..f1358fd 100644
+--- a/src/mainLoop.c
++++ b/src/mainLoop.c
+@@ -60,7 +60,7 @@ void mainLoop(void) {
+ 
+         while (engineStateFlags & 1) {
+ 
+-            while (stepMainLoop == FALSE);
++            while (stepMainLoop == FALSE) HH_WAIT_RETRACE_MAIN();
+ 
+             if (!D_8020564C) {
+ 
+@@ -189,7 +189,7 @@ inline void func_80026248(u16 count)
+       
+       stepMainLoop = FALSE;
+       
+-      while (stepMainLoop == FALSE);
++      while (stepMainLoop == FALSE) HH_WAIT_RETRACE();
+ 
+       currentCount = counter;
+       counter++;
+@@ -213,7 +213,7 @@ void func_80026284(void)
+ 
+         func_80026248(1);
+ 
+-loop_end:     
++loop_end: ;
+ 
+     }
+ 
+diff --git a/src/system/controller.c b/src/system/controller.c
+index 6e92011..7ec9a05 100644
+--- a/src/system/controller.c
++++ b/src/system/controller.c
+@@ -66,8 +66,15 @@ void controllerInit(void) {
+         }
+     }
+     
++#ifdef TARGET_HANDHELD
++    /* the port reads the pad once a game step (20 a second), the N64 every retrace (60): the same delay and rate in
++     * time as the N64's 16 and 4 retraces */
++    buttonRepeatRate = 1;
++    buttonRepeatModeTriggerDelayFrames = 5;
++#else
+     buttonRepeatRate = 4;
+     buttonRepeatModeTriggerDelayFrames = 16;
++#endif
+ 
+ #ifdef _JP
+     nuContInit();
+diff --git a/src/system/cutscene.c b/src/system/cutscene.c
+index 97a2cc4..6631aa2 100644
+--- a/src/system/cutscene.c
++++ b/src/system/cutscene.c
+@@ -984,13 +984,13 @@ void cutsceneHandlerSetWaitFrames(u16 index) {
+     CutsceneWaitFramesCmd* ptr = (CutsceneWaitFramesCmd*)cutsceneExecutors[index].bytecodePtr;
+     u16 waitFrames;
+ 
+-    (u16*)cutsceneExecutors[index].bytecodePtr += 1;
++    cutsceneExecutors[index].bytecodePtr += 2;
+ 
+     waitFrames = ptr->frames;
+     
+     cutsceneExecutors[index].waitFrames = waitFrames;
+     
+-    (u16*)cutsceneExecutors[index].bytecodePtr += 1;
++    cutsceneExecutors[index].bytecodePtr += 2;
+ 
+ }
+ 
+@@ -998,9 +998,9 @@ void cutsceneHandlerSetWaitFrames(u16 index) {
+ /*
+ void cutsceneHandlerSetWaitFrames(u16 index) {
+     
+-    (u16*)cutsceneExecutors[index].bytecodePtr += 1;
++    cutsceneExecutors[index].bytecodePtr += 2;
+     cutsceneExecutors[index].waitFrames = *(u16*)cutsceneExecutors[index].bytecodePtr;
+-    (u16*)cutsceneExecutors[index].bytecodePtr += 1;
++    cutsceneExecutors[index].bytecodePtr += 2;
+ 
+ }
+ */
+diff --git a/src/system/dialogue.h b/src/system/dialogue.h
+index 8f68fc8..5feacfa 100644
+--- a/src/system/dialogue.h
++++ b/src/system/dialogue.h
+@@ -7,7 +7,13 @@
+ #include "system/message.h"
+ 
+ #define MAX_DIALOGUES 1
++#ifdef TARGET_HANDHELD
++/* setDialogueVariable allows TOTAL_GAME_VARIABLES (80) and initializeDialogueVariables sets that many: on the N64 the
++ * array's pinned address leaves room for 80 (0x3C0 bytes before lifeEventBits) */
++#define MAX_DIALOGUE_VARIABLES 80
++#else
+ #define MAX_DIALOGUE_VARIABLES 46
++#endif
+ #define MAX_DIALOGUE_BYTECODE_BANKS 69
+ #define MAX_BYTECODE_ADDRESSES 70
+ 
+diff --git a/src/system/globalSprites.c b/src/system/globalSprites.c
+index 6099847..fed296b 100644
+--- a/src/system/globalSprites.c
++++ b/src/system/globalSprites.c
+@@ -155,15 +155,15 @@ bool dmaSprite(u16 index,
+             nuPiReadRom(romAssetsIndexStart, assetIndex, romAssetsIndexEnd - romAssetsIndexStart);
+ 
+             // spritesheet
+-            offset1 = assetIndex[0];
++            offset1 = BE32(assetIndex[0]);
+             // palette
+-            offset2 = assetIndex[1];
++            offset2 = BE32(assetIndex[1]);
+             // animation
+-            offset3 = assetIndex[2];
++            offset3 = BE32(assetIndex[2]);
+             // sprite to palette
+-            offset4 = assetIndex[3];
++            offset4 = BE32(assetIndex[3]);
+             // end
+-            offset5 = assetIndex[4];
++            offset5 = BE32(assetIndex[4]);
+         
+             // has separate spritesheet index
+             if (assetType & 1) {
+@@ -1142,7 +1142,7 @@ u8* getAnimationFrameMetadataPtr(u16 index, void* table) {
+  
+     u32 *arr = (u32*)table;
+     
+-    return (u8*)(table + arr[index]);
++    return (u8*)(table + BE32(arr[index]));
+     
+ }
+ 
+diff --git a/src/system/graphic.c b/src/system/graphic.c
+index c01bbf7..8094f42 100644
+--- a/src/system/graphic.c
++++ b/src/system/graphic.c
+@@ -191,11 +191,11 @@ void setBitmapFormat(BitmapObject *sprite, Texture *timg, u16 *palette) {
+     sprite->timg = &timg->texture;
+     
+     // bytes 4-8 = width and height (16 bit) (byte swapped)
+-    sprite->width = swap16(timg->width);  
+-    sprite->height = swap16(timg->height);
++    sprite->width = swap16(BE16(timg->width));  
++    sprite->height = swap16(BE16(timg->height));
+     
+     // get pixel size from bit 5 in header (bit one when swapped)
+-    switch ((timg->flags >> 4) & 0xF) {
++    switch ((BE16(timg->flags) >> 4) & 0xF) {
+         case 0:
+           sprite->fmt = G_IM_FMT_CI;
+           sprite->pixelSize = G_IM_SIZ_8b;
+@@ -264,7 +264,7 @@ void setBitmapFormatAndSize(BitmapObject* sprite, u16* palette) {
+     sprite->pal = palette + 2;
+ 
+     // get pixel size from bit 5 in header
+-    switch ((palette[1] >> 4) & 0xF) {                           
++    switch ((BE16(palette[1]) >> 4) & 0xF) {                           
+         case 0:
+             sprite->fmt = G_IM_FMT_CI;
+             sprite->pixelSize = G_IM_SIZ_8b;
+@@ -805,7 +805,7 @@ f32 getSpriteYValueFromDirection(u8 direction) {
+ 
+ // get ptr to ci texture from index
+ u8* getTexturePtr(u16 spriteIndex, u32* textureIndex) {
+-    return (u8*)textureIndex + textureIndex[spriteIndex];
++    return (u8*)textureIndex + BE32(textureIndex[spriteIndex]);
+ }
+ 
+ // alternate
+@@ -821,7 +821,7 @@ void *getTexturePtr(u16 arg0, u32 *arg1) {
+ // get ptr to palette
+ // FIXME: should return u16*?
+ u8 *getPalettePtrType1(u16 index, u32 *paletteIndex) {
+-  return (u8*)paletteIndex + paletteIndex[index];
++  return (u8*)paletteIndex + BE32(paletteIndex[index]);
+ }
+ 
+ //INCLUDE_ASM("asm/nonmatchings/system/graphic", getPalettePtrType2);
+@@ -833,7 +833,7 @@ u8* getPalettePtrType2(u16 spriteIndex, u32* paletteIndex, u8* spriteToPaletteIn
+     u8* arr = spriteToPaletteIndex + 4;
+     u16 i = arr[spriteIndex];
+     
+-    return (u8*)paletteIndex + paletteIndex[i]; 
++    return (u8*)paletteIndex + BE32(paletteIndex[i]); 
+ 
+ }
+ 
+diff --git a/src/system/map.c b/src/system/map.c
+index 4720b9f..4cdfebd 100644
+--- a/src/system/map.c
++++ b/src/system/map.c
+@@ -184,6 +184,12 @@ static const Gfx D_8011EDD8;
+ static const char D_8011EDB0[];
+ static const char D_8011EDB4[];
+ 
++#ifdef TARGET_HANDHELD
++/* the grid's tile numbers are little-endian in the map data: a native read on ARM */
++static inline u16 swap16TileIndex(u16 halfword) {
++    return (u16)(halfword - 1);
++}
++#else
+ static inline u16 swap16TileIndex(Swap16 halfword) {
+ 
+     Swap16 swap; 
+@@ -196,6 +202,7 @@ static inline u16 swap16TileIndex(Swap16 halfword) {
+     return swap.halfword; 
+ 
+ }
++#endif
+ 
+ //INCLUDE_ASM("asm/nonmatchings/system/map", initializeMap);
+ 
+@@ -864,11 +871,11 @@ bool loadGroundObjects(u16 mapIndex, u8 x, u8 z, u32* textureIndex, u32* palette
+         
+         nuPiReadRom(romAssetsIndexStart, assetIndex, romAssetsIndexEnd - romAssetsIndexStart);
+         
+-        offset1 = assetIndex[0];
+-        offset2 = assetIndex[1];
+-        offset3 = assetIndex[2];
+-        offset4 = assetIndex[3];
+-        offset5 = assetIndex[4];
++        offset1 = BE32(assetIndex[0]);
++        offset2 = BE32(assetIndex[1]);
++        offset3 = BE32(assetIndex[2]);
++        offset4 = BE32(assetIndex[3]);
++        offset5 = BE32(assetIndex[4]);
+         
+         nuPiReadRom(romTextureStart + offset1, mainMap[mapIndex].groundObjects.textureIndex, offset2 - offset1);
+         nuPiReadRom(romTextureStart + offset2, mainMap[mapIndex].groundObjects.paletteIndex, offset3 - offset2);
+@@ -1309,7 +1316,7 @@ u8 updateGridsWithMapAdditions(u16 mapIndex, u16 mapAdditionIndex, u8 xCoord, u8
+ 
+                     tempIndex = (mainMap[mapIndex].mapGrid.mapWidth * (z + i)) + x + j;
+                     
+-                    mainMap[mapIndex].mapGrid.gridToTileIndex[tempIndex] = swap.halfword;
++                    mainMap[mapIndex].mapGrid.gridToTileIndex[tempIndex] = BE16(swap.halfword);
+ 
+                 }
+                 
+@@ -1921,7 +1928,7 @@ u8* setTileVertexData(Tile* tile, u8* data) {
+ u16* getTileVtxPtrFromCount(u16 count, void* vtxDataPtr) {
+ 
+     u32* ptr = (u32*)vtxDataPtr;
+-    u32 offset = ptr[count];
++    u32 offset = BE32(ptr[count]);
+     
+     return (u16*)(vtxDataPtr + offset);
+ 
+@@ -2019,8 +2026,8 @@ Gfx* renderTiles(Gfx* dl, MainMap* mainMap, u16 gridIndex, u8 textureIndex) {
+             }
+ 
+             // FIXME: should be inline swap16TileIndex?
+-            swap.byte[1] = mainMap->mapGrid.gridToTileIndex[gridIndex] >> 8;
+-            swap.byte[0] = mainMap->mapGrid.gridToTileIndex[gridIndex];
++            swap.byte[1] = BE16(mainMap->mapGrid.gridToTileIndex[gridIndex]) >> 8;
++            swap.byte[0] = BE16(mainMap->mapGrid.gridToTileIndex[gridIndex]);
+         
+             temp = swap.halfword;
+ 
+@@ -2251,9 +2258,14 @@ Gfx* appendTileToDL(Gfx* dl, MainMap* mainMap, u16 tileIndex, f32 x, f32 y, f32
+     count = setTileVertices(mainMap, tileIndex, x, *(f32*)&y, z);
+ 
+     // FIXME: might be a wrapper around gSPVertex
++#ifdef TARGET_HANDHELD
++    /* the N64 build writes the command one Gfx past tempDl2 (its stack padding) and copies it back */
++    gSPVertex(&tempDl2, &tileVertices[gGraphicsBufferIndex][mainMap->mapState.startingVertex + mainMap->mapState.renderedVertexCount], mainMap->tiles[tileIndex].verticesPerTile, 0);
++#else
+     gSPVertex(&tempDl2 + 1, &tileVertices[gGraphicsBufferIndex][mainMap->mapState.startingVertex + mainMap->mapState.renderedVertexCount], mainMap->tiles[tileIndex].verticesPerTile, 0);
+ 
+     tempDl2 = *(&tempDl2 + 1);
++#endif
+     *dl++ = tempDl2;
+     
+     mainMap->mapState.renderedVertexCount += count;
+@@ -2642,11 +2654,11 @@ bool setMapAdditionIndexFromCoordinates(u16 mapIndex, u16 mapAdditionIndex, u8 x
+ }
+ 
+ static inline u8* getTexturePtrInline(u8 spriteIndex, u32* textureIndex) {
+-    return (u8*)textureIndex + textureIndex[spriteIndex];
++    return (u8*)textureIndex + BE32(textureIndex[spriteIndex]);
+ }
+ 
+ static inline u8 *getPalettePtrTypeInline(u8 index, u32 *paletteIndex) {
+-    return (u8*)paletteIndex + paletteIndex[index];
++    return (u8*)paletteIndex + BE32(paletteIndex[index]);
+ }
+ 
+ //INCLUDE_ASM("asm/nonmatchings/system/map", setupCoreMapObjectSprites);
+diff --git a/src/system/mapController.c b/src/system/mapController.c
+index 652b8c2..801212e 100644
+--- a/src/system/mapController.c
++++ b/src/system/mapController.c
+@@ -173,7 +173,7 @@ bool loadMap(u16 index, u16 mapIndex) {
+ }
+ 
+ static inline u8* getAddress(u32 offsets[], u32 i) {
+-    return (u8*)offsets + offsets[i];
++    return (u8*)offsets + BE32(offsets[i]);
+ }
+ 
+ //INCLUDE_ASM("asm/nonmatchings/system/mapController", dmaMapAssets);
+diff --git a/src/system/message.c b/src/system/message.c
+index 17ab5e0..53af7a9 100644
+--- a/src/system/message.c
++++ b/src/system/message.c
+@@ -1919,7 +1919,11 @@ void updateMessageBoxText(u16 index) {
+ 
+ u16 readCompressedCharacter(u16 index) {
+     
++#ifdef TARGET_HANDHELD
++    u8 buffer[8]; /* memcpy'd 8 bytes below */
++#else
+     u8 buffer[2];
++#endif
+     u32 padding[4];
+ 
+     u16 character;
+diff --git a/src/system/sprite.c b/src/system/sprite.c
+index 7836959..ea328b8 100644
+--- a/src/system/sprite.c
++++ b/src/system/sprite.c
+@@ -366,7 +366,7 @@ bool setBitmapAnchor(u16 index, s16 anchorX, s16 anchorY) {
+ 
+ u8* setSpriteDMAInfo(u16 index, u32 *spritesheetIndex, u8 *timg, u8 *romAddr) {
+ 
+-    u32 offset = spritesheetIndex[index];
++    u32 offset = BE32(spritesheetIndex[index]);
+ 
+     setSpriteAssetDescriptors(romAddr + offset, timg, getTextureLength(index, spritesheetIndex));
+ 
+@@ -389,7 +389,7 @@ u32 getTextureLength(u16 spriteIndex, u32 spritesheetIndex[]) {
+ 
+     }
+ 
+-    return spritesheetIndex[counter] - spritesheetIndex[spriteIndex];
++    return BE32(spritesheetIndex[counter]) - BE32(spritesheetIndex[spriteIndex]);
+ 
+ }
+ 
