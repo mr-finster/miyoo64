@@ -84,6 +84,8 @@ While you play an instrument, the d-pad is the four C notes and A is A. B puts i
 - `MM_THREADS=1`: draw on one core.
 - `MM_SLEEPSAVE=0`: no auto save before sleep.
 - `MM_PACE=0`: frames go up when they are drawn rather than on the panel's refresh.
+- `MM_FLIPFILL=0`: on a Mini v4 or Mini Flip, keep the 2x picture with a border instead of the full height
+  (`OOT_FLIPFILL`, the test builds' name, still works).
 
 ## Building
 

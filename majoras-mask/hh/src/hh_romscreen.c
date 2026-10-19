@@ -18,6 +18,7 @@ void HhRomScreen_NoData(void);
 #include <stdint.h>
 #include <SDL/SDL.h>
 #include "handheld_menu.h"
+#include "hh_game.h"
 typedef struct { int k; } TTF_Font;
 static TTF_Font sBig = { 2 }, sSmall = { 1 };
 static SDL_Surface* sScr;   /* 320x240 RGB565: what the screens draw on */
@@ -82,7 +83,7 @@ static void ui_flip(void) {
 static void ui_draw(const char* l1, const char* l2, const char* l3, int pct, const char* foot) {
     if (!sScr) return;
     SDL_FillRect(sScr, NULL, SDL_MapRGB(sScr->format, 0, 0, 0));
-    ui_text(22, "OCARINA OF TIME", sFontBig, 255);
+    ui_text(22, HH_GAME_TITLE, sFontBig, 255); /* hh_game.h: "MAJORA'S MASK" (was "OCARINA OF TIME", from the OoT port) */
     ui_text(50, sSub, sFontSmall, 150);
     ui_text(86, l1, sFontSmall, 230);
     ui_text(104, l2, sFontSmall, 230);

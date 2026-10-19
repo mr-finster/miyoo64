@@ -277,9 +277,11 @@ static SDL_Surface *set_video_mode(int w, int h) {
        * (blit_stage_to_screen); a Mini's 640x480 keeps the exact 2x. OOT_FLIPFILL=0: 640x480 as before (the OS
        * shows it with a border). */
         int mw = 0, mh = 0;
-        const char *e = getenv("OOT_FLIPFILL");
+        const char *e = getenv("MM_FLIPFILL"); /* MM_FLIPFILL; OOT_FLIPFILL (the test builds' name) still works */
+        if (!(e && e[0])) e = getenv("OOT_FLIPFILL");
         const int fill = !(e && e[0] == '0');
-        const char *m = getenv("OOT_MIYOO_MODE");
+        const char *m = getenv("MM_MIYOO_MODE");
+        if (!(m && m[0])) m = getenv("OOT_MIYOO_MODE");
         if (m && sscanf(m, "%dx%d", &mw, &mh) != 2) mw = mh = 0;
         if (!mw) {
             const int fd = open("/dev/fb0", O_RDONLY);
@@ -289,7 +291,7 @@ static SDL_Surface *set_video_mode(int w, int h) {
                 close(fd);
             }
         }
-        fprintf(stderr, "gfx_sdl12: panel %dx%d%s\n", mw, mh, m ? " (OOT_MIYOO_MODE)" : " (/dev/fb0)");
+        fprintf(stderr, "gfx_sdl12: panel %dx%d%s\n", mw, mh, m ? " (MIYOO_MODE)" : " (/dev/fb0)");
         if (fill && mw >= PANEL_W && mh >= PANEL_H && (mw != PANEL_W || mh != PANEL_H) && mw <= 1280 && mh <= 960) {
             s = SDL_SetVideoMode(mw, mh, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
             if (!s) fprintf(stderr, "gfx_sdl12: %dx%d refused (%s); 640x480\n", mw, mh, SDL_GetError());

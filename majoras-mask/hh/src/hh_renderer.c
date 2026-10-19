@@ -20,7 +20,7 @@ static bool sInit;
 
 void OotPspRenderer_Init(void) {
     if (!sInit) {
-        gfx_init(&HH_WAPI, &gfx_soft_api, "Ocarina of Time", false);
+        gfx_init(&HH_WAPI, &gfx_soft_api, "Majora's Mask", false);
         sInit = true;
     }
 }

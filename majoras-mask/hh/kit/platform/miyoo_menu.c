@@ -27,7 +27,7 @@
 #endif
 
 #ifndef HH_GAME_TITLE
-#define HH_GAME_TITLE HH_GAME_ID /* the heading: hh_game.h's HH_GAME_TITLE ("OCARINA OF TIME") */
+#define HH_GAME_TITLE HH_GAME_ID /* the heading: hh_game.h's HH_GAME_TITLE ("MAJORA'S MASK") */
 #endif
 
 #define SCREEN_W 640
