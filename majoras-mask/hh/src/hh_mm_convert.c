@@ -309,6 +309,9 @@ static int scan_dir(Find* fd, const char* dir) {
         char path[512];
         size_t dl = strlen(dir);
         if (ent->d_name[0] == '.' || !ext_ok(ent->d_name)) continue;
+        /* the game's own files: the data pack starts with the ROM's header (it was taken for a damaged ROM) */
+        if (strncmp(ent->d_name, "mm_pack", 7) == 0 || strncmp(ent->d_name, "mm_recipes", 10) == 0 ||
+            strncmp(ent->d_name, "mm-flash", 8) == 0) continue;
         snprintf(path, sizeof(path), "%s%s%s", dir, (dl && dir[dl - 1] == '/') ? "" : "/", ent->d_name);
         found = try_file(fd, path);
     }
