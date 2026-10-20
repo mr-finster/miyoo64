@@ -291,6 +291,26 @@ s32 HhMm_Boundary(GameStateOverlay* ovl) {
             }
         }
     }
+    {   /* MM_WARP=<frame>:<entrance hex> (tests): in Play, a scene change to that entrance at that frame, as a door or a
+         * map select entry would (ENTRANCE(scene, spawn) = scene << 9 | spawn << 4) */
+        static long sWAt = -2;
+        static unsigned sWEnt;
+        if (sWAt == -2) {
+            const char* e = getenv("MM_WARP");
+            sWAt = -1;
+            if (e != NULL && sscanf(e, "%ld:%x", &sWAt, &sWEnt) < 2) {
+                sWAt = -1;
+            }
+        }
+        if (sWAt >= 0 && sFrames >= sWAt && gHhGameState != NULL && ovl == &gGameStateOverlayTable[3]) {
+            PlayState* play = (PlayState*)gHhGameState;
+            sWAt = -1;
+            play->nextEntrance = (u16)sWEnt;
+            play->transitionTrigger = TRANS_TRIGGER_START;
+            play->transitionType = TRANS_TYPE_FADE_BLACK;
+            port_log_always("mm: MM_WARP to entrance %#x at frame %ld\n", sWEnt, sFrames);
+        }
+    }
     {   /* MM_SETPOS=<frame>:<x>:<y>:<z>[:<yaw>][,...] (tests): put the player there (world, previous and home
          * position; facing yaw in binary angle units) at that frame, in Play. Frames ascending. */
         static long sPosAt = -2;

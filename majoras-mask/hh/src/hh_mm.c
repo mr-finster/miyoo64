@@ -142,6 +142,18 @@ static int HhPack_Open(void) {
                 sPackSize = st.st_size;
                 close(fd);
                 port_log_always("mm: data pack %s (%u bytes) at %p\n", cands[i], (unsigned)sPackSize, p);
+                {   /* 1.0.1: the whole pack read ahead now, in big sequential reads, off the game thread (the kernel's
+                     * readahead). 1.0.0 faulted it in one 4 KB page at a time from the SD card as each scene, object
+                     * and sound bank was first used: on a Mini Plus the first visits (the intro, the first minutes of
+                     * a session) stalled the game and the audio. The pages are the file's: the kernel can drop them
+                     * again under memory pressure. madvise as a raw system call (no GOT room for an import). */
+                    register long r0 __asm__("r0") = (long)p;
+                    register long r1 __asm__("r1") = (long)sPackSize;
+                    register long r2 __asm__("r2") = 3; /* MADV_WILLNEED */
+                    register long r7 __asm__("r7") = 220;
+                    __asm__ volatile("svc #0" : "+r"(r0) : "r"(r1), "r"(r2), "r"(r7) : "memory");
+                    port_log_always("mm: data pack read ahead (madvise %ld)\n", r0);
+                }
                 return 1;
             }
         }
@@ -854,7 +866,9 @@ void HhMm_LogAlignment(const char* when) {
     }
 }
 
+char** gHhMmArgv; /* hh_mm_convert.c: the first start starts the game again in a fresh process */
 int main(int argc, char** argv) {
+    gHhMmArgv = argv;
     {   /* kit k1.6: nice -10 before any thread exists (all inherit it): the OS's helpers fit in the frame gaps */
         extern void hh_game_priority(void);
         hh_game_priority();

@@ -3,6 +3,20 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## 1.2.1 (Majora's Mask 1.0.1 beta)
+
+A Majora's Mask hotfix; the other eleven games are exactly the 1.2.0 zips.
+
+- Majora's Mask: no more crash in the Astral Observatory. The room with the telescope ended one matrix pop below the
+  bottom of the renderer's matrix stack; the next matrix was then written over the renderer's own state, and the
+  next textured triangle crashed. The RSP never pops its last matrix, and now neither does the port.
+- Majora's Mask: the first session after the game data is built runs like any later one. The game now starts again
+  in a fresh process once the build is done (the ROM's cached pages dropped), and every session asks the kernel to
+  read the whole data pack ahead, instead of loading it from the SD card one small page at a time as each scene,
+  object and sound bank is first used. Before, the first minutes (the opening cutscenes) could run slowly, with the
+  sound out of step or missing, on a Mini Plus.
+- Save states and the auto save from 1.0.0 and the test builds load in 1.0.1; the game data is not rebuilt.
+
 ## 1.2.0 (Majora's Mask 1.0.0 beta, Harvest Moon 64 1.0.0)
 
 Two new games: The Legend of Zelda: Majora's Mask (USA ROM), version 1.0.0, a beta, and Harvest Moon 64 (USA ROM),

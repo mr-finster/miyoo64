@@ -14,6 +14,7 @@
  *
  * MM_CONVERT_ONLY=1 exits after this step (tests, timing); MM_CONVERT_FORCE=1 rebuilds even a current pack. */
 #include <dirent.h>
+#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -493,6 +494,54 @@ static const char* build_pack(Rom* rom) {
     return NULL;
 }
 
+/* 1.0.1: after a first start the game runs in a fresh process, as on every later start. 1.0.0 went on in the process
+ * that had built the pack: the ROM (32 MB) and the new pack (49 MB) just read and written filled the page cache, the
+ * game's clock had been running through the whole build (a minute or two on the Mini), and the build screen's video
+ * mode, threads and buffers were still there. Players saw the first session slow, with the cutscenes' sound out of
+ * step, until they quit and started again (Mini Plus, 1.2.0). So: drop the ROM's cached pages, put the CPU clock
+ * back, and exec the game again (MM_REEXEC=0: go on in this process, the old way). */
+/* Raw system calls, as hh_mprotect: the pinned link has no room in the GOT for new library imports. */
+static void drop_cache(const char* path) {
+    const int f = open(path, O_RDONLY);
+    if (f >= 0) {
+        register long r0 __asm__("r0") = f;
+        register long r1 __asm__("r1") = 4; /* POSIX_FADV_DONTNEED (arm_fadvise64_64: fd, advice, offset, len) */
+        register long r2 __asm__("r2") = 0;
+        register long r3 __asm__("r3") = 0;
+        register long r4 __asm__("r4") = 0;
+        register long r5 __asm__("r5") = 0;
+        register long r7 __asm__("r7") = 270;
+        __asm__ volatile("svc #0" : "+r"(r0) : "r"(r1), "r"(r2), "r"(r3), "r"(r4), "r"(r5), "r"(r7) : "memory");
+        close(f);
+    }
+}
+static long hh_execve(const char* path, char* const* argv, char* const* envp) {
+    register long r0 __asm__("r0") = (long)path;
+    register long r1 __asm__("r1") = (long)argv;
+    register long r2 __asm__("r2") = (long)envp;
+    register long r7 __asm__("r7") = 11;
+    __asm__ volatile("svc #0" : "+r"(r0) : "r"(r1), "r"(r2), "r"(r7) : "memory");
+    return r0;
+}
+static void HhMm_ConvertRestart(const char* romPath) {
+    extern char** gHhMmArgv;
+    extern void miyoo_clock_restore(void);
+    const char* e = getenv("MM_REEXEC");
+    drop_cache(romPath); /* the pack's pages stay: the game reads them next (hh_mm.c HhPack_Open asks for all of it) */
+    if ((e != NULL && e[0] == '0') || gHhMmArgv == NULL || gHhMmArgv[0] == NULL) return;
+    port_log_always("mm: first start done: starting the game again in a fresh process\n");
+    fflush(stdout);
+    fflush(stderr);
+    miyoo_clock_restore();
+    {
+        int argc = 0;
+        while (gHhMmArgv[argc] != NULL) argc++;
+        const char* exe = getenv("MM_REEXEC_EXE"); /* tests: a wrapper (qemu-user cannot exec an ARM binary itself) */
+        const long r = hh_execve(exe != NULL ? exe : "/proc/self/exe", gHhMmArgv, gHhMmArgv + argc + 1); /* envp follows argv */
+        port_log_always("mm: exec failed (%ld): going on in this process\n", r);
+    }
+}
+
 /* main(), before the pack is opened */
 void HhMm_ConvertEnsure(void) {
     const char* err;
@@ -553,4 +602,5 @@ void HhMm_ConvertEnsure(void) {
     port_log_always("mm: game data built in %.1f s (first start %.1f s)\n", now_s() - t1, now_s() - t0);
     HhRomScreen_Close();
     if (getenv("MM_CONVERT_ONLY")) exit(0);
+    HhMm_ConvertRestart(fd.path);
 }

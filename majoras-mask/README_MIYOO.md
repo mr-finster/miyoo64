@@ -5,7 +5,7 @@ A port to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip), built on 
 states and a first-start data builder. **There is no game data in it.** It builds everything from your
 own USA ROM the first time you run it.
 
-**Status:** version 1.0.0, a beta. It plays on the Mini (OG, 640x480) with Onion from Apps at the game's own
+**Status:** version 1.0.1, a beta. It plays on the Mini (OG, 640x480) with Onion from Apps at the game's own
 20 fps; test builds have been played on that device. The Mini Plus, Mini v4 and Flip, and Onion's Ports list,
 MinUI, Allium and spruce still need a first run. Known issues: [README.md](README.md#known-issues).
 

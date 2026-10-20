@@ -2693,8 +2693,12 @@ static void gfx_sp_pop_matrix(uint32_t count) {
 #ifdef PORT_GE_TL
     gfx_flush(); // draw pending verts with the current modelview before popping
 #endif
+    /* The RSP never pops its last matrix (F3DEX2: a pop at the bottom of the stack does nothing). Popping to 0
+     * made the next G_MTX load write modelview_matrix_stack[-1], the 64 bytes before rsp: rendering_state, whose
+     * texture pointers became matrix floats and crashed the next textured triangle (1.0.0: the Astral
+     * Observatory, entered from Termina Field or the telescope). */
     while (count--) {
-        if (rsp.modelview_matrix_stack_size > 0) {
+        if (rsp.modelview_matrix_stack_size > 1) {
             --rsp.modelview_matrix_stack_size;
         }
     }
