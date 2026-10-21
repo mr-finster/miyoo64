@@ -27,6 +27,10 @@ void miyoo_menu_overlay(SDL_Surface *screen);
 int miyoo_can_draw32(int w, int h);
 void miyoo_draw32(uint32_t *src, int w, int h);
 void miyoo_flip_panel(void);
+/* The menus' backdrop on a filled Mini v4 / Flip panel (miyoo_menu.c): the panel's size, then the last game frame as
+ * the panel showed it (unturned, opaque) into a w x h buffer; 0 = none (a 640x480 Mini: the menu keeps 640x480). */
+int miyoo_menu_backdrop_size(int *w, int *h);
+int miyoo_menu_backdrop(uint32_t *dst, int w, int h, int pitch);
 #define HH_SetVideoMode miyoo_set_video_mode
 #define HH_Flip         miyoo_flip
 #define HH_KEY_MENU     SDLK_ESCAPE

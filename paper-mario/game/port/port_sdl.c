@@ -111,13 +111,9 @@ static inline uint32_t lerp_px(uint32_t a, uint32_t b, uint32_t w) {
     const uint32_t g = (((a & 0xFF00u) * nw + (b & 0xFF00u) * w + 0x4000u) >> 7) & 0xFF00u;
     return rb | g;
 }
-/* the stage's rectangle r over the panel's picture area (the kit's 2x area, centred), turned like the kit's present */
-static void fill_present(uint32_t *src, const float r[4]) {
-    static SDL_Surface *sWrap;
-    if (!sWrap) sWrap = SDL_CreateRGBSurfaceFrom(src, MW, MH, 32, MW * 4, 0x00FF0000, 0x0000FF00, 0x000000FF, 0);
-    if (sWrap) miyoo_menu_overlay(sWrap); /* the notice, as miyoo_panel_present32 draws it */
-    SDL_Surface *const p = sScreen;
-    const int dw = p->w, dh = p->h, rot = miyoo_panel_rotated();
+/* the stage's rectangle r over the panel's picture area (the kit's 2x area, centred), turned like the kit's present:
+ * onto pix (dw x dh, pitch bytes; the panel, or the menu's backdrop with rot 0, miyoo_port_backdrop) */
+static void fill_draw(uint8_t *pix, int pitch, int dw, int dh, int rot, uint32_t a, const uint32_t *src, const float r[4]) {
     int ox, oy, tw, th; /* the kit's picture area: 2x on a Mini, the full-height fill on a Mini v4 / Flip */
     miyoo_panel_area(MW, MH, &ox, &oy, &tw, &th);
     if (tw > 2048 || th > 2048) return;
@@ -125,11 +121,9 @@ static void fill_present(uint32_t *src, const float r[4]) {
     sharp_axis(sFyT, sFyW, th, r[1], r[3], MH, sFyKey);
     static uint32_t rowbuf[2][2048];
     int rowsrc[2] = { -1, -1 };
-    const uint32_t a = p->format->Amask;
-    if (SDL_MUSTLOCK(p)) SDL_LockSurface(p);
     if (ox > 0) /* the sides of a filled Mini v4 / Flip panel: black (the menu or an earlier mode may have drawn there) */
         for (int y = 0; y < dh; y++) {
-            uint32_t *d = (uint32_t *) ((uint8_t *) p->pixels + (size_t) y * p->pitch);
+            uint32_t *d = (uint32_t *) (pix + (size_t) y * pitch);
             for (int x = 0; x < ox; x++) d[x] = d[dw - 1 - x] = a;
         }
     for (int y = 0; y < th; y++) {
@@ -144,7 +138,7 @@ static void fill_present(uint32_t *src, const float r[4]) {
             h2[q] = rowbuf[slot];
         }
         const uint32_t w = sFyW[y];
-        uint8_t *const drow = (uint8_t *) p->pixels + (size_t) (rot ? dh - 1 - (oy + y) : oy + y) * p->pitch;
+        uint8_t *const drow = pix + (size_t) (rot ? dh - 1 - (oy + y) : oy + y) * pitch;
         if (rot) {
             uint32_t *d = (uint32_t *) drow + (dw - 1 - ox);
             for (int x = 0; x < tw; x++) d[-x] = lerp_px(h2[0][x], h2[1][x], w) | a;
@@ -153,6 +147,14 @@ static void fill_present(uint32_t *src, const float r[4]) {
             for (int x = 0; x < tw; x++) d[x] = lerp_px(h2[0][x], h2[1][x], w) | a;
         }
     }
+}
+static void fill_present(uint32_t *src, const float r[4]) {
+    static SDL_Surface *sWrap;
+    if (!sWrap) sWrap = SDL_CreateRGBSurfaceFrom(src, MW, MH, 32, MW * 4, 0x00FF0000, 0x0000FF00, 0x000000FF, 0);
+    if (sWrap) miyoo_menu_overlay(sWrap); /* the notice, as miyoo_panel_present32 draws it */
+    SDL_Surface *const p = sScreen;
+    if (SDL_MUSTLOCK(p)) SDL_LockSurface(p);
+    fill_draw((uint8_t *) p->pixels, p->pitch, p->w, p->h, miyoo_panel_rotated(), p->format->Amask, src, r);
     if (SDL_MUSTLOCK(p)) SDL_UnlockSurface(p);
 }
 static void stage_present(void) {
@@ -162,6 +164,23 @@ static void stage_present(void) {
 }
 /* the menu's dimmed backdrop (miyoo_menu.c, weak): the picture as the panel shows it */
 int miyoo_menu_view_rect(float r[4]) { memcpy(r, sStageRect, sizeof sStageRect); return 1; }
+/* the same on a filled Mini v4 / Flip panel (the kit's miyoo_panel_backdrop, weak): the stretched picture exactly as
+ * fill_present put it there, unturned and opaque, into dst (w x h, pitch bytes). 0: the whole frame (it went through
+ * miyoo_panel_present32: the kit's own), or the panel shows it doubled (a 640x480 Mini, FLIPFILL=0). dst NULL: would. */
+int miyoo_port_backdrop(uint32_t *dst, int w, int h, int pitch) {
+    const float *r = sStageRect;
+    int ox, oy, tw, th;
+    if (r[0] == 0 && r[1] == 0 && r[2] == MW && r[3] == MH) return 0;
+    miyoo_panel_area(MW, MH, &ox, &oy, &tw, &th);
+    if (tw == MW * 2 && th == MH * 2) return 0;
+    if (!dst) return 1;
+    for (int y = 0; y < h; y++) {
+        uint32_t *d = (uint32_t *) ((uint8_t *) dst + (size_t) y * pitch);
+        for (int x = 0; x < w; x++) d[x] = 0xFF000000u;
+    }
+    fill_draw((uint8_t *) dst, pitch, w, h, 0, 0xFF000000u, sStage32, r);
+    return 1;
+}
 /* PM64_PANEL_DUMP=<dir> [PM64_PANEL_DUMP_EVERY=n] (test): the panel as the player sees it (the turn undone), every nth
  * presented frame, as PPM (panel_<game frame>.ppm), after the present and before the flip. */
 static void panel_dump(uint32_t frame) {

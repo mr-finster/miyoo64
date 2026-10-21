@@ -231,15 +231,50 @@ static void present(uint32_t *src, int w, int h) {
     if (SDL_MUSTLOCK(sPanel)) SDL_UnlockSurface(sPanel);
 }
 
+/* The last game frame presented (the menus' backdrop, miyoo_panel_backdrop): the port's stage, untouched while the
+ * menu holds the panel. */
+static const uint32_t *sLastSrc SAVESTATE_EXCLUDE;
+static int sLastW SAVESTATE_EXCLUDE, sLastH SAVESTATE_EXCLUDE;
+
 void miyoo_panel_present32(uint32_t *src, int w, int h) {
     static SDL_Surface *sWrap SAVESTATE_EXCLUDE; /* src as a surface, for the notice */
     if (!src || w <= 0 || h <= 0) return;
+    sLastSrc = src; sLastW = w; sLastH = h;
     if (!sWrap || sWrap->pixels != src || sWrap->w != w || sWrap->h != h) {
         if (sWrap) SDL_FreeSurface(sWrap);
         sWrap = SDL_CreateRGBSurfaceFrom(src, w, h, 32, w * 4, 0x00FF0000, 0x0000FF00, 0x000000FF, 0);
     }
     if (sWrap) miyoo_menu_overlay(sWrap);
     present(src, w, h);
+}
+
+/* The menus' backdrop on a filled Mini v4 / Flip panel (miyoo_menu.c): the last game frame exactly as present() filled
+ * the panel with it (present_fill, black sides), unturned (miyoo_panel_show_full turns it) and opaque, into dst (the
+ * panel's w x h, pitch in bytes), so the MENU's picture fills the panel as the game does. 0 where the panel shows the
+ * frame doubled (a 640x480 Mini or Mini Plus, <GAME>_FLIPFILL=0), or no frame went out yet: the menu keeps its 640x480.
+ * A port whose present draws its own picture (Paper Mario's fill, port_sdl.c) answers first: dst NULL asks whether
+ * it would draw. */
+extern int miyoo_port_backdrop(uint32_t *dst, int w, int h, int pitch) __attribute__((weak));
+static int backdrop_fills(void) {
+    if (!sPanel || !fill_on()) return 0;
+    const SDL_PixelFormat *f = sPanel->format;
+    if (!(f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0)) return 0;
+    if (miyoo_port_backdrop && miyoo_port_backdrop(NULL, sPanel->w, sPanel->h, 0)) return 2;
+    if (!sLastSrc || sLastW <= 0 || sLastH <= 0) return 0;
+    int k = sPanel->w / sLastW < sPanel->h / sLastH ? sPanel->w / sLastW : sPanel->h / sLastH;
+    return k >= 2 && sLastH * k != sPanel->h; /* present()'s test for present_fill */
+}
+int miyoo_panel_backdrop_size(int *w, int *h) {
+    if (!backdrop_fills()) return 0;
+    *w = sPanel->w; *h = sPanel->h;
+    return 1;
+}
+int miyoo_panel_backdrop(uint32_t *dst, int w, int h, int pitch) {
+    const int how = backdrop_fills();
+    if (!how || !dst || w != sPanel->w || h != sPanel->h) return 0;
+    if (how == 2) return miyoo_port_backdrop(dst, w, h, pitch);
+    present_fill((uint8_t *)dst, w, h, pitch, 0, 0xFF000000u, sLastSrc, sLastW, sLastH);
+    return 1;
 }
 
 /* <GAME>_PANEL_DUMP=<dir>: every 150th flip, the panel surface as the display gets it (turn, scale and all) to

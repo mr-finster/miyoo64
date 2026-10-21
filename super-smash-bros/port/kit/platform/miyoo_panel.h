@@ -38,6 +38,10 @@ void miyoo_panel_flip(void);
 /* A 640x480 32 bpp software surface (menus, prompts, first-start screens) onto the panel, centred
  * and turned, then flipped. */
 void miyoo_panel_show_full(struct SDL_Surface *s);
+/* The menus' backdrop on a filled Mini v4 / Flip panel (miyoo_menu.c): the panel's size, then the last game frame as
+ * the panel showed it (unturned, opaque) into a w x h buffer; 0 = none (a 640x480 Mini: the menu keeps 640x480). */
+int miyoo_panel_backdrop_size(int *w, int *h);
+int miyoo_panel_backdrop(uint32_t *dst, int w, int h, int pitch);
 
 /* data/ next to the executable (wherever the launcher keeps the game: App/<Game>, a MinUI .pak),
  * or $<GAME>_DATA when the launcher sets it. Created if missing. */

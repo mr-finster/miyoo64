@@ -99,9 +99,35 @@ static void text_centered(SDL_Surface *s, int cy, int k, const char *t, uint32_t
     miyoo_text(s, (s->w - miyoo_text_w(t, k)) / 2, cy - 4 * k, k, t, c);
 }
 
-/* The last game frame, dimmed to 40%, scaled to the menu's 640x480. */
+/* The menu's surfaces at w x h: 640x480, or the panel's size on a filled Mini v4 / Flip. 0: not possible (the old
+ * ones kept). */
+static int menu_size(int w, int h) {
+    if (sBackup && sDraw && sBackup->w == w && sBackup->h == h) return 1;
+    SDL_Surface *b = SDL_CreateRGBSurface(SDL_SWSURFACE, w, h, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0);
+    SDL_Surface *d = SDL_CreateRGBSurface(SDL_SWSURFACE, w, h, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0);
+    if (!b || !d) { if (b) SDL_FreeSurface(b); if (d) SDL_FreeSurface(d); return 0; }
+    if (sBackup) SDL_FreeSurface(sBackup);
+    if (sDraw) SDL_FreeSurface(sDraw);
+    sBackup = b; sDraw = d;
+    return 1;
+}
+
+/* The last game frame, dimmed to 40%, scaled to the menu's 640x480 -- on a filled Mini v4 / Flip panel (752x560) the
+ * frame as the game showed it there, the whole panel (miyoo_menu_backdrop), the menu drawn at its centre. */
 static void snapshot_game_frame(void) {
     int w = 0, h = 0;
+    if (miyoo_menu_backdrop_size(&w, &h) && (w != MENU_W || h != MENU_H) && menu_size(w, h) &&
+        miyoo_menu_backdrop((uint32_t *)sBackup->pixels, w, h, sBackup->pitch)) {
+        for (int y = 0; y < h; y++) {
+            uint32_t *d = (uint32_t *)((uint8_t *)sBackup->pixels + y * sBackup->pitch);
+            for (int x = 0; x < w; x++) {
+                const uint32_t p = d[x];
+                d[x] = 0xFF000000u | (((p >> 16 & 0xFF) * 2 / 5) << 16) | (((p >> 8 & 0xFF) * 2 / 5) << 8) | ((p & 0xFF) * 2 / 5);
+            }
+        }
+        return;
+    }
+    if (!menu_size(MENU_W, MENU_H)) return;
     uint32_t *fb = gfx_soft_get_framebuffer(&w, &h);
     if (!sBackup) return;
     for (int y = 0; y < MENU_H; y++) {
@@ -127,7 +153,7 @@ static void slot_label(char *buf, size_t n, int item) {
 
 static void compose_menu(int cur, int confirm) {
     SDL_BlitSurface(sBackup, NULL, sDraw, NULL);
-    const int pw = 420, ph = 330, px = (MENU_W - pw) / 2, py = (MENU_H - ph) / 2;
+    const int pw = 420, ph = 330, px = (sDraw->w - pw) / 2, py = (sDraw->h - ph) / 2; /* centred (640x480 or the panel) */
     panel(sDraw, px, py, pw, ph);
     text_centered(sDraw, py + 34, 3, GAME_TITLE, C_TEXT);
     fill(sDraw, px + 30, py + 62, pw - 60, 2, C_EDGE);
@@ -168,9 +194,9 @@ void handheld_menu_notify_wait(const char *msg) {
     if (!sInited) return;
     snapshot_game_frame();
     SDL_BlitSurface(sBackup, NULL, sDraw, NULL);
-    const int pw = 420, ph = 120, px = (MENU_W - pw) / 2, py = (MENU_H - ph) / 2;
+    const int pw = 420, ph = 120, px = (sDraw->w - pw) / 2, py = (sDraw->h - ph) / 2;
     panel(sDraw, px, py, pw, ph);
-    text_centered(sDraw, MENU_H / 2, 3, msg, C_SEL);
+    text_centered(sDraw, sDraw->h / 2, 3, msg, C_SEL);
     miyoo_show_full(sDraw);
     SDL_Delay(1500);
 }
@@ -296,10 +322,11 @@ int handheld_menu_resume_prompt(void) {
     while (SDL_PollEvent(&ev)) { } /* anything held from the launch */
     while (result == -2) {
         if (dirty) {
+            const int oy = (sDraw->h - MENU_H) / 2; /* 0; the panel's size after a menu on a Mini v4 / Flip */
             SDL_FillRect(sDraw, NULL, SDL_MapRGB(sDraw->format, 0, 0, 0));
-            text_centered(sDraw, 120, 4, GAME_TITLE, C_TEXT);
-            for (int i = 0; i < 2; i++) text_centered(sDraw, 240 + i * 60, 3, OPT[i], i == opt ? C_SEL : C_DIM);
-            if (confirm) text_centered(sDraw, 400, 2, "ARE YOU SURE? (A)", C_SEL);
+            text_centered(sDraw, oy + 120, 4, GAME_TITLE, C_TEXT);
+            for (int i = 0; i < 2; i++) text_centered(sDraw, oy + 240 + i * 60, 3, OPT[i], i == opt ? C_SEL : C_DIM);
+            if (confirm) text_centered(sDraw, oy + 400, 2, "ARE YOU SURE? (A)", C_SEL);
             miyoo_show_full(sDraw);
             dirty = 0;
         }

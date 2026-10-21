@@ -616,6 +616,30 @@ static void row_x2_32(uint32_t *d0, uint32_t *d1, const uint32_t *src, int n, in
     }
 }
 
+/* A larger panel (Mini v4 / Flip, PD_FLIPFILL): the frame (sw x sh) at the panel's full height onto pix (W x H, pitch
+ * bytes), turned when rot: blit_stage_to_screen's, and the menu's backdrop (gfx_miyoo_backdrop, unturned). */
+static void fill_frame(uint8_t *pix, int pitch, int W, int H, int rot, const uint32_t *stage, int sw, int sh) {
+    static int mapW SAVESTATE_EXCLUDE, mapH SAVESTATE_EXCLUDE, mapSw SAVESTATE_EXCLUDE, mapSh SAVESTATE_EXCLUDE;
+    static uint16_t xmap[1280] SAVESTATE_EXCLUDE, ymap[960] SAVESTATE_EXCLUDE;
+    static int dw SAVESTATE_EXCLUDE, dx SAVESTATE_EXCLUDE;
+    if (mapW != W || mapH != H || mapSw != sw || mapSh != sh) {
+        dw = H * 4 / 3; if (dw > W || (W - dw) * 50 <= W) dw = W; /* a gap of 2% or less: the full width */
+        dx = (W - dw) / 2;
+        for (int x = 0; x < dw; x++) xmap[x] = (uint16_t)((x * sw + sw / 2) / dw < sw ? (x * sw + sw / 2) / dw : sw - 1);
+        for (int y = 0; y < H; y++) ymap[y] = (uint16_t)((y * sh) / H);
+        mapW = W; mapH = H; mapSw = sw; mapSh = sh;
+        fprintf(stderr, "gfx_sdl12: %dx%d frame to %dx%d at x %d on the %dx%d panel\n", sw, sh, dw, H, dx, W, H);
+    }
+    for (int y = 0; y < H; y++) {
+        uint32_t *dst = (uint32_t *)(pix + (rot ? H - 1 - y : y) * pitch);
+        const uint32_t *src = stage + ymap[y] * sw;
+        for (int x = 0; x < dx; x++) dst[x] = 0xFF000000u;
+        for (int x = dx + dw; x < W; x++) dst[x] = 0xFF000000u;
+        if (rot) { for (int x = 0; x < dw; x++) dst[W - 1 - dx - x] = src[xmap[x]] | 0xFF000000u; }
+        else     { for (int x = 0; x < dw; x++) dst[dx + x] = src[xmap[x]] | 0xFF000000u; }
+    }
+}
+
 /* Present thread: the staged frame onto the screen surface. 320x240 is doubled exactly; any
  * other size (never in play) is scaled nearest to fit. */
 static void blit_stage_to_screen(void) {
@@ -643,26 +667,7 @@ static void blit_stage_to_screen(void) {
         /* A larger panel (Mini v4 / Flip, PD_FLIPFILL): the 4:3 frame at the panel's full height, centred (750x560:
          * the whole 752x560, 0.8% wider than 4:3), nearest by precomputed maps (the 2.33x has no exact form; bilinear
          * would blur the HUD). The black sides are written every frame (cheap, and a menu may have drawn there). */
-        static int mapW SAVESTATE_EXCLUDE, mapH SAVESTATE_EXCLUDE, mapSw SAVESTATE_EXCLUDE, mapSh SAVESTATE_EXCLUDE;
-        static uint16_t xmap[1280] SAVESTATE_EXCLUDE, ymap[960] SAVESTATE_EXCLUDE;
-        static int dw SAVESTATE_EXCLUDE, dx SAVESTATE_EXCLUDE;
-        const int W = sScreen->w, H = sScreen->h;
-        if (mapW != W || mapH != H || mapSw != sw || mapSh != sh) {
-            dw = H * 4 / 3; if (dw > W || (W - dw) * 50 <= W) dw = W; /* a gap of 2% or less: the full width */
-            dx = (W - dw) / 2;
-            for (int x = 0; x < dw; x++) xmap[x] = (uint16_t)((x * sw + sw / 2) / dw < sw ? (x * sw + sw / 2) / dw : sw - 1);
-            for (int y = 0; y < H; y++) ymap[y] = (uint16_t)((y * sh) / H);
-            mapW = W; mapH = H; mapSw = sw; mapSh = sh;
-            fprintf(stderr, "gfx_sdl12: %dx%d frame to %dx%d at x %d on the %dx%d panel\n", sw, sh, dw, H, dx, W, H);
-        }
-        for (int y = 0; y < H; y++) {
-            uint32_t *dst = (uint32_t *)(pix + (rot ? H - 1 - y : y) * pitch);
-            const uint32_t *src = stage + ymap[y] * sw;
-            for (int x = 0; x < dx; x++) dst[x] = 0xFF000000u;
-            for (int x = dx + dw; x < W; x++) dst[x] = 0xFF000000u;
-            if (rot) { for (int x = 0; x < dw; x++) dst[W - 1 - dx - x] = src[xmap[x]] | 0xFF000000u; }
-            else     { for (int x = 0; x < dw; x++) dst[dx + x] = src[xmap[x]] | 0xFF000000u; }
-        }
+        fill_frame(pix, pitch, sScreen->w, sScreen->h, rot, stage, sw, sh);
     } else if (f->BitsPerPixel == 32) {
         for (int y = 0; y < SCREEN_H; y++) {
             uint32_t *dst = (uint32_t *)(pix + (rot ? SCREEN_H - 1 - y : y) * pitch);
@@ -681,6 +686,25 @@ static void blit_stage_to_screen(void) {
     }
     panel_dump();
     if (SDL_MUSTLOCK(sScreen)) SDL_UnlockSurface(sScreen);
+}
+
+/* The menu's backdrop on a larger panel (miyoo_menu.c; Mini v4 / Flip, PD_FLIPFILL): the last frame exactly as
+ * fill_frame put it on the panel, unturned (the menu's show() turns it) and opaque, into dst (the panel's w x h, pitch
+ * bytes), so the MENU's picture fills the panel as the game does. 0: a 640x480 panel (the menu keeps its 640x480; the
+ * Mini's exact 2x) or no frame yet. */
+int gfx_miyoo_backdrop_size(int *w, int *h) {
+    if (!sScreen || sStageW <= 0 || sStageH <= 0) return 0;
+    const SDL_PixelFormat *f = sScreen->format;
+    if (!(f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0) || (sScreen->w == SCREEN_W && sScreen->h == SCREEN_H))
+        return 0;
+    *w = sScreen->w; *h = sScreen->h;
+    return 1;
+}
+int gfx_miyoo_backdrop(uint32_t *dst, int w, int h, int pitch) {
+    int pw, ph;
+    if (!dst || !gfx_miyoo_backdrop_size(&pw, &ph) || w != pw || h != ph || w > 1280 || h > 960) return 0;
+    fill_frame((uint8_t *)dst, pitch, w, h, 0, sPresSrc ? sPresSrc : sStage32, sStageW, sStageH);
+    return 1;
 }
 
 /* The staged frame again, with the notification on it, at once: for a notice no later frame will

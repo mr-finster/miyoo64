@@ -186,6 +186,11 @@ static void row_x2_rot(uint32_t *d0, uint32_t *d1, const uint32_t *src, int n, u
     for (; x < n; x++) { const uint32_t p = src[x] | a; d0[-x * 2 - 1] = d0[-x * 2 - 2] = d1[-x * 2 - 1] = d1[-x * 2 - 2] = p; }
 }
 
+/* The last game frame the panel got (the menus' backdrop, miyoo_menu_backdrop): 32 = miyoo_draw32's src (the present's
+ * stage, untouched while the menu is up), 16 = the 565 shadow (miyoo_flip); 0 = none yet. */
+static const uint32_t *sLast32 SAVESTATE_EXCLUDE;
+static int sLastKind SAVESTATE_EXCLUDE, sLastW SAVESTATE_EXCLUDE;
+
 int miyoo_can_draw32(int w, int h) {
     if (!sReal || !sShadow || (sScale != 2 && !sFill) || w != sShadow->w || h != sShadow->h) return 0;
     const SDL_PixelFormat *f = sReal->format;
@@ -220,6 +225,7 @@ void miyoo_draw32(uint32_t *src, int w, int h) {
         sWrap = SDL_CreateRGBSurfaceFrom(src, w, h, 32, w * 4, 0x00FF0000, 0x0000FF00, 0x000000FF, 0);
     }
     if (sWrap) miyoo_menu_overlay(sWrap);
+    sLast32 = src; sLastW = w; sLastKind = 32;
     const int dw = sReal->w, dh = sReal->h, dp = sReal->pitch;
     const uint32_t a = sReal->format->Amask;
     uint8_t *const base = (uint8_t *) sReal->pixels;
@@ -328,6 +334,37 @@ void miyoo_show_full(SDL_Surface *s) {
     SDL_Flip(sReal);
 }
 
+/* The menus' backdrop on a filled Mini v4 / Flip panel (miyoo_menu.c): the last game frame exactly as the fill put it
+ * on the panel (fill_setup's maps, black at the sides), unturned (miyoo_show_full turns it) and opaque, into dst (the
+ * panel's w x h, pitch in bytes), so the MENU's picture fills the panel as the game does. 0 where the panel shows the
+ * game doubled (a 640x480 Mini or Mini Plus, MK64_FLIPFILL=0) or no frame went out yet: the menu keeps its 640x480. */
+int miyoo_menu_backdrop_size(int *w, int *h) {
+    if (!sReal || !sShadow || !sFill || !sLastKind || sReal->format->BitsPerPixel != 32) return 0;
+    *w = sReal->w; *h = sReal->h;
+    return 1;
+}
+int miyoo_menu_backdrop(uint32_t *dst, int w, int h, int pitch) {
+    int pw, ph;
+    if (!dst || !miyoo_menu_backdrop_size(&pw, &ph) || w != pw || h != ph) return 0;
+    if (sLastKind == 32 && (!sLast32 || sLastW != sShadow->w)) return 0;
+    for (int y = 0; y < h; y++) {
+        uint32_t *d = (uint32_t *) ((uint8_t *) dst + y * pitch);
+        for (int x = 0; x < w; x++) d[x] = 0xFF000000u;
+        uint32_t *o = d + sFx;
+        if (sLastKind == 32) {
+            const uint32_t *s = sLast32 + sYmap[y] * sLastW;
+            for (int x = 0; x < sFw; x++) o[x] = s[sXmap[x]] | 0xFF000000u;
+        } else { /* the 565 shadow, widened as scale_to_real32's table does */
+            const uint16_t *s = (const uint16_t *) ((const uint8_t *) sShadow->pixels + sYmap[y] * sShadow->pitch);
+            for (int x = 0; x < sFw; x++) {
+                const unsigned c = s[sXmap[x]];
+                o[x] = 0xFF000000u | (((c >> 11) & 31) * 255 / 31) << 16 | (((c >> 5) & 63) * 255 / 63) << 8 | (c & 31) * 255 / 31;
+            }
+        }
+    }
+    return 1;
+}
+
 /* MK64_PANEL_DUMP=<dir>: every 150th flip, the panel surface as the display gets it (turn and
  * all) to <dir>/panel_NNNNNN.ppm -- checks the scale and rotation off the device. */
 static void panel_dump(void) {
@@ -355,6 +392,7 @@ int miyoo_flip(SDL_Surface *s) {
     miyoo_menu_overlay(sShadow); /* a notification (SAVED SLOT n) on the game's frame */
     const int bpp = sReal->format->BitsPerPixel;
     if (bpp == 32 || bpp == 16) {
+        sLastKind = 16;
         if (SDL_MUSTLOCK(sReal)) SDL_LockSurface(sReal);
         if (bpp == 32) scale_to_real32(); else scale_to_real16();
         if (SDL_MUSTLOCK(sReal)) SDL_UnlockSurface(sReal);
