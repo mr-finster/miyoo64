@@ -28,6 +28,7 @@
 #include "port.h"
 #include "port_assets.h"
 #include "savestate.h" /* SAVESTATE_EXCLUDE: nothing here is game state */
+#include "miyoo_romfind.h"
 
 extern u8 __assets_start[], __assets_end[];
 extern void mio0decode(u8* in, u8* out);
@@ -547,108 +548,51 @@ static int try_load(const char* path, char* err, u32 errlen) {
 }
 
 /* ------------------------------------------------------------------ ROM search */
-/* The dump's byte order is auto-detected from its header (z64/v64/n64), so the
- * extension is only a filter to avoid header-probing every file on the card --
- * the header check in rom_open is the real gate. Accept the byte-order
- * extensions and the generic cart-image ones every N64 tool uses. */
-static int rom_ext_ok(const char* n) {
-    /* two- or three-letter extensions: ".u1" never matched while only n[l - 4] == '.' was
-     * accepted (DKR's form) */
-    const char* dot = strrchr(n, '.');
-    char e[4];
-    size_t i, l;
-    if (!dot || dot == n || (l = strlen(dot + 1)) < 2 || l > 3) return 0;
-    for (i = 0; i <= l; i++) e[i] = (char) (dot[1 + i] ? (dot[1 + i] | 0x20) : 0);
-    return !strcmp(e, "z64") || !strcmp(e, "n64") || !strcmp(e, "v64") ||   /* the three byte orders */
-           !strcmp(e, "rom") || !strcmp(e, "bin") || !strcmp(e, "u64") ||   /* generic cart images */
-           !strcmp(e, "usa") || !strcmp(e, "u1");                           /* region-suffixed dumps */
+/* The ROM: miyoo_romfind.h's search (the game's folder, the path that worked last time, Roms/, the card two folders
+ * deep), each candidate checked here: Mario Kart 64's header (any byte order, the US cart), then the whole file's
+ * SHA-1. A file that fails either is passed over and the search goes on. `why` names the last Mario Kart 64 dump
+ * refused (another game's ROM is only logged). */
+#define MK64_ROM_SHA1 "579c48e211ae952530ffc8738709f078d5dd215e" /* Mario Kart 64 (USA), z64 order */
+struct RomTry { char* why; u32 whylen; };
+static void sha1_progress(void* ctx, uint64_t done, uint64_t total) {
+    (void) ctx;
+    screen_progress("Checking the ROM", (int) (done * 8 / (total ? total : 1)));
 }
-
-/* The first file in `dir` (case-insensitive extension) that opens as a US
- * Mario Kart 64 ROM. The first valid one wins; `why` gets the last rejection. */
-static int scan_dir(const char* dir, char* out, u32 outlen, char* why, u32 whylen) {
-    DIR* d = opendir(dir);
-    struct dirent* ent;
-    int found = 0;
-    if (d == NULL) return 0;
-    while ((ent = readdir(d)) != NULL) {
-        const char* n = ent->d_name;
-        char path[512];
-        char err[96];
-        if (n[0] == '.') continue; /* hidden, "._foo.z64" resource forks */
-        if (!rom_ext_ok(n)) continue;
-        snprintf(path, sizeof(path), "%s%s%s", dir, dir[strlen(dir) - 1] == '/' ? "" : "/", n);
-        if (rom_open(path, err, sizeof(err))) {
-            rom_close();
-            snprintf(out, outlen, "%s", path);
-            found = 1;
-            break;
-        }
-        snprintf(why, whylen, "%s: %s", n, err);
+static int rom_try(const char* path, void* ctx) {
+    struct RomTry* t = (struct RomTry*) ctx;
+    unsigned char h[64];
+    char err[96], hex[41];
+    int order;
+    uint64_t size;
+    if (!rom_open(path, err, sizeof(err))) {
+        if (strstr(err, "version")) snprintf(t->why, t->whylen, "%s: %s", mrf_base(path), err);
         port_log_always("assets: skipping %s: %s\n", path, err);
+        return 0;
     }
-    closedir(d);
-    return found;
+    rom_close();
+    if (!mrf_header(path, h, &order, &size) || !mrf_sha1_file(path, order, hex, sha1_progress, NULL)) {
+        snprintf(t->why, t->whylen, "%s: unreadable", mrf_base(path));
+        port_log_always("assets: skipping %s: can't be read whole\n", path);
+        return 0;
+    }
+    if (strcmp(hex, MK64_ROM_SHA1) != 0) {
+        sMk64Ver = "It is damaged or modified.";
+        snprintf(t->why, t->whylen, "%s: SHA-1 %.12s..., not the US ROM", mrf_base(path), hex);
+        port_log_always("assets: skipping %s: a Mario Kart 64 ROM, but SHA-1 %s (want %s)\n", path, hex, MK64_ROM_SHA1);
+        return 0;
+    }
+    port_log_always("rom: %s (Mario Kart 64 (USA), SHA-1 checked)\n", path);
+    return 1;
 }
 
-/* `root`, then every folder under it down to `depth` levels. */
-static int scan_tree(const char* root, int depth, char* out, u32 outlen, char* why, u32 whylen) {
-    DIR* d;
-    struct dirent* ent;
-    if (scan_dir(root, out, outlen, why, whylen)) return 1;
-    if (depth <= 0) return 0;
-    d = opendir(root);
-    if (d == NULL) return 0;
-    while ((ent = readdir(d)) != NULL) {
-        char sub[512];
-        struct stat st;
-        size_t rl = strlen(root);
-        if (ent->d_name[0] == '.') continue;
-        snprintf(sub, sizeof(sub), "%s%s%s/", root, (rl && root[rl - 1] == '/') ? "" : "/", ent->d_name);
-        if (stat(sub, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
-        if (scan_tree(sub, depth - 1, out, outlen, why, whylen)) { closedir(d); return 1; }
-    }
-    closedir(d);
-    return 0;
-}
-
-/* rom.z64 in the game's folder (a zip packed with the player's ROM): the file is next to the executable -- found from
- * /proc/self/exe, not argv[0] (a launcher may exec the bare name). Only read, as a card ROM is (rom_open: "rb");
- * the cache still goes to the save dir and nothing records the ROM's path (assets.bin is keyed on the
- * build stamp and the data CRC). Not there: silent, the card search runs as before. Refused by the header
- * check: logged like a card file, then the card search. */
-#define LOCAL_ROM_NAME "rom.z64"
-static int local_rom(char* out, u32 outlen, char* why, u32 whylen) {
-    char path[512], err[96];
-    struct stat st;
-    const ssize_t n = readlink("/proc/self/exe", path, sizeof(path) - 1);
-    char* s;
-    if (n <= 0 || n >= (ssize_t) sizeof(path) - 1) return 0;
-    path[n] = 0;
-    s = strrchr(path, '/');
-    if (s == NULL || (size_t) (s + 1 - path) + sizeof(LOCAL_ROM_NAME) > sizeof(path)) return 0;
-    memcpy(s + 1, LOCAL_ROM_NAME, sizeof(LOCAL_ROM_NAME));
-    if (stat(path, &st) != 0) return 0;
-    if (rom_open(path, err, sizeof(err))) {
-        rom_close();
-        snprintf(out, outlen, "%s", path);
-#if defined(MIYOO)
-        port_log_always("rom: %s (in the game's folder)\n", path);
-#else
-        port_log_always("rom: %s (in the game's folder)\n", path);
-#endif
-        return 1;
-    }
-    snprintf(why, whylen, "%s: %s", LOCAL_ROM_NAME, err);
-    port_log_always("assets: skipping %s: %s\n", path, err);
-    return 0;
-}
-
-/* Where players may drop the ROM: in the game's folder (rom.z64), the game's own
- * data dir, anywhere on the card (root, a folder, or a folder in a folder),
- * anywhere in HOME, or an explicit MK64_ROM=<path> (which wins). */
+/* MK64_ROM=<path> (tests) wins; then the search above */
 static int find_rom(char* out, u32 outlen, char* why, u32 whylen) {
+    static const char* const own[] = { CACHE_NAME, RECIPE_NAME, "eeprom", "savestate", NULL };
     const char* env = getenv("MK64_ROM");
+    struct RomTry t = { why, whylen };
+    MrfSearch* s;
+    char exe[512];
+    int found;
     why[0] = 0;
     if (env && env[0]) {
         char err[96];
@@ -656,19 +600,18 @@ static int find_rom(char* out, u32 outlen, char* why, u32 whylen) {
         snprintf(why, whylen, "MK64_ROM: %s", err);
         return 0;
     }
-    if (local_rom(out, outlen, why, whylen)) return 1;
-    if (scan_dir(port_eboot_dir(), out, outlen, why, whylen)) return 1;
-    if (scan_dir(port_save_dir(), out, outlen, why, whylen)) return 1;
-#if defined(TARGET_PC)
-    if (scan_tree(".", 2, out, outlen, why, whylen)) return 1;
-#elif defined(MIYOO)
-    if (scan_tree(SD_HOME, 1, out, outlen, why, whylen)) return 1; /* the usual place first */
-    if (scan_tree(SD_CARD, 2, out, outlen, why, whylen)) return 1;
-#else
-    if (scan_tree(SD_CARD, 2, out, outlen, why, whylen)) return 1;
-    if (scan_tree(SD_HOME, 2, out, outlen, why, whylen)) return 1;
-#endif
-    return 0;
+    if ((s = (MrfSearch*) calloc(1, sizeof(*s))) == NULL) return 0;
+    s->app_dir = mrf_exe_dir(exe, sizeof(exe));
+    s->save_dir = port_save_dir();
+    s->own = own;
+    s->bin_ok = 1;
+    s->root_env = "MK64_CARD_ROOT";
+    s->try_rom = rom_try;
+    s->ctx = &t;
+    found = mrf_find(s);
+    if (found) snprintf(out, outlen, "%s", s->found);
+    free(s);
+    return found;
 }
 
 /* assets.bin.<pid>.tmp left by a run killed mid-write (~13 MB each) */
@@ -869,8 +812,8 @@ void port_assets_load(const char* argv0) {
     if (!find_rom(rom, sizeof(rom), why, sizeof(why))) {
         if (why[0]) port_log_always("assets: rejected: %s\n", why); /* the last file refused; each is logged above */
         if (sMk64Ver) fail_screen("No usable Mario Kart 64 ROM.", sMk64Ver, "It must be the US (NTSC) cart.");
-        if (sMk64Seen) fail_screen("No usable Mario Kart 64 ROM.", "It must be the US (NTSC) cart.", NULL);
-        fail_screen("No Mario Kart 64 ROM found.", "Copy your US (NTSC) .z64/.n64/.v64", "to the SD card and start again.");
+        if (sMk64Seen) fail_screen("No usable Mario Kart 64 ROM.", why, "It must be the USA cart's dump.");
+        fail_screen("No Mario Kart 64 ROM found.", MRF_NOT_FOUND_1, MRF_NOT_FOUND_2);
         return;
     }
     {
