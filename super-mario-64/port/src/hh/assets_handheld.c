@@ -26,6 +26,7 @@
 #include "port.h"
 #include "port_assets.h"
 #include "savestate.h" /* SAVESTATE_EXCLUDE: nothing here is game state */
+#include "miyoo_romfind.h"
 
 extern u8 __assets_start[], __assets_end[];
 extern u32 port_time_us(void);
@@ -551,78 +552,49 @@ static int try_load(const char* path, char* err, u32 errlen) {
 }
 
 /* ------------------------------------------------------------------ ROM search */
-/* The dump's byte order is auto-detected from its header (z64/v64/n64), so the
- * extension is only a filter to avoid header-probing every file on the card --
- * the header check in rom_open is the real gate. Accept the byte-order
- * extensions and the generic cart-image ones every N64 tool uses. */
-static int rom_ext_ok(const char* n) {
-    size_t l = strlen(n);
-    char e[4];
-    if (l < 5 || n[l - 4] != '.') return 0;
-    e[0] = (char) (n[l - 3] | 0x20); e[1] = (char) (n[l - 2] | 0x20); e[2] = (char) (n[l - 1] | 0x20); e[3] = 0;
-    return !strcmp(e, "z64") || !strcmp(e, "n64") || !strcmp(e, "v64") ||   /* the three byte orders */
-           !strcmp(e, "rom") || !strcmp(e, "bin") || !strcmp(e, "u64") ||   /* generic cart images */
-           !strcmp(e, "usa") || !strcmp(e, "u1");                           /* region-suffixed dumps */
+/* The ROM: miyoo_romfind.h's search (the game's folder, data/, the path that worked last time, Roms/, the card two
+ * folders deep), each candidate checked here: Super Mario 64's header (any byte order, the US cart), then the whole
+ * file's SHA-1. A file that fails either is passed over and the search goes on. `why` names the last Super Mario 64
+ * dump refused (another game's ROM is only logged). */
+#define SM64_ROM_SHA1 "9bef1128717f958171a4afac3ed78ee2bb4e86ce" /* Super Mario 64 (USA), z64 order */
+struct RomTry { char* why; u32 whylen; };
+static void sha1_progress(void* ctx, uint64_t done, uint64_t total) {
+    (void) ctx;
+    screen_progress("Checking the ROM", (int) (done * 8 / (total ? total : 1)));
 }
-
-/* The first file in `dir` (case-insensitive extension) that opens as a US
- * Super Mario 64 ROM. The first valid one wins; `why` gets the last rejection. */
-static int scan_dir(const char* dir, char* out, u32 outlen, char* why, u32 whylen) {
-    DIR* d = opendir(dir);
-    struct dirent* ent;
-    int found = 0;
-    if (d == NULL) return 0;
-    while ((ent = readdir(d)) != NULL) {
-        const char* n = ent->d_name;
-        char path[512];
-        char err[96];
-        if (n[0] == '.') continue; /* hidden, "._foo.z64" resource forks */
-        if (!rom_ext_ok(n)) continue;
-#if defined(MIYOO)
-        /* the game's own files beside the executable and in data/ (.bin, like a cart image): not a ROM, and
-         * not "the last rejection" either, which would turn "no ROM found" into "no usable ROM" */
-        if (!strcmp(n, RECIPE_NAME) || !strncmp(n, CACHE_NAME, sizeof(CACHE_NAME) - 1) || !strncmp(n, "eeprom.bin", 10)) continue;
-#endif
-        snprintf(path, sizeof(path), "%s%s%s", dir, dir[strlen(dir) - 1] == '/' ? "" : "/", n);
-        if (rom_open(path, err, sizeof(err))) {
-            rom_close();
-            snprintf(out, outlen, "%s", path);
-            found = 1;
-            break;
-        }
-        snprintf(why, whylen, "%s: %s", n, err);
+static int rom_try(const char* path, void* ctx) {
+    struct RomTry* t = (struct RomTry*) ctx;
+    unsigned char h[64];
+    char err[96], hex[41];
+    int order;
+    uint64_t size;
+    if (!rom_open(path, err, sizeof(err))) {
+        if (strstr(err, "version")) snprintf(t->why, t->whylen, "%s: %s", mrf_base(path), err);
         port_log_always("assets: skipping %s: %s\n", path, err);
+        return 0;
     }
-    closedir(d);
-    return found;
+    rom_close();
+    if (!mrf_header(path, h, &order, &size) || !mrf_sha1_file(path, order, hex, sha1_progress, NULL)) {
+        snprintf(t->why, t->whylen, "%s: unreadable", mrf_base(path));
+        port_log_always("assets: skipping %s: can't be read whole\n", path);
+        return 0;
+    }
+    if (strcmp(hex, SM64_ROM_SHA1) != 0) {
+        snprintf(t->why, t->whylen, "%s: SHA-1 %.12s..., not the US ROM", mrf_base(path), hex);
+        port_log_always("assets: skipping %s: a Super Mario 64 ROM, but SHA-1 %s (want %s)\n", path, hex, SM64_ROM_SHA1);
+        return 0;
+    }
+    port_log_always("assets: ROM %s (Super Mario 64 (USA), SHA-1 checked)\n", path);
+    return 1;
 }
 
-/* `root`, then every folder under it down to `depth` levels. */
-static int scan_tree(const char* root, int depth, char* out, u32 outlen, char* why, u32 whylen) {
-    DIR* d;
-    struct dirent* ent;
-    if (scan_dir(root, out, outlen, why, whylen)) return 1;
-    if (depth <= 0) return 0;
-    d = opendir(root);
-    if (d == NULL) return 0;
-    while ((ent = readdir(d)) != NULL) {
-        char sub[512];
-        struct stat st;
-        size_t rl = strlen(root);
-        if (ent->d_name[0] == '.') continue;
-        snprintf(sub, sizeof(sub), "%s%s%s/", root, (rl && root[rl - 1] == '/') ? "" : "/", ent->d_name);
-        if (stat(sub, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
-        if (scan_tree(sub, depth - 1, out, outlen, why, whylen)) { closedir(d); return 1; }
-    }
-    closedir(d);
-    return 0;
-}
-
-/* Where players may drop the ROM: the game's own data dir, anywhere on the
- * card (root, a folder, or a folder in a folder), anywhere in HOME, or an
- * explicit SM64_ROM=<path>. */
+/* SM64_ROM=<path> (tests) wins; then the search above */
 static int find_rom(char* out, u32 outlen, char* why, u32 whylen) {
+    static const char* const own[] = { CACHE_NAME, RECIPE_NAME, "eeprom", "rom_path", "savestate", NULL };
     const char* env = getenv("SM64_ROM");
+    struct RomTry t = { why, whylen };
+    MrfSearch* s;
+    int found;
     why[0] = 0;
     if (env && env[0]) {
         char err[96];
@@ -630,22 +602,22 @@ static int find_rom(char* out, u32 outlen, char* why, u32 whylen) {
         snprintf(why, whylen, "SM64_ROM: %s", err);
         return 0;
     }
+    if ((s = (MrfSearch*) calloc(1, sizeof(*s))) == NULL) return 0;
 #if defined(MIYOO)
-    /* the auto-ROM: rom.z64 (or any ROM) next to the executable, App/SuperMario64/ (kit miyoo_panel.c) */
-    { extern const char *miyoo_exe_dir(void); if (scan_dir(miyoo_exe_dir(), out, outlen, why, whylen)) return 1; }
-#endif
-    if (scan_dir(port_eboot_dir(), out, outlen, why, whylen)) return 1;
-    if (scan_dir(port_save_dir(), out, outlen, why, whylen)) return 1;
-#if defined(TARGET_PC)
-    if (scan_tree(".", 2, out, outlen, why, whylen)) return 1;
-#elif defined(MIYOO)
-    if (scan_tree(SD_HOME, 2, out, outlen, why, whylen)) return 1; /* the usual place first */
-    if (scan_tree(SD_CARD, 2, out, outlen, why, whylen)) return 1;
+    { extern const char *miyoo_exe_dir(void); s->app_dir = miyoo_exe_dir(); }
 #else
-    if (scan_tree(SD_CARD, 2, out, outlen, why, whylen)) return 1;
-    if (scan_tree(SD_HOME, 2, out, outlen, why, whylen)) return 1;
+    s->app_dir = port_eboot_dir();
 #endif
-    return 0;
+    s->save_dir = port_save_dir();
+    s->own = own;
+    s->bin_ok = 1;
+    s->root_env = "SM64_CARD_ROOT";
+    s->try_rom = rom_try;
+    s->ctx = &t;
+    found = mrf_find(s);
+    if (found) snprintf(out, outlen, "%s", s->found);
+    free(s);
+    return found;
 }
 
 /* assets.bin.<pid>.tmp left by a run killed mid-write (~10 MB each) */
@@ -875,9 +847,9 @@ static void assets_load(const char* argv0) {
     if (!find_rom(rom, sizeof(rom), why, sizeof(why))) {
         if (why[0]) {
             port_log_always("assets: rejected: %s\n", why);
-            fail_screen("No usable Super Mario 64 ROM.", "It must be the US (NTSC) cart.", NULL);
+            fail_screen("No usable Super Mario 64 ROM.", why, "It must be the USA cart's dump.");
         }
-        fail_screen("No Super Mario 64 ROM found.", "Copy your US (NTSC) .z64/.n64/.v64", "to the SD card and start again.");
+        fail_screen("No Super Mario 64 ROM found.", MRF_NOT_FOUND_1, MRF_NOT_FOUND_2);
         return;
     }
     {
