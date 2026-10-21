@@ -15,6 +15,7 @@
 #include "port_log.h"
 extern void port_log_always(const char *fmt, ...);
 #include "bs/vpk0.h"
+#include "miyoo_romfind.h"
 
 #define ROM_SIZE        0x01000000u     /* 16 MiB */
 #define SLICE_MAGIC     "SSB64RD1"
@@ -309,93 +310,44 @@ static uint8_t *try_rom(const char *path, char sha_out[41])
     return rom;
 }
 
-static int has_rom_ext(const char *n)
+/* The search's candidate (miyoo_romfind.h): try_rom (the size, the header, the whole file's SHA-1); the ROM read in
+ * stays for the slice. One that fails is passed over and the search goes on. */
+struct RomTry { uint8_t *rom; char *sha; };
+static int rom_try(const char *path, void *ctx)
 {
-    const char *d = strrchr(n, '.');
-    if (!strcmp(n, SLICE_NAME)) return 0;   /* our own slice, not a cart image */
-    return d && (!strcasecmp(d, ".z64") || !strcasecmp(d, ".n64") || !strcasecmp(d, ".v64") ||  /* the three byte orders */
-                 !strcasecmp(d, ".rom") || !strcasecmp(d, ".bin") || !strcasecmp(d, ".u64") ||  /* generic cart images */
-                 !strcasecmp(d, ".usa") || !strcasecmp(d, ".u1"));                               /* region-suffixed dumps */
+    struct RomTry *t = (struct RomTry *)ctx;
+    if ((t->rom = try_rom(path, t->sha)) != NULL) return 1;
+    port_log_always("SSB64: skipping %s (%s)\n", path, sWhy ? sWhy : "not the US ROM");
+    return 0;
 }
 
-/* Walks `dir` up to `depth` levels for a ROM-named file that is the US ROM.
- * Hidden folders are skipped except the port's own save dir. */
-static uint8_t *scan_tree(const char *dir, int depth, char *found, size_t found_size, char sha[41])
-{
-    DIR *d = opendir(dir);
-    struct dirent *e;
-    uint8_t *rom = NULL;
-    char path[512];
-    if (!d) return NULL;
-    while (rom == NULL && (e = readdir(d)) != NULL) {
-        struct stat st;
-        if (e->d_name[0] == '.' && strcmp(e->d_name, ".ssb64") != 0) continue;
-        snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
-        if (stat(path, &st) != 0) continue;
-        if (S_ISDIR(st.st_mode)) {
-            if (depth > 0) rom = scan_tree(path, depth - 1, found, found_size, sha);
-        } else if (has_rom_ext(e->d_name)) {
-            if ((rom = try_rom(path, sha)) != NULL) snprintf(found, found_size, "%s", path);
-            else port_log_always("SSB64: skipping %s (%s)\n", path, sWhy ? sWhy : "not the US ROM");
-        }
-    }
-    closedir(d);
-    return rom;
-}
-
-/* rom.z64 next to the executable (App/SuperSmashBros/rom.z64: the auto-ROM a personal zip carries,
- * .z64 order). The launcher may exec the bare name, so argv[0] can have no folder: the file is the
- * folder of /proc/self/exe + "/rom.z64". A desktop build looks in its build folder, which has no rom.z64. */
-#define PKG_ROM_NAME "rom.z64"
+/* $SSB64_ROM (a test override; nothing sets it on the device); else miyoo_romfind.h's search: the game folder
+ * (a personal zip's rom.z64, or any name), the save dir, the path that worked last time, Roms/ and its folders, the
+ * card two folders deep (SSB64_CARD=<dir>: a test card instead of /mnt/SDCARD). Every candidate gets the same checks
+ * (size, header, SHA-1) and is only read (the slice goes to the save dir). */
 static int sRomInPkg;   /* the ROM in use is the rom.z64 next to the executable (the log line says so) */
-
-static int pkg_rom_path(char *out, size_t out_size)
-{
-    char self[512];
-    char *slash;
-    const ssize_t n = readlink("/proc/self/exe", self, sizeof self - 1);
-    if (n <= 0 || (size_t)n >= sizeof self - 1) return -1;   /* a full buffer may be cut short */
-    self[n] = '\0';
-    if ((slash = strrchr(self, '/')) == NULL) return -1;
-    *slash = '\0';
-    return snprintf(out, out_size, "%s/%s", self, PKG_ROM_NAME) < (int)out_size ? 0 : -1;
-}
-
-/* $SSB64_ROM (a test override; nothing sets it on the device), then rom.z64 next to the executable, then the
- * save dir, then the card. That copy gets a card ROM's checks (size, header, SHA-1) and is only
- * read (the slice goes to the save dir as before); missing or refused, the card search below runs
- * unchanged. The card search walks the Miyoo's ROM roots two folders deep, so a ROM in e.g.
- * Roms/N64/ is found. */
 static uint8_t *find_rom(const char *save_dir, char *found, size_t found_size, char sha[41])
 {
+    static const char *const own[] = { SLICE_NAME, "romdata", "sram", "savestate", NULL };
+    static MrfSearch s; /* .bss: PATH_MAX buffers */
+    struct RomTry t = { NULL, sha };
     const char *env = getenv("SSB64_ROM");
-    char pkg[512];
+    char exe[512];
     uint8_t *rom;
     sRomInPkg = 0;
     if (env && (rom = try_rom(env, sha))) { snprintf(found, found_size, "%s", env); return rom; }
-    if (pkg_rom_path(pkg, sizeof pkg) == 0) {
-        if ((rom = try_rom(pkg, sha)) != NULL) {
-            snprintf(found, found_size, "%s", pkg);
-            sRomInPkg = 1;
-            return rom;
-        }
-        if (sWhy) port_log_always("SSB64: skipping %s (%s)\n", pkg, sWhy);   /* present but refused */
-    }
-    if ((rom = scan_tree(save_dir, 0, found, found_size, sha))) return rom;
-#if defined(MIYOO)
-    {
-        /* The Miyoo Mini: Roms/N64, then the whole card, two folders deep each (kit miyoo_panel.c's
-         * miyoo_rom_roots). SSB64_CARD=<dir>: one test root instead (qemu runs). */
-        const char *card = getenv("SSB64_CARD");
-        if (card != NULL) {
-            if ((rom = scan_tree(card, 2, found, found_size, sha))) return rom;
-        } else {
-            for (int i = 0; miyoo_rom_roots[i] != NULL; i++)
-                if ((rom = scan_tree(miyoo_rom_roots[i], 2, found, found_size, sha))) return rom;
-        }
-    }
-#endif
-    return scan_tree(".", 1, found, found_size, sha);
+    memset(&s, 0, sizeof s);
+    s.app_dir = mrf_exe_dir(exe, sizeof exe);
+    s.save_dir = save_dir;
+    s.own = own;
+    s.bin_ok = 1;
+    s.root_env = "SSB64_CARD";
+    s.try_rom = rom_try;
+    s.ctx = &t;
+    if (!mrf_find(&s)) return NULL;
+    snprintf(found, found_size, "%s", s.found);
+    sRomInPkg = strcmp(mrf_base(s.found), "rom.z64") == 0 && strncmp(s.found, exe, strlen(exe)) == 0;
+    return t.rom;
 }
 
 /* tmp, fsync, rename; then (2026-10-01, OPEN_ISSUES S4, as sram.bin in cd5128c) the file is fsynced
@@ -506,14 +458,14 @@ int romdata_init(const char *save_dir, char *err, size_t err_size)
     sRejectVer = NULL;
     uint8_t *rom = find_rom(save_dir, found, sizeof found, sha);
     if (!rom) {
-        snprintf(err, err_size, "No Super Smash Bros. (USA) ROM found on the card (searched 2 folders deep)");
+        snprintf(err, err_size, "No Super Smash Bros. (USA) ROM found (the game folder, Roms/, the card 2 folders deep)");
         sSub[0] = 0; /* the error screens carry no name line */
         if (sReject) {
             port_log_always("SSB64: rejected: %s%s%s\n", sReject, sRejectVer ? " " : "", sRejectVer ? sRejectVer : "");
             if (sRejectVer) fail_screen("No usable Super Smash Bros. ROM.", sRejectVer, "It must be the US (NTSC) cart.");
             fail_screen("No usable Super Smash Bros. ROM.", sReject, NULL);
         }
-        fail_screen("No Super Smash Bros. ROM found.", "Copy your US (NTSC) .z64/.n64/.v64", "to the SD card and start again.");
+        fail_screen("No Super Smash Bros. ROM found.", MRF_NOT_FOUND_1, MRF_NOT_FOUND_2);
         return -1;
     }
     port_log_always("SSB64: using ROM %s%s\n", found, sRomInPkg ? " (rom.z64 next to the game)" : "");
