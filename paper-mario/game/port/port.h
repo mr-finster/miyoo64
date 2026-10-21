@@ -45,7 +45,7 @@ const char *port_save_path(const char *name);
 const char *port_eboot_dir(void);
 void port_log_always(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 int port_find_rom(char *out, uint32_t outlen, char *why, uint32_t whylen);
-int port_pkg_rom(char *out, uint32_t outlen, char *why, uint32_t whylen); /* rom.z64 next to the executable, else 0 */
+int port_known_rom(char *out, uint32_t outlen); /* the ROM found and checked at an earlier start, unchanged, else 0 */
 void port_assets_load(const char *argv0);
 void port_assets_rom_hint(const char *path); /* the ROM already found: the region's build scans no more */
 void port_assets_done(void);                  /* ends the first-start screen: Done, a beat, black (no-op when none was shown) */

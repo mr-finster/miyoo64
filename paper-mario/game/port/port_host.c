@@ -375,27 +375,17 @@ int main(int argc, char **argv) {
     sigaction(SIGFPE, &sa, NULL);
     sigaction(SIGILL, &sa, NULL);
     sigaction(SIGABRT, &sa, NULL);
-    /* the player's ROM: the game streams from it (port_rom.c) and the asset region is built from it. First rom.z64
-     * next to the executable (port_pkg_rom: a personal zip's rom.z64); else a card ROM: where it was found is remembered
-     * (rom_path.txt), so a start does not scan the card. The rom.z64 is not remembered: its path is the same at every
-     * launch and is looked at first anyway, and the card ROM's line stays for a game folder without one. PM64_ROM=<file>
-     * (tests) wins over both. */
+    /* the player's ROM: the game streams from it (port_rom.c) and the asset region is built from it. A normal start
+     * opens the ROM found and checked at an earlier start (data/rom_path.txt, the same size and time); else the search
+     * (port_find_rom: the game's folder, Roms/, the card; header and SHA-1), which remembers what it finds.
+     * PM64_ROM=<file> (tests) wins over both. */
     int opened = 0;
     char why[160] = "";
     {
         char rom[512] = "";
         const char *env = getenv("PM64_ROM");
-        if (!env && port_pkg_rom(rom, sizeof rom, why, sizeof why)) opened = port_rom_open(rom);
-        FILE *f = env || opened ? NULL : fopen(port_save_path("rom_path.txt"), "r");
-        if (f) {
-            if (fgets(rom, sizeof rom, f)) rom[strcspn(rom, "\r\n")] = 0;
-            fclose(f);
-            if (rom[0] && access(rom, R_OK) == 0) opened = port_rom_open(rom);
-        }
-        if (!opened && port_find_rom(rom, sizeof rom, why, sizeof why)) {
-            opened = port_rom_open(rom);
-            if (opened && (f = fopen(port_save_path("rom_path.txt"), "w"))) { fprintf(f, "%s\n", rom); fclose(f); }
-        }
+        if (!env && port_known_rom(rom, sizeof rom)) opened = port_rom_open(rom);
+        if (!opened && port_find_rom(rom, sizeof rom, why, sizeof why)) opened = port_rom_open(rom);
         if (!opened) port_log("port: no Paper Mario (USA) ROM found%s%s (set PM64_ROM)\n", why[0] ? ": " : "", why);
         else port_assets_rom_hint(rom); /* the region's build uses it: one scan of the card, not two */
     }

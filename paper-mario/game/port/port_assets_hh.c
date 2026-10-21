@@ -24,6 +24,7 @@
 #include <errno.h>
 #include "port.h"
 #include "port_assets.h"
+#include "miyoo_romfind.h"
 #if defined(MIYOO)
 #include "miyoo_panel.h"
 #endif
@@ -588,117 +589,58 @@ static int try_load(const char* path, char* err, u32 errlen) {
 }
 
 /* ------------------------------------------------------------------ ROM search */
-/* The dump's byte order is auto-detected from its header (z64/v64/n64), so the
- * extension is only a filter to avoid header-probing every file on the card --
- * the header check in rom_open is the real gate. Accept the byte-order
- * extensions and the generic cart-image ones every N64 tool uses. */
-static int rom_ext_ok(const char* n) {
-    size_t l = strlen(n);
-    char e[4];
-    if (l < 5 || n[l - 4] != '.') return 0;
-    e[0] = (char) (n[l - 3] | 0x20); e[1] = (char) (n[l - 2] | 0x20); e[2] = (char) (n[l - 1] | 0x20); e[3] = 0;
-    return !strcmp(e, "z64") || !strcmp(e, "n64") || !strcmp(e, "v64") ||   /* the three byte orders */
-           !strcmp(e, "rom") || !strcmp(e, "bin") || !strcmp(e, "u64") ||   /* generic cart images */
-           !strcmp(e, "usa") || !strcmp(e, "u1");                           /* region-suffixed dumps */
+/* The ROM: miyoo_romfind.h's search (the game's folder, data/, the path that worked last time, Roms/, the card two
+ * folders deep), each candidate checked here: Paper Mario's header (any byte order, the US cart), then the whole
+ * file's SHA-1. A file that fails either is passed over and the search goes on. `why` names the last Paper Mario
+ * dump refused (another game's ROM, the game's own files, other systems' .bin files are only logged). */
+#define PM64_ROM_SHA1 "3837f44cda784b466c9a2d99df70d77c322b97a0" /* Paper Mario (USA), z64 order */
+struct RomTry { char* why; u32 whylen; };
+static void sha1_progress(void* ctx, uint64_t done, uint64_t total) {
+    (void) ctx;
+    screen_progress("Checking the ROM", (int) (done * 8 / (total ? total : 1)));
 }
-
-/* rom.z64 next to the executable once port_pkg_rom has refused it, and why: a start asks up to three times (main, its
- * port_find_rom, the region's build), and the executable's folder is also the first one scan_dir reads */
-static char sPkgRefused[512], sPkgWhy[128];
-
-/* The first file in `dir` (case-insensitive extension) that opens as a US
- * Paper Mario ROM. The first valid one wins; `why` gets the last rejection. */
-static int scan_dir(const char* dir, char* out, u32 outlen, char* why, u32 whylen) {
-    DIR* d = opendir(dir);
-    struct dirent* ent;
-    int found = 0;
-    if (d == NULL) return 0;
-    while ((ent = readdir(d)) != NULL) {
-        const char* n = ent->d_name;
-        char path[512];
-        char err[96];
-        if (n[0] == '.') continue; /* hidden, "._foo.z64" resource forks */
-        if (!rom_ext_ok(n)) continue;
-        snprintf(path, sizeof(path), "%s%s%s", dir, dir[strlen(dir) - 1] == '/' ? "" : "/", n);
-        if (strcmp(path, sPkgRefused) == 0) continue; /* said once already */
-        if (rom_open(path, err, sizeof(err))) {
-            rom_close();
-            snprintf(out, outlen, "%s", path);
-            found = 1;
-            break;
-        }
-        /* Only a file that is an N64 ROM (or can't be read) says why it was passed over. The rest are no ROMs at all
-         * -- the game's own recipes.bin, the cache assets.bin, other systems' .bin BIOS files -- and recipes.bin, scanned
-         * first, made every card with no ROM say "No usable Paper Mario ROM. It must be the US (NTSC) cart." instead of
-         * "No Paper Mario ROM found." */
-        if (strcmp(err, "not an N64 ROM") != 0) snprintf(why, whylen, "%s: %s", n, err);
+static int rom_try(const char* path, void* ctx) {
+    struct RomTry* t = (struct RomTry*) ctx;
+    unsigned char h[64];
+    char err[96], hex[41];
+    int order;
+    uint64_t size;
+    if (!rom_open(path, err, sizeof(err))) {
+        if (strstr(err, "version")) snprintf(t->why, t->whylen, "%s: %s", mrf_base(path), err);
         port_log_always("assets: skipping %s: %s\n", path, err);
+        return 0;
     }
-    closedir(d);
-    return found;
+    rom_close();
+    if (!mrf_header(path, h, &order, &size) || !mrf_sha1_file(path, order, hex, sha1_progress, NULL)) {
+        snprintf(t->why, t->whylen, "%s: unreadable", mrf_base(path));
+        port_log_always("assets: skipping %s: can't be read whole\n", path);
+        return 0;
+    }
+    if (strcmp(hex, PM64_ROM_SHA1) != 0) {
+        snprintf(t->why, t->whylen, "%s: SHA-1 %.12s..., damaged or modified", mrf_base(path), hex);
+        port_log_always("assets: skipping %s: a Paper Mario ROM, but SHA-1 %s (want %s)\n", path, hex, PM64_ROM_SHA1);
+        return 0;
+    }
+    port_log_always("rom: %s (Paper Mario (USA), SHA-1 checked)\n", path);
+    return 1;
 }
 
-/* `root`, then every folder under it down to `depth` levels. */
-static int scan_tree(const char* root, int depth, char* out, u32 outlen, char* why, u32 whylen) {
-    DIR* d;
-    struct dirent* ent;
-    if (scan_dir(root, out, outlen, why, whylen)) return 1;
-    if (depth <= 0) return 0;
-    d = opendir(root);
-    if (d == NULL) return 0;
-    while ((ent = readdir(d)) != NULL) {
-        char sub[512];
-        struct stat st;
-        size_t rl = strlen(root);
-        if (ent->d_name[0] == '.') continue;
-        snprintf(sub, sizeof(sub), "%s%s%s/", root, (rl && root[rl - 1] == '/') ? "" : "/", ent->d_name);
-        if (stat(sub, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
-        if (scan_tree(sub, depth - 1, out, outlen, why, whylen)) { closedir(d); return 1; }
-    }
-    closedir(d);
-    return 0;
+/* The ROM found and checked at an earlier start, unchanged since (data/rom_path.txt): a normal start opens it without
+ * a search. Exported: port_host.c asks this first. */
+int port_known_rom(char* out, u32 outlen) {
+    if (!mrf_known(port_save_dir(), out, outlen)) return 0;
+    port_log_always("rom: %s (found at an earlier start)\n", out);
+    return 1;
 }
 
-/* rom.z64 next to the executable (App/PaperMario/rom.z64: the auto-ROM a personal zip carries, the whole dump in .z64
- * order). The launcher may exec the bare name, so the file is found from /proc/self/exe's folder, not argv[0]. It is only
- * read, as a card ROM is: the same header check here (rom_open), port_rom_open's when the game opens it to stream,
- * generate()'s data CRC at a first start; the cache still goes to the save dir. Not there (a public zip,
- * the desktop build dir): 0 without a word, and the search is the one before. Refused: logged once, as scan_dir logs
- * a card file, then the card search. Exported: main tries it before rom_path.txt, which never records it
- * (port_host.c). */
-#define PKG_ROM_NAME "rom.z64"
-int port_pkg_rom(char* out, u32 outlen, char* why, u32 whylen) {
-    char path[512], err[96];
-    struct stat st;
-    const ssize_t n = readlink("/proc/self/exe", path, sizeof(path) - 1);
-    char* s;
-    if (n <= 0 || n >= (ssize_t) sizeof(path) - 1) return 0; /* none, or cut short */
-    path[n] = 0;
-    s = strrchr(path, '/');
-    if (s == NULL || (size_t) (s + 1 - path) + sizeof(PKG_ROM_NAME) > sizeof(path)) return 0;
-    memcpy(s + 1, PKG_ROM_NAME, sizeof(PKG_ROM_NAME));
-    if (stat(path, &st) != 0) return 0;
-    if (strcmp(path, sPkgRefused) != 0) {
-        if (rom_open(path, err, sizeof(err))) {
-            rom_close();
-            snprintf(out, outlen, "%s", path);
-            port_log_always("rom: %s (next to the game)\n", path); /* App/PaperMario/rom.z64: the auto-ROM */
-            return 1;
-        }
-        port_log_always("assets: skipping %s: %s\n", path, err);
-        snprintf(sPkgRefused, sizeof(sPkgRefused), "%s", path);
-        sPkgWhy[0] = 0;
-        if (strcmp(err, "not an N64 ROM") != 0) snprintf(sPkgWhy, sizeof(sPkgWhy), "%s: %s", PKG_ROM_NAME, err); /* as scan_dir */
-    }
-    if (sPkgWhy[0]) snprintf(why, whylen, "%s", sPkgWhy);
-    return 0;
-}
-
-/* Where players may drop the ROM: next to the executable (rom.z64), the game's own data dir, anywhere on the card (root, a
- * folder, or a folder in a folder), anywhere in HOME, or an explicit PM64_ROM=<path> (which wins). Exported: the game
- * streams from the ROM (port_host.c opens it). */
+/* PM64_ROM=<path> (tests) wins; then the search above. Exported: the game streams from the ROM (port_host.c opens it). */
 int port_find_rom(char* out, u32 outlen, char* why, u32 whylen) {
+    static const char* const own[] = { CACHE_NAME, RECIPE_NAME, "eeprom", "sram", "savestate", NULL };
     const char* env = getenv("PM64_ROM");
+    struct RomTry t = { why, whylen };
+    MrfSearch* s;
+    char exe[512];
+    int found;
     why[0] = 0;
     if (env && env[0]) {
         char err[96];
@@ -706,16 +648,19 @@ int port_find_rom(char* out, u32 outlen, char* why, u32 whylen) {
         snprintf(why, whylen, "PM64_ROM: %s", err);
         return 0;
     }
-    if (port_pkg_rom(out, outlen, why, whylen)) return 1;
-    if (scan_dir(port_eboot_dir(), out, outlen, why, whylen)) return 1;
-    if (scan_dir(port_save_dir(), out, outlen, why, whylen)) return 1;
-#if defined(MIYOO)
-    for (int i = 0; miyoo_rom_roots[i]; i++) /* Roms/N64, then the whole card, two folders deep each */
-        if (scan_tree(miyoo_rom_roots[i], 2, out, outlen, why, whylen)) return 1;
-#else
-    if (scan_tree(".", 2, out, outlen, why, whylen)) return 1;
-#endif
-    return 0;
+    if ((s = (MrfSearch*) calloc(1, sizeof(*s))) == NULL) return 0;
+    s->app_dir = mrf_exe_dir(exe, sizeof(exe));
+    if (!s->app_dir[0]) s->app_dir = port_eboot_dir();
+    s->save_dir = port_save_dir();
+    s->own = own;
+    s->bin_ok = 1;
+    s->root_env = "PM64_CARD_ROOT";
+    s->try_rom = rom_try;
+    s->ctx = &t;
+    found = mrf_find(s);
+    if (found) snprintf(out, outlen, "%s", s->found);
+    free(s);
+    return found;
 }
 
 /* assets.bin.<pid>.tmp left by a run killed mid-write (~10 MB each) */
@@ -900,10 +845,10 @@ void port_assets_no_rom(const char* why) {
     if (why && why[0]) {
         const char* say = version_say(why);
         port_log_always("assets: rejected: %s\n", why);
-        if (say) fail_screen("No usable Paper Mario ROM.", say, "It must be the US (NTSC) cart.");
-        fail_screen("No usable Paper Mario ROM.", "It must be the US (NTSC) cart.", NULL);
+        if (say) fail_screen("No usable Paper Mario ROM.", say, "It must be the USA cart's dump.");
+        fail_screen("No usable Paper Mario ROM.", why, "It must be the USA cart's dump.");
     }
-    fail_screen("No Paper Mario ROM found.", "Copy your US (NTSC) .z64/.n64/.v64", "to the SD card and start again.");
+    fail_screen("No Paper Mario ROM found.", MRF_NOT_FOUND_1, MRF_NOT_FOUND_2);
 }
 
 static void assets_load(const char* argv0);
