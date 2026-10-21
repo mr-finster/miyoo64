@@ -9,9 +9,9 @@
  *   <root>/embedded.bin  (the NOLOAD region's bytes + this link's stamp + "HHEB";
  *     rebuilt from the pack alone, no ROM needed, whenever the stamp differs)
  *
- * Both present and current: nothing to do. Otherwise the ROM is found (OOT_ROM=<path>;
- * rom.z64 next to the executable; <root>; then the SD card, two folders deep, as
- * mk64/fzx), checked (32 MB, header in any of the three byte orders, then SHA-1 of the
+ * Both present and current: nothing to do. Otherwise the ROM is found (OOT_ROM=<path>; else
+ * miyoo_romfind.h: the game folder, <root>, the path that worked last time, Roms/, the card
+ * two folders deep; a file failing the checks below is passed over), checked (32 MB, header in any of the three byte orders, then SHA-1 of the
  * whole ROM), and each pack entry is read from it through the ROM's own file table
  * (dmadata), Yaz0-decompressed and reshaped by its ops. Progress and errors use
  * hh_romscreen.c's screens.
@@ -19,8 +19,9 @@
  * rom.z64 next to the executable (a personal zip puts the player's ROM there): found
  * through /proc/self/exe (as oot_recipes.bin), never argv[0]. It is only ever read;
  * everything built goes to <root> on the card. It gets the same header and SHA-1 checks
- * as a card ROM; one that fails them is passed over for the card search. Nothing keeps
- * the ROM's path: a rebuild is decided by the pack id and the build stamp alone.
+ * as a card ROM; one that fails them is passed over for the card search. <root>/rom_path.txt
+ * keeps the path that worked (a rebuild looks there first); whether to rebuild is decided by
+ * the pack id and the build stamp alone.
  *
  * The magics (HHR1/HHRC in the recipes, HHPI in the pack id, HHEB in embedded.bin) are written as
  * shown; the readers also take FKR1/FKRC/FKPI/FKEB, the magics earlier builds wrote, so a card
@@ -37,6 +38,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <zlib.h>
+#include "miyoo_romfind.h"
 
 #include "hh_recipe_ops.h"
 
@@ -273,14 +275,6 @@ static int rom_read(Rom* r, uint32_t off, unsigned char* out, uint32_t n) {
     return 1;
 }
 
-static int ext_ok(const char* n) {
-    size_t l = strlen(n);
-    char e[4];
-    if (l < 5 || n[l - 4] != '.') return 0;
-    e[0] = (char)(n[l - 3] | 0x20); e[1] = (char)(n[l - 2] | 0x20); e[2] = (char)(n[l - 1] | 0x20); e[3] = 0;
-    return !strcmp(e, "z64") || !strcmp(e, "n64") || !strcmp(e, "v64") || !strcmp(e, "rom") || !strcmp(e, "bin") || !strcmp(e, "u64");
-}
-
 /* 1 = OoT USA 1.0 by its header; 0 = not OoT (why stays as it was); -1 = another OoT (why says which) */
 static int quick_check(const char* path, char* why, size_t whylen, int* order) {
     unsigned char h[64];
@@ -311,76 +305,6 @@ static int quick_check(const char* path, char* why, size_t whylen, int* order) {
     return 1;
 }
 
-typedef struct {
-    char path[512];
-    int order;
-    int inPkg;         /* path is rom.z64 in the game folder */
-    char why[96];      /* the first near miss, for the error screen */
-    char whyName[64];
-} Find;
-
-static int try_file(Find* fd, const char* path) {
-    char why[96];
-    int o = 0, r = quick_check(path, why, sizeof(why), &o);
-    if (r > 0) { snprintf(fd->path, sizeof(fd->path), "%s", path); fd->order = o; return 1; }
-    if (r < 0 && !fd->why[0]) {
-        const char* b = strrchr(path, '/');
-        snprintf(fd->why, sizeof(fd->why), "%s", why);
-        snprintf(fd->whyName, sizeof(fd->whyName), "%.60s", b ? b + 1 : path);
-    }
-    return 0;
-}
-static int scan_dir(Find* fd, const char* dir) {
-    DIR* d = opendir(dir);
-    struct dirent* ent;
-    int found = 0;
-    if (!d) return 0;
-    while (!found && (ent = readdir(d)) != NULL) {
-        char path[512];
-        size_t dl = strlen(dir);
-        if (ent->d_name[0] == '.' || !ext_ok(ent->d_name)) continue; /* hidden files, macOS "._x.z64" */
-        snprintf(path, sizeof(path), "%s%s%s", dir, (dl && dir[dl - 1] == '/') ? "" : "/", ent->d_name);
-        found = try_file(fd, path);
-    }
-    closedir(d);
-    return found;
-}
-static int scan_tree(Find* fd, const char* root, int depth) {
-    DIR* d;
-    struct dirent* ent;
-    if (scan_dir(fd, root)) return 1;
-    if (depth <= 0 || (d = opendir(root)) == NULL) return 0;
-    while ((ent = readdir(d)) != NULL) {
-        char sub[512];
-        struct stat st;
-        size_t rl = strlen(root);
-        if (ent->d_name[0] == '.') continue;
-        snprintf(sub, sizeof(sub), "%s%s%s", root, (rl && root[rl - 1] == '/') ? "" : "/", ent->d_name);
-        if (stat(sub, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
-        if (scan_tree(fd, sub, depth - 1)) { closedir(d); return 1; }
-    }
-    closedir(d);
-    return 0;
-}
-/* withPkg = 0: the card search alone (rom.z64 in the game folder failed its SHA-1) */
-static int find_rom(Find* fd, const char* root, int withPkg) {
-    const char* env = getenv("OOT_ROM");
-    char pkg[600];
-    memset(fd, 0, sizeof(*fd));
-    if (env && env[0]) return try_file(fd, env);
-    if (withPkg && exe_dir_file(pkg, sizeof(pkg), PKG_ROM_NAME) && try_file(fd, pkg)) {
-        fd->inPkg = 1;
-        return 1;
-    }
-    if (scan_dir(fd, root)) return 1;
-#if defined(MIYOO)
-    /* Miyoo Mini: the card is /mnt/SDCARD; Onion and the stock OS keep N64 ROMs in Roms/N64 */
-    return scan_tree(fd, "/mnt/SDCARD/Roms/N64", 1) || scan_tree(fd, "/mnt/SDCARD", 2);
-#else
-    return scan_tree(fd, ".", 2);
-#endif
-}
-
 static int rom_verify(Rom* r) {
     enum { CH = 1 << 20 };
     unsigned char* b = malloc(CH);
@@ -403,6 +327,66 @@ static int rom_verify(Rom* r) {
         port_log_always("hh: ROM SHA-1 %s\n", hex);
         return strcmp(hex, ROM_SHA1) == 0;
     }
+}
+
+typedef struct {
+    char path[512];
+    int order;
+    char why[96];      /* the first near miss, for the error screen */
+    char whyName[64];
+} Find;
+
+/* A candidate: the header (quick_check), then the whole file's SHA-1 (rom_verify). One that fails either -- another
+ * game's ROM, another version, a damaged or modified dump -- is passed over and the search goes on. */
+static int try_file(const char* path, void* ctx) {
+    Find* fd = (Find*)ctx;
+    char why[96];
+    int o = 0, r = quick_check(path, why, sizeof(why), &o);
+    if (r > 0) {
+        Rom rom;
+        int ok;
+        const char* b = strrchr(path, '/');
+        snprintf(sRomName, sizeof(sRomName), "%.60s", b ? b + 1 : path);
+        rom.f = fopen(path, "rb");
+        rom.order = o;
+        ok = rom.f != NULL && rom_verify(&rom);
+        if (rom.f) fclose(rom.f);
+        if (ok) { snprintf(fd->path, sizeof(fd->path), "%s", path); fd->order = o; return 1; }
+        snprintf(why, sizeof(why), "%s", rom.f ? "doesn't match USA 1.0 (damaged or modified)." : "can't be read.");
+        port_log_always("hh: %s: %s, passed over\n", path, why);
+        sRomName[0] = 0;
+        progress("Looking for your ROM...", 0);
+    } else if (r == 0) {
+        return 0;
+    }
+    if (!fd->why[0]) {
+        const char* b = strrchr(path, '/');
+        snprintf(fd->why, sizeof(fd->why), "%s", why);
+        snprintf(fd->whyName, sizeof(fd->whyName), "%.60s", b ? b + 1 : path);
+    }
+    return 0;
+}
+/* OOT_ROM=<path> (tests); else miyoo_romfind.h's search: the game's folder, <root> (the data folder), the path that
+ * worked last time, Roms/, the card two folders deep. The game's own files never. */
+static int find_rom(Find* fd, const char* root) {
+    static const char* const own[] = { "oot_recipes", "oot_psp_assets", "embedded", "savestate", "eeprom", "sram", NULL };
+    const char* env = getenv("OOT_ROM");
+    char exe[512];
+    MrfSearch* s;
+    int found;
+    memset(fd, 0, sizeof(*fd));
+    if (env && env[0]) return try_file(env, fd);
+    if ((s = (MrfSearch*)calloc(1, sizeof(*s))) == NULL) return 0;
+    s->app_dir = mrf_exe_dir(exe, sizeof(exe));
+    s->save_dir = root;
+    s->own = own;
+    s->bin_ok = 1;
+    s->root_env = "OOT_CARD_ROOT";
+    s->try_rom = try_file;
+    s->ctx = fd;
+    found = mrf_find(s);
+    free(s);
+    return found;
 }
 
 /* ------------------------------------------------------------------ Yaz0 */
@@ -627,47 +611,21 @@ void HhConvert_Ensure(const char* root) {
     if (needPack) {
         Find fd;
         Rom rom;
-        int pkgBad = 0; /* rom.z64 in the game folder failed to open or its SHA-1: the card search alone */
-        for (;;) {
-            const char* order;
-            int opened;
-            sRomName[0] = 0;
-            progress("Looking for your ROM...", 0);
-            if (!find_rom(&fd, root, !pkgBad)) {
-                /* rom.z64 sits in App/OcarinaOfTime (a personal zip) */
-                if (pkgBad) HhRomScreen_Fail("rom.z64 in the game folder is damaged.", "Copy your USA 1.0 ROM there again,", "or to Roms/N64.");
-                if (fd.why[0]) {
-                    char l1[96];
-                    snprintf(l1, sizeof(l1), "%s", fd.whyName);
-                    HhRomScreen_Fail(l1, fd.why, "Ocarina of Time needs USA 1.0.");
-                }
-                HhRomScreen_Fail("No Ocarina of Time ROM found.", "Copy your USA 1.0 ROM (.z64/.v64/.n64)", "to the SD card.");
-                return;
+        sRomName[0] = 0;
+        progress("Looking for your ROM...", 0);
+        if (!find_rom(&fd, root)) {
+            if (fd.why[0]) {
+                char l1[96];
+                snprintf(l1, sizeof(l1), "%s", fd.whyName);
+                HhRomScreen_Fail(l1, fd.why, "Ocarina of Time needs USA 1.0.");
             }
-            order = fd.order == 0 ? "z64" : fd.order == 1 ? "v64" : "n64";
-            if (fd.inPkg) {
-                snprintf(sRomName, sizeof(sRomName), "%s (in the game's folder)", PKG_ROM_NAME);
-                port_log_always("hh: ROM %s (next to the executable, %s order)\n", fd.path, order);
-            } else {
-                const char* b = strrchr(fd.path, '/');
-                snprintf(sRomName, sizeof(sRomName), "%.60s", b ? b + 1 : fd.path);
-                port_log_always("hh: ROM %s (%s order)\n", fd.path, order);
-            }
-            rom.f = fopen(fd.path, "rb");
-            rom.order = fd.order;
-            opened = rom.f != NULL;
-            if (opened && rom_verify(&rom)) break;
-            if (opened) fclose(rom.f);
-            if (fd.inPkg) {
-                port_log_always("hh: ROM %s in the game folder %s; looking on the SD card\n", fd.path,
-                                opened ? "fails the SHA-1 check" : "can't be opened");
-                pkgBad = 1;
-                continue;
-            }
-            if (!opened) { HhRomScreen_Fail("Could not open the ROM.", NULL, NULL); return; }
-            HhRomScreen_Fail("This ROM's checksum doesn't match", "Ocarina of Time USA 1.0.", "It may be damaged or modified.");
+            HhRomScreen_Fail("No Ocarina of Time ROM found.", "Put your USA 1.0 ROM (.z64/.v64/.n64)", MRF_NOT_FOUND_2);
             return;
         }
+        port_log_always("hh: ROM %s (%s order), SHA-1 checked\n", fd.path, fd.order == 0 ? "z64" : fd.order == 1 ? "v64" : "n64");
+        rom.f = fopen(fd.path, "rb");
+        rom.order = fd.order;
+        if (rom.f == NULL) { HhRomScreen_Fail("Could not open the ROM.", NULL, NULL); return; }
         t1 = now_s();
         port_log_always("hh: ROM SHA-1 OK in %.1f s\n", t1 - t0);
         err = build_pack(root, &rom);
