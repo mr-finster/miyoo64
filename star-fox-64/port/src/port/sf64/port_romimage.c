@@ -34,6 +34,7 @@
 #include <PR/ultratypes.h>
 #include "port.h"
 #include "savestate.h" /* SAVESTATE_EXCLUDE: nothing here is game state */
+#include "miyoo_romfind.h"
 
 #define IMAGE_NAME   "sf64.rom"
 #define RECIPE_NAME  "recipes.bin"
@@ -220,15 +221,6 @@ static int rom_header_ok(const char* path, char* err, size_t errlen) {
     return 1;
 }
 
-static int rom_ext_ok(const char* n) {
-    size_t l = strlen(n);
-    char e[4];
-    if (l < 5 || n[l - 4] != '.') return 0;
-    e[0] = (char) (n[l - 3] | 0x20); e[1] = (char) (n[l - 2] | 0x20); e[2] = (char) (n[l - 1] | 0x20); e[3] = 0;
-    return !strcmp(e, "z64") || !strcmp(e, "n64") || !strcmp(e, "v64") || !strcmp(e, "rom") ||
-           !strcmp(e, "bin") || !strcmp(e, "u64") || !strcmp(e, "usa") ||
-           !strcmp(e, "u1");
-}
 
 static void progress_rom(const char* path);
 
@@ -268,58 +260,25 @@ static int rom_candidate(const char* path, char* err, size_t errlen) {
     return 1;
 }
 
-/* The first file in `dir` that is the US 1.1 ROM; `why` gets the last rejection. */
-static int scan_dir(const char* dir, char* out, size_t outlen, char* why, size_t whylen) {
-    DIR* d = opendir(dir);
-    struct dirent* ent;
-    int found = 0;
-    if (d == NULL) return 0;
-    while ((ent = readdir(d)) != NULL) {
-        const char* n = ent->d_name;
-        char path[512], err[160];
-        /* hidden files ("._x.z64" resource forks), other names, and our own files:
-         * sf64.rom keeps the cartridge header, so it would pass for a ROM */
-        if (n[0] == '.' || !rom_ext_ok(n) || !strcmp(n, IMAGE_NAME) || !strcmp(n, RECIPE_NAME) ||
-            !strcmp(n, EMBEDDED_NAME))
-            continue;
-        snprintf(path, sizeof(path), "%s%s%s", dir, dir[strlen(dir) - 1] == '/' ? "" : "/", n);
-        if (rom_candidate(path, err, sizeof(err))) {
-            snprintf(out, outlen, "%s", path);
-            found = 1;
-            break;
-        }
-        snprintf(why, whylen, "%s: %s", n, err);
-        port_log_always("romimage: skipping %s: %s\n", path, err);
-    }
-    closedir(d);
-    return found;
-}
-
-static int scan_tree(const char* root, int depth, char* out, size_t outlen, char* why, size_t whylen) {
-    DIR* d;
-    struct dirent* ent;
-    if (scan_dir(root, out, outlen, why, whylen)) return 1;
-    if (depth <= 0 || (d = opendir(root)) == NULL) return 0;
-    while ((ent = readdir(d)) != NULL) {
-        char sub[512];
-        struct stat st;
-        size_t rl = strlen(root);
-        if (ent->d_name[0] == '.') continue;
-        snprintf(sub, sizeof(sub), "%s%s%s/", root, (rl && root[rl - 1] == '/') ? "" : "/", ent->d_name);
-        if (stat(sub, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
-        if (scan_tree(sub, depth - 1, out, outlen, why, whylen)) { closedir(d); return 1; }
-    }
-    closedir(d);
+/* The search's candidate: rom_candidate (the header, then the whole file's SHA-1); `why` gets the last rejection. */
+struct RomTry { char* why; size_t whylen; };
+static MrfSearch s SAVESTATE_EXCLUDE; /* the search's state (PATH_MAX buffers): .bss, not the stack */
+static int rom_try(const char* path, void* ctx) {
+    struct RomTry* t = (struct RomTry*) ctx;
+    char err[160];
+    if (rom_candidate(path, err, sizeof(err))) return 1;
+    snprintf(t->why, t->whylen, "%s: %s", mrf_base(path), err);
+    port_log_always("romimage: skipping %s: %s\n", path, err);
     return 0;
 }
 
-/* The player's ROM: SF64_BASEROM=<path>, next to the game, in the save dir,
- * or anywhere on the SD card (two folders deep). Next to the game is the game
- * folder (see exe_dir_of): a personal zip puts the ROM there as rom.z64, the only
- * file of the game folder scan_dir takes for a ROM, so it is checked before the card; one that fails the check is
- * skipped like a card file and the search goes on. It is only read: sf64.rom
- * and everything else the game writes go to the save dir. */
+/* The player's ROM: SF64_BASEROM=<path>; else miyoo_romfind.h's search: the game folder (a personal zip's rom.z64,
+ * or any name), the save dir, the path that worked last time, Roms/ and its folders, the card two folders deep. A file
+ * that fails the check is skipped and the search goes on; the game's own files (sf64.rom keeps the cartridge header,
+ * so it would pass for a ROM) never. It is only read: sf64.rom and everything else the game writes go to the save dir. */
 static int find_rom(const char* exe_dir, char* out, size_t outlen, char* why, size_t whylen) {
+    static const char* const own[] = { IMAGE_NAME, RECIPE_NAME, EMBEDDED_NAME, "eeprom", "savestate", NULL };
+    struct RomTry t = { why, whylen };
     const char* env = getenv("SF64_BASEROM");
     why[0] = 0;
     if (env && env[0]) {
@@ -329,18 +288,17 @@ static int find_rom(const char* exe_dir, char* out, size_t outlen, char* why, si
         port_log_always("romimage: skipping %s: %s\n", env, err);
         return 0;
     }
-    if (exe_dir[0] && scan_dir(exe_dir, out, outlen, why, whylen)) return 1;
-    if (scan_dir(port_save_dir(), out, outlen, why, whylen)) return 1;
-#if defined(TARGET_PC)
-    if (scan_tree(".", 2, out, outlen, why, whylen)) return 1;
-#elif defined(MIYOO)
-    { /* the Miyoo Mini: Roms/N64, then the whole card, two folders deep each (miyoo_panel.c) */
-        extern const char* const miyoo_rom_roots[];
-        for (int i = 0; miyoo_rom_roots[i]; i++)
-            if (scan_tree(miyoo_rom_roots[i], 2, out, outlen, why, whylen)) return 1;
-    }
-#endif
-    return 0;
+    memset(&s, 0, sizeof(s));
+    s.app_dir = exe_dir;
+    s.save_dir = port_save_dir();
+    s.own = own;
+    s.bin_ok = 1;
+    s.root_env = "SF64_CARD_ROOT";
+    s.try_rom = rom_try;
+    s.ctx = &t;
+    if (!mrf_find(&s)) return 0;
+    snprintf(out, outlen, "%s", s.found);
+    return 1;
 }
 
 /* ------------------------------------------------------------------- UI --- */
@@ -906,8 +864,8 @@ int port_romimage_ensure(const char* argv0) {
     if (!find_rom(exe_dir, rom, sizeof(rom), why, sizeof(why))) {
         if (why[0]) port_log_always("romimage: rejected: %s\n", why);
         if (sStarFoxVer) fail_screen("No usable Star Fox 64 ROM.", sStarFoxVer, "It must be the US (NTSC) 1.1 cart.");
-        if (sStarFoxSeen) fail_screen("No usable Star Fox 64 ROM.", "It must be the US (NTSC) 1.1 cart.", NULL);
-        fail_screen("No Star Fox 64 ROM found.", "Copy your US (NTSC) 1.1 .z64/.n64/.v64", "to the SD card and start again.");
+        if (sStarFoxSeen) fail_screen("No usable Star Fox 64 ROM.", why, "It must be the USA 1.1 cart's dump.");
+        fail_screen("No Star Fox 64 ROM found.", "Put your USA 1.1 ROM (.z64/.v64/.n64)", MRF_NOT_FOUND_2);
     }
     { /* which ROM, in the line every port logs */
         char pkg_rom[600];
