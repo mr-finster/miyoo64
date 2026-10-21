@@ -366,8 +366,13 @@ int port_find_and_open_rom(void) {
         s.root_env = "FZX_CARD_ROOT";
         s.try_rom = fzx_try;
         s.ctx = &t;
-        found = mrf_find(&s);
-        if (found) snprintf(rom, sizeof(rom), "%s", s.found);
+        /* a normal start: the ROM found and checked last time, unchanged (no search, romcheck.txt's verdict) */
+        if (!sRebuild && mrf_known(data, rom, sizeof(rom)) && fzx_try(rom, &t)) {
+            found = 1;
+        } else {
+            found = mrf_find(&s);
+            if (found) snprintf(rom, sizeof(rom), "%s", s.found);
+        }
     }
     if (!found) {
         port_log("rom: none found%s%s%s%s\n", t.why[0] ? " - F-Zero X rejected: " : "", t.why,
