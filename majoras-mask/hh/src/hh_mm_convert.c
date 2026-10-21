@@ -7,8 +7,8 @@
  * result's CRC-32 must match the recipe's.
  *
  *   data/mm_pack.bin + data/mm_pack.id ("MMPI" + the recipe's CRC): current -> nothing to do.
- *   Otherwise the ROM is found (MM_ROM=<path>; rom.z64 next to the executable; the data folder; then the SD card's
- *   Roms/N64 and two folders deep), checked (32 MB, any byte order, header, SHA-1) and the pack built, with
+ *   Otherwise the ROM is found (MM_ROM=<path>; else miyoo_romfind.h: the game folder, the data folder, the path that
+ *   worked last time, Roms/, the card two folders deep; a file failing the check below is passed over), checked (32 MB, any byte order, header, SHA-1) and the pack built, with
  *   hh_romscreen.c's progress and error screens. data/mm_pack.bin without an id (a PERSONAL zip's, or an older
  *   build's) is used as it is when no ROM is found.
  *
@@ -26,6 +26,7 @@
 #include <zlib.h>
 
 #include "hh_recipe_ops.h"
+#include "miyoo_romfind.h"
 
 void HhRomScreen_Progress(const char* sub, const char* l1, const char* l2, const char* stage, int pct, const char* foot);
 void HhRomScreen_Fail(const char* l1, const char* l2, const char* l3);
@@ -258,14 +259,6 @@ static int rom_read(Rom* r, uint32_t off, unsigned char* out, uint32_t n) {
     unswap(out, n4, r->order);
     return 1;
 }
-static int ext_ok(const char* n) {
-    size_t l = strlen(n);
-    char e[4];
-    if (l < 5 || n[l - 4] != '.') return 0;
-    e[0] = (char)(n[l - 3] | 0x20); e[1] = (char)(n[l - 2] | 0x20); e[2] = (char)(n[l - 1] | 0x20); e[3] = 0;
-    return !strcmp(e, "z64") || !strcmp(e, "n64") || !strcmp(e, "v64") || !strcmp(e, "rom") || !strcmp(e, "bin") ||
-           !strcmp(e, "u64");
-}
 /* 1 = Majora's Mask USA by its header; 0 = not MM; -1 = another MM (why says which) */
 static int quick_check(const char* path, char* why, size_t whylen, int* order) {
     unsigned char h[64];
@@ -290,66 +283,6 @@ static int quick_check(const char* path, char* why, size_t whylen, int* order) {
     *order = o;
     return 1;
 }
-static int try_file(Find* fd, const char* path) {
-    char why[96];
-    int o = 0, r = quick_check(path, why, sizeof(why), &o);
-    if (r > 0) { snprintf(fd->path, sizeof(fd->path), "%s", path); fd->order = o; return 1; }
-    if (r < 0 && !fd->why[0]) {
-        const char* b = strrchr(path, '/');
-        snprintf(fd->why, sizeof(fd->why), "%s", why);
-        snprintf(fd->whyName, sizeof(fd->whyName), "%.60s", b ? b + 1 : path);
-    }
-    return 0;
-}
-static int scan_dir(Find* fd, const char* dir) {
-    DIR* d = opendir(dir);
-    struct dirent* ent;
-    int found = 0;
-    if (!d) return 0;
-    while (!found && (ent = readdir(d)) != NULL) {
-        char path[512];
-        size_t dl = strlen(dir);
-        if (ent->d_name[0] == '.' || !ext_ok(ent->d_name)) continue;
-        /* the game's own files: the data pack starts with the ROM's header (it was taken for a damaged ROM) */
-        if (strncmp(ent->d_name, "mm_pack", 7) == 0 || strncmp(ent->d_name, "mm_recipes", 10) == 0 ||
-            strncmp(ent->d_name, "mm-flash", 8) == 0) continue;
-        snprintf(path, sizeof(path), "%s%s%s", dir, (dl && dir[dl - 1] == '/') ? "" : "/", ent->d_name);
-        found = try_file(fd, path);
-    }
-    closedir(d);
-    return found;
-}
-static int scan_tree(Find* fd, const char* root, int depth) {
-    DIR* d;
-    struct dirent* ent;
-    if (scan_dir(fd, root)) return 1;
-    if (depth <= 0 || (d = opendir(root)) == NULL) return 0;
-    while ((ent = readdir(d)) != NULL) {
-        char sub[512];
-        struct stat st;
-        size_t rl = strlen(root);
-        if (ent->d_name[0] == '.') continue;
-        snprintf(sub, sizeof(sub), "%s%s%s", root, (rl && root[rl - 1] == '/') ? "" : "/", ent->d_name);
-        if (stat(sub, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
-        if (scan_tree(fd, sub, depth - 1)) { closedir(d); return 1; }
-    }
-    closedir(d);
-    return 0;
-}
-static int find_rom(Find* fd) {
-    const char* env = getenv("MM_ROM");
-    char pkg[600];
-    memset(fd, 0, sizeof(*fd));
-    if (env && env[0]) return try_file(fd, env);
-    if (exe_dir_file(pkg, sizeof(pkg), PKG_ROM_NAME) && try_file(fd, pkg)) return 1;
-    if (exe_dir_file(pkg, sizeof(pkg), "") && scan_dir(fd, pkg)) return 1; /* any ROM in the game folder */
-    if (scan_dir(fd, port_save_dir())) return 1;
-#if defined(MIYOO)
-    return scan_tree(fd, "/mnt/SDCARD/Roms/N64", 1) || scan_tree(fd, "/mnt/SDCARD", 2);
-#else
-    return scan_tree(fd, ".", 2);
-#endif
-}
 static int rom_verify(Rom* r) {
     enum { CH = 1 << 20 };
     unsigned char* b = malloc(CH);
@@ -370,6 +303,59 @@ static int rom_verify(Rom* r) {
     for (i = 0; i < 20; i++) snprintf(hex + i * 2, 3, "%02x", out[i]);
     port_log_always("mm: ROM SHA-1 %s\n", hex);
     return strcmp(hex, sR.sha1) == 0;
+}
+
+/* A candidate: the header (quick_check), then the whole file's SHA-1 (rom_verify). One that fails either -- another
+ * game's ROM, another version, a damaged or modified dump -- is passed over and the search goes on. */
+static int try_file(const char* path, void* ctx) {
+    Find* fd = (Find*)ctx;
+    char why[96];
+    int o = 0, r = quick_check(path, why, sizeof(why), &o);
+    if (r > 0) {
+        Rom rom;
+        int ok;
+        const char* b = strrchr(path, '/');
+        snprintf(sRomName, sizeof(sRomName), "%.60s", b ? b + 1 : path);
+        rom.f = fopen(path, "rb");
+        rom.order = o;
+        ok = rom.f != NULL && rom_verify(&rom);
+        if (rom.f) fclose(rom.f);
+        if (ok) { snprintf(fd->path, sizeof(fd->path), "%s", path); fd->order = o; return 1; }
+        snprintf(why, sizeof(why), "%s", rom.f ? "doesn't match the USA ROM (damaged or modified)." : "can't be read.");
+        port_log_always("mm: %s: %s, passed over\n", path, why);
+        sRomName[0] = 0;
+        progress("Looking for your ROM...", 0);
+    } else if (r == 0) {
+        return 0;
+    }
+    if (!fd->why[0]) {
+        const char* b = strrchr(path, '/');
+        snprintf(fd->why, sizeof(fd->why), "%s", why);
+        snprintf(fd->whyName, sizeof(fd->whyName), "%.60s", b ? b + 1 : path);
+    }
+    return 0;
+}
+/* MM_ROM=<path> (tests); else miyoo_romfind.h's search: the game's folder, data/, the path that worked last time,
+ * Roms/, the card two folders deep. The game's own files (the data pack starts with the ROM's header) never. */
+static int find_rom(Find* fd) {
+    static const char* const own[] = { "mm_pack", "mm_recipes", "mm-flash", "savestate", NULL };
+    const char* env = getenv("MM_ROM");
+    char exe[512];
+    MrfSearch* s;
+    int found;
+    memset(fd, 0, sizeof(*fd));
+    if (env && env[0]) return try_file(env, fd);
+    if ((s = (MrfSearch*)calloc(1, sizeof(*s))) == NULL) return 0;
+    s->app_dir = mrf_exe_dir(exe, sizeof(exe));
+    s->save_dir = port_save_dir();
+    s->own = own;
+    s->bin_ok = 1;
+    s->root_env = "MM_CARD_ROOT";
+    s->try_rom = try_file;
+    s->ctx = fd;
+    found = mrf_find(s);
+    free(s);
+    return found;
 }
 
 /* ---- Yaz0 */
@@ -571,22 +557,17 @@ void HhMm_ConvertEnsure(void) {
             return;
         }
         if (fd.why[0]) HhRomScreen_Fail(fd.whyName, fd.why, "Majora's Mask needs the USA version.");
-        HhRomScreen_Fail("No Majora's Mask ROM found.", "Copy your USA ROM (.z64/.v64/.n64)", "to the SD card.");
+        HhRomScreen_Fail("No Majora's Mask ROM found.", MRF_NOT_FOUND_1, MRF_NOT_FOUND_2);
         return;
     }
     {
         const char* b = strrchr(fd.path, '/');
         snprintf(sRomName, sizeof(sRomName), "%.60s", b ? b + 1 : fd.path);
     }
-    port_log_always("mm: first start: ROM %s (%s order)\n", fd.path, fd.order == 0 ? "z64" : fd.order == 1 ? "v64" : "n64");
+    port_log_always("mm: first start: ROM %s (%s order), SHA-1 checked\n", fd.path, fd.order == 0 ? "z64" : fd.order == 1 ? "v64" : "n64");
     rom.f = fopen(fd.path, "rb");
     rom.order = fd.order;
     if (rom.f == NULL) { HhRomScreen_Fail("Could not open the ROM.", NULL, NULL); return; }
-    if (!rom_verify(&rom)) {
-        fclose(rom.f);
-        HhRomScreen_Fail("This ROM's checksum doesn't match", "Majora's Mask USA.", "It may be damaged or modified.");
-        return;
-    }
     if (!hhr_perms(&sPerms) || (err = recipes_load(1)) != NULL) {
         fclose(rom.f);
         HhRomScreen_Fail(err ? err : "Internal error.", NULL, NULL);
