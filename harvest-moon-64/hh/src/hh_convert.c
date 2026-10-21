@@ -7,9 +7,9 @@
  * executable. The result's CRC-32 must match the recipe's.
  *
  *   data/hm64-pack.bin + data/hm64-pack.id ("HMPI" + the recipe's CRC): current -> nothing to do.
- *   Otherwise the ROM is found (HM64_ROM=<path>; rom.z64 next to the executable; any ROM in the game folder or the
- *   data folder; then the SD card's Roms/N64 and two folders deep), checked (16 MB, any byte order, header, SHA-1) and
- *   the pack built, with the progress and error screens below. A data/hm64-pack.bin without an id (an older PERSONAL
+ *   Otherwise the ROM is found (HM64_ROM=<path>; else miyoo_romfind.h: the game folder, the data folder, the path that
+ *   worked last time, Roms/, the card two folders deep; the game's own pack never), checked (16 MB, any byte order,
+ *   header, SHA-1; a file that fails is passed over and the search goes on) and the pack built, with the progress and error screens below. A data/hm64-pack.bin without an id (an older PERSONAL
  *   zip's) is used as it is when no ROM is found.
  *
  * HM64_CONVERT_ONLY=1 exits after this step (tests, timing); HM64_CONVERT_FORCE=1 rebuilds even a current pack;
@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <zlib.h>
 #include "port.h"
+#include "miyoo_romfind.h"
 
 #define ROM_SIZE 0x1000000u
 #define RECIPES_NAME "hm64_recipes.bin"
@@ -296,7 +297,8 @@ static int pack_current(void) {
 /* ---------------------------------------------------------------- the ROM */
 typedef struct {
     char path[512];
-    int order; /* 0 z64, 1 v64, 2 n64 */
+    int order;            /* 0 z64, 1 v64, 2 n64 */
+    unsigned char *rom;   /* the whole ROM in z64 order, its SHA-1 checked (rom_load) */
     char why[96], whyName[64];
 } Find;
 
@@ -308,14 +310,6 @@ static void unswap(unsigned char *p, size_t n, int order) {
             const unsigned char a = p[i], b = p[i + 1];
             p[i] = p[i + 3]; p[i + 1] = p[i + 2]; p[i + 2] = b; p[i + 3] = a;
         }
-}
-static int ext_ok(const char *n) {
-    const size_t l = strlen(n);
-    char e[4];
-    if (l < 5 || n[l - 4] != '.') return 0;
-    e[0] = (char) (n[l - 3] | 0x20); e[1] = (char) (n[l - 2] | 0x20); e[2] = (char) (n[l - 1] | 0x20); e[3] = 0;
-    return !strcmp(e, "z64") || !strcmp(e, "n64") || !strcmp(e, "v64") || !strcmp(e, "rom") || !strcmp(e, "bin") ||
-           !strcmp(e, "u64") || !strcmp(e, "usa");
 }
 /* 1 = Harvest Moon 64 (USA) by its header; 0 = not this game; -1 = another version of it (why says which) */
 static int quick_check(const char *path, char *why, size_t whylen, int *order) {
@@ -339,64 +333,6 @@ static int quick_check(const char *path, char *why, size_t whylen, int *order) {
     *order = o;
     return 1;
 }
-static int try_file(Find *fd, const char *path) {
-    char why[96];
-    int o = 0;
-    const int r = quick_check(path, why, sizeof why, &o);
-    if (r > 0) { snprintf(fd->path, sizeof fd->path, "%s", path); fd->order = o; return 1; }
-    if (r < 0 && !fd->why[0]) {
-        const char *b = strrchr(path, '/');
-        snprintf(fd->why, sizeof fd->why, "%s", why);
-        snprintf(fd->whyName, sizeof fd->whyName, "%.60s", b ? b + 1 : path);
-    }
-    return 0;
-}
-static int scan_dir(Find *fd, const char *dir) {
-    DIR *d = opendir(dir);
-    struct dirent *ent;
-    int found = 0;
-    if (!d) return 0;
-    while (!found && (ent = readdir(d)) != NULL) {
-        char path[512];
-        const size_t dl = strlen(dir);
-        if (ent->d_name[0] == '.' || !ext_ok(ent->d_name)) continue;
-        snprintf(path, sizeof path, "%s%s%s", dir, dl && dir[dl - 1] == '/' ? "" : "/", ent->d_name);
-        found = try_file(fd, path);
-    }
-    closedir(d);
-    return found;
-}
-static int scan_tree(Find *fd, const char *root, int depth) {
-    if (scan_dir(fd, root)) return 1;
-    DIR *d = depth > 0 ? opendir(root) : NULL;
-    struct dirent *ent;
-    if (!d) return 0;
-    while ((ent = readdir(d)) != NULL) {
-        char sub[512];
-        struct stat st;
-        const size_t rl = strlen(root);
-        if (ent->d_name[0] == '.') continue;
-        snprintf(sub, sizeof sub, "%s%s%s", root, rl && root[rl - 1] == '/' ? "" : "/", ent->d_name);
-        if (stat(sub, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
-        if (scan_tree(fd, sub, depth - 1)) { closedir(d); return 1; }
-    }
-    closedir(d);
-    return 0;
-}
-static int find_rom(Find *fd) {
-    const char *env = getenv("HM64_ROM");
-    char pkg[600];
-    memset(fd, 0, sizeof *fd);
-    if (env && env[0]) return try_file(fd, env);
-    if (exe_dir_file(pkg, sizeof pkg, PKG_ROM_NAME) && try_file(fd, pkg)) return 1;
-    if (exe_dir_file(pkg, sizeof pkg, "") && scan_dir(fd, pkg)) return 1; /* any ROM in the game folder */
-    if (scan_dir(fd, port_save_dir())) return 1;
-#if defined(MIYOO)
-    return scan_tree(fd, "/mnt/SDCARD/Roms/N64", 1) || scan_tree(fd, "/mnt/SDCARD", 2);
-#else
-    return scan_tree(fd, ".", 2);
-#endif
-}
 
 /* the whole ROM, in .z64 order, its SHA-1 checked */
 static unsigned char *rom_load(const Find *fd, const char **err) {
@@ -417,9 +353,69 @@ static unsigned char *rom_load(const Find *fd, const char **err) {
     fclose(f);
     sha1_final(&s, out);
     for (int i = 0; i < 20; i++) snprintf(hex + i * 2, 3, "%02x", out[i]);
-    port_log_always("hm64: ROM SHA-1 %s\n", hex);
+    port_log_always("hm64: %s: SHA-1 %s\n", fd->path, hex);
     if (strcmp(hex, sR.sha1) != 0) { free(rom); *err = "sha1"; return NULL; }
     return rom;
+}
+
+/* A candidate: the header (quick_check), then the whole file read and its SHA-1 checked. Anything else -- another
+ * game's ROM, another version, a damaged or modified dump, the game's own data pack (1.2.0: a TEST1 build's leftover
+ * data/hm64-pack.bin, a .bin with the ROM's header, was taken for the ROM and the SHA-1 then ended the start) -- is
+ * passed over, and the search goes on. */
+static int try_file(const char *path, void *ctx) {
+    Find *fd = (Find *) ctx;
+    char why[96];
+    const char *err = NULL;
+    int o = 0;
+    const int r = quick_check(path, why, sizeof why, &o);
+    if (r > 0) {
+        snprintf(fd->path, sizeof fd->path, "%s", path);
+        fd->order = o;
+        {
+            const char *b = strrchr(path, '/');
+            snprintf(sRomName, sizeof sRomName, "%.60s", b ? b + 1 : path);
+        }
+        fd->rom = rom_load(fd, &err);
+        if (fd->rom) return 1;
+        snprintf(why, sizeof why, "%s", strcmp(err, "sha1") == 0 ? "doesn't match the USA ROM (damaged or modified)." : err);
+        port_log_always("hm64: %s: %s, passed over\n", path, why);
+        sRomName[0] = 0;
+        progress("Looking for your ROM...", 0);
+    } else if (r == 0) {
+        return 0;
+    }
+    if (!fd->why[0]) {
+        const char *b = strrchr(path, '/');
+        snprintf(fd->why, sizeof fd->why, "%s", why);
+        snprintf(fd->whyName, sizeof fd->whyName, "%.60s", b ? b + 1 : path);
+    }
+    return 0;
+}
+/* HM64_ROM=<path> (tests); else miyoo_romfind.h's search: the game's folder, data/, the path that worked last time,
+ * Roms/, the card two folders deep. The game's own files are never a candidate. */
+static int find_rom(Find *fd) {
+    static const char *const own[] = { PACK_NAME, "hm64-pack", RECIPES_NAME, "hm64.sram", "eeprom", "savestate", NULL };
+    const char *env = getenv("HM64_ROM");
+    char exe[512];
+    MrfSearch *s;
+    int found;
+    memset(fd, 0, sizeof *fd);
+    if (env && env[0]) return try_file(env, fd);
+    if ((s = calloc(1, sizeof *s)) == NULL) return 0;
+    s->app_dir = mrf_exe_dir(exe, sizeof exe);
+#if defined(MIYOO)
+    s->root_env = "HM64_CARD_ROOT";
+#else
+    s->root_env = "HM64_CARD_ROOT"; /* the desktop: set it, else /mnt/SDCARD */
+#endif
+    s->save_dir = port_save_dir();
+    s->own = own;
+    s->bin_ok = 1;
+    s->try_rom = try_file;
+    s->ctx = fd;
+    found = mrf_find(s);
+    free(s);
+    return found;
 }
 
 /* ---------------------------------------------------------------- building */
@@ -529,20 +525,12 @@ void hh_convert_ensure(void) {
             close_screen();
             return;
         }
-        if (fd.why[0]) fail(fd.whyName, fd.why, "Harvest Moon 64 needs the USA version.");
-        fail("No Harvest Moon 64 ROM found.", "Copy your USA ROM (.z64/.v64/.n64)", "to App/HarvestMoon64/rom.z64.");
+        if (fd.why[0]) fail(fd.whyName, fd.why, "Harvest Moon 64 needs the USA ROM.");
+        fail("No Harvest Moon 64 ROM found.", MRF_NOT_FOUND_1, MRF_NOT_FOUND_2);
     }
-    {
-        const char *b = strrchr(fd.path, '/');
-        snprintf(sRomName, sizeof sRomName, "%.60s", b ? b + 1 : fd.path);
-    }
-    port_log_always("hm64: first start: ROM %s (%s order)\n", fd.path, fd.order == 0 ? "z64" : fd.order == 1 ? "v64" : "n64");
+    port_log_always("hm64: first start: ROM %s (%s order), SHA-1 checked\n", fd.path, fd.order == 0 ? "z64" : fd.order == 1 ? "v64" : "n64");
     if ((err = recipes_load(1)) != NULL) fail(err, NULL, NULL);
-    unsigned char *rom = rom_load(&fd, &err);
-    if (!rom) {
-        if (strcmp(err, "sha1") == 0) fail("This ROM's checksum doesn't match", "Harvest Moon 64 (USA).", "It may be damaged or modified.");
-        fail(err, NULL, NULL);
-    }
+    unsigned char *rom = fd.rom;
     const double t1 = now_s();
     port_log_always("hm64: ROM SHA-1 OK in %.1f s\n", t1 - t0);
     err = build(rom);
