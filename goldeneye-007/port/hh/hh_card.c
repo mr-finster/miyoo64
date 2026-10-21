@@ -22,9 +22,10 @@
  * after that only its size, as goldeneye.z64's, then the header and the romtables CRC as for any
  * ROM. Missing, or failing the check: the card as before.
  *
- * The ROM finder looks for a GoldenEye 007 (USA) dump (.z64/.n64/.v64, any byte order)
- * anywhere up to two folders below the card root and accepts only the one whose SHA-1 in
- * z64 order is the decomp's (ge007.u.sha1).
+ * The ROM finder (miyoo_romfind.h: the game's folder, the path that worked last time, Roms/ and its
+ * folders, then the card two folders deep) looks for a GoldenEye 007 (USA) dump (.z64/.n64/.v64, any
+ * name, any byte order) and accepts only the one whose SHA-1 in z64 order is the decomp's
+ * (ge007.u.sha1); any other file is passed over and the search goes on.
  *
  * The work (the first start's search, check and copy; a new rom.z64's one check) is shown on the
  * screen as the other ports show theirs (hh_romscreen.c): "Checking your ROM" with a bar, a step a
@@ -44,6 +45,7 @@
 #include <ultra64.h>
 #include "hh_plat.h"
 #include "hh_romscreen.h"
+#include "miyoo_romfind.h"
 
 #ifndef HH_CARD_ROOT
 #define HH_CARD_ROOT "/mnt" /* the Miyoo Mini's is hh_plat.h's */
@@ -258,19 +260,6 @@ static int hh_card_z64(u8 *p, u32 n)
     return 0;
 }
 
-static int hh_card_is_rom_name(const char *name)
-{
-    const char *dot = strrchr(name, '.');
-    char ext[5];
-    int i;
-    if (dot == NULL || strlen(dot) != 4)
-        return 0;
-    for (i = 0; i < 4; i++)
-        ext[i] = (char)tolower((unsigned char)dot[i]);
-    ext[4] = 0;
-    return strcmp(ext, ".z64") == 0 || strcmp(ext, ".n64") == 0 || strcmp(ext, ".v64") == 0;
-}
-
 /* Why the last GoldenEye dump was refused, in words for the screen (NULL: none was; any other file
  * is refused in the log only, as Smash's B9: another game's ROM on the card says nothing), and the
  * same for the game folder's rom.z64. */
@@ -432,33 +421,26 @@ static int hh_card_try(const char *path, const char *out)
     return ok;
 }
 
-static int hh_card_search(const char *dir, int depth, const char *out)
+/* The card search (miyoo_romfind.h): the game's folder (any name but rom.z64, which hh_card_local_rom checked), the
+ * save folder (goldeneye.z64, the copy, never), the path that worked last time, Roms/, the card two folders deep.
+ * Each candidate goes through hh_card_try: the header, the SHA-1, the copy; one that fails is passed over. */
+static int hh_card_mrf_try(const char *path, void *out) { return hh_card_try(path, (const char *)out); }
+static int hh_card_search(const char *save, const char *out)
 {
-    DIR *d = opendir(dir);
-    struct dirent *e;
-    char path[640];
-    int found = 0;
-    if (d == NULL)
+    static const char *const own[] = { HH_LOCAL_ROM, "goldeneye.z64", NULL };
+    char exe[512];
+    MrfSearch *s = calloc(1, sizeof(*s));
+    int found;
+    if (s == NULL)
         return 0;
-    while (!found && (e = readdir(d)) != NULL) {
-        struct stat st;
-        if (e->d_name[0] == '.')
-            continue;
-        snprintf(path, sizeof(path), "%s/%s", dir, e->d_name);
-        if (stat(path, &st) != 0)
-            continue;
-        if (S_ISDIR(st.st_mode)) {
-#if defined(TARGET_MIYOO)
-            if (depth < 2 && strcmp(path, HH_DEFAULT_SAVE_DIR) != 0)
-#else
-            if (depth < 2)
-#endif
-                found = hh_card_search(path, depth + 1, out);
-        } else if (hh_card_is_rom_name(e->d_name)) {
-            found = hh_card_try(path, out);
-        }
-    }
-    closedir(d);
+    s->app_dir = mrf_exe_dir(exe, sizeof(exe));
+    s->save_dir = save;
+    s->own = own;
+    s->root_env = "GE_CARD_ROOT";
+    s->try_rom = hh_card_mrf_try;
+    s->ctx = (void *)out;
+    found = mrf_find(s);
+    free(s);
     return found;
 }
 
@@ -580,7 +562,7 @@ const char *hh_card_setup(void)
      * layout holds from the first frame to Done */
     hh_romscreen_progress("Looking on the SD card", "First start: building the game", "data from your ROM.",
                           "Looking for your ROM...", 0, HH_FOOT_CARD);
-    found = hh_card_search(HH_CARD_ROOT, 0, rom);
+    found = hh_card_search(dir, rom);
     if (!found && sRebuild && stat(rom, &st) == 0) {
         /* a rebuild with the dump gone from the card (the README lets it go): the copy itself is checked in full on
          * the screen (it is replaced only by a dump that checks out: hh_card_try writes a .tmp and renames) */
@@ -597,15 +579,14 @@ const char *hh_card_setup(void)
         return rom;
     }
     if (!found) {
-        printf("FATAL: no GoldenEye 007 (USA) ROM found. Copy your dump (.z64, .n64 or .v64) to the\n"
-               "card, at most two folders deep (the root, Games/, Roms/N64/, ...), and start again.\n");
+        printf("FATAL: no GoldenEye 007 (USA) ROM found. Copy your dump (.z64, .n64 or .v64) anywhere on the\n"
+               "card (App/GoldenEye/, Roms/ and its folders, or up to two folders deep), and start again.\n");
         if (sReject != NULL)
             hh_romscreen_fail(sRejectName, "This GoldenEye ROM can't be used.", sReject,
                               "This port needs GoldenEye 007 (USA).");
         if (sLocalReject != NULL)
             hh_romscreen_fail(HH_LOCAL_ROM HH_LOCAL_WHERE, HH_LOCAL_BAD, sLocalReject, HH_LOCAL_FIX);
-        hh_romscreen_fail(NULL, "No GoldenEye 007 ROM found.", "Copy your USA ROM (.z64/.v64/.n64)",
-                          "to the SD card, up to 2 folders deep.");
+        hh_romscreen_fail(NULL, "No GoldenEye 007 ROM found.", MRF_NOT_FOUND_1, MRF_NOT_FOUND_2);
     }
     printf("[card] rom: %s\n", rom);
     hh_romscreen_card_done();
