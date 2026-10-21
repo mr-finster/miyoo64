@@ -1944,8 +1944,12 @@ static void gfx_sp_pop_matrix(uint32_t count) {
 #ifdef PORT_GE_TL
     gfx_flush(); // draw pending verts with the current modelview before popping
 #endif
+    /* The RSP never pops its last matrix (F3DEX2: a pop at the bottom of the stack does nothing). Popping to 0
+     * made the next G_MTX load write modelview_matrix_stack[-1], the 64 bytes before it in rsp, and a pop at 0
+     * left MP_matrix stale (Majora's Mask 1.0.0: the renderer's texture pointers became matrix floats and the
+     * next textured triangle crashed; majoras-mask 1.0.1). */
     while (count--) {
-        if (rsp.modelview_matrix_stack_size > 0) {
+        if (rsp.modelview_matrix_stack_size > 1) {
             --rsp.modelview_matrix_stack_size;
         }
     }
@@ -1976,6 +1980,10 @@ struct ShaderProgram {
 };
 
 static void gfx_sp_vertex(size_t n_vertices, size_t dest_index, const Vtx *vertices) {
+    /* A load that runs past the vertex buffer keeps the vertices that fit (F3DEX2's v0 - n can also wrap below 0):
+     * the RSP would write past its buffer into DMEM, this wrote past loaded_vertices over the rest of rsp. */
+    if (dest_index >= MAX_VERTICES) return;
+    if (n_vertices > MAX_VERTICES - dest_index) n_vertices = MAX_VERTICES - dest_index;
 #ifdef PORT_EXP_NOVTX
     return;
 #endif
@@ -3731,6 +3739,9 @@ static void gfx_reticle_end(void) {
 #endif
 
 static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
+    /* A tri command's index (index * 2 in a byte) reaches 127; the vertex buffer holds MAX_VERTICES. The RSP would
+     * read whatever DMEM follows its buffer: here the triangle is dropped rather than read past loaded_vertices. */
+    if (vtx1_idx >= MAX_VERTICES || vtx2_idx >= MAX_VERTICES || vtx3_idx >= MAX_VERTICES) return;
 #ifdef PORT_EXP_NOTRI
     return;
 #endif
@@ -4370,7 +4381,9 @@ static void gfx_sp_moveword(uint8_t index, uint16_t offset, uint32_t data) {
 #else
             // Ambient light is included
             // The 31th bit is a flag that lights should be recalculated
-            rsp.current_num_lights = (data - 0x80000000U) / 32;
+            rsp.current_num_lights = (data - 0x80000000U) / 32; /* clamped as the GBI2 count: past MAX_LIGHTS read past current_lights */
+            if (rsp.current_num_lights > MAX_LIGHTS + 1) rsp.current_num_lights = MAX_LIGHTS + 1;
+            if (rsp.current_num_lights < 1) rsp.current_num_lights = 1;
 #endif
             rsp.lights_changed = 1;
             break;
@@ -4642,6 +4655,14 @@ static void gfx_dp_load_tlut(UNUSED uint8_t tile, uint32_t high_index) {
     if (gfx_debug_frame) port_log("  loadtlut addr %p first %02X%02X %02X%02X %02X%02X\n", rdp.palette, rdp.palette[0], rdp.palette[1], rdp.palette[2], rdp.palette[3], rdp.palette[4], rdp.palette[5]);
 }
 
+/* TMEM is 4 KB: a load fills at most what lies past the load tile's TMEM address (the RDP wraps the rest to
+ * the start of TMEM). An oversized LoadBlock / LoadTile (or LoadTile's lrs < uls, which wrapped the size to
+ * gigabytes) is cut there, so no import or hash reads more than TMEM could hold. */
+static inline uint32_t gfx_tmem_room(uint8_t tile, uint32_t size_bytes) {
+    const uint32_t room = 4096 - ((uint32_t) rdp.tile_tmem[tile & 7] & 0x1FF) * 8;
+    return size_bytes > room ? room : size_bytes;
+}
+
 static void gfx_dp_load_block(uint8_t tile, UNUSED uint32_t uls, UNUSED uint32_t ult, uint32_t lrs, uint32_t dxt) {
     tri_state.valid = false;
     if (gfx_census_mode()) { /* test only: see gfx_cc_census */
@@ -4674,6 +4695,7 @@ static void gfx_dp_load_block(uint8_t tile, UNUSED uint32_t uls, UNUSED uint32_t
             break;
     }
     uint32_t size_bytes = (lrs + 1) << word_size_shift;
+    size_bytes = gfx_tmem_room(tile, size_bytes);
     rdp.loaded_texture[rdp.texture_to_load.tile_number].size_bytes = size_bytes;
     SUPPORT_CHECK(size_bytes <= 4096);
     rdp.loaded_texture[rdp.texture_to_load.tile_number].addr = rdp.texture_to_load.addr;
@@ -4715,6 +4737,7 @@ static void gfx_dp_load_tile(uint8_t tile, uint32_t uls, uint32_t ult, uint32_t 
     }
 
     uint32_t size_bytes = ((((lrs - uls) >> G_TEXTURE_IMAGE_FRAC) + 1) * (((lrt - ult) >> G_TEXTURE_IMAGE_FRAC) + 1)) << word_size_shift;
+    size_bytes = gfx_tmem_room(tile, size_bytes);
     rdp.loaded_texture[rdp.texture_to_load.tile_number].size_bytes = size_bytes;
 
     SUPPORT_CHECK(size_bytes <= 4096);
@@ -5166,6 +5189,22 @@ void gfx_debug_flush_texture_cache(void) {
 extern void port_log(const char* fmt, ...);
 static uint32_t gfx_cmd_budget;
 
+/* gSPDisplayList calls nest as deep as the microcode's display-list stack: 18 in F3DEX2, 10 in F3D/F3DEX.
+ * A deeper call is skipped, once logged (the RSP would push its return address past the stack, over DMEM;
+ * here unbounded recursion ran the C stack out before the command budget could end the frame). */
+#ifdef F3DEX_GBI_2
+#define GFX_DL_STACK_DEPTH 18
+#else
+#define GFX_DL_STACK_DEPTH 10
+#endif
+static int gfx_dl_depth;
+static int gfx_dl_call_ok(uintptr_t w1) {
+    static int logged;
+    if (gfx_dl_depth < GFX_DL_STACK_DEPTH) return 1;
+    if (!logged) { logged = 1; port_log("gfx: display list call %08X past the %d-deep call stack skipped\n", (unsigned) w1, GFX_DL_STACK_DEPTH); }
+    return 0;
+}
+
 static void gfx_run_dl(Gfx* cmd) {
     for (;;) {
         uint32_t opcode = cmd->words.w0 >> 24;
@@ -5280,7 +5319,11 @@ static void gfx_run_dl(Gfx* cmd) {
                 }
                 if (C0(16, 1) == 0) {
                     // Push return address
-                    gfx_run_dl((Gfx *)seg_addr(cmd->words.w1));
+                    if (gfx_dl_call_ok(cmd->words.w1)) {
+                        gfx_dl_depth++;
+                        gfx_run_dl((Gfx *)seg_addr(cmd->words.w1));
+                        gfx_dl_depth--;
+                    }
                 } else {
                     cmd = (Gfx *)seg_addr(cmd->words.w1);
                     --cmd; // increase after break
