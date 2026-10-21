@@ -3,6 +3,30 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## 1.3.0 (all twelve games rebuilt)
+
+Every game is rebuilt: Majora's Mask 1.0.3, Harvest Moon 64 1.0.1, Perfect Dark 1.0.5, Ocarina of Time 1.1.5, and
+1.1.4 for the other eight.
+
+- All twelve games: your ROM can go anywhere on the SD card, under any name. Each game looks in its own folder
+  (`App/<Game>/`) first, then in `Roms/` and its folders, then anywhere on the card up to two folders deep. Any .z64,
+  .v64 or .n64 dump in any byte order (and .bin/.rom where a game took them before). Each candidate's header and
+  SHA-1 are checked; a wrong version, another game's ROM or a damaged dump is passed over and the search goes on, and
+  a game's own data files are never taken for a ROM. The path that worked is remembered (`data/rom_path.txt`). With
+  no ROM on the card, the screen says so and where to put it. The same search code in every game
+  (`miyoo_romfind.h`).
+- Harvest Moon 64: a data file left by an older test build (`data/hm64-pack.bin`) could be taken for the ROM and
+  stop the first start; the game's own files are now never candidates.
+- The eleven games other than Majora's Mask: the renderer handles the RSP's edge cases as the RSP does (Majora's Mask
+  had these in 1.0.1 and 1.0.2): a matrix pop never removes the last matrix; display-list calls nest at most 10 deep
+  (F3D/F3DEX) or 18 (F3DEX2); the light count, triangle indices, vertex loads and texture loads stay within their
+  buffers and TMEM. The picture is unchanged (the same frames as 1.2.2 under test).
+- The ten games other than Majora's Mask and Harvest Moon 64: on a Mini v4 / Flip (752x560) the in-game MENU fills
+  the screen (the last game frame, dimmed, behind the menu box) instead of a 640x480 box on black. 640x480 unchanged.
+- Each game honours its own `<GAME>_ROTATE=0` (MinUI), checked in all twelve executables.
+- Save states (RESUME GAME) from 1.2.x do not load in the rebuilt games: they are kept as `.rejected`. In-game saves
+  carry over.
+
 ## 1.2.2 (Majora's Mask 1.0.2 beta)
 
 A Majora's Mask fix; the other eleven games are exactly the 1.2.1 zips.
