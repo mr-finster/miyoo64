@@ -110,6 +110,33 @@ def main():
             relocs.append(r_offset - sec['addr'])
     relocs.sort()
 
+    # A pointer from the region to code or data outside it holds that target's address in THIS (progbits) link. The
+    # two links lay the image out the same section by section, but not always at the same addresses: the progbits
+    # link's extra LOAD segment adds a program header, so everything before the region can sit 0x20 later than in
+    # the shipped link (1.3.0: every code pointer of the game-mode tables off by 0x20, a crash at the 4th frame).
+    # Each such word is moved into the shipped link's section of the same name (same size, or the links differ).
+    data = bytearray(data)
+    moved = 0
+    outside = [s for s in secs if s['addr'] and s['size'] and s['sname'] != SECTION and (s['flags'] & 2)]
+    for r in relocs:
+        (v,) = struct.unpack_from('<I', data, r)
+        if sec['addr'] <= v < sec['addr'] + sec['size']:
+            continue
+        ps = next((s for s in outside if s['addr'] <= v < s['addr'] + s['size']), None)
+        if ps is None:
+            ps = next((s for s in outside if v == s['addr'] + s['size']), None)  # one past a section's end
+        if ps is None:
+            continue
+        ns = nbyname.get(ps['sname'])
+        if ns is None or ns['size'] != ps['size']:
+            sys.exit(f'layout mismatch: section {ps["sname"].decode()} differs between the two links')
+        if ns['addr'] != ps['addr']:
+            struct.pack_into('<I', data, r, v - ps['addr'] + ns['addr'])
+            moved += 1
+    data = bytes(data)
+    if moved:
+        print(f'{a.o}: {moved} pointers out of the region moved to the shipped link\'s addresses')
+
     # Extent: up to the next symbol (covers unsized data). But where a symbol's
     # declared size ends early and non-zero bytes follow, those bytes are data
     # with no name of their own -- the linker's merged string pool (Goddard's
