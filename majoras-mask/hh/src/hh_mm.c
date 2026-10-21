@@ -174,8 +174,7 @@ static void HhPack_Read(void* ram, uintptr_t vrom, size_t size) {
     {   /* every DMA lands in game memory: anything else is a bad pointer (logged, the first few, and dropped) */
         static int sBad;
         const uintptr_t a = (uintptr_t)ram;
-        if (!((a >= (uintptr_t)__gamebss_start && a + size <= (uintptr_t)__gamebss_end) ||
-              (a >= (uintptr_t)__gamedata_start && a + size <= (uintptr_t)__gamedata_end))) {
+        if (!HhMm_InGameMem(ram, size)) { /* 1.0.1 sweep: overflow-safe (a garbage size wrapped a + size round) */
             if (sBad++ < 20) {
                 port_log_always("mm: DMA to %p (vrom %08x size %x) outside game memory, from %p; dropped\n", ram,
                                 (unsigned)vrom, (unsigned)size, __builtin_return_address(0));
@@ -189,6 +188,29 @@ static void HhPack_Read(void* ram, uintptr_t vrom, size_t size) {
         return;
     }
     memcpy(ram, sPack + vrom, size);
+}
+
+/* gfx_pc.c's RSP robustness: an address the renderer may read: the executable's own image and the heap after it
+ * (the game's .data/.bss with every heap and buffer, the port's), or the data pack's mapping. */
+int port_ptr_ok(const void* p, size_t n) {
+    extern char __executable_start[];
+    static uintptr_t sBrk;
+    const uintptr_t a = (uintptr_t)p;
+    if (a >= (uintptr_t)sPack && a - (uintptr_t)sPack <= sPackSize && n <= sPackSize - (a - (uintptr_t)sPack)) return 1;
+    if (a < (uintptr_t)__executable_start || a + n < a) return 0;
+    if (a + n <= sBrk) return 1;
+    {   /* the current program break (brk(0), a raw system call: no GOT room for sbrk) */
+        register long r0 __asm__("r0") = 0;
+        register long r7 __asm__("r7") = 45;
+        __asm__ volatile("svc #0" : "+r"(r0) : "r"(r7) : "memory");
+        sBrk = (uintptr_t)r0;
+    }
+    if (a + n <= sBrk) return 1;
+    {
+        static int sBad;
+        if (sBad++ < 8) port_log_always("gfx: address %p (%u bytes) outside the game's memory: dropped\n", p, (unsigned)n);
+    }
+    return 0;
 }
 
 const void* HhPack_Ptr(uintptr_t vrom) {

@@ -254,6 +254,70 @@ index 2bcb8f6..78cdfe6 100644
  
  
  /**
+diff --git a/src/audio/lib/effects.c b/src/audio/lib/effects.c
+index a1dde23..bd4596e 100644
+--- a/src/audio/lib/effects.c
++++ b/src/audio/lib/effects.c
+@@ -255,6 +255,32 @@ void AudioEffects_InitAdsr(AdsrState* adsr, EnvelopePoint* envelope, s16* volOut
+ /**
+  * @return volumeScale
+  */
++#ifdef TARGET_HANDHELD
++/* The handheld build: soundfont envelopes are converted to the host's byte order with the fonts, but an envelope a
++ * sequence's script points at (the "env" command: seqplayer.c, layer and channel) lies in the sequence's own data,
++ * which stays big-endian. Read those points swapped. Without this every such envelope had its delays and levels
++ * byte-swapped: MM 1.0.0/1.0.1's missing or near-silent sound effects (the fairies' whoosh in the intro, Skull Kid). */
++static s16 AudioEffects_EnvS16(AdsrState* adsr, s16 v) {
++    const u8* p = (const u8*)adsr->envelope;
++    const AudioAllocPool* a = &gAudioCtx.seqCache.persistent.pool;
++    const AudioAllocPool* b = &gAudioCtx.seqCache.temporary.pool;
++    s32 i;
++    s32 inSeq = (p >= a->startAddr && p < a->startAddr + a->size) || (p >= b->startAddr && p < b->startAddr + b->size);
++    for (i = 0; !inSeq && i < ARRAY_COUNT(gAudioCtx.permanentEntries); i++) { /* seq 0 (the sound effects) is permanent */
++        const AudioCacheEntry* e = &gAudioCtx.permanentEntries[i];
++        inSeq = e->tableType == SEQUENCE_TABLE && e->addr != NULL && p >= e->addr && p < e->addr + e->size;
++    }
++    if (inSeq) {
++        u16 r = (u16)v;
++        return (s16)((r << 8) | (r >> 8));
++    }
++    return v;
++}
++#define ADSR_ENV_S16(adsr, v) AudioEffects_EnvS16(adsr, v)
++#else
++#define ADSR_ENV_S16(adsr, v) (v)
++#endif
++
+ f32 AudioEffects_UpdateAdsr(AdsrState* adsr) {
+     u8 status = adsr->action.s.status;
+ 
+@@ -274,7 +300,7 @@ f32 AudioEffects_UpdateAdsr(AdsrState* adsr) {
+         retry:;
+             FALLTHROUGH;
+         case ADSR_STATUS_LOOP:
+-            adsr->delay = adsr->envelope[adsr->envelopeIndex].delay;
++            adsr->delay = ADSR_ENV_S16(adsr, adsr->envelope[adsr->envelopeIndex].delay);
+             switch (adsr->delay) {
+                 case ADSR_DISABLE:
+                     adsr->action.s.status = ADSR_STATUS_DISABLED;
+@@ -285,7 +311,7 @@ f32 AudioEffects_UpdateAdsr(AdsrState* adsr) {
+                     break;
+ 
+                 case ADSR_GOTO:
+-                    adsr->envelopeIndex = adsr->envelope[adsr->envelopeIndex].arg;
++                    adsr->envelopeIndex = ADSR_ENV_S16(adsr, adsr->envelope[adsr->envelopeIndex].arg);
+                     goto retry;
+ 
+                 case ADSR_RESTART:
+@@ -297,7 +323,7 @@ f32 AudioEffects_UpdateAdsr(AdsrState* adsr) {
+                     if (adsr->delay == 0) {
+                         adsr->delay = 1;
+                     }
+-                    adsr->target = adsr->envelope[adsr->envelopeIndex].arg / 32767.0f;
++                    adsr->target = ADSR_ENV_S16(adsr, adsr->envelope[adsr->envelopeIndex].arg) / 32767.0f;
+                     adsr->target = SQ(adsr->target);
+                     adsr->velocity = (adsr->target - adsr->current) / adsr->delay;
+                     adsr->action.s.status = ADSR_STATUS_FADE;
 diff --git a/src/audio/lib/heap.c b/src/audio/lib/heap.c
 index ab477a0..24558e4 100644
 --- a/src/audio/lib/heap.c

@@ -2786,6 +2786,10 @@ static void gfx_sp_vertex(size_t n_vertices, size_t dest_index, const Vtx *verti
 #ifdef PORT_EXP_NOVTX
     return;
 #endif
+    /* RSP robustness (1.0.1 sweep): a load that starts or runs past the vertex buffer (a bad count, or the G_VTX
+     * end below the count: dest wraps) is cut to the buffer instead of writing past loaded_vertices */
+    if (dest_index >= MAX_VERTICES || n_vertices == 0) return;
+    if (n_vertices > MAX_VERTICES - dest_index) n_vertices = MAX_VERTICES - dest_index;
     float temp_vec[4] __attribute__((aligned(16)));
     float proj_vec[4] __attribute__((aligned(16)));
     float view_vec[4] __attribute__((aligned(16)));
@@ -3264,7 +3268,8 @@ static inline uint32_t vtx_clip_flags(float x, float y, float z, float w, float 
 
 static __attribute__((noinline)) void gfx_sp_vertex_v2(size_t n_vertices, size_t dest_index, const Vtx *vertices) {
     float pv[MAX_VERTICES][8] __attribute__((aligned(16))); /* proj (clip) x y z w, view x y z w */
-    if (n_vertices == 0) return;
+    if (n_vertices == 0 || dest_index >= MAX_VERTICES) return; /* RSP robustness, as gfx_sp_vertex */
+    if (n_vertices > MAX_VERTICES - dest_index) n_vertices = MAX_VERTICES - dest_index;
     if (n_vertices > MAX_VERTICES) n_vertices = MAX_VERTICES; /* pv's size; the old loop wrote past
                                                              * loaded_vertices too: F3DEX2 decodes <= 127 */
     {
@@ -4582,6 +4587,9 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
 #ifdef PORT_PROFILE_DL
     uint32_t _pt0 = port_time_us();
 #endif
+    if (vtx1_idx >= MAX_VERTICES || vtx2_idx >= MAX_VERTICES || vtx3_idx >= MAX_VERTICES) {
+        return; /* RSP robustness: an index past the vertex buffer (F3DEX2 decodes up to 127) draws nothing */
+    }
     struct LoadedVertex *v1 = &rsp.loaded_vertices[vtx1_idx];
     struct LoadedVertex *v2 = &rsp.loaded_vertices[vtx2_idx];
     struct LoadedVertex *v3 = &rsp.loaded_vertices[vtx3_idx];
@@ -6242,6 +6250,13 @@ static void gfx_sp_set_other_mode(uint32_t shift, uint32_t num_bits, uint64_t mo
  * Link's underwater bubbles, En_Fish2) pass host pointers (K0_TO_DL_ADDR). */
 extern void* port_seg_to_ptr(uintptr_t addr);
 
+/* RSP robustness (MM 1.0.2): the RSP's DMA reads whatever RDRAM holds at an address and never faults; the host
+ * does. A display list, vertex, matrix, light or texture address that is not in the game's memory (a stale or
+ * garbage pointer the game hands over, e.g. MM's SPOT00 cutscene after the telescope at dawn) is dropped instead.
+ * port_ptr_ok (hh_mm.c) knows the ranges; without it every address passes. */
+int port_ptr_ok(const void *p, size_t n) __attribute__((weak));
+int port_ptr_ok(const void *p, size_t n) { (void) p; (void) n; return 1; }
+static inline void *seg_ok(void *p, size_t n) { return port_ptr_ok(p, n) ? p : NULL; }
 static void *seg_addr(uintptr_t w1) {
     int depth;
 
@@ -6490,7 +6505,7 @@ static void gfx_run_dl(Gfx* cmd) {
 #ifdef F3DEX_GBI_2
                 gfx_sp_matrix(C0(0, 8) ^ G_MTX_PUSH, (const int32_t *) gfx_mtx_addr(cmd->words.w1));
 #else
-                gfx_sp_matrix(C0(16, 8), (const int32_t *) gfx_mtx_addr(cmd->words.w1));
+                if (port_ptr_ok(gfx_mtx_addr(cmd->words.w1), 64)) gfx_sp_matrix(C0(16, 8), (const int32_t *) gfx_mtx_addr(cmd->words.w1));
 #endif
                 break;
             case (uint8_t)G_POPMTX:
@@ -6502,7 +6517,7 @@ static void gfx_run_dl(Gfx* cmd) {
                 break;
             case G_MOVEMEM:
 #ifdef F3DEX_GBI_2
-                gfx_sp_movemem(C0(0, 8), C0(8, 8) * 8, seg_addr(cmd->words.w1));
+                if (port_ptr_ok(seg_addr(cmd->words.w1), 8)) gfx_sp_movemem(C0(0, 8), C0(8, 8) * 8, seg_addr(cmd->words.w1));
 #else
                 gfx_sp_movemem(C0(16, 8), 0, seg_addr(cmd->words.w1));
 #endif
@@ -6529,6 +6544,7 @@ static void gfx_run_dl(Gfx* cmd) {
             case G_VTX:
 #ifdef F3DEX_GBI_2
 #if !defined(TARGET_PSP) && !defined(PORT_GE_CULL) && !defined(PORT_GE_TL)
+                if (seg_ok(seg_addr(cmd->words.w1), C0(12, 8) * sizeof(Vtx)) == NULL) break;
                 if (gfx_vtxfast_on() && C0(12, 8) <= MAX_VERTICES) {
                     gfx_sp_vertex_v2(C0(12, 8), C0(1, 7) - C0(12, 8), seg_addr(cmd->words.w1));
                     break;
@@ -6574,7 +6590,7 @@ static void gfx_run_dl(Gfx* cmd) {
                 break;
             }
             case G_DL:
-                if ((uintptr_t)seg_addr(cmd->words.w1) < PORT_REAL_PTR_MIN) {
+                if ((uintptr_t)seg_addr(cmd->words.w1) < PORT_REAL_PTR_MIN || !port_ptr_ok(seg_addr(cmd->words.w1), 8)) {
                     gfx_log_unresolved("G_DL", cmd->words.w1);
                     if (C0(16, 1) != 0) {
                         return; /* a branch to nowhere ends this list */
@@ -6582,8 +6598,17 @@ static void gfx_run_dl(Gfx* cmd) {
                     break;
                 }
                 if (C0(16, 1) == 0) {
-                    // Push return address
+                    // Push return address. RSP robustness: F3DEX2's display list stack holds 18 return addresses; a
+                    // deeper (or self-calling) list is cut there instead of running the host stack out.
+                    static int sDlDepth SAVESTATE_EXCLUDE;
+                    if (sDlDepth >= 18) {
+                        static int sWarn SAVESTATE_EXCLUDE;
+                        if (sWarn++ < 4) port_log("gfx_run_dl: display list nesting past 18 at %p: call skipped\n", cmd);
+                        break;
+                    }
+                    sDlDepth++;
                     gfx_run_dl((Gfx *)seg_addr(cmd->words.w1));
+                    sDlDepth--;
                 } else {
                     cmd = (Gfx *)seg_addr(cmd->words.w1);
                     --cmd; // increase after break
@@ -6709,7 +6734,7 @@ static void gfx_run_dl(Gfx* cmd) {
             
             // RDP Commands:
             case G_SETTIMG:
-                gfx_dp_set_texture_image(C0(21, 3), C0(19, 2), C0(0, 10), seg_addr(cmd->words.w1));
+                gfx_dp_set_texture_image(C0(21, 3), C0(19, 2), C0(0, 10), seg_ok(seg_addr(cmd->words.w1), 8));
                 break;
             case G_LOADBLOCK:
                 gfx_dp_load_block(C1(24, 3), C0(12, 12), C0(0, 12), C1(12, 12), C1(0, 12));

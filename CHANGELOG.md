@@ -3,6 +3,18 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## 1.2.2 (Majora's Mask 1.0.2 beta)
+
+A Majora's Mask fix; the other eleven games are exactly the 1.2.1 zips.
+
+- Majora's Mask: sound effects that were missing or barely audible now play: the fairies' whoosh at the start,
+  Skull Kid's noises and others. Their volume envelopes sit in the sound-effect sequence's own data, which the
+  game reads in the N64's byte order; the port read them in the Mini's, so the sound rose far too slowly.
+- Majora's Mask: the renderer now copes with what the N64's graphics chip shrugs off instead of crashing: vertex,
+  display list, matrix and texture addresses outside the game's memory, vertex indices past the buffer,
+  display lists nested deeper than the N64 allows, and a data read with a broken size.
+- Save states and the auto save from 1.0.1, 1.0.0 and the test builds load; the game data is not built again.
+
 ## 1.2.1 (Majora's Mask 1.0.1 beta)
 
 A Majora's Mask hotfix; the other eleven games are exactly the 1.2.0 zips.
