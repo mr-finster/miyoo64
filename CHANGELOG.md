@@ -24,6 +24,10 @@ Every game is rebuilt: Majora's Mask 1.0.3, Harvest Moon 64 1.0.1, Perfect Dark 
 - The ten games other than Majora's Mask and Harvest Moon 64: on a Mini v4 / Flip (752x560) the in-game MENU fills
   the screen (the last game frame, dimmed, behind the menu box) instead of a 640x480 box on black. 640x480 unchanged.
 - Each game honours its own `<GAME>_ROTATE=0` (MinUI), checked in all twelve executables.
+- Majora's Mask: on the Mini Plus the data pack is now read ahead at every start (1.0.1 and 1.0.2 asked the kernel
+  with a call the Plus's kernel doesn't have, so nothing was read ahead there); scenes and sounds load without
+  waiting on the SD card. The opening and Clock Town were checked against an N64 recording again:
+  no sound effect missing.
 - Save states (RESUME GAME) from 1.2.x do not load in the rebuilt games: they are kept as `.rejected`. In-game saves
   carry over.
 

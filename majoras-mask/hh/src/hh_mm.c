@@ -152,7 +152,29 @@ static int HhPack_Open(void) {
                     register long r2 __asm__("r2") = 3; /* MADV_WILLNEED */
                     register long r7 __asm__("r7") = 220;
                     __asm__ volatile("svc #0" : "+r"(r0) : "r"(r1), "r"(r2), "r"(r7) : "memory");
-                    port_log_always("mm: data pack read ahead (madvise %ld)\n", r0);
+                    if (getenv("MM_NOMADVISE") != NULL) r0 = -38; /* tests: the Plus's answer */
+                    if (r0 != 0) {
+                        /* 1.0.3: the Mini Plus's kernel answers madvise with ENOSYS (-38: built without
+                         * CONFIG_ADVISE_SYSCALLS), so 1.0.1/1.0.2 read nothing ahead there. readahead(2) is always
+                         * there: the file's pages read into the page cache in large requests (fd, pad, offset lo/hi,
+                         * count: the ARM EABI pairs the 64-bit offset). */
+                        const int rfd = open(cands[i], O_RDONLY);
+                        long ra = -1;
+                        if (rfd >= 0) {
+                            register long q0 __asm__("r0") = rfd;
+                            register long q1 __asm__("r1") = 0;
+                            register long q2 __asm__("r2") = 0;
+                            register long q3 __asm__("r3") = 0;
+                            register long q4 __asm__("r4") = (long)sPackSize;
+                            register long q7 __asm__("r7") = 225; /* __NR_readahead */
+                            __asm__ volatile("svc #0" : "+r"(q0) : "r"(q1), "r"(q2), "r"(q3), "r"(q4), "r"(q7) : "memory");
+                            ra = q0;
+                            close(rfd);
+                        }
+                        port_log_always("mm: data pack read ahead (madvise %ld, readahead %ld)\n", r0, ra);
+                    } else {
+                        port_log_always("mm: data pack read ahead (madvise 0)\n");
+                    }
                 }
                 return 1;
             }
