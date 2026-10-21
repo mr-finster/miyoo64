@@ -7,8 +7,9 @@
  * verbatim copy of that region taken from the player's own ROM:
  *
  *   1. dkr_assets.bin in the save dir, written by an earlier first start;
- *   2. otherwise find the ROM (DKR_ROM=<path>, rom.z64 in the game's folder, exe dir,
- *      save dir, the SD card),
+ *   2. otherwise find the ROM (DKR_ROM=<path>; else miyoo_romfind.h: the game's folder, the save
+ *      dir, the path that worked last time, Roms/, the card two folders deep; a file that fails
+ *      the checks is passed over),
  *      in any byte order, check its SHA-1 is Diddy Kong Racing US 1.1, copy the
  *      region out (tmp, fsync, rename) and use it.
  *
@@ -27,6 +28,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "port.h"
+#include "miyoo_romfind.h"
 
 #define CACHE_NAME "dkr_assets.bin"
 #if defined(MIYOO)
@@ -175,91 +177,27 @@ static u8 *rom_load(const char *path, char *err, u32 errlen) {
     return rom;
 }
 
-static int rom_ext_ok(const char *n) {
-    const char *dot = strrchr(n, '.');
-    char e[4];
-    size_t i, l;
-    if (!dot || dot == n || (l = strlen(dot + 1)) < 2 || l > 3) return 0;
-    for (i = 0; i <= l; i++) e[i] = (char) (dot[1 + i] ? (dot[1 + i] | 0x20) : 0);
-    return !strcmp(e, "z64") || !strcmp(e, "n64") || !strcmp(e, "v64") ||   /* the three byte orders */
-           !strcmp(e, "rom") || !strcmp(e, "bin") || !strcmp(e, "u64") ||   /* generic cart images */
-           !strcmp(e, "usa") || !strcmp(e, "u1");                           /* region-suffixed dumps */
-}
-
-static u8 *scan_dir(const char *dir, char *path_out, u32 outlen, char *why, u32 whylen) {
-    DIR *d = opendir(dir);
-    struct dirent *ent;
-    if (!d) return NULL;
-    while ((ent = readdir(d)) != NULL) {
-        const char *n = ent->d_name;
-        char path[512], err[96];
-        u8 *rom;
-        if (n[0] == '.' || !rom_ext_ok(n) || !strcmp(n, CACHE_NAME)) continue;
-        snprintf(path, sizeof(path), "%s%s%s", dir, dir[strlen(dir) - 1] == '/' ? "" : "/", n);
-        rom = rom_load(path, err, sizeof(err));
-        if (rom) { closedir(d); snprintf(path_out, outlen, "%s", path); return rom; }
-        if (sRomIsDkr) snprintf(why, whylen, "%s: %s", n, err); /* B9: the screen's reason (any other file: the log only) */
-        port_log_always("assets: skipping %s: %s\n", path, err);
-    }
-    closedir(d);
-    return NULL;
-}
-
-static u8 *scan_tree(const char *root, int depth, char *out, u32 outlen, char *why, u32 whylen) {
-    DIR *d;
-    struct dirent *ent;
-    u8 *rom = scan_dir(root, out, outlen, why, whylen);
-    if (rom || depth <= 0) return rom;
-    d = opendir(root);
-    if (!d) return NULL;
-    while ((ent = readdir(d)) != NULL) {
-        char sub[512];
-        struct stat st;
-        size_t rl = strlen(root);
-        if (ent->d_name[0] == '.') continue;
-        snprintf(sub, sizeof(sub), "%s%s%s/", root, (rl && root[rl - 1] == '/') ? "" : "/", ent->d_name);
-        if (stat(sub, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
-        if ((rom = scan_tree(sub, depth - 1, out, outlen, why, whylen)) != NULL) { closedir(d); return rom; }
-    }
-    closedir(d);
-    return NULL;
-}
-
-/* rom.z64 in the game's folder (a zip packed with the player's ROM): the file is next to the executable -- found from
- * /proc/self/exe, not argv[0] (a launcher may exec the bare name), so it doesn't depend on the cwd. Only read
- * ("rb", as a card ROM); dkr_assets.bin still goes to the save dir and records no ROM path. Not there:
- * silent, and the search is the one before. Refused by rom_load: logged like a card file, then the card
- * search (which, with the cwd on the mount, tries it once more as ./rom.z64, as it did before). */
-#define LOCAL_ROM_NAME "rom.z64"
-static u8 *local_rom(char *out, u32 outlen, char *why, u32 whylen) {
-    char path[512], err[96];
-    struct stat st;
-    const ssize_t n = readlink("/proc/self/exe", path, sizeof(path) - 1);
-    char *s;
-    u8 *rom;
-    if (n <= 0 || n >= (ssize_t) sizeof(path) - 1) return NULL;
-    path[n] = 0;
-    s = strrchr(path, '/');
-    if (!s || (size_t) (s + 1 - path) + sizeof(LOCAL_ROM_NAME) > sizeof(path)) return NULL;
-    memcpy(s + 1, LOCAL_ROM_NAME, sizeof(LOCAL_ROM_NAME));
-    if (stat(path, &st) != 0) return NULL;
-    if ((rom = rom_load(path, err, sizeof(err))) != NULL) {
-        snprintf(out, outlen, "%s", path);
-#if defined(MIYOO)
-        port_log_always("rom: %s (in the game's folder)\n", path);
-#else
-        port_log_always("rom: %s (in the game's folder)\n", path);
-#endif
-        return rom;
-    }
-    if (sRomIsDkr) snprintf(why, whylen, "%s: %s", LOCAL_ROM_NAME, err); /* B9, as scan_dir */
+/* The search's candidate (miyoo_romfind.h): rom_load (the header, the size, the whole file's SHA-1); the ROM read in
+ * stays for the copy. One that fails is passed over and the search goes on; `why` keeps the last Diddy Kong Racing
+ * dump refused (B9: any other file is only logged). */
+struct RomTry { u8 *rom; char *why; u32 whylen; };
+static int rom_try(const char *path, void *ctx) {
+    struct RomTry *t = (struct RomTry *) ctx;
+    char err[96];
+    if ((t->rom = rom_load(path, err, sizeof(err))) != NULL) return 1;
+    if (sRomIsDkr) snprintf(t->why, t->whylen, "%s: %s", mrf_base(path), err);
     port_log_always("assets: skipping %s: %s\n", path, err);
-    return NULL;
+    return 0;
 }
 
-/* DKR_ROM=<path> wins; then rom.z64 in the game's folder; then the card search as before. */
+/* DKR_ROM=<path> wins; else miyoo_romfind.h's search: the game's folder (rom.z64 or any name), the save dir, the
+ * path that worked last time, Roms/ and its folders, the card two folders deep. */
 static u8 *find_rom(char *out, u32 outlen, char *why, u32 whylen) {
+    static const char *const own[] = { CACHE_NAME, "eeprom", "savestate", NULL };
+    static MrfSearch s; /* .bss: PATH_MAX buffers */
+    struct RomTry t = { NULL, why, whylen };
     const char *env = getenv("DKR_ROM");
+    char exe[512];
     u8 *rom;
     why[0] = 0;
     if (env && env[0]) {
@@ -268,19 +206,18 @@ static u8 *find_rom(char *out, u32 outlen, char *why, u32 whylen) {
         snprintf(why, whylen, "DKR_ROM: %s", err);
         return NULL;
     }
-    if ((rom = local_rom(out, outlen, why, whylen))) return rom;
-    if ((rom = scan_dir(port_eboot_dir(), out, outlen, why, whylen))) return rom;
-    if ((rom = scan_dir(port_save_dir(), out, outlen, why, whylen))) return rom;
-#if defined(TARGET_PC)
-    if ((rom = scan_tree(".", 2, out, outlen, why, whylen))) return rom;
-#elif defined(MIYOO)
-    if ((rom = scan_tree(SD_HOME, 1, out, outlen, why, whylen))) return rom; /* the usual place first */
-    if ((rom = scan_tree(SD_CARD, 2, out, outlen, why, whylen))) return rom;
-#else
-    if ((rom = scan_tree(SD_CARD, 2, out, outlen, why, whylen))) return rom;
-    if ((rom = scan_tree(SD_HOME, 2, out, outlen, why, whylen))) return rom;
-#endif
-    return NULL;
+    memset(&s, 0, sizeof(s));
+    s.app_dir = mrf_exe_dir(exe, sizeof(exe));
+    if (!s.app_dir[0]) s.app_dir = port_eboot_dir();
+    s.save_dir = port_save_dir();
+    s.own = own;
+    s.bin_ok = 1;
+    s.root_env = "DKR_CARD_ROOT";
+    s.try_rom = rom_try;
+    s.ctx = &t;
+    if (!mrf_find(&s)) return NULL;
+    snprintf(out, outlen, "%s", s.found);
+    return t.rom;
 }
 
 /* ------------------------------------------------------------------ cache */
@@ -550,7 +487,7 @@ void port_assets_load(void) {
             if (reason[0] >= 'a' && reason[0] <= 'z') reason[0] = (char) (reason[0] - 'a' + 'A');
             fail_screen("No usable Diddy Kong Racing ROM.", reason, "It must be the US 1.1 (Rev 1) cart.");
         }
-        fail_screen("No Diddy Kong Racing ROM found.", "Copy your US 1.1 .z64/.n64/.v64", "to the SD card and start again.");
+        fail_screen("No Diddy Kong Racing ROM found.", "Put your USA 1.1 ROM (.z64/.v64/.n64)", MRF_NOT_FOUND_2);
     }
     {
         const char *base = strrchr(rom_path, '/');
