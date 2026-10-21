@@ -16,9 +16,9 @@
  * rom_check.ok); after that only its size, as perfectdark.z64's, then romdata.c's header checks.
  * Missing, or failing the check: perfectdark.z64, else the card.
  *
- * The ROM finder looks for a Perfect Dark dump (.z64/.n64/.v64, any byte order) anywhere up to two
- * folders below the card root (/mnt/SDCARD; PD_CARD_ROOT=<dir> for tests), the save folder passed
- * over, and accepts only the one whose SHA-1 in z64 order is Perfect Dark (USA) (Rev 1)'s, the
+ * The ROM finder (miyoo_romfind.h: the game's folder, the path that worked last time, Roms/ and its
+ * folders, then the card two folders deep; /mnt/SDCARD, PD_CARD_ROOT=<dir> for tests) looks for a
+ * Perfect Dark dump (.z64/.n64/.v64, any name, any byte order), the copy never, and accepts only the one whose SHA-1 in z64 order is Perfect Dark (USA) (Rev 1)'s, the
  * version this port is built from. It is written to perfectdark.z64 in z64 order (.tmp, fsync,
  * rename, the folder's fsync): the game maps the ROM for the whole run, so it must be a z64 file
  * on the card, never a copy swapped in memory.
@@ -53,6 +53,7 @@
 #include <unistd.h>
 #include "fs.h"
 #include "pd_romscreen.h"
+#include "miyoo_romfind.h"
 
 #define PD_ROM_SIZE 33554432u /* romdata.c ROMDATA_ROM_SIZE */
 #define PD_CARD_ROOT "/mnt/SDCARD"
@@ -235,19 +236,6 @@ static void rom_to_z64(uint8_t *p, uint32_t n, int order)
             p[i] = p[i + 3]; p[i + 1] = p[i + 2]; p[i + 2] = t1; p[i + 3] = t0;
         }
     }
-}
-
-static int is_rom_name(const char *name)
-{
-    const char *dot = strrchr(name, '.');
-    char ext[5];
-    int i;
-    if (dot == NULL || strlen(dot) != 4)
-        return 0;
-    for (i = 0; i < 4; i++)
-        ext[i] = (char)tolower((unsigned char)dot[i]);
-    ext[4] = 0;
-    return strcmp(ext, ".z64") == 0 || strcmp(ext, ".n64") == 0 || strcmp(ext, ".v64") == 0;
 }
 
 static const char *base_name(const char *path)
@@ -479,30 +467,23 @@ static int card_try(const char *path, const char *out)
     return 1;
 }
 
-static int card_search(const char *dir, int depth, const char *skip, const char *out)
+/* The card search (miyoo_romfind.h): the game's folder (any name but the ROMs card_paths names, checked already), the
+ * save folder (perfectdark.z64, the copy, never), the path that worked last time, Roms/ and its folders, then the
+ * card two folders deep. Each candidate goes through card_try: the header, the SHA-1, the copy; one that fails is
+ * passed over and the search goes on. */
+static int card_mrf_try(const char *path, void *out) { return card_try(path, (const char *)out); }
+static int card_search(const char *app, const char *save, const char *out)
 {
-    DIR *d = opendir(dir);
-    struct dirent *e;
-    char path[PATH_MAX], real[PATH_MAX];
-    int found = 0;
-    if (d == NULL)
-        return 0;
-    while (!found && (e = readdir(d)) != NULL) {
-        struct stat st;
-        if (e->d_name[0] == '.')
-            continue;
-        snprintf(path, sizeof(path), "%s/%s", dir, e->d_name);
-        if (stat(path, &st) != 0)
-            continue;
-        if (S_ISDIR(st.st_mode)) {
-            if (depth < 2 && !(realpath(path, real) != NULL && strcmp(real, skip) == 0))
-                found = card_search(path, depth + 1, skip, out);
-        } else if (is_rom_name(e->d_name)) {
-            found = card_try(path, out);
-        }
-    }
-    closedir(d);
-    return found;
+    static const char *const own[] = { PD_LOCAL_ROM, "pd.ntsc-final.z64", PD_COPY, NULL };
+    static MrfSearch s; /* .bss: PATH_MAX buffers */
+    memset(&s, 0, sizeof(s));
+    s.app_dir = app;
+    s.save_dir = save;
+    s.own = own;
+    s.root_env = "PD_CARD_ROOT";
+    s.try_rom = card_mrf_try;
+    s.ctx = (void *)out;
+    return mrf_find(&s);
 }
 
 /* ------------------------------------------------------------------------------------ */
@@ -606,7 +587,7 @@ static const char *card_quick(char *copy, size_t len)
 
 static void card_work(void)
 {
-    char rb[PATH_MAX + 16], ok[PATH_MAX + 16], copy[PATH_MAX + 16], real[PATH_MAX];
+    char rb[PATH_MAX + 16], ok[PATH_MAX + 16], copy[PATH_MAX + 16];
     const char *root = getenv("PD_CARD_ROOT") && getenv("PD_CARD_ROOT")[0] ? getenv("PD_CARD_ROOT") : PD_CARD_ROOT;
     struct stat st;
     int rebuild = 0, i, found;
@@ -657,9 +638,10 @@ static void card_work(void)
     sProg.l1 = kCardL1;
     sProg.l2 = kCardL2;
     card_send(MSG_PROGRESS, 0, "Looking on the SD card", kCardL1, kCardL2, "Looking for your ROM...", kFoot, NULL);
-    if (realpath(sSave, real) == NULL)
-        snprintf(real, sizeof(real), "%s", sSave);
-    found = card_search(root, 0, real, copy);
+    {
+        char app[PATH_MAX];
+        found = card_search(mrf_exe_dir(app, sizeof(app)), sSave, copy);
+    }
     if (!found && rebuild && stat(copy, &st) == 0) {
         /* a rebuild with the dump gone from the card: the copy itself is checked in full */
         const char *why = NULL, *say = NULL;
@@ -672,14 +654,13 @@ static void card_work(void)
         found = 1;
     }
     if (!found) {
-        printf("FATAL: no Perfect Dark (USA) (Rev 1) ROM found. Copy your dump (.z64, .n64 or .v64) to the\n"
-               "card, at most two folders deep (the root, Roms/, Roms/N64/, ...), and start again.\n");
+        printf("FATAL: no Perfect Dark (USA) (Rev 1) ROM found. Copy your dump (.z64, .n64 or .v64) anywhere on the\n"
+               "card (App/PerfectDark/, Roms/ and its folders, or up to two folders deep), and start again.\n");
         if (sReject != NULL)
             card_fail(sRejectName, "This Perfect Dark ROM can't be used.", sReject, "This port needs the USA Rev 1 ROM.");
         if (sLocalReject != NULL)
             card_fail(sLocalName, "This ROM can't be used.", sLocalReject, "Use the USA Rev 1 ROM as rom.z64.");
-        card_fail(NULL, "No Perfect Dark ROM found.", "Copy your USA ROM (.z64/.v64/.n64)",
-                  "to the SD card, up to 2 folders deep.");
+        card_fail(NULL, "No Perfect Dark ROM found.", MRF_NOT_FOUND_1, MRF_NOT_FOUND_2);
     }
     if (rebuild && remove(rb) == 0)
         printf("[card] rebuild: done, %s removed\n", rb);
