@@ -14979,7 +14979,23 @@ void port_dev_save_complete(s32 file) {
     s->keys = 0xFF;
     s->ttAmulet = 4;
     s->wizpigAmulet = 4;
+    {
+        /* DKR_SAVE_COMPLETE=<file>w (tests): the same, but Wizpig 2 not yet raced (issue #1) */
+        extern char *getenv(const char *);
+        const char *e = getenv("DKR_SAVE_COMPLETE");
+        if (e && e[1] == 'w') {
+            s->courseFlagsPtr[ASSET_LEVEL_WIZPIG2] = 0;
+            s->bosses &= ~0x20;
+        }
+    }
     write_save_data(file, s);
+}
+#endif
+
+#if defined(PORT)
+/* DKR_TELEPORT_CHAR=<id> (tests): the player's character for the next level load (enums.h order) */
+void port_dev_set_character(s32 character) {
+    get_settings()->racers[0].character = character;
 }
 #endif
 

@@ -858,6 +858,26 @@ static void run_one_iteration(void) {
         if ((long) sFrame == save_at) savestate_request_save(1);
         if ((long) sFrame == load_at) savestate_request_load(1);
     }
+    {   /* DKR_TELEPORT=<iteration>:<level>[,<iteration>:<level>...] (tests): the game's own
+         * begin_level_teleport() (the Future Fun Land warp) at that iteration, from an adventure
+         * started through the menus, so a hub or a boss loads with the save's real state */
+        static char sTp[256]; static int sTpInit;
+        if (!sTpInit) { const char *e = getenv("DKR_TELEPORT"); if (e) snprintf(sTp, sizeof(sTp), "%s", e); sTpInit = 1; }
+        for (const char *p = sTp; *p;) {
+            char *q;
+            const long at = strtol(p, &q, 10);
+            const long lv = *q == ':' ? strtol(q + 1, &q, 10) : -1;
+            if ((long) sFrame == at && lv >= 0) {
+                extern void begin_level_teleport(s32);
+                port_log_always("TELEPORT %ld -> level %ld\n", at, lv);
+                const char *c = getenv("DKR_TELEPORT_CHAR");
+                if (c && c[0]) { extern void port_dev_set_character(s32); port_dev_set_character((s32) atoi(c)); }
+                begin_level_teleport((s32) lv);
+            }
+            p = *q == ',' ? q + 1 : q;
+            if (q == p && *p) break;
+        }
+    }
     {   /* DKR_SAVEWRITE_AT=<iteration> (tests, statefix A): the game writes every region of its save from
          * RAM on the next frame (thread3_main.c port_dev_mark_all_writes), as the next real save would */
         static long savewrite_at = -2;

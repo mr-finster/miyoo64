@@ -8038,7 +8038,15 @@ UNUSED void func_8001D248(UNUSED s32 arg0, UNUSED s32 arg1, UNUSED s32 arg2) {
  * Presumably intended for level geometry, which supports shading, but never uses it.
  */
 void set_world_shading(f32 ambient, f32 diffuse, s16 angleX, s16 angleY, s16 angleZ) {
+#if defined(PORT)
+    // Port: the ROM writes a whole ShadeProperties (0x30 bytes) at &gWorldShading, over the unused
+    // D_8011AF34 and D_8011AF38[10] that follow it in the N64's bss. Here the linker drops those and
+    // the write ran over gEnvmapPos and D_8011AF68. Its own storage, as the N64's layout gave it.
+    static ShadeProperties sWorldShadingStore;
+    set_shading_properties(&sWorldShadingStore, ambient, diffuse, angleX, angleY, angleZ);
+#else
     set_shading_properties((ShadeProperties *) &gWorldShading, ambient, diffuse, angleX, angleY, angleZ);
+#endif
 }
 
 /**
