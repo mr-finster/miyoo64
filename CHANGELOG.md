@@ -3,6 +3,14 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## 1.3.1 (Majora's Mask 1.0.4 beta)
+
+- Majora's Mask: voices are back (Link's and Deku Link's shouts, the townspeople, the Gorman brothers' laugh, Anju)
+  and so are drums (the Bremen Mask march, drum parts in the music). The sound code refused every drum and every
+  sound effect of the instrument banks as "not loaded yet" because of how memory is laid out on the handheld.
+- Majora's Mask: no more extra eyes on the Keaton Mask and Deku Link; mirrored textures clamped at their edge drew a
+  mirrored copy past it.
+
 ## 1.3.0 (all twelve games rebuilt)
 
 Every game is rebuilt: Majora's Mask 1.0.3, Harvest Moon 64 1.0.1, Perfect Dark 1.0.5, Ocarina of Time 1.1.5, and

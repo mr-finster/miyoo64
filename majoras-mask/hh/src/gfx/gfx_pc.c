@@ -1323,6 +1323,11 @@ static inline uint32_t gfx_mask_period(uint32_t n, uint8_t mask) {
 static inline uint8_t gfx_tile_cm(uint8_t cm, uint8_t mask, uint16_t lo, uint16_t hi) {
     const int extent = ((int) hi - (int) lo + 4) / 4;
     if (mask != 0 && mask < 16 && (cm & G_TX_CLAMP) && extent > (1 << mask) && gfx_tilemask_on()) cm &= (uint8_t) ~G_TX_CLAMP;
+    /* MIRROR|CLAMP with the tile no wider than the mask period: the RDP clamps the coordinate into the tile first,
+     * so the mirror bit (the coordinate's bit `mask`) is never reached: a plain clamp. Imported mirrored (doubled)
+     * and clamped, the UVs past the edge drew the mirrored copy: the Keaton Mask's second pair of eyes, Deku Link's
+     * extra eyes (MM 1.0.3 and earlier; the users' "extra eyes"). */
+    if ((cm & G_TX_CLAMP) && (cm & G_TX_MIRROR) && (mask == 0 || mask >= 16 || extent <= (1 << mask))) cm &= (uint8_t) ~G_TX_MIRROR;
     return cm;
 }
 static inline void gfx_render_tile_cm(void) {
