@@ -3,6 +3,15 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## 1.3.2 (Majora's Mask 1.0.5 beta)
+
+- Majora's Mask: no more slow motion on the Mini Plus and the Mini Flip. The game waits for each frame to be shown, so
+  frame pacing (since 1.0.0) that held frames too long slowed the whole game; the likely cause is a screen driver
+  whose vsync wait lasts longer than one refresh, taken for the refresh itself. The vsync wait now counts only if it
+  measures one refresh of a 50-70 Hz panel three times in a row, and a guard turns the pacing off for the session if it
+  ever holds frames well under the game's rate (`pace: off` in `data/console.log`). `MM_PACE=0` in `launch.sh` is no
+  longer needed.
+
 ## 1.3.1 (Majora's Mask 1.0.4 beta)
 
 - Majora's Mask: voices are back (Link's and Deku Link's shouts, the townspeople, the Gorman brothers' laugh, Anju)

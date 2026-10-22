@@ -57,6 +57,11 @@ static uint32_t sFlipSeen;       /* flips measured for the period */
 static uint32_t sHist[6]; /* 1, 2, 3, 4, 5+, unused */
 static uint32_t sLate, sFrames, sLogT0;
 static uint32_t sLogEvery = 10000000u;
+/* the guard (hh_pace_flipped) */
+static uint32_t sSlotT0;         /* us: the present thread entered the pacing wait */
+static double sGuardDt, sGuardHeld;
+static int sGuardN;
+static int sSimWaits = 1;        /* MM_SIMVSYNC_WAITS: refreshes a simulated vsync wait takes (tests) */
 
 static void pace_init(void) {
     if (sMode >= 0) return;
@@ -71,7 +76,10 @@ static void pace_init(void) {
         sPeriod = sSimPeriod;
         sSimT0 = port_time_us();
         sMode = PACE_SIM;
-        fprintf(stderr, "pace: %s, simulated panel at %.3f Hz (MM_SIMVSYNC)\n", sOn ? "on" : "off", atof(sim));
+        { const char *w = getenv("MM_SIMVSYNC_WAITS"); if (w != NULL && atoi(w) > 1) sSimWaits = atoi(w); }
+        if (sSimWaits > 1) sPeriod = sSimPeriod * sSimWaits; /* what the old startup check measured on such a driver */
+        fprintf(stderr, "pace: %s, simulated panel at %.3f Hz (MM_SIMVSYNC), vsync wait %d refreshes\n", sOn ? "on" : "off",
+                atof(sim), sSimWaits);
         return;
     }
     sFd = open("/dev/fb0", O_RDWR);
@@ -79,18 +87,26 @@ static void pace_init(void) {
         uint32_t arg = 0;
         const uint32_t t0 = port_time_us();
         if (ioctl(sFd, FBIO_WAITFORVSYNC, &arg) == 0) {
-            /* a real wait: two in a row are a refresh apart; one that returns at once waits for nothing */
-            const uint32_t t1 = port_time_us();
-            ioctl(sFd, FBIO_WAITFORVSYNC, &arg);
-            const uint32_t t2 = port_time_us();
-            if (t2 - t1 > 8000 && t2 - t1 < 40000) {
+            /* a real wait: three in a row, each one refresh of a 50-70 Hz panel apart. One that returns at once
+             * waits for nothing; one that takes two refreshes or a timeout (1.0.4 and before took up to 40 ms) would
+             * hold every frame twice as long: slow motion on the Mini Plus and the Flip (MM_PACE=0 fixed it) */
+            uint32_t t[4];
+            int ok = 1;
+            t[0] = port_time_us();
+            for (int i = 1; i < 4; i++) {
+                ioctl(sFd, FBIO_WAITFORVSYNC, &arg);
+                t[i] = port_time_us();
+                if (t[i] - t[i - 1] < 14000 || t[i] - t[i - 1] > 20000) ok = 0;
+            }
+            if (ok) {
                 sMode = PACE_WAIT;
-                sPeriod = (double) (t2 - t1);
-                fprintf(stderr, "pace: %s, FBIO_WAITFORVSYNC works (%.2f ms, then %.2f ms)\n", sOn ? "on" : "off",
-                        (t1 - t0) / 1000.0, (t2 - t1) / 1000.0);
+                sPeriod = (double) (t[3] - t[0]) / 3.0;
+                fprintf(stderr, "pace: %s, FBIO_WAITFORVSYNC works (%.2f ms, then %.2f %.2f %.2f ms)\n", sOn ? "on" : "off",
+                        (t[0] - t0) / 1000.0, (t[1] - t[0]) / 1000.0, (t[2] - t[1]) / 1000.0, (t[3] - t[2]) / 1000.0);
                 return;
             }
-            fprintf(stderr, "pace: FBIO_WAITFORVSYNC returns at once (%.2f ms): not used\n", (t2 - t1) / 1000.0);
+            fprintf(stderr, "pace: FBIO_WAITFORVSYNC not a 14-20 ms refresh (%.2f %.2f %.2f ms): not used\n",
+                    (t[1] - t[0]) / 1000.0, (t[2] - t[1]) / 1000.0, (t[3] - t[2]) / 1000.0);
         }
         close(sFd);
         sFd = -1;
@@ -125,8 +141,11 @@ static uint32_t sim_next(void) {
 /* one refresh: returns its time */
 static uint32_t wait_refresh(void) {
     if (sMode == PACE_SIM) {
-        const uint32_t t = sim_next();
-        wait_until(t);
+        uint32_t t = 0;
+        for (int i = 0; i < sSimWaits; i++) {
+            t = sim_next();
+            wait_until(t);
+        }
         return t;
     }
     if (sMode == PACE_WAIT) {
@@ -150,6 +169,7 @@ void hh_pace_set_divisor(int d) {
 void hh_pace_wait_slot(void) {
     if (!hh_pace_on() || !sHaveFlip) return;
     const int d = sDivisor;
+    sSlotT0 = port_time_us();
     if (sMode == PACE_TIMED) {
         /* the pan waits for the next refresh: issue it in the middle of the refresh before the slot */
         const uint32_t t = sLastFlip + (uint32_t) (((double) d - 0.5) * sPeriod);
@@ -183,7 +203,7 @@ static void pace_log(uint32_t now) {
 void hh_pace_flipped(uint32_t t0, uint32_t t1) {
     pace_init(); /* the histogram (and a simulated panel's wait) with pacing on or off */
     uint32_t t = t1;
-    if (sMode == PACE_SIM) t = wait_refresh(); /* the pan waits for the refresh */
+    if (sMode == PACE_SIM) { t = sim_next(); wait_until(t); } /* the pan waits for the refresh */
     (void) t0;
     if (sHaveFlip) {
         const double dt = (double) (uint32_t) (t - sLastFlip);
@@ -200,6 +220,29 @@ void hh_pace_flipped(uint32_t t0, uint32_t t1) {
         sHist[n >= 5 ? 4 : n == 1 ? 0 : n - 1]++;
         if (n > sDivisor) sLate++;
         sFrames++;
+        if (sOn && sSlotT0 != 0) {
+            /* The guard (1.0.5): the game waits for the present thread, so pacing that holds frames too long slows
+             * the game itself (slow motion on the Mini Plus and the Flip in 1.0.4). Every 30 frames: frames shown
+             * at under 80% of the target rate, with the pacing wait and the flip taking over half a target frame
+             * (a slow render skips the wait, so it can't trip this) or a refresh outside 14-20 ms (the scheduler
+             * paces at divisor x that), and pacing goes off for the session, as MM_PACE=0. The target is a nominal
+             * 16.74 ms refresh, not the measured one, which may be the thing that's wrong. */
+            const double target = sDivisor * 16740.0;
+            sGuardDt += dt;
+            sGuardHeld += (double) (uint32_t) (t - sSlotT0);
+            if (++sGuardN >= 30) {
+                const double mdt = sGuardDt / sGuardN, mheld = sGuardHeld / sGuardN;
+                if (mdt > target * 1.25 && (mheld > target * 0.5 || sPeriod < 14000.0 || sPeriod > 20000.0)) {
+                    sOn = 0;
+                    fprintf(stderr, "pace: off for this session: frames shown every %.1f ms (target %.1f), %.1f ms of it in "
+                            "the pacing wait and the flip; refresh %.3f ms (%s)\n", mdt / 1000.0, target / 1000.0,
+                            mheld / 1000.0, sPeriod / 1000.0,
+                            sMode == PACE_SIM ? "simulated" : sMode == PACE_WAIT ? "vsync" : "timed from the flips");
+                }
+                sGuardDt = sGuardHeld = 0.0;
+                sGuardN = 0;
+            }
+        }
     } else {
         sLogT0 = t;
     }
