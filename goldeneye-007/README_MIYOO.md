@@ -28,8 +28,8 @@ spruce.
   own clock still follows real time. In the missions a frame may come at any screen refresh (up to 60 fps), and the
   motion steps by the real time between frames so it stays even (`minstep=2` holds 30 a second, `fracstep=0` steps
   whole refreshes).
-- **Menu:** RESUME, SAVE STATE, LOAD STATE (slots 1-9 and the auto save), EXIT GAME, in a built-in
-  font. Volume and brightness are left to the OS. Notices like SAVED SLOT 1 show in the top-left
+- **Menu:** RESUME, SAVE STATE, LOAD STATE (slots 1-9 and the auto save), CONTROLS (the button remap,
+  kept in `data/controls.cfg`), EXIT GAME, in a built-in font. Volume and brightness are left to the OS. Notices like SAVED SLOT 1 show in the top-left
   corner for two seconds.
 
 ## Install

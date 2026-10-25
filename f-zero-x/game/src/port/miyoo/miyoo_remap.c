@@ -319,7 +319,7 @@ static void compose(SDL_Surface *draw, SDL_Surface *backdrop, int cur, int top, 
     if (mode == M_LISTEN) {
         text_c(px + pw / 2, fy, 2, "PRESS THE NEW BUTTON  MENU: CANCEL", C_SEL);
     } else if (mode == M_SWAP) {
-        snprintf(buf, sizeof(buf), "SWAP WITH %s? A: YES  B: NO", row_name(&miyoo_remap_rows[pend >> 8]));
+        snprintf(buf, sizeof(buf), "SWAP WITH %.10s? A: YES  B: NO", row_name(&miyoo_remap_rows[pend >> 8]));
         text_c(px + pw / 2, fy, 2, buf, C_SEL);
     } else if (mode == M_RESET) {
         text_c(px + pw / 2, fy, 2, "RESET ALL? A: YES  B: NO", C_SEL);
