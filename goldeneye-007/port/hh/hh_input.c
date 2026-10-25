@@ -23,6 +23,9 @@
 #include "hh_os.h"
 #include "hh_plat.h"
 #include "savestate.h" /* SAVESTATE_EXCLUDE: host state a state load must not overwrite (port/kit) */
+#if defined(TARGET_MIYOO)
+#include "miyoo_remap.h"
+#endif
 
 #define STICK_FULL 80  /* GoldenEye's full deflection (dead zone +-5) */
 #define AIM_EDGE 60    /* aiming: the crosshair's travel; past it the view turns */
@@ -70,6 +73,9 @@ static void hh_input_key(int key, bool down)
 void controller_handheld_key(int sym, int down)
 {
     int key = -1;
+#if defined(TARGET_MIYOO)
+    sym = miyoo_remap_key(sym); /* MENU > CONTROLS (kit miyoo_remap.c); the letters above pass unchanged */
+#endif
     switch (sym) {
     case 'u': key = K_UP; break;
     case 'd': key = K_DOWN; break;
@@ -106,6 +112,25 @@ void controller_handheld_key(int sym, int down)
     }
     hh_input_key(key, down != 0);
 }
+
+#if defined(TARGET_MIYOO)
+/* MENU > CONTROLS: the layout above, in play (the watch and the menus move with it). */
+const struct miyoo_remap_row miyoo_remap_rows[] = {
+    { MR_A, MB_X, 0, 0, "NEXT WEAPON" },
+    { MR_B, MB_A, 0, 0, "ACTION, RELOAD" },
+    { MR_Z, MB_B, 0, 0, "FIRE" },
+    { MR_R, MB_Y, 0, 0, "AIM (HOLD)" },
+    { MR_START, MB_START, 0, 0, "PAUSE (THE WATCH)" },
+    { MR_CUP, MB_R2, 0, 0, "LOOK UP" },
+    { MR_CDOWN, MB_L2, 0, 0, "LOOK DOWN" },
+    { MR_CLEFT, MB_L1, 0, 0, "STRAFE LEFT" },
+    { MR_CRIGHT, MB_R1, 0, 0, "STRAFE RIGHT" },
+    { MR_L, MB_NONE, 0, 0, "MENUS: L1" },
+    { MR_STICK, MB_DPAD, 0, 0, "WALK, TURN" },
+    { MR_DPAD, MB_NONE, 0, 0, "THE WATCH: D-PAD" },
+};
+const int miyoo_remap_nrows = (int)(sizeof(miyoo_remap_rows) / sizeof(miyoo_remap_rows[0]));
+#endif
 
 /* GE_PADSCRIPT (tests: menus, the watch, ... without hands): "<vi>:<keys>,<vi>:<keys>,..."
  * holds the handheld keys <keys> -- the OS letters above: u d l r a b x y, m = L, n = R,

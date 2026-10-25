@@ -56,7 +56,7 @@ HH_GAME_SOURCES += $(HH)/libultra/mtxutil.c $(HH)/libultra/scale.c $(HH)/libultr
 
 HH_PORT_SOURCES := $(sort $(wildcard $(HH)/src/*.c)) \
                    $(HH)/src/gfx/gfx_pc.c $(HH)/src/gfx/gfx_cc.c $(HH)/src/gfx/gfx_soft.c $(HH)/src/gfx/gfx_sdl12.c
-HH_KIT_SOURCES  := $(HH)/kit/platform/savestate.c $(HH)/kit/platform/hh_priority.c $(HH)/kit/platform/miyoo_menu.c \
+HH_KIT_SOURCES  := $(HH)/kit/platform/savestate.c $(HH)/kit/platform/hh_priority.c $(HH)/kit/platform/miyoo_menu.c $(HH)/kit/platform/miyoo_remap.c \
                    $(HH)/kit/platform/miyoo_worker.c $(HH)/kit/platform/miyoo_clock.c $(HH)/kit/platform/miyoo_sleepsave.c
 HH_PORT_SOURCES += $(HH_KIT_SOURCES)
 

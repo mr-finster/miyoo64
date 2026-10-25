@@ -22,6 +22,7 @@
 #include "handheld_menu.h"
 #include "savestate.h"
 #include "miyoo_font.h"
+#include "miyoo_remap.h"
 #if defined(MIYOO)
 #include "miyoo_sleepsave.h"
 #endif
@@ -45,8 +46,8 @@ extern void port_audio_out_set_muted(int muted);
 extern uint32_t *gfx_soft_get_framebuffer(int *w, int *h);
 extern void controller_handheld_key(int sym, int down) __attribute__((weak));
 
-enum { I_RESUME, I_SAVE, I_LOAD, I_EXIT, I_COUNT };
-static const char *ITEM[I_COUNT] = { "RESUME", "SAVE STATE", "LOAD STATE", "EXIT GAME" };
+enum { I_RESUME, I_SAVE, I_LOAD, I_CONTROLS, I_EXIT, I_COUNT };
+static const char *ITEM[I_COUNT] = { "RESUME", "SAVE STATE", "LOAD STATE", "CONTROLS", "EXIT GAME" };
 #define SLOT_MIN 1
 #define SLOT_MAX 9
 
@@ -165,7 +166,7 @@ static void slot_label(char *buf, size_t n, int item) {
 
 static void compose_menu(int cur, int confirm) {
     SDL_BlitSurface(sBackup, NULL, sDraw, NULL);
-    const int pw = 420, ph = 330, px = (sDraw->w - pw) / 2, py = (sDraw->h - ph) / 2; /* centred (640x480 or the panel) */
+    const int pw = 420, ph = 374, px = (sDraw->w - pw) / 2, py = (sDraw->h - ph) / 2; /* centred (640x480 or the panel) */
     panel(sDraw, px, py, pw, ph);
     text_centered(sDraw, py + 34, 3, HH_GAME_TITLE, C_TEXT);
     fill(sDraw, px + 30, py + 62, pw - 60, 2, C_EDGE);
@@ -252,6 +253,12 @@ void handheld_menu_init(struct SDL_Surface *screen) {
     gfx_soft_bilinear = 1;
 }
 
+/* MENU > CONTROLS (miyoo_remap.c): the screen draws on the menu's surfaces */
+static SDL_Surface *sRemapScreen SAVESTATE_EXCLUDE;
+static void remap_show(void) { show(sRemapScreen); }
+static void remap_key(int sym, int down) { if (controller_handheld_key) controller_handheld_key(sym, down); }
+static int remap_close(void) { return handheld_power_pending() || miyoo_sleepsave_menu_should_close(); }
+
 void handheld_menu_run(struct SDL_Surface *screen_) {
     SDL_Surface *screen = (SDL_Surface *)screen_;
     if (!sInited || !screen) return;
@@ -302,6 +309,7 @@ void handheld_menu_run(struct SDL_Surface *screen_) {
             case SDLK_SPACE: /* A */
             case SDLK_RETURN: /* START */
                 if (cur == I_RESUME) running = 0;
+                else if (cur == I_CONTROLS) { sRemapScreen = screen; miyoo_remap_screen(sDraw, sBackup, remap_show, remap_key, remap_close); confirm = 0; dirty = 1; }
                 else if (cur == I_SAVE) {
                     if (confirm || !savestate_slot_valid(sSlot)) { savestate_request_save(sSlot); running = 0; }
                     else { confirm = 1; dirty = 1; }
@@ -393,6 +401,7 @@ void handheld_menu_test_dump(const char *dir) {
         uint32_t *row = (uint32_t *)((uint8_t *)sBackup->pixels + y * sBackup->pitch);
         for (int x = 0; x < SCREEN_W; x++) row[x] = 0xFF1A2640u;
     }
+    miyoo_remap_test_dump(sDraw, sBackup, dir); /* MENU > CONTROLS */
     for (int i = 0; i < I_COUNT; i++) {
         compose_menu(i, 0);
         snprintf(path, sizeof(path), "%s/menu_%02d.ppm", dir, i);

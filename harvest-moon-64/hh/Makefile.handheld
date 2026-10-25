@@ -60,7 +60,7 @@ GAME_CFLAGS := $(MARCH) -O2 -g -nostdinc -std=gnu89 -funsigned-char -fno-strict-
 # The host side: system headers, SDL 1.2, the renderer and the kit             #
 #==============================================================================#
 HOST_SRC := $(sort $(wildcard $(HH)/src/*.c)) $(HH)/gfx/gfx_pc.c $(HH)/gfx/gfx_cc.c $(HH)/gfx/gfx_soft.c \
-            $(HH)/kit/savestate.c $(HH)/kit/miyoo_panel.c $(HH)/kit/miyoo_menu.c $(HH)/kit/miyoo_worker.c \
+            $(HH)/kit/savestate.c $(HH)/kit/miyoo_panel.c $(HH)/kit/miyoo_menu.c $(HH)/kit/miyoo_remap.c $(HH)/kit/miyoo_worker.c \
             $(HH)/kit/miyoo_clock.c $(HH)/kit/miyoo_sleepsave.c
 HOST_DEF := -DTARGET_HANDHELD=1 -DHM64=1 -DPM64=1 -DF3DEX_GBI_2=1 -D_LANGUAGE_C=1 -DPORT_NO_FPS=1 -DNON_MATCHING=1 \
             -DAVOID_UB=1 -DPM64_SDL12=1 -DHANDHELD=1 -DMIYOO=1 -DTARGET_MIYOO=1 -D_FILE_OFFSET_BITS=64 \

@@ -69,7 +69,7 @@ PORT_C := $(filter-out port/src/video.c port/src/input.c port/src/audio.c, \
             $(sort $(shell find port/src -name "*.c")))
 MIYOO_C := $(sort $(wildcard port/miyoo/*.c))
 GFX_C   := port/miyoo/gfx/gfx_pc.c port/miyoo/gfx/gfx_cc.c port/miyoo/gfx/gfx_soft.c port/miyoo/gfx/gfx_sdl12.c
-KIT_C   := port/miyoo/kit/miyoo_worker.c port/miyoo/kit/miyoo_clock.c port/miyoo/kit/miyoo_sleepsave.c port/miyoo/kit/miyoo_menu.c port/miyoo/kit/savestate.c port/miyoo/kit/hh_priority.c
+KIT_C   := port/miyoo/kit/miyoo_worker.c port/miyoo/kit/miyoo_clock.c port/miyoo/kit/miyoo_sleepsave.c port/miyoo/kit/miyoo_menu.c port/miyoo/kit/miyoo_remap.c port/miyoo/kit/savestate.c port/miyoo/kit/hh_priority.c
 
 C_FILES := $(GAME_C) $(LIB_C) $(PORT_C) $(MIYOO_C) $(GFX_C) $(KIT_C)
 O_FILES := $(patsubst %.c,$(BUILD_DIR)/%.o,$(C_FILES))

@@ -26,6 +26,9 @@
 #include "miyoo_panel.h"
 #include "miyoo_worker.h"
 #include "miyoo_clock.h"
+#if defined(MIYOO)
+#include "miyoo_remap.h"
+#endif
 #endif
 
 void port_hh_init(SDL_Surface *screen);
@@ -318,7 +321,30 @@ void port_script_read(uint16_t *button, int8_t *stick_x, int8_t *stick_y);
 
 /* The Mini's keys (miyoo_panel.h) as letters: SELECT and R2 = C-up ('c', the status bar), L2 = N64 R ('o', page down,
  * the pause menu's next tab). -1: not a game key. */
+#if defined(MIYOO)
+/* MENU > CONTROLS (kit miyoo_remap.c): the layout below, in play, as the screen shows it; a remap moves the
+ * pressed buttons, so every mode and chord here follows. */
+const struct miyoo_remap_row miyoo_remap_rows[] = {
+    { MR_A, MB_A, 0, 0, "JUMP, TALK" },
+    { MR_B, MB_B, 0, 0, "HAMMER" },
+    { MR_Z, MB_Y, 0, 0, "PARTNER" },
+    { MR_R, MB_L2, 0, 0, "PAGE, TABS" },
+    { MR_START, MB_START, 0, 0, "PAUSE" },
+    { MR_CUP, MB_R2, MB_SELECT, 0, "STATUS BAR" },
+    { MR_CDOWN, MB_X, 0, 0, "ABILITY" },
+    { MR_CLEFT, MB_L1, 0, 0, "MENU" },
+    { MR_CRIGHT, MB_R1, 0, 0, "MENU" },
+    { MR_L, MB_NONE, 0, 0, NULL },
+    { MR_STICK, MB_DPAD, 0, 0, "MOVE" },
+    { MR_DPAD, MB_NONE, 0, 0, NULL },
+};
+const int miyoo_remap_nrows = (int)(sizeof(miyoo_remap_rows) / sizeof(miyoo_remap_rows[0]));
+#endif
+
 static int miyoo_key(int sym) {
+#if defined(MIYOO)
+    sym = miyoo_remap_key(sym); /* MENU > CONTROLS */
+#endif
     switch (sym) {
     case MIYOO_KEY_UP: return 'u';
     case MIYOO_KEY_DOWN: return 'd';

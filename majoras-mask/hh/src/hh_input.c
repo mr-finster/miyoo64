@@ -15,6 +15,9 @@
 #include "shim/hh_psp_shim.h"
 #include "controller.h"
 #include "ultra64/ultratypes.h"
+#if defined(MIYOO)
+#include "miyoo_remap.h"
+#endif
 
 #define HH_STICK_MAX 80
 
@@ -298,7 +301,30 @@ s32 OotPspControls_Load(void) {
 
 /* The Miyoo Mini's SDL 1.2 keys: X/Y C-left/C-down, L1 Z-target, R1 shield, START with its chords,
  * R2 C-right and L2 C-up (first person / Navi). MENU (Escape) is the window backend's. */
+#if defined(MIYOO)
+/* MENU > CONTROLS (kit miyoo_remap.c): the layout below, in play, as the screen shows it; a remap moves the
+ * pressed buttons, so every mode and chord here follows. */
+const struct miyoo_remap_row miyoo_remap_rows[] = {
+    { MR_A, MB_A, 0, 0, "ACTION" },
+    { MR_B, MB_B, 0, 0, "SWORD" },
+    { MR_Z, MB_L1, 0, 0, "Z-TARGET" },
+    { MR_R, MB_R1, 0, 0, "SHIELD" },
+    { MR_START, MB_START, 0, 0, "PAUSE (ON RELEASE)" },
+    { MR_CUP, MB_L2, 0, 0, "FIRST PERSON, TATL" },
+    { MR_CDOWN, MB_Y, 0, 0, "ITEM" },
+    { MR_CLEFT, MB_X, 0, 0, "ITEM" },
+    { MR_CRIGHT, MB_R2, 0, 0, "ITEM" },
+    { MR_L, MB_L1, 0, MB_START, "MAP" },
+    { MR_STICK, MB_DPAD, 0, 0, "MOVE" },
+    { MR_DPAD, MB_NONE, 0, 0, "OCARINA: D-PAD" },
+};
+const int miyoo_remap_nrows = (int)(sizeof(miyoo_remap_rows) / sizeof(miyoo_remap_rows[0]));
+#endif
+
 void controller_handheld_key(int sym, int down) {
+#if defined(MIYOO)
+    sym = miyoo_remap_key(sym); /* MENU > CONTROLS */
+#endif
     int key = -1;
 
     switch (sym) {

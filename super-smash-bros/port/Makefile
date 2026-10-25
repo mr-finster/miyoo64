@@ -94,7 +94,7 @@ ULTRA_SRC := $(addprefix decomp/src/libultra/,gu/mtxcatf.c gu/mtxutil.c gu/mtxxf
 KIT_SRC   := kit/platform/savestate.c
 # the Miyoo Mini's own (the shared Miyoo kit KM1-KM3): the panel, the menu, the second core, the clock
 ifeq ($(PLAT),miyoo)
-  KIT_SRC += kit/platform/miyoo_panel.c kit/platform/miyoo_menu.c kit/platform/miyoo_worker.c kit/platform/miyoo_clock.c kit/platform/miyoo_sleepsave.c
+  KIT_SRC += kit/platform/miyoo_panel.c kit/platform/miyoo_menu.c kit/platform/miyoo_remap.c kit/platform/miyoo_worker.c kit/platform/miyoo_clock.c kit/platform/miyoo_sleepsave.c
 endif
 PORT_SRC  := $(wildcard hh/*.c hh/bs/*.c hh/n64/*.c) hh/gfx/gfx_pc.c hh/gfx/gfx_cc.c hh/gfx/gfx_soft.c $(WM_SRC) $(KIT_SRC)
 SRC       := $(GAME_SRC) $(ULTRA_SRC) $(PORT_SRC)

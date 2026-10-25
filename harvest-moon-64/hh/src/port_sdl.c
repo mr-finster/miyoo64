@@ -26,6 +26,9 @@
 #include "miyoo_panel.h"
 #include "miyoo_worker.h"
 #include "miyoo_clock.h"
+#if defined(MIYOO)
+#include "miyoo_remap.h"
+#endif
 #endif
 
 void port_hh_init(SDL_Surface *screen);
@@ -319,7 +322,30 @@ void port_script_read(uint16_t *button, int8_t *stick_x, int8_t *stick_y);
 
 /* Harvest Moon 64 on the Mini's keys (miyoo_panel.h): the d-pad is the stick; A, B and START are the N64's; X = Z,
  * Y = C-down, L1 = C-left, R1 = C-right, L2 = C-up, R2 = R, SELECT = L. -1: not a game key. */
+#if defined(MIYOO)
+/* MENU > CONTROLS (kit miyoo_remap.c): the layout below, in play, as the screen shows it; a remap moves the
+ * pressed buttons, so every mode and chord here follows. */
+const struct miyoo_remap_row miyoo_remap_rows[] = {
+    { MR_A, MB_A, 0, 0, NULL },
+    { MR_B, MB_B, 0, 0, NULL },
+    { MR_Z, MB_X, 0, 0, NULL },
+    { MR_R, MB_R2, 0, 0, NULL },
+    { MR_START, MB_START, 0, 0, NULL },
+    { MR_CUP, MB_L2, 0, 0, NULL },
+    { MR_CDOWN, MB_Y, 0, 0, NULL },
+    { MR_CLEFT, MB_L1, 0, 0, NULL },
+    { MR_CRIGHT, MB_R1, 0, 0, NULL },
+    { MR_L, MB_SELECT, 0, 0, NULL },
+    { MR_STICK, MB_DPAD, 0, 0, "MOVE" },
+    { MR_DPAD, MB_NONE, 0, 0, NULL },
+};
+const int miyoo_remap_nrows = (int)(sizeof(miyoo_remap_rows) / sizeof(miyoo_remap_rows[0]));
+#endif
+
 static int miyoo_key(int sym) {
+#if defined(MIYOO)
+    sym = miyoo_remap_key(sym); /* MENU > CONTROLS */
+#endif
     switch (sym) {
     case MIYOO_KEY_UP: return 'u';
     case MIYOO_KEY_DOWN: return 'd';
