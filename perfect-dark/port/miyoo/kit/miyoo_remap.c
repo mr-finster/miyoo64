@@ -117,6 +117,11 @@ static void map_save(void) {
 int miyoo_remap_key(int sym) {
     if (!sLoaded) map_load();
     const int p = mb_of_sym(sym);
+    if (p && sMap[p] != p) {
+        static int log = -1; /* MIYOO_REMAP_LOG=1 (tests): each moved key as the port takes it */
+        if (log < 0) { const char *e = getenv("MIYOO_REMAP_LOG"); log = e && e[0] == '1'; }
+        if (log) fprintf(stderr, "remap: %s acts as %s\n", kName[p], kName[sMap[p]]);
+    }
     return p ? kSym[sMap[p]] : sym;
 }
 
