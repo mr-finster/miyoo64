@@ -12,7 +12,8 @@
  *   R2      C-up (look up)
  *   START   pause (the watch)
  * Outside gameplay (front-end menus, the watch) A and B are the N64's A and B, so menus
- * select and go back the way the N64 labels say, and the d-pad is a plain stick. */
+ * select and go back the way the N64 labels say. In the front end the d-pad is a plain stick;
+ * on the watch it is the N64's d-pad (one item a press, the game's own hold repeat). */
 #include <ultra64.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -180,6 +181,25 @@ static bool hh_input_gameplay(void)
     return bossGetStageNum() != LEVELID_TITLE && g_CurrentPlayer != NULL && get_BONDdata_outside_watch_menu_flag();
 }
 
+/* In a stage with the watch (pause menu) open. */
+static bool hh_input_watch(void)
+{
+    return bossGetStageNum() != LEVELID_TITLE && g_CurrentPlayer != NULL && !get_BONDdata_outside_watch_menu_flag();
+}
+
+/* Outside gameplay: A and B are the N64's, the rest as the menus expect. */
+static void hh_input_menu_buttons(u16 *btn, bool look_down)
+{
+    if (sKey[K_A]) *btn |= A_BUTTON;
+    if (sKey[K_B]) *btn |= B_BUTTON;
+    if (sKey[K_X]) *btn |= Z_TRIG;
+    if (sKey[K_Y]) *btn |= R_TRIG;
+    if (sKey[K_L]) *btn |= L_TRIG;
+    if (sKey[K_R]) *btn |= R_TRIG;
+    if (look_down) *btn |= D_CBUTTONS;
+    if (sKey[K_LOOKUP]) *btn |= U_CBUTTONS;
+}
+
 /* A turn direction held for this long: its deflection. */
 static int hh_turn(int key, u64 now)
 {
@@ -248,20 +268,24 @@ void hh_input_poll(void)
         if (sKey[K_R]) btn |= R_CBUTTONS;
         if (look_down) btn |= D_CBUTTONS;
         if (sKey[K_LOOKUP]) btn |= U_CBUTTONS;
+    } else if (hh_input_watch()) {
+        /* The watch: the d-pad is the N64's d-pad. Its inventory list moves one item a press
+         * and then 0.1 item a frame while held (options.c game_options_inventory_navigation),
+         * the N64's own repeat; a full-tilt stick there (>= 0x47) moves an item every frame,
+         * which made the list unusable from a d-pad. Every watch page takes the d-pad. */
+        sAimX = sAimY = 0.0f;
+        if (left && !right) btn |= L_JPAD;
+        if (right && !left) btn |= R_JPAD;
+        if (up && !down) btn |= U_JPAD;
+        if (down && !up) btn |= D_JPAD;
+        hh_input_menu_buttons(&btn, look_down);
     } else {
         sAimX = sAimY = 0.0f;
         if (left && !right) sx = -STICK_FULL;
         if (right && !left) sx = STICK_FULL;
         if (up && !down) sy = STICK_FULL;
         if (down && !up) sy = -STICK_FULL;
-        if (sKey[K_A]) btn |= A_BUTTON;
-        if (sKey[K_B]) btn |= B_BUTTON;
-        if (sKey[K_X]) btn |= Z_TRIG;
-        if (sKey[K_Y]) btn |= R_TRIG;
-        if (sKey[K_L]) btn |= L_TRIG;
-        if (sKey[K_R]) btn |= R_TRIG;
-        if (look_down) btn |= D_CBUTTONS;
-        if (sKey[K_LOOKUP]) btn |= U_CBUTTONS;
+        hh_input_menu_buttons(&btn, look_down);
     }
     if (sKey[K_START]) btn |= START_BUTTON;
 
