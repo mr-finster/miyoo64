@@ -24,7 +24,7 @@
 /* The log lines go to stderr; a port whose release gate refuses a copied stderr in its executable (F-Zero X)
  * builds with MIYOO_REMAP_LOG=<its own logger>. */
 #ifndef MIYOO_REMAP_LOG
-#define MIYOO_REMAP_LOG(...) MIYOO_REMAP_LOG(__VA_ARGS__)
+#define MIYOO_REMAP_LOG(...) fprintf(stderr, __VA_ARGS__)
 #else
 extern void MIYOO_REMAP_LOG(const char *fmt, ...);
 #endif
