@@ -53,7 +53,6 @@ Switches for `App/PerfectDark/launch.sh`, as `export <switch>` lines before the 
 ## Known issues
 
 - The busiest rooms and the menus can run slower.
-- Mini Flip: full screen is untested on a real Flip. If it looks wrong, put `PD_FLIPFILL=0` in the game's `launch.sh` and tell us.
 
 ## Building the Miyoo zip
 

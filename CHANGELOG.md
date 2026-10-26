@@ -3,7 +3,10 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
-## Unreleased
+## 1.4.0 (MENU > CONTROLS in all twelve games)
+
+Every game is rebuilt: Majora's Mask 1.0.6, Harvest Moon 64 1.0.2, Perfect Dark 1.0.6, Ocarina of Time 1.1.6, and
+1.1.5 for the other eight.
 
 - All twelve games: MENU > CONTROLS, a button remap. It lists each N64 button (and the stick and the d-pad) with the
   Miyoo button that gives it, as button pictures in each controller's colours. Pick a row, press the new button
@@ -15,6 +18,16 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   pushed all the way, and the game moves the list one item every frame for a stick pushed that far (on the N64 too).
   On the watch the d-pad is now the N64's d-pad: one item a press, and holding it steps on at the game's own slow
   repeat. The front-end menus keep the d-pad as a stick.
+- Paper Mario: no more crash after a battle in places with ambient sounds (Gusty Gulch, [issue #3](https://github.com/mr-finster/miyoo64/issues/3)).
+  The ambient sound player kept its voice state in the N64's byte order on the Mini, so restoring the voices after the
+  battle read garbage. A music program change now also sets the reverb it was meant to (it set the tune instead).
+- Paper Mario: the light circle in dark rooms and the screen wipes (the Mario head, the star) sit where they should;
+  a negative position was clamped to 0 on the Mini instead of wrapping as on the N64, which pinned them to the
+  top-left corner.
+- Diddy Kong Racing: the world shading settings no longer overwrite two neighbouring variables at boot (a 48-byte
+  write into a 4-byte slot on the Mini).
+- Save states (RESUME GAME) from 1.3.x may not load in the rebuilt games: they are kept as `.rejected`. In-game saves
+  carry over.
 
 ## 1.3.2 (Majora's Mask 1.0.5 beta)
 
