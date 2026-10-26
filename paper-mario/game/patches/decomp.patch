@@ -16,6 +16,27 @@ index 51fe7097a..371195b62 100644
  #define	KDM_TO_PHYS(x)	((u32)(x)&0x1FFFFFFF)	/* direct mapped to physical */
  #define	PHYS_TO_K0(x)	((u32)(x)|0x80000000)	/* physical to kseg0 */
  #define	PHYS_TO_K1(x)	((u32)(x)|0xA0000000)	/* physical to kseg1 */
+diff --git a/include/PR/mbi.h b/include/PR/mbi.h
+index 2f88d6ef4..c08eb7cd7 100644
+--- a/include/PR/mbi.h
++++ b/include/PR/mbi.h
+@@ -44,8 +44,15 @@
+  * (NOTE: _SHIFTL(v, 0, 32) won't work, just use an assignment)
+  *
+  */
++#ifdef PM64_PORT
++/* The port: a negative float converted straight to unsigned is 0 on ARM (and undefined in C), where the N64's
++ * trunc.w wraps it; through a signed int it wraps on every host (the wipes' and dark rooms' negative coordinates). */
++#define PM64_F2U(v) ((unsigned int)(int)(v))
++#else
++#define PM64_F2U(v) ((unsigned int)(v))
++#endif
+ #define _SHIFTL(v, s, w)	\
+-    ((unsigned int) (((unsigned int)(v) & ((0x01 << (w)) - 1)) << (s)))
++    ((unsigned int) ((PM64_F2U(v) & ((0x01 << (w)) - 1)) << (s)))
+ #define _SHIFTR(v, s, w)	\
+     ((unsigned int)(((unsigned int)(v) >> (s)) & ((0x01 << (w)) - 1)))
+ 
 diff --git a/include/PR/os_convert.h b/include/PR/os_convert.h
 index 3797d1b53..425e3b16c 100644
 --- a/include/PR/os_convert.h
@@ -344,8 +365,32 @@ index a3ea4e571..037df7f05 100644
          animPos = (s16*) (((s32)animPos & 0xFFFFFF) + (s32)animator->animationBuffer); // TODO: array access? / cleanup
      }
  
+diff --git a/src/audio.h b/src/audio.h
+index 3c37acf6b..01bdbff74 100644
+--- a/src/audio.h
++++ b/src/audio.h
+@@ -1319,10 +1319,19 @@ typedef struct AmbienceSavedVoice {
+  */
+ typedef union AmbVoiceStateInfo {
+     struct {
++#if defined(PM64_PORT) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
++        // the port: `all` is built in N64 order (playerIndex << 24 | trackIndex << 16 | tune << 8), so on a
++        // little-endian host the fields sit in reverse for the named reads to match it
++        u8 released;
++        u8 tune;
++        u8 trackIndex;
++        u8 playerIndex;
++#else
+         u8 playerIndex;     /// Index of the owning ambience player
+         u8 trackIndex;      ///< Track index within the player (0–9)
+         u8 tune;            ///< Note or drum ID used to differentiate voices on the same track
+         u8 released;        ///< Set to true when the voice should be released/stopped
++#endif
+     };
+     s32 all;
+ } AmbVoiceStateInfo;
 diff --git a/src/audio/bgm_player.c b/src/audio/bgm_player.c
-index 3f780743f..53a13df15 100644
+index 3f780743f..a5ada20e5 100644
 --- a/src/audio/bgm_player.c
 +++ b/src/audio/bgm_player.c
 @@ -13,6 +13,27 @@ extern u8 SeqCmdArgCounts[];
@@ -386,6 +431,21 @@ index 3f780743f..53a13df15 100644
                              CurrentSeqCmdHandler = SeqCmdHandlers[opcode - 0xE0];
                              CurrentSeqCmdHandler(player, track);
                          }
+@@ -1722,7 +1746,14 @@ void au_BGMCmd_F5_UseInstrument(BGMPlayer* player, BGMPlayerTrack* track) {
+     track->insReverb = instrument->reverb & 0x7F;
+     track->insCoarseDetune = instrument->coarseTune * AU_SEMITONE_CENTS;
+     track->insFineDetune = instrument->fineTune;
++#ifdef PM64_PORT
++    // the mask is N64 byte order (tune, volume, pan, reverb): name the fields so a little-endian host sets the same three
++    track->changed.volume = true;
++    track->changed.pan = true;
++    track->changed.reverb = true;
++#else
+     track->changed.all |= 0x10101; // volume, pan, and reverb
++#endif
+ }
+ 
+ void au_BGMCmd_F7_ReverbType(BGMPlayer* player, BGMPlayerTrack* track) {
 diff --git a/src/audio/core/engine.c b/src/audio/core/engine.c
 index 0df57742c..2e4f4c0a7 100644
 --- a/src/audio/core/engine.c
