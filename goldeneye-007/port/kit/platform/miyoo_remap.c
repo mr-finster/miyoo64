@@ -21,6 +21,14 @@
 #include "miyoo_remap.h"
 #include "miyoo_font.h"
 
+/* The log lines go to stderr; a port whose release gate refuses a copied stderr in its executable (F-Zero X)
+ * builds with MIYOO_REMAP_LOG=<its own logger>. */
+#ifndef MIYOO_REMAP_LOG
+#define MIYOO_REMAP_LOG(...) MIYOO_REMAP_LOG(__VA_ARGS__)
+#else
+extern void MIYOO_REMAP_LOG(const char *fmt, ...);
+#endif
+
 /* The Miyoo's SDL 1.2 key syms (the kits' miyoo_panel.h MIYOO_KEY_*), by MB_*. */
 static const int kSym[MB_REMAPPABLE + 1] = { 0, 32, 306, 304, 308, 101, 9, 116, 8, 13, 305 };
 static const char *const kName[MB_COUNT] = { "-", "A", "B", "X", "Y", "L1", "L2", "R1", "R2", "START", "SELECT", "D-PAD" };
@@ -93,11 +101,11 @@ static void map_load(void) {
     fclose(f);
     int seen[MB_REMAPPABLE + 1] = { 0 };
     for (int b = 1; b <= MB_REMAPPABLE; b++) {
-        if (seen[m[b]]) { fprintf(stderr, "controls: %s is not a whole layout, the defaults are used\n", path); return; }
+        if (seen[m[b]]) { MIYOO_REMAP_LOG("controls: %s is not a whole layout, the defaults are used\n", path); return; }
         seen[m[b]] = 1;
     }
     memcpy(sMap, m, sizeof(sMap));
-    if (!map_is_default()) fprintf(stderr, "controls: %s\n", path);
+    if (!map_is_default()) MIYOO_REMAP_LOG("controls: %s\n", path);
 }
 
 static void map_save(void) {
@@ -120,7 +128,7 @@ int miyoo_remap_key(int sym) {
     if (p && sMap[p] != p) {
         static int log = -1; /* MIYOO_REMAP_LOG=1 (tests): each moved key as the port takes it */
         if (log < 0) { const char *e = getenv("MIYOO_REMAP_LOG"); log = e && e[0] == '1'; }
-        if (log) fprintf(stderr, "remap: %s acts as %s\n", kName[p], kName[sMap[p]]);
+        if (log) MIYOO_REMAP_LOG("remap: %s acts as %s\n", kName[p], kName[sMap[p]]);
     }
     return p ? kSym[sMap[p]] : sym;
 }

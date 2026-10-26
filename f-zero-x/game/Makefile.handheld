@@ -42,7 +42,7 @@ ifeq ($(PLAT),miyoo)
   GAME_ABI :=
   SDL_CFLAGS := -I$(MIYOO_SYSROOT)/usr/include -D_REENTRANT -D_FILE_OFFSET_BITS=64 -Isrc/port/miyoo
   SDL_LIBS   := -L$(MIYOO_SYSROOT)/usr/lib -lSDL -lrt # -lrt: glibc 2.28's timer_create (sdl/sprof.c)
-  PLAT_DEFINES := HANDHELD_DEVICE=1 MIYOO=1 TARGET_MIYOO=1
+  PLAT_DEFINES := HANDHELD_DEVICE=1 MIYOO=1 TARGET_MIYOO=1 MIYOO_REMAP_LOG=port_log
   CTX_S   := src/port/ultra/ctx_arm.S
 else
   CC      := gcc
