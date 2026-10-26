@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "hh_input.h"
+#if defined(MIYOO)
+#include "miyoo_remap.h"
+#endif
 
 #define N64_A      0x8000
 #define N64_B      0x4000
@@ -62,8 +65,32 @@ void controller_sdl_key(int sc, bool down)
 }
 
 /* The handheld's keys as the SDL 1.2 backend reports them. */
+#if defined(MIYOO)
+/* MENU > CONTROLS (kit miyoo_remap.c): the layout below, in play, as the screen shows it; a remap moves the
+ * pressed buttons, so every mode and chord here follows. */
+const struct miyoo_remap_row miyoo_remap_rows[] = {
+    { MR_A, MB_A, 0, 0, "ATTACK" },
+    { MR_B, MB_B, 0, 0, "SPECIAL" },
+    { MR_Z, MB_Y, MB_L2, 0, "SHIELD" },
+    { MR_R, MB_L1, 0, 0, "GRAB" },
+    { MR_START, MB_START, 0, 0, "PAUSE" },
+    { MR_CUP, MB_X, 0, 0, "JUMP" },
+    { MR_L, MB_SELECT, MB_R2, 0, "TAUNT" },
+    { MR_TEXT, MB_R1, 0, 0, "HALF STICK (WALK)" },
+    { MR_CDOWN, MB_NONE, 0, 0, NULL },
+    { MR_CLEFT, MB_NONE, 0, 0, NULL },
+    { MR_CRIGHT, MB_NONE, 0, 0, NULL },
+    { MR_STICK, MB_DPAD, 0, 0, "MOVE" },
+    { MR_DPAD, MB_NONE, 0, 0, NULL },
+};
+const int miyoo_remap_nrows = (int)(sizeof(miyoo_remap_rows) / sizeof(miyoo_remap_rows[0]));
+#endif
+
 void controller_handheld_key(int sym, int down)
 {
+#if defined(MIYOO)
+    sym = miyoo_remap_key(sym); /* MENU > CONTROLS */
+#endif
     int k = -1;
     (void) sym;
 #if defined(MIYOO)

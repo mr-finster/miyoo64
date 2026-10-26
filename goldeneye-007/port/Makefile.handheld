@@ -83,7 +83,7 @@ HH_SS    := hh/hh_ctx.S
 # The Miyoo Mini has its own menu (a built-in font, no OS resources), and its second core
 # (miyoo_worker.c, the shared miyoo/kit: the renderer splits big triangles' rows across both), and its
 # CPU clock (miyoo_clock.c: Onion's PLL setting).
-KIT_C    := $(if $(filter miyoo,$(PLAT)),kit/platform/miyoo_menu.c kit/platform/miyoo_worker.c kit/platform/miyoo_clock.c kit/platform/miyoo_sleepsave.c,) \
+KIT_C    := $(if $(filter miyoo,$(PLAT)),kit/platform/miyoo_menu.c kit/platform/miyoo_remap.c kit/platform/miyoo_worker.c kit/platform/miyoo_clock.c kit/platform/miyoo_sleepsave.c,) \
             kit/platform/savestate.c kit/platform/hh_priority.c
 
 C_FILES  := $(GAME_C) $(ENGINE_C) $(ULTRA_C) $(HH_C) $(GFX_C) $(AUDIO_C) $(KIT_C)

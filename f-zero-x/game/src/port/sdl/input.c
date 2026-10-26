@@ -27,6 +27,9 @@
 #include <string.h>
 #include "libultra/ultra64.h"
 #include "port_os.h"
+#if defined(MIYOO)
+#include "miyoo_remap.h"
+#endif
 
 extern uint32_t port_time_us(void);
 
@@ -82,7 +85,30 @@ static void controller_miyoo_key(int sym, int down) {
 
 /* gfx_sdl12.c and the menu hand over the Mini's keys. The menu sends MENU (down, up) as it opens, so
  * it counts as a chord (B6): a Start held into it doesn't pause. */
+#if defined(MIYOO)
+/* MENU > CONTROLS (kit miyoo_remap.c): the layout below, in play, as the screen shows it; a remap moves the
+ * pressed buttons, so every mode and chord here follows. */
+const struct miyoo_remap_row miyoo_remap_rows[] = {
+    { MR_A, MB_A, 0, 0, "ACCELERATE" },
+    { MR_B, MB_B, 0, 0, "BOOST" },
+    { MR_Z, MB_L1, 0, 0, "LEAN LEFT" },
+    { MR_R, MB_R1, 0, 0, "LEAN RIGHT" },
+    { MR_START, MB_START, 0, 0, "PAUSE (ON RELEASE)" },
+    { MR_CUP, MB_Y, 0, 0, "LOOK BACK" },
+    { MR_CDOWN, MB_X, 0, 0, "AIR BRAKE" },
+    { MR_CLEFT, MB_L2, 0, 0, NULL },
+    { MR_CRIGHT, MB_R2, MB_SELECT, 0, "CAMERA" },
+    { MR_L, MB_L1, 0, MB_START, NULL },
+    { MR_STICK, MB_DPAD, 0, 0, "STEER" },
+    { MR_DPAD, MB_DPAD, 0, 0, "MENUS" },
+};
+const int miyoo_remap_nrows = (int)(sizeof(miyoo_remap_rows) / sizeof(miyoo_remap_rows[0]));
+#endif
+
 void controller_handheld_key(int sym, int down) {
+#if defined(MIYOO)
+    sym = miyoo_remap_key(sym); /* MENU > CONTROLS */
+#endif
 #if defined(MIYOO)
     controller_miyoo_key(sym, down);
 #else

@@ -36,6 +36,9 @@
 #endif
 
 #include "savestate.h"
+#if defined(MIYOO)
+#include "miyoo_remap.h"
+#endif
 /* live hardware state, not game state: a load must not restore keys held at save time */
 static bool sKeys[512] SAVESTATE_EXCLUDE;
 static int sAuto SAVESTATE_EXCLUDE = -1; /* SF64_AUTO: -1 unread, 0 off, 1 on */
@@ -121,7 +124,30 @@ void controller_sdl_key(int scancode, bool down) {
     if (scancode >= 0 && scancode < 512) sKeys[scancode] = down;
 }
 
+#if defined(MIYOO)
+/* MENU > CONTROLS (kit miyoo_remap.c): the layout below, in play, as the screen shows it; a remap moves the
+ * pressed buttons, so every mode and chord here follows. */
+const struct miyoo_remap_row miyoo_remap_rows[] = {
+    { MR_A, MB_A, 0, 0, "LASER" },
+    { MR_B, MB_B, 0, 0, "BOMB" },
+    { MR_Z, MB_L1, 0, 0, "BANK LEFT, ROLL" },
+    { MR_R, MB_R1, 0, 0, "BANK RIGHT, ROLL" },
+    { MR_START, MB_START, 0, 0, "PAUSE" },
+    { MR_CUP, MB_L2, 0, 0, "CAMERA" },
+    { MR_CDOWN, MB_Y, 0, 0, "BRAKE" },
+    { MR_CLEFT, MB_X, 0, 0, "BOOST" },
+    { MR_CRIGHT, MB_SELECT, 0, 0, "ANSWER ROB" },
+    { MR_L, MB_R2, 0, 0, "MENUS" },
+    { MR_STICK, MB_DPAD, 0, 0, "STEER" },
+    { MR_DPAD, MB_NONE, 0, 0, NULL },
+};
+const int miyoo_remap_nrows = (int)(sizeof(miyoo_remap_rows) / sizeof(miyoo_remap_rows[0]));
+#endif
+
 void controller_handheld_key(int sym, int down) {
+#if defined(MIYOO)
+    sym = miyoo_remap_key(sym); /* MENU > CONTROLS */
+#endif
     if (sym >= 0 && sym < 512) sKeys[sym] = (bool) down;
 }
 

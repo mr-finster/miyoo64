@@ -28,8 +28,8 @@ spruce.
   own clock still follows real time. In the missions a frame may come at any screen refresh (up to 60 fps), and the
   motion steps by the real time between frames so it stays even (`minstep=2` holds 30 a second, `fracstep=0` steps
   whole refreshes).
-- **Menu:** RESUME, SAVE STATE, LOAD STATE (slots 1-9 and the auto save), EXIT GAME, in a built-in
-  font. Volume and brightness are left to the OS. Notices like SAVED SLOT 1 show in the top-left
+- **Menu:** RESUME, SAVE STATE, LOAD STATE (slots 1-9 and the auto save), CONTROLS (the button remap,
+  kept in `data/controls.cfg`), EXIT GAME, in a built-in font. Volume and brightness are left to the OS. Notices like SAVED SLOT 1 show in the top-left
   corner for two seconds.
 
 ## Install
@@ -91,7 +91,8 @@ with this port's `miyoo/game.json`. Given `--rom`, it checks the dump and puts i
 | MENU | the game menu (resume, save / load state, exit game) |
 | SELECT | not used |
 
-In the game's menus, A selects and B goes back. In the MENU overlay: up and down pick an entry, left
+In the game's menus, A selects and B goes back. On the watch the d-pad is the N64's d-pad: a press
+moves one weapon or gadget in the list, and holding it steps on slowly, as on the N64. In the MENU overlay: up and down pick an entry, left
 and right change the slot, A or START selects (twice where it asks ARE YOU SURE?), and B backs out
 of a question or closes the menu (so does MENU).
 

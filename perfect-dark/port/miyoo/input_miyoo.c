@@ -24,6 +24,9 @@
 #include "bss.h"
 #include "input.h"
 #include "system.h"
+#if defined(MIYOO)
+#include "kit/miyoo_remap.h"
+#endif
 
 enum { MK_UP, MK_DOWN, MK_LEFT, MK_RIGHT, MK_A, MK_B, MK_X, MK_Y, MK_L1, MK_R1, MK_L2, MK_R2, MK_START, MK_SELECT, MK_N };
 static volatile u8 sDown[MK_N];
@@ -37,8 +40,31 @@ static f32 sAimRate = 150.f;  /* crosshair stick units per second */
 static f32 sAimX, sAimY;
 static u64 sLastPollUs;
 
+#if defined(MIYOO)
+/* MENU > CONTROLS (kit miyoo_remap.c): the layout below, in play, as the screen shows it; a remap moves the
+ * pressed buttons, so every mode and chord here follows. */
+const struct miyoo_remap_row miyoo_remap_rows[] = {
+    { MR_A, MB_X, 0, 0, "NEXT WEAPON" },
+    { MR_B, MB_A, 0, 0, "ACTION, RELOAD" },
+    { MR_Z, MB_B, 0, 0, "FIRE" },
+    { MR_R, MB_Y, 0, 0, "AIM (HOLD)" },
+    { MR_START, MB_START, 0, 0, "PAUSE" },
+    { MR_CUP, MB_R2, 0, 0, "LOOK UP" },
+    { MR_CDOWN, MB_L2, 0, 0, "LOOK DOWN" },
+    { MR_CLEFT, MB_L1, 0, 0, "STRAFE LEFT" },
+    { MR_CRIGHT, MB_R1, 0, 0, "STRAFE RIGHT" },
+    { MR_L, MB_NONE, 0, 0, "MENUS: L1" },
+    { MR_STICK, MB_DPAD, 0, 0, "WALK, TURN" },
+    { MR_DPAD, MB_DPAD, 0, MB_SELECT, NULL },
+};
+const int miyoo_remap_nrows = (int)(sizeof(miyoo_remap_rows) / sizeof(miyoo_remap_rows[0]));
+#endif
+
 void controller_handheld_key(int sym, int down)
 {
+#if defined(MIYOO)
+	sym = miyoo_remap_key(sym); /* MENU > CONTROLS */
+#endif
 	int k = -1;
 	switch (sym) {
 	case 273: k = MK_UP; break;        /* SDLK_UP */

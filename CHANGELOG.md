@@ -3,6 +3,19 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## Unreleased
+
+- All twelve games: MENU > CONTROLS, a button remap. It lists each N64 button (and the stick and the d-pad) with the
+  Miyoo button that gives it, as button pictures in each controller's colours. Pick a row, press the new button
+  (a swap is offered when that button is in use), and it is kept for that game in `data/controls.cfg`; RESET TO
+  DEFAULT brings back the game's layout. Every mode of the game's layout follows the buttons (GoldenEye's and
+  Perfect Dark's aiming and menus, the START chords of Ocarina of Time, Majora's Mask and F-Zero X). MENU and the
+  d-pad stay where they are. Without a `controls.cfg` the game plays exactly as before.
+- GoldenEye 007: the weapons and gadgets list on the watch no longer races past. The d-pad reached the watch as a stick
+  pushed all the way, and the game moves the list one item every frame for a stick pushed that far (on the N64 too).
+  On the watch the d-pad is now the N64's d-pad: one item a press, and holding it steps on at the game's own slow
+  repeat. The front-end menus keep the d-pad as a stick.
+
 ## 1.3.2 (Majora's Mask 1.0.5 beta)
 
 - Majora's Mask: no more slow motion on the Mini Plus and the Mini Flip. The game waits for each frame to be shown, so

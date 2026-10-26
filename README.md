@@ -109,7 +109,7 @@ the ROM while they run, so keep it on the card for those three.
 
 | Button | Every game |
 |---|---|
-| <kbd>MENU</kbd> | Game menu: resume, save state, load state, exit |
+| <kbd>MENU</kbd> | Game menu: resume, save state, load state, controls, exit |
 | <kbd>Up</kbd> / <kbd>Down</kbd> | Pick a menu entry |
 | <kbd>Left</kbd> / <kbd>Right</kbd> | Change the save slot |
 | <kbd>A</kbd> / <kbd>START</kbd> | Select |
@@ -129,6 +129,12 @@ Each game's own button layout is in its folder's README:
 [Super Mario 64](super-mario-64/README.md#controls),
 [Majora's Mask](majoras-mask/README.md#controls),
 [Harvest Moon 64](harvest-moon-64/README.md#controls).
+
+**MENU > CONTROLS** shows that layout: each N64 button with the Miyoo button that gives it. Pick a row with A,
+then press the Miyoo button you want for it; if that button already does something else, the screen offers to
+swap the two. The change is saved for that game alone (`App/<Game>/data/controls.cfg`), and RESET TO DEFAULT puts
+the layout above back. The game's own modes (aiming, chords such as START + L1, the menus' layout) move with the
+buttons. MENU and the d-pad cannot be changed, so the menu is always reachable.
 
 ## How it's built
 

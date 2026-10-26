@@ -27,6 +27,7 @@
 #include "miyoo_video.h"
 #include "savestate.h"
 #include "miyoo_font.h"
+#include "miyoo_remap.h"
 #if defined(MIYOO)
 #include "miyoo_sleepsave.h"
 #endif
@@ -46,8 +47,8 @@ extern void port_audio_out_set_muted(int muted);
 extern uint32_t *gfx_soft_get_framebuffer(int *w, int *h);
 extern void controller_handheld_key(int sym, int down);
 
-enum { I_RESUME, I_SAVE, I_LOAD, I_EXIT, I_COUNT };
-static const char *ITEM[I_COUNT] = { "RESUME", "SAVE STATE", "LOAD STATE", "EXIT GAME" };
+enum { I_RESUME, I_SAVE, I_LOAD, I_CONTROLS, I_EXIT, I_COUNT };
+static const char *ITEM[I_COUNT] = { "RESUME", "SAVE STATE", "LOAD STATE", "CONTROLS", "EXIT GAME" };
 #define SLOT_MIN 1
 #define SLOT_MAX 9
 
@@ -154,7 +155,7 @@ static void slot_label(char *buf, size_t n, int item) {
 static void compose_menu(int cur, int confirm) {
     SDL_BlitSurface(sBackup, NULL, sDraw, NULL);
     /* 460 wide (MK64: 420): room for the 17-letter title at 3x (408 px) */
-    const int pw = 460, ph = 330, px = (sDraw->w - pw) / 2, py = (sDraw->h - ph) / 2; /* centred (640x480 or the panel) */
+    const int pw = 460, ph = 374, px = (sDraw->w - pw) / 2, py = (sDraw->h - ph) / 2; /* centred (640x480 or the panel) */
     panel(sDraw, px, py, pw, ph);
     text_centered(sDraw, py + 34, 3, GAME_TITLE, C_TEXT);
     fill(sDraw, px + 30, py + 62, pw - 60, 2, C_EDGE);
@@ -234,6 +235,11 @@ void handheld_menu_init(struct SDL_Surface *screen) {
     { const char *e = getenv("DKR_MAGBILIN"); if (e && e[0]) gfx_soft_magbilin = e[0] == '1'; }
 }
 
+/* MENU > CONTROLS (miyoo_remap.c): the screen draws on the menu's surfaces */
+static void remap_show(void) { miyoo_show_full(sDraw); }
+static void remap_key(int sym, int down) { controller_handheld_key(sym, down); }
+static int remap_close(void) { return handheld_power_pending() || miyoo_sleepsave_menu_should_close(); }
+
 void handheld_menu_run(struct SDL_Surface *screen) {
     if (!sInited || !screen) return;
     port_audio_out_set_muted(1);
@@ -284,6 +290,7 @@ void handheld_menu_run(struct SDL_Surface *screen) {
             case SDLK_SPACE: /* A */
             case SDLK_RETURN: /* START */
                 if (cur == I_RESUME) running = 0;
+                else if (cur == I_CONTROLS) { miyoo_remap_screen(sDraw, sBackup, remap_show, remap_key, remap_close); confirm = 0; dirty = 1; }
                 else if (cur == I_SAVE) {
                     if (confirm || !savestate_slot_valid(sSlot)) {
                         savestate_request_save(sSlot);
@@ -382,6 +389,7 @@ void handheld_menu_test_dump(const char *dir) {
         uint32_t *row = (uint32_t *)((uint8_t *)sBackup->pixels + y * sBackup->pitch);
         for (int x = 0; x < MENU_W; x++) row[x] = 0xFF1A2640u;
     }
+    miyoo_remap_test_dump(sDraw, sBackup, dir); /* MENU > CONTROLS */
     for (int i = 0; i < I_COUNT; i++) {
         compose_menu(i, 0);
         snprintf(path, sizeof(path), "%s/menu_%02d.ppm", dir, i);

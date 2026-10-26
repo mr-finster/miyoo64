@@ -51,7 +51,7 @@ ifeq ($(PLAT),miyoo)
   # no SDL_ttf/SDL_image: the Miyoo menu and first-start screen draw with a built-in font
   SDL_LIBS   := -L$(MIYOO_SYSROOT)/usr/lib -lSDL
   PLAT_DEFS  := -DTARGET_HANDHELD=1 -DHANDHELD=1 -DMIYOO=1
-  PLAT_SRC   := port/sdl/gfx_sdl12.c port/sdl/miyoo_video.c port/sdl/miyoo_menu.c port/sdl/miyoo_worker.c port/sdl/miyoo_watchdog.c port/sdl/miyoo_clock.c port/sdl/miyoo_sleepsave.c
+  PLAT_SRC   := port/sdl/gfx_sdl12.c port/sdl/miyoo_video.c port/sdl/miyoo_menu.c port/sdl/miyoo_remap.c port/sdl/miyoo_worker.c port/sdl/miyoo_watchdog.c port/sdl/miyoo_clock.c port/sdl/miyoo_sleepsave.c
 else
   CC      := gcc
   OBJCOPY := objcopy
