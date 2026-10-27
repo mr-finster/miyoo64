@@ -3,6 +3,14 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## Next (Harvest Moon 64 1.0.3)
+
+- Harvest Moon 64: a negative number turned into a colour, a tile position or a screen position now wraps as on the
+  N64 instead of becoming 0 on the Mini (the same fix as Paper Mario's in 1.4.0; `HM64_F2U`). In the scenes checked
+  (the intro, the title, a new game, the house, the farm with the tools, the village, a new day) no value was ever
+  negative, so nothing on screen changes there; it guards the places the game could reach that were not checked.
+  The diary saves carry over; a RESUME GAME save from 1.0.2 does not load (kept as `.rejected`).
+
 ## 1.4.1 (Mario Kart 64 1.1.6 hotfix)
 
 Only Mario Kart 64 is rebuilt (1.1.6); the other eleven games are the 1.4.0 zips.

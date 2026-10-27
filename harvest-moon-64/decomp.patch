@@ -1,8 +1,8 @@
 diff --git a/include/common.h b/include/common.h
-index fd9a449..4bb481a 100644
+index fd9a449..aa2e9c2 100644
 --- a/include/common.h
 +++ b/include/common.h
-@@ -17,6 +17,24 @@
+@@ -17,6 +17,28 @@
  #define FALSE 0
  
  typedef u32 Addr;
@@ -23,6 +23,10 @@ index fd9a449..4bb481a 100644
 +#endif
 +#ifndef HH_WAIT_RETRACE_MAIN
 +#define HH_WAIT_RETRACE_MAIN()
++#endif
++/* a float to an unsigned type as the N64 does it (negatives wrap); the port's is in hh/game/hh_compat.h */
++#ifndef HM64_F2U
++#define HM64_F2U(v) (v)
 +#endif
  typedef u8 bool;
  
@@ -179,10 +183,22 @@ index 4ff5bec..34fca71 100644
  #ifdef SUPPORT_SONGWAVELOOKUP
    work_addr++;
 diff --git a/lib/libmus/src/player_commands.c b/lib/libmus/src/player_commands.c
-index 678ebce..2b589aa 100644
+index 678ebce..22d4eeb 100644
 --- a/lib/libmus/src/player_commands.c
 +++ b/lib/libmus/src/player_commands.c
-@@ -458,7 +458,12 @@ static unsigned char *Fdrums(channel_t *cp, unsigned char *ptr)
+@@ -345,7 +345,11 @@ static unsigned char *Ffor(channel_t *cp, unsigned char *ptr)
+   cp->for_stackvol[index] = cp->pvolume;
+   cp->for_stackpb[index] = cp->ppitchbend;
+   cp->for_volume[index] = cp->volume;
++#ifdef HM64_F2U
++  cp->for_pitchbend[index] = HM64_F2U(cp->pitchbend); /* a negative bend wraps, as on the N64 */
++#else
+   cp->for_pitchbend[index] = cp->pitchbend;
++#endif
+   cp->for_vol_count[index] = cp->cont_vol_repeat_count;
+   cp->for_pb_count[index] = cp->cont_pb_repeat_count;
+   cp->for_stack_count++;
+@@ -458,7 +462,12 @@ static unsigned char *Fdrums(channel_t *cp, unsigned char *ptr)
  {
    unsigned long addr;
  
@@ -195,6 +211,25 @@ index 678ebce..2b589aa 100644
    cp->pdrums = (unsigned char *)addr;
    return (ptr);
  }
+diff --git a/lib/libultra/include/PR/mbi.h b/lib/libultra/include/PR/mbi.h
+index 7490b7f..e3c58d2 100644
+--- a/lib/libultra/include/PR/mbi.h
++++ b/lib/libultra/include/PR/mbi.h
+@@ -15,8 +15,14 @@
+  * (NOTE: _SHIFTL(v, 0, 32) won't work, just use an assignment)
+  *
+  */
++#ifdef TARGET_HANDHELD
++/* the port: a negative float wraps as on the N64 (ARM's float to unsigned makes it 0) */
++#define _SHIFTL(v, s, w)	\
++    ((unsigned int) (((unsigned int)(int)(v) & ((0x01 << (w)) - 1)) << (s)))
++#else
+ #define _SHIFTL(v, s, w)	\
+     ((unsigned int) (((unsigned int)(v) & ((0x01 << (w)) - 1)) << (s)))
++#endif
+ #define _SHIFTR(v, s, w)	\
+     ((unsigned int)(((unsigned int)(v) >> (s)) & ((0x01 << (w)) - 1)))
+ 
 diff --git a/lib/libultra/include/PR/os_convert.h b/lib/libultra/include/PR/os_convert.h
 index 096c052..a4f4ac4 100644
 --- a/lib/libultra/include/PR/os_convert.h
@@ -248,10 +283,186 @@ index 0106bb3..08985f4 100644
 +    return len ? samples : 0;
 +}
 +#endif
+diff --git a/src/game/animals.c b/src/game/animals.c
+index 9cdc9a6..3a26978 100644
+--- a/src/game/animals.c
++++ b/src/game/animals.c
+@@ -11061,7 +11061,7 @@ void showAnimalExpressionBubble(u8 animalType, u8 animalIndex, u8 arg2) {
+     setEntityTracksCollisions(48, FALSE);
+     enableEntityMovement(48, FALSE);
+ 
+-    setEntityColor(48, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.r, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.g, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.b, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.a);
++    setEntityColor(48, HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.r), HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.g), HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.b), HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.a));
+     setEntityAttachmentOffset(48, 0, 48, 0);
+     setEntityAnimation(48, arg2);
+     
+diff --git a/src/game/game.c b/src/game/game.c
+index 584b077..90e3d11 100644
+--- a/src/game/game.c
++++ b/src/game/game.c
+@@ -1019,13 +1019,13 @@ void setLevelLighting(s16 rate, u16 callbackFunctionIndex) {
+     
+     if (rate == 0) {
+         
+-        setEntitiesRGBA(globalLightingRGBA.r, globalLightingRGBA.g, globalLightingRGBA.b, globalLightingRGBA.a);
+-        setMapControllerRGBA(MAIN_MAP_INDEX, globalLightingRGBA.r, globalLightingRGBA.g, globalLightingRGBA.b, globalLightingRGBA.a);
++        setEntitiesRGBA(HM64_F2U(globalLightingRGBA.r), HM64_F2U(globalLightingRGBA.g), HM64_F2U(globalLightingRGBA.b), HM64_F2U(globalLightingRGBA.a));
++        setMapControllerRGBA(MAIN_MAP_INDEX, HM64_F2U(globalLightingRGBA.r), HM64_F2U(globalLightingRGBA.g), HM64_F2U(globalLightingRGBA.b), HM64_F2U(globalLightingRGBA.a));
+         
+     } else if (globalLightingRGBA.r != previousLightingRGBA.r || globalLightingRGBA.g != previousLightingRGBA.g || globalLightingRGBA.b != previousLightingRGBA.b || globalLightingRGBA.a != previousLightingRGBA.a) {
+         
+-        setEntitiesRGBAWithTransition(globalLightingRGBA.r, globalLightingRGBA.g, globalLightingRGBA.b, globalLightingRGBA.a, rate);
+-        setMapControllerRGBAWithTransition(0, globalLightingRGBA.r, globalLightingRGBA.g, globalLightingRGBA.b, globalLightingRGBA.a, rate);
++        setEntitiesRGBAWithTransition(HM64_F2U(globalLightingRGBA.r), HM64_F2U(globalLightingRGBA.g), HM64_F2U(globalLightingRGBA.b), HM64_F2U(globalLightingRGBA.a), rate);
++        setMapControllerRGBAWithTransition(0, HM64_F2U(globalLightingRGBA.r), HM64_F2U(globalLightingRGBA.g), HM64_F2U(globalLightingRGBA.b), HM64_F2U(globalLightingRGBA.a), rate);
+         
+         if (!checkDailyEventBit(CUTSCENE_AUDIO_OVERRIDE)) {
+             setAudioSequenceVolume(gCurrentAudioSequenceIndex, gAudioSequenceVolume);
+diff --git a/src/game/gameFile.c b/src/game/gameFile.c
+index 4f29125..702e612 100644
+--- a/src/game/gameFile.c
++++ b/src/game/gameFile.c
+@@ -2927,11 +2927,11 @@ void loadFarmRankingScreen(void) {
+     gFarmRankingData.cursorIndex = 0;
+ 
+     // unused  copies of scores
+-    D_8018A728 = gFarmRankingData.scores[0];
+-    D_801D6F2C = gFarmRankingData.scores[1];
+-    D_8018A080 = gFarmRankingData.scores[2];
+-    D_802226E4 = gFarmRankingData.scores[3];
+-    D_80204DF0 = gFarmRankingData.scores[4];
++    D_8018A728 = HM64_F2U(gFarmRankingData.scores[0]);
++    D_801D6F2C = HM64_F2U(gFarmRankingData.scores[1]);
++    D_8018A080 = HM64_F2U(gFarmRankingData.scores[2]);
++    D_802226E4 = HM64_F2U(gFarmRankingData.scores[3]);
++    D_80204DF0 = HM64_F2U(gFarmRankingData.scores[4]);
+     
+ }
+ 
+@@ -3106,34 +3106,34 @@ void setupRankingListMessageBoxes(bool noFadeIn) {
+         setNumberSprites(0, 0x89, (u32)&_rankingsTextureSegmentRomStart, (u32)&_rankingsTextureSegmentRomEnd, (u32)&_rankingsAssetsIndexSegmentRomStart, (u32)&_rankingsAssetsIndexSegmentRomEnd, (u8*)FARM_RANKINGS_TEXTURE_BUFFER, (u16*)FARM_RANKINGS_PALETTE_BUFFER, (AnimationFrameMetadata*)FARM_RANKINGS_ANIMATION_FRAME_METADATA_BUFFER, (u32*)FARM_RANKINGS_TEXTURE_TO_PALETTE_LOOKUP_BUFFER, 0, 4, 0, RANKING_LIST_NUMBER_X, 40.0f, 16.0f, 10);
+         dmaNumberSprites(0, gFarmRankingData.years[0], 1, 3);
+         setNumberSprites(5, 0x8B, (u32)&_rankingsTextureSegmentRomStart, (u32)&_rankingsTextureSegmentRomEnd, (u32)&_rankingsAssetsIndexSegmentRomStart, (u32)&_rankingsAssetsIndexSegmentRomEnd, (u8*)FARM_RANKINGS_TEXTURE_BUFFER, (u16*)FARM_RANKINGS_PALETTE_BUFFER, (AnimationFrameMetadata*)FARM_RANKINGS_ANIMATION_FRAME_METADATA_BUFFER, (u32*)FARM_RANKINGS_TEXTURE_TO_PALETTE_LOOKUP_BUFFER, 0, 4, 0, 116.0f, 40.0f, 16.0f, 10);
+-        dmaNumberSprites(5, gFarmRankingData.scores[0], 2, 3);
++        dmaNumberSprites(5, HM64_F2U(gFarmRankingData.scores[0]), 2, 3);
+     }
+ 
+     if (gFarmRankingData.flags[1] & RANKING_FLAG_ACTIVE) {
+         setNumberSprites(1, 0x8E, (u32)&_rankingsTextureSegmentRomStart, (u32)&_rankingsTextureSegmentRomEnd, (u32)&_rankingsAssetsIndexSegmentRomStart, (u32)&_rankingsAssetsIndexSegmentRomEnd, (u8*)FARM_RANKINGS_TEXTURE_BUFFER, (u16*)FARM_RANKINGS_PALETTE_BUFFER, (AnimationFrameMetadata*)FARM_RANKINGS_ANIMATION_FRAME_METADATA_BUFFER, (u32*)FARM_RANKINGS_TEXTURE_TO_PALETTE_LOOKUP_BUFFER, 0, 4, 0, RANKING_LIST_NUMBER_X, 8.0f, 16.0f, 10);
+         dmaNumberSprites(1, gFarmRankingData.years[1], 1, 3);
+         setNumberSprites(6, 0x90, (u32)&_rankingsTextureSegmentRomStart, (u32)&_rankingsTextureSegmentRomEnd, (u32)&_rankingsAssetsIndexSegmentRomStart, (u32)&_rankingsAssetsIndexSegmentRomEnd, (u8*)FARM_RANKINGS_TEXTURE_BUFFER, (u16*)FARM_RANKINGS_PALETTE_BUFFER, (AnimationFrameMetadata*)FARM_RANKINGS_ANIMATION_FRAME_METADATA_BUFFER, (u32*)FARM_RANKINGS_TEXTURE_TO_PALETTE_LOOKUP_BUFFER, 0, 4, 0, 116.0f, 8.0f, 16.0f, 10);
+-        dmaNumberSprites(6, gFarmRankingData.scores[1], 2, 3);
++        dmaNumberSprites(6, HM64_F2U(gFarmRankingData.scores[1]), 2, 3);
+     }
+     
+     if (gFarmRankingData.flags[2] & RANKING_FLAG_ACTIVE) {
+         setNumberSprites(2, 0x93, (u32)&_rankingsTextureSegmentRomStart, (u32)&_rankingsTextureSegmentRomEnd, (u32)&_rankingsAssetsIndexSegmentRomStart, (u32)&_rankingsAssetsIndexSegmentRomEnd, (u8*)FARM_RANKINGS_TEXTURE_BUFFER, (u16*)FARM_RANKINGS_PALETTE_BUFFER, (AnimationFrameMetadata*)FARM_RANKINGS_ANIMATION_FRAME_METADATA_BUFFER, (u32*)FARM_RANKINGS_TEXTURE_TO_PALETTE_LOOKUP_BUFFER, 0, 4, 0, RANKING_LIST_NUMBER_X, -24.0f, 16.0f, 10);
+         dmaNumberSprites(2, gFarmRankingData.years[2], 1, 3);
+         setNumberSprites(7, 0x95, (u32)&_rankingsTextureSegmentRomStart, (u32)&_rankingsTextureSegmentRomEnd, (u32)&_rankingsAssetsIndexSegmentRomStart, (u32)&_rankingsAssetsIndexSegmentRomEnd, (u8*)FARM_RANKINGS_TEXTURE_BUFFER, (u16*)FARM_RANKINGS_PALETTE_BUFFER, (AnimationFrameMetadata*)FARM_RANKINGS_ANIMATION_FRAME_METADATA_BUFFER, (u32*)FARM_RANKINGS_TEXTURE_TO_PALETTE_LOOKUP_BUFFER, 0, 4, 0, 116.0f, -24.0f, 16.0f, 10);
+-        dmaNumberSprites(7, gFarmRankingData.scores[2], 2, 3);
++        dmaNumberSprites(7, HM64_F2U(gFarmRankingData.scores[2]), 2, 3);
+     }
+     if (gFarmRankingData.flags[3] & RANKING_FLAG_ACTIVE) {
+         setNumberSprites(3, 0x98, (u32)&_rankingsTextureSegmentRomStart, (u32)&_rankingsTextureSegmentRomEnd, (u32)&_rankingsAssetsIndexSegmentRomStart, (u32)&_rankingsAssetsIndexSegmentRomEnd, (u8*)FARM_RANKINGS_TEXTURE_BUFFER, (u16*)FARM_RANKINGS_PALETTE_BUFFER, (AnimationFrameMetadata*)FARM_RANKINGS_ANIMATION_FRAME_METADATA_BUFFER, (u32*)FARM_RANKINGS_TEXTURE_TO_PALETTE_LOOKUP_BUFFER, 0, 4, 0, RANKING_LIST_NUMBER_X, -56.0f, 16.0f, 10);
+         dmaNumberSprites(3, gFarmRankingData.years[3], 1, 3);
+         setNumberSprites(8, 0x9A, (u32)&_rankingsTextureSegmentRomStart, (u32)&_rankingsTextureSegmentRomEnd, (u32)&_rankingsAssetsIndexSegmentRomStart, (u32)&_rankingsAssetsIndexSegmentRomEnd, (u8*)FARM_RANKINGS_TEXTURE_BUFFER, (u16*)FARM_RANKINGS_PALETTE_BUFFER, (AnimationFrameMetadata*)FARM_RANKINGS_ANIMATION_FRAME_METADATA_BUFFER, (u32*)FARM_RANKINGS_TEXTURE_TO_PALETTE_LOOKUP_BUFFER, 0, 4, 0, 116.0f, -56.0f, 16.0f, 10);
+-        dmaNumberSprites(8, gFarmRankingData.scores[3], 2, 3);
++        dmaNumberSprites(8, HM64_F2U(gFarmRankingData.scores[3]), 2, 3);
+     }
+     
+     if (gFarmRankingData.flags[4] & RANKING_FLAG_ACTIVE) {
+         setNumberSprites(4, 0x9D, (u32)&_rankingsTextureSegmentRomStart, (u32)&_rankingsTextureSegmentRomEnd, (u32)&_rankingsAssetsIndexSegmentRomStart, (u32)&_rankingsAssetsIndexSegmentRomEnd, (u8*)FARM_RANKINGS_TEXTURE_BUFFER, (u16*)FARM_RANKINGS_PALETTE_BUFFER, (AnimationFrameMetadata*)FARM_RANKINGS_ANIMATION_FRAME_METADATA_BUFFER, (u32*)FARM_RANKINGS_TEXTURE_TO_PALETTE_LOOKUP_BUFFER, 0, 4, 0, RANKING_LIST_NUMBER_X, -88.0f, 16.0f, 10);
+         dmaNumberSprites(4, gFarmRankingData.years[4], 1, 3);
+         setNumberSprites(9, 0x9F, (u32)&_rankingsTextureSegmentRomStart, (u32)&_rankingsTextureSegmentRomEnd, (u32)&_rankingsAssetsIndexSegmentRomStart, (u32)&_rankingsAssetsIndexSegmentRomEnd, (u8*)FARM_RANKINGS_TEXTURE_BUFFER, (u16*)FARM_RANKINGS_PALETTE_BUFFER, (AnimationFrameMetadata*)FARM_RANKINGS_ANIMATION_FRAME_METADATA_BUFFER, (u32*)FARM_RANKINGS_TEXTURE_TO_PALETTE_LOOKUP_BUFFER, 0, 4, 0, 116.0f, -88.0f, 16.0f, 10);
+-        dmaNumberSprites(9, gFarmRankingData.scores[4], 2, 3);
++        dmaNumberSprites(9, HM64_F2U(gFarmRankingData.scores[4]), 2, 3);
+     }
+     
+     setMessageBoxRGBA(0, 0, 0, 0, 0);
+@@ -3292,7 +3292,7 @@ void setupRankingDetailMessageBoxes(u8 slot) {
+     dmaNumberSprites(0, gFarmRankingData.years[slot], 1, 3);
+ 
+     setNumberSprites(1, 0x8B, (u32)&_rankingsTextureSegmentRomStart, (u32)&_rankingsTextureSegmentRomEnd, (u32)&_rankingsAssetsIndexSegmentRomStart, (u32)&_rankingsAssetsIndexSegmentRomEnd, (u8*)FARM_RANKINGS_TEXTURE_BUFFER, (u16*)FARM_RANKINGS_PALETTE_BUFFER, (AnimationFrameMetadata*)FARM_RANKINGS_ANIMATION_FRAME_METADATA_BUFFER, (u32*)FARM_RANKINGS_TEXTURE_TO_PALETTE_LOOKUP_BUFFER, 0, 4, 0, 116.0f, 80.0f, 16.0f, 10);
+-    dmaNumberSprites(1, gFarmRankingData.scores[slot], 2, 3);
++    dmaNumberSprites(1, HM64_F2U(gFarmRankingData.scores[slot]), 2, 3);
+ 
+     setNumberSprites(2, 0xA4, (u32)&_rankingsTextureSegmentRomStart, (u32)&_rankingsTextureSegmentRomEnd, (u32)&_rankingsAssetsIndexSegmentRomStart, (u32)&_rankingsAssetsIndexSegmentRomEnd, (u8*)FARM_RANKINGS_TEXTURE_BUFFER, (u16*)FARM_RANKINGS_PALETTE_BUFFER, (AnimationFrameMetadata*)FARM_RANKINGS_ANIMATION_FRAME_METADATA_BUFFER, (u32*)FARM_RANKINGS_TEXTURE_TO_PALETTE_LOOKUP_BUFFER, 0, 4, 0, RANKING_DETAIL_NUMBER_X2, -32.0f, 16.0f, 10);
+     dmaNumberSprites(2, gFarmRankingData.photoCount[slot], 1, 3);
+@@ -4111,7 +4111,7 @@ void calculateFarmRankingScore(u8 slot) {
+ 
+     totalScore += (((u32)gFarmRankingData.happiness[slot] * 400) / MAX_HAPPINESS);
+ 
+-    farmRankingRawScore = (u32)totalScore;
++    farmRankingRawScore = (u32)HM64_F2U(totalScore);
+     
+     gFarmRankingData.scores[slot] = totalScore / 70.0f;
+     
+diff --git a/src/game/groundObjects.c b/src/game/groundObjects.c
+index d29a35d..29b0f81 100644
+--- a/src/game/groundObjects.c
++++ b/src/game/groundObjects.c
+@@ -1134,10 +1134,10 @@ void addGroundObjectToMapFromPlayerPosition(u8 groundObjectIndex, f32 arg1, u8 a
+     if (vec.y != 65535.0f) {
+ 
+         temp1 = vec.x;
+-        x = temp1 - groundObjectsGridX;
++        x = HM64_F2U(temp1 - groundObjectsGridX);
+         
+         temp2 = vec.z;
+-        z = temp2 - groundObjectsGridZ;
++        z = HM64_F2U(temp2 - groundObjectsGridZ);
+ 
+         addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, x, z);
+         
+@@ -1177,10 +1177,10 @@ u8 getGroundObjectIndexFromPlayerPosition(f32 arg0, u8 arg1) {
+     if (gBaseMapIndex == FARM || gBaseMapIndex == GREENHOUSE || gBaseMapIndex == MOUNTAIN_1 | gBaseMapIndex == MOUNTAIN_2 || gBaseMapIndex == TOP_OF_MOUNTAIN_1 || gBaseMapIndex == MOON_MOUNTAIN || gBaseMapIndex == POND || gBaseMapIndex == CAVE || (CAVE < gBaseMapIndex && gBaseMapIndex < MINE_2 + 1) || gBaseMapIndex == RANCH) {
+ 
+         vec = getOffsetTileCoordinates(arg0, arg1);
+-        vec2 = getGroundObjectWorldPosition(0, vec.x, vec.z);
++        vec2 = getGroundObjectWorldPosition(0, HM64_F2U(vec.x), HM64_F2U(vec.z));
+ 
+         if (vec2.y != 65535.0f) {
+-            groundObjectIndex = getGroundObjectIndexFromTilePosition(gBaseMapIndex, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++            groundObjectIndex = getGroundObjectIndexFromTilePosition(gBaseMapIndex, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+         }
+         
+     }
+@@ -1202,11 +1202,11 @@ u8 getGroundObjectIndexFromCoordinates(f32 x, f32 z) {
+     if (gBaseMapIndex == FARM || gBaseMapIndex == GREENHOUSE || gBaseMapIndex == MOUNTAIN_1 | gBaseMapIndex == MOUNTAIN_2 || gBaseMapIndex == TOP_OF_MOUNTAIN_1 || gBaseMapIndex == MOON_MOUNTAIN || gBaseMapIndex == POND || gBaseMapIndex == CAVE || (CAVE < gBaseMapIndex && gBaseMapIndex < MINE_2 + 1) || gBaseMapIndex == RANCH) {
+ 
+         vec = convertWorldToTileCoordinates(0, x, z);
+-        vec2 = getGroundObjectWorldPosition(0, vec.x, vec.z);
++        vec2 = getGroundObjectWorldPosition(0, HM64_F2U(vec.x), HM64_F2U(vec.z));
+ 
+         if (vec2.y != 65535.0f) {
+             mapIndex = gBaseMapIndex;
+-            groundObjectIndex = getGroundObjectIndexFromTilePosition(mapIndex, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++            groundObjectIndex = getGroundObjectIndexFromTilePosition(mapIndex, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+         }
+         
+     }
 diff --git a/src/game/items.c b/src/game/items.c
-index 71a13e4..2c64b48 100644
+index 71a13e4..271dfde 100644
 --- a/src/game/items.c
 +++ b/src/game/items.c
+@@ -2084,7 +2084,7 @@ void spawnToolEffectEntity(u8 itemOffset, u8 animationIndex, f32 x, f32 y, f32 z
+     setEntityCollidable(ENTITY_ITEM_BASE_INDEX + itemOffset, FALSE);
+     setEntityYMovement(ENTITY_ITEM_BASE_INDEX + itemOffset, FALSE);
+     setEntityCoordinates(ENTITY_ITEM_BASE_INDEX + itemOffset, x, y, z);
+-    setEntityColor(ENTITY_ITEM_BASE_INDEX + itemOffset, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.r, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.g, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.b, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.a);
++    setEntityColor(ENTITY_ITEM_BASE_INDEX + itemOffset, HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.r), HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.g), HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.b), HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.a));
+     setEntityAnimation(ENTITY_ITEM_BASE_INDEX + itemOffset, animationIndex);
+     
+ }
+@@ -2099,7 +2099,7 @@ void spawnFishingRodEntity(u8 itemOffset, u8 animationIndex, f32 x, f32 y, f32 z
+     setEntityCollidable(ENTITY_ITEM_BASE_INDEX + itemOffset, FALSE);
+     setEntityYMovement(ENTITY_ITEM_BASE_INDEX + itemOffset, FALSE);
+     setEntityCoordinates(ENTITY_ITEM_BASE_INDEX + itemOffset, x, y, z);
+-    setEntityColor(ENTITY_ITEM_BASE_INDEX + itemOffset, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.r, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.g, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.b, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.a);
++    setEntityColor(ENTITY_ITEM_BASE_INDEX + itemOffset, HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.r), HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.g), HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.b), HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.a));
+     setEntityAnimation(ENTITY_ITEM_BASE_INDEX + itemOffset, animationIndex);
+     
+ }
 @@ -2418,7 +2418,11 @@ void useSickle(void) {
      u8 arr3[3];
      u8 arr4[3];
@@ -264,6 +475,201 @@ index 71a13e4..2c64b48 100644
      
      u32 padding[2];
  
+@@ -2505,7 +2509,7 @@ void useSickle(void) {
+             
+         }
+ 
+-        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+            
+ #ifdef _JP
+         temp3 = allocateThrownItemSlot(1, ITEM_STATE_THROW_LANDED, temp4, 0, 8);
+@@ -2513,7 +2517,7 @@ void useSickle(void) {
+         temp3 = allocateGroundItemSlot(1, ITEM_STATE_THROW_LANDED, temp4, 0, 8);
+ #endif
+ 
+-        vec = getGroundObjectWorldPosition(0, (u8)vec.x, (u8)vec.z);
++        vec = getGroundObjectWorldPosition(0, (u8)HM64_F2U(vec.x), (u8)HM64_F2U(vec.z));
+         setItemPosition(temp3, vec.x, vec.y, vec.z);
+ 
+     }
+@@ -2602,9 +2606,9 @@ void useHoe(void) {
+         
+         if ((getGroundObjectToolInteractionFlags(getGroundObjectIndexFromPlayerPosition(tempF, 8)) & GROUND_OBJECT_TILLABLE) && (gBaseMapIndex == GREENHOUSE || gBaseMapIndex == MINE || gBaseMapIndex == MINE_2 || gSeason != WINTER)) {
+ 
+-            addGroundObjectToMap(gBaseMapIndex, TILLED, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++            addGroundObjectToMap(gBaseMapIndex, TILLED, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+             
+-            vec = getGroundObjectWorldPosition(0, (u8)vec.x, (u8)vec.z);
++            vec = getGroundObjectWorldPosition(0, (u8)HM64_F2U(vec.x), (u8)HM64_F2U(vec.z));
+             
+             spawnToolEffectEntity(toolUse.stepIndex, 0, vec.x, vec.y, vec.z);
+ 
+@@ -2714,10 +2718,10 @@ void useAx(void) {
+                 switch (groundObjectIndex) {
+ 
+                     case STUMP:
+-                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
+-                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX + 1, (u8)vec.z - groundObjectsGridZ);
+-                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ + 1);
+-                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX + 1, (u8)vec.z - groundObjectsGridZ + 1);
++                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
++                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX + 1, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
++                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ + 1);
++                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX + 1, (u8)HM64_F2U(vec.z) - groundObjectsGridZ + 1);
+ 
+                         vec2.x = 16.0f;
+                         vec2.z = 16.0f;
+@@ -2725,10 +2729,10 @@ void useAx(void) {
+                         break;
+ 
+                     case 0xC9:
+-                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
+-                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX - 1, (u8)vec.z - groundObjectsGridZ);
+-                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ + 1);
+-                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX - 1, (u8)vec.z - groundObjectsGridZ + 1);
++                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
++                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX - 1, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
++                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ + 1);
++                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX - 1, (u8)HM64_F2U(vec.z) - groundObjectsGridZ + 1);
+ 
+                         vec2.x = -16.0f;
+                         vec2.z = 16.0f;
+@@ -2736,10 +2740,10 @@ void useAx(void) {
+                         break;
+                     
+                     case 0xCA:
+-                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
+-                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX + 1, (u8)vec.z - groundObjectsGridZ);
+-                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ - 1);
+-                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX + 1, (u8)vec.z - groundObjectsGridZ - 1);
++                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
++                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX + 1, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
++                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ - 1);
++                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX + 1, (u8)HM64_F2U(vec.z) - groundObjectsGridZ - 1);
+ 
+                         vec2.x = 16.0f;
+                         vec2.z = -16.0f;
+@@ -2748,10 +2752,10 @@ void useAx(void) {
+                         break;
+                     
+                     case 0xCB:
+-                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
+-                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX - 1, (u8)vec.z - groundObjectsGridZ);
+-                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ - 1);
+-                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX - 1, (u8)vec.z - groundObjectsGridZ - 1);
++                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
++                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX - 1, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
++                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ - 1);
++                        addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX - 1, (u8)HM64_F2U(vec.z) - groundObjectsGridZ - 1);
+     
+                         vec2.x = -16.0f;
+                         vec2.z = -16.0f;
+@@ -2766,7 +2770,7 @@ void useAx(void) {
+                 groundObjectIndex = allocateGroundItemSlot(1, ITEM_STATE_THROW_LANDED, 61, 0, 8);
+ #endif
+ 
+-                vec = getGroundObjectWorldPosition(MAIN_MAP_INDEX, (u8)vec.x, (u8)vec.z);
++                vec = getGroundObjectWorldPosition(MAIN_MAP_INDEX, (u8)HM64_F2U(vec.x), (u8)HM64_F2U(vec.z));
+                 vec.x += vec2.x;
+                 vec.z += vec2.z;
+                 
+@@ -2850,7 +2854,7 @@ void useHammer(void) {
+ 
+                 case SMALL_ROCK:
+ 
+-                    addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++                    addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+                     
+                     vec2.x = 0.0f;
+                     vec2.z = 0.0f;
+@@ -2863,7 +2867,7 @@ void useHammer(void) {
+                         groundObjectIndex = allocateGroundItemSlot(1, 12, 2, 0, 8);
+ #endif
+                     
+-                    vec = getGroundObjectWorldPosition(MAIN_MAP_INDEX, (u8)vec.x, (u8)vec.z);
++                    vec = getGroundObjectWorldPosition(MAIN_MAP_INDEX, (u8)HM64_F2U(vec.x), (u8)HM64_F2U(vec.z));
+                     vec.x += vec2.x;
+                     vec.z += vec2.z;
+                 
+@@ -2873,7 +2877,7 @@ void useHammer(void) {
+                 case TILLED:
+                 case TILLED_WATERED:
+                 case BROKEN_LOG:
+-                    addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++                    addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+                     break;
+                 
+                 case BOULDER ... 0xC7:
+@@ -2883,10 +2887,10 @@ void useHammer(void) {
+                         switch (groundObjectIndex) {
+ 
+                             case BOULDER:
+-                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
+-                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX + 1, (u8)vec.z - groundObjectsGridZ);
+-                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ + 1);
+-                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX + 1, (u8)vec.z - groundObjectsGridZ + 1);
++                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
++                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX + 1, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
++                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ + 1);
++                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX + 1, (u8)HM64_F2U(vec.z) - groundObjectsGridZ + 1);
+ 
+                                 vec2.x = 16.0f;
+                                 vec2.z = 16.0f;
+@@ -2896,10 +2900,10 @@ void useHammer(void) {
+                                 break;
+ 
+                             case 0xC5:
+-                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
+-                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX - 1, (u8)vec.z - groundObjectsGridZ);
+-                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ + 1);
+-                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX - 1, (u8)vec.z - groundObjectsGridZ + 1);
++                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
++                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX - 1, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
++                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ + 1);
++                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX - 1, (u8)HM64_F2U(vec.z) - groundObjectsGridZ + 1);
+ 
+                                 vec2.x = -16.0f;
+                                 vec2.z = 16.0f;
+@@ -2909,10 +2913,10 @@ void useHammer(void) {
+                                 break;
+ 
+                             case 0xC6:
+-                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
+-                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX + 1, (u8)vec.z - groundObjectsGridZ);
+-                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ - 1);
+-                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX + 1, (u8)vec.z - groundObjectsGridZ - 1);
++                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
++                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX + 1, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
++                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ - 1);
++                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX + 1, (u8)HM64_F2U(vec.z) - groundObjectsGridZ - 1);
+ 
+                                 vec2.x = 16.0f;
+                                 vec2.z = -16.0f;
+@@ -2922,10 +2926,10 @@ void useHammer(void) {
+                                 break;
+                         
+                             case 0xC7:
+-                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
+-                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX - 1, (u8)vec.z - groundObjectsGridZ);
+-                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ - 1);
+-                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)vec.x - groundObjectsGridX - 1, (u8)vec.z - groundObjectsGridZ - 1);
++                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
++                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX - 1, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
++                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ - 1);
++                                addGroundObjectToMap(gBaseMapIndex, BASE_TILE, (u8)HM64_F2U(vec.x) - groundObjectsGridX - 1, (u8)HM64_F2U(vec.z) - groundObjectsGridZ - 1);
+ 
+                                 vec2.x = -16.0f;
+                                 vec2.z = -16.0f;
+@@ -2941,7 +2945,7 @@ void useHammer(void) {
+ #else
+                         groundObjectIndex = allocateGroundItemSlot(1, 12, temp, 0, 8);
+ #endif
+-                        vec = getGroundObjectWorldPosition(MAIN_MAP_INDEX, (u8)vec.x, (u8)vec.z);
++                        vec = getGroundObjectWorldPosition(MAIN_MAP_INDEX, (u8)HM64_F2U(vec.x), (u8)HM64_F2U(vec.z));
+                         vec.x += vec2.x;
+                         vec.z += vec2.z;
+                     
 @@ -3027,7 +3031,11 @@ void useWateringCan(void) {
      u8 arr3[3];
      u8 arr4[3];
@@ -276,6 +682,144 @@ index 71a13e4..2c64b48 100644
      
      u32 padding[2];
  
+@@ -3096,9 +3104,9 @@ void useWateringCan(void) {
+                 temp2 = currentGroundObjectIndex + 1;
+             }
+             
+-            addGroundObjectToMap(gBaseMapIndex, temp2, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++            addGroundObjectToMap(gBaseMapIndex, temp2, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+ 
+-            vec = getGroundObjectWorldPosition(0, (u8)vec.x, (u8)vec.z);
++            vec = getGroundObjectWorldPosition(0, (u8)HM64_F2U(vec.x), (u8)HM64_F2U(vec.z));
+             spawnToolEffectEntity(toolUse.stepIndex, 1, vec.x, vec.y, vec.z);
+ 
+             if (gBaseMapIndex == POND) {
+@@ -3107,7 +3115,7 @@ void useWateringCan(void) {
+             
+         } else {
+ 
+-            vec = getGroundObjectWorldPosition(0, (u8)vec.x, (u8)vec.z);
++            vec = getGroundObjectWorldPosition(0, (u8)HM64_F2U(vec.x), (u8)HM64_F2U(vec.z));
+             vec.y = entities[ENTITY_PLAYER].coordinates.y;
+ 
+             spawnToolEffectEntity(toolUse.stepIndex, 1, vec.x, vec.y, vec.z);
+@@ -3221,7 +3229,7 @@ void useTurnipSeeds(void) {
+             groundObjectIndex = INVALID_GROUND_OBJECT;
+         }
+         
+-        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+         
+     }
+     
+@@ -3265,7 +3273,7 @@ void usePotatoSeeds(void) {
+           groundObjectIndex = INVALID_GROUND_OBJECT;
+         }
+         
+-        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+         
+     }
+     
+@@ -3309,7 +3317,7 @@ void useCabbageSeeds(void) {
+           groundObjectIndex = INVALID_GROUND_OBJECT;
+         }
+         
+-        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+ 
+     }
+     
+@@ -3353,7 +3361,7 @@ void useTomatoSeeds(void) {
+           groundObjectIndex = INVALID_GROUND_OBJECT;
+         }
+         
+-        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+ 
+     }
+     
+@@ -3397,7 +3405,7 @@ void useCornSeeds(void) {
+             groundObjectIndex = INVALID_GROUND_OBJECT;
+         }
+         
+-        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+     }
+     
+     if (toolUse.stepIndex == 0) {
+@@ -3441,7 +3449,7 @@ void useEggplantSeeds(void) {
+             groundObjectIndex = INVALID_GROUND_OBJECT;
+         }
+         
+-        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+ 
+     }
+     
+@@ -3485,7 +3493,7 @@ void useStrawberrySeeds(void) {
+ 
+         groundObjectIndex = (gBaseMapIndex == GREENHOUSE) ? STRAWBERRY_PLANTED_STAGE_1 : INVALID_GROUND_OBJECT;
+ 
+-        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+ 
+     }
+ 
+@@ -3531,7 +3539,7 @@ void useMoonDropSeeds(void) {
+             groundObjectIndex = INVALID_GROUND_OBJECT;
+         }
+ 
+-        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+ 
+     }
+     
+@@ -3576,7 +3584,7 @@ void usePinkCatMintSeeds(void) {
+             groundObjectIndex = INVALID_GROUND_OBJECT;
+         }
+ 
+-        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++        addGroundObjectToMap(gBaseMapIndex, groundObjectIndex, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+     }
+     
+     if (toolUse.stepIndex == 0) {
+@@ -3611,7 +3619,7 @@ void useBlueMistSeeds(void) {
+     vec = getOffsetTileCoordinates(0.0f, temp);
+  
+     if ((getGroundObjectToolInteractionFlags(getGroundObjectIndexFromPlayerPosition(0.0f, temp)) & GROUND_OBJECT_PLANTABLE) && vec.y != 65535.0f) {
+-        addGroundObjectToMap(gBaseMapIndex, 0xB2, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);
++        addGroundObjectToMap(gBaseMapIndex, 0xB2, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);
+     }
+     
+     if (toolUse.stepIndex == 0) {
+@@ -3706,7 +3714,7 @@ void useGrassSeeds(void) {
+     if ((getGroundObjectToolInteractionFlags(getGroundObjectIndexFromPlayerPosition(0.0f, temp)) & GROUND_OBJECT_PLANTABLE) && vec.y != 65535.0f) {
+ 
+         if (gBaseMapIndex == FARM) {
+-            addGroundObjectToMap(FARM, 0x85, (u8)vec.x - groundObjectsGridX, (u8)vec.z - groundObjectsGridZ);    
++            addGroundObjectToMap(FARM, 0x85, (u8)HM64_F2U(vec.x) - groundObjectsGridX, (u8)HM64_F2U(vec.z) - groundObjectsGridZ);    
+         }
+ 
+     }
+@@ -4048,7 +4056,7 @@ void loadHeldItemEntity(u8 itemIndex, u16 heldItemIndex) {
+     setEntityTracksCollisions(ENTITY_ITEM_BASE_INDEX + itemIndex, FALSE);
+     enableEntityMovement(ENTITY_ITEM_BASE_INDEX + itemIndex, FALSE);
+ 
+-    setEntityColor(ENTITY_ITEM_BASE_INDEX + itemIndex, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.r, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.g, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.b, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.a);
++    setEntityColor(ENTITY_ITEM_BASE_INDEX + itemIndex, HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.r), HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.g), HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.b), HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.a));
+ 
+     setEntityAttachmentOffset(ENTITY_ITEM_BASE_INDEX + itemIndex, 0, 0, 0);
+ 
+@@ -4824,7 +4832,7 @@ void updateHeldItemState(void) {
+ 
+                         deactivateEntity(ENTITY_ITEM_BASE_INDEX + i);
+                         loadEntity(ENTITY_ITEM_BASE_INDEX + i, 0x5E, 1);
+-                        setEntityColor(ENTITY_ITEM_BASE_INDEX + i, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.r, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.g, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.b, mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.a);
++                        setEntityColor(ENTITY_ITEM_BASE_INDEX + i, HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.r), HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.g), HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.b), HM64_F2U(mainMap[MAIN_MAP_INDEX].mapGlobals.currentRGBA.a));
+                         setEntityMovementVector(ENTITY_ITEM_BASE_INDEX + i, 0.0f, 0.0f, 0.0f, 0.0f);
+                         setCameraTrackingEntity(ENTITY_ITEM_BASE_INDEX + i, FALSE);
+                         setEntityTrackingTarget(ENTITY_ITEM_BASE_INDEX + i, 0xFFFF, 0xFF);
 diff --git a/src/game/levelInteractions.c b/src/game/levelInteractions.c
 index 6906384..3bc74da 100644
 --- a/src/game/levelInteractions.c
@@ -298,6 +842,28 @@ index 6906384..3bc74da 100644
                          }
                          
                          result = 2;
+diff --git a/src/game/player.c b/src/game/player.c
+index 900f60f..0162815 100644
+--- a/src/game/player.c
++++ b/src/game/player.c
+@@ -469,7 +469,7 @@ void setupPlayerEntity(u16 spawnPoint, u8 resetPlayer) {
+     setCameraTrackingEntity(ENTITY_PLAYER, TRUE);
+     setEntityMapSpaceIndependent(ENTITY_PLAYER, TRUE);
+ 
+-    setEntityColor(ENTITY_PLAYER, globalLightingRGBA.r, globalLightingRGBA.g, globalLightingRGBA.b, globalLightingRGBA.a);
++    setEntityColor(ENTITY_PLAYER, HM64_F2U(globalLightingRGBA.r), HM64_F2U(globalLightingRGBA.g), HM64_F2U(globalLightingRGBA.b), HM64_F2U(globalLightingRGBA.a));
+     setEntityShadow(ENTITY_PLAYER, 0);
+ 
+     if (resetPlayer) {
+@@ -3769,7 +3769,7 @@ void handleFishingRodAnimation(void) {
+                 if (checkFishingSpotInteraction(gBaseMapIndex)) {
+                 
+                     vec = getOffsetTileCoordinates (2.0f, 8);
+-                    vec = getGroundObjectWorldPosition(0, vec.x, vec.z);
++                    vec = getGroundObjectWorldPosition(0, HM64_F2U(vec.x), HM64_F2U(vec.z));
+ 
+                     switch (gPlayer.fishingSpotType) {
+                         case 0:
 diff --git a/src/game/title.c b/src/game/title.c
 index 2a8da45..63433d8 100644
 --- a/src/game/title.c
@@ -366,7 +932,7 @@ index 6e92011..7ec9a05 100644
  #ifdef _JP
      nuContInit();
 diff --git a/src/system/cutscene.c b/src/system/cutscene.c
-index 97a2cc4..6631aa2 100644
+index 97a2cc4..988deb5 100644
 --- a/src/system/cutscene.c
 +++ b/src/system/cutscene.c
 @@ -984,13 +984,13 @@ void cutsceneHandlerSetWaitFrames(u16 index) {
@@ -397,6 +963,51 @@ index 97a2cc4..6631aa2 100644
  
  }
  */
+@@ -2283,10 +2283,10 @@ void cutsceneHandlerSetRGBA(u16 index) {
+ 
+     if (r == 0xFE && g == 0xFE && b == 0xFE && a == 0xFE) {
+ 
+-        r = currentMapLightingRGBA.r;
+-        g = currentMapLightingRGBA.g;
+-        b = currentMapLightingRGBA.b;
+-        a = currentMapLightingRGBA.a;
++        r = HM64_F2U(currentMapLightingRGBA.r);
++        g = HM64_F2U(currentMapLightingRGBA.g);
++        b = HM64_F2U(currentMapLightingRGBA.b);
++        a = HM64_F2U(currentMapLightingRGBA.a);
+ 
+     }
+ 
+@@ -2333,10 +2333,10 @@ void cutsceneHandlerUpdateRGBA(u16 index) {
+ 
+     if (r == 0xFE && g == 0xFE && b == 0xFE && a == 0xFE) {
+ 
+-        r = targetMapLightingRGBA.r;
+-        g = targetMapLightingRGBA.g;
+-        b = targetMapLightingRGBA.b;
+-        a = targetMapLightingRGBA.a;
++        r = HM64_F2U(targetMapLightingRGBA.r);
++        g = HM64_F2U(targetMapLightingRGBA.g);
++        b = HM64_F2U(targetMapLightingRGBA.b);
++        a = HM64_F2U(targetMapLightingRGBA.a);
+ 
+         rate = currentMapLightingRGBARate;
+         
+@@ -2491,10 +2491,10 @@ void cutsceneHandlerUpdateGlobalRGBA(u16 index) {
+ 
+     if (r == 0xFE && g == 0xFE && b == 0xFE && a == 0xFE) {
+ 
+-        r = targetMapLightingRGBA.r;
+-        g = targetMapLightingRGBA.g;
+-        b = targetMapLightingRGBA.b;
+-        a = targetMapLightingRGBA.a;
++        r = HM64_F2U(targetMapLightingRGBA.r);
++        g = HM64_F2U(targetMapLightingRGBA.g);
++        b = HM64_F2U(targetMapLightingRGBA.b);
++        a = HM64_F2U(targetMapLightingRGBA.a);
+ 
+         rate = currentMapLightingRGBARate;
+         
 diff --git a/src/system/dialogue.h b/src/system/dialogue.h
 index 8f68fc8..5feacfa 100644
 --- a/src/system/dialogue.h
@@ -415,8 +1026,60 @@ index 8f68fc8..5feacfa 100644
  #define MAX_DIALOGUE_BYTECODE_BANKS 69
  #define MAX_BYTECODE_ADDRESSES 70
  
+diff --git a/src/system/entity.c b/src/system/entity.c
+index d718508..e1854e5 100644
+--- a/src/system/entity.c
++++ b/src/system/entity.c
+@@ -315,15 +315,15 @@ bool loadEntity(u16 index, u16 entityAssetIndex, bool transformExempt) {
+ 
+             setBilinearFiltering(entities[index].globalSpriteIndex, TRUE);
+             setEntityMovementVector(index, 0.0f, 0.0f, 0.0f, 0.0f);
+-            setEntityColor(index, currentMapLightingRGBA.r, currentMapLightingRGBA.g, currentMapLightingRGBA.b, currentMapLightingRGBA.a);
++            setEntityColor(index, HM64_F2U(currentMapLightingRGBA.r), HM64_F2U(currentMapLightingRGBA.g), HM64_F2U(currentMapLightingRGBA.b), HM64_F2U(currentMapLightingRGBA.a));
+ 
+             if (!(checkMapRGBADone(mapControllers[gMainMapIndex].mainMapIndex))) {
+  
+                 updateEntityRGBA(index, 
+-                    mainMap[mapControllers[gMainMapIndex].mainMapIndex].mapGlobals.targetRGBA.r, 
+-                    mainMap[mapControllers[gMainMapIndex].mainMapIndex].mapGlobals.targetRGBA.g, 
+-                    mainMap[mapControllers[gMainMapIndex].mainMapIndex].mapGlobals.targetRGBA.b, 
+-                    mainMap[mapControllers[gMainMapIndex].mainMapIndex].mapGlobals.targetRGBA.a, 
++                    HM64_F2U(mainMap[mapControllers[gMainMapIndex].mainMapIndex].mapGlobals.targetRGBA.r), 
++                    HM64_F2U(mainMap[mapControllers[gMainMapIndex].mainMapIndex].mapGlobals.targetRGBA.g), 
++                    HM64_F2U(mainMap[mapControllers[gMainMapIndex].mainMapIndex].mapGlobals.targetRGBA.b), 
++                    HM64_F2U(mainMap[mapControllers[gMainMapIndex].mainMapIndex].mapGlobals.targetRGBA.a), 
+                     mainMap[mapControllers[gMainMapIndex].mainMapIndex].mapState.RGBARate);
+                 
+             }
+@@ -1556,7 +1556,7 @@ u16 getTerrainAtEntityPosition(u16 entityIndex, f32 x, f32 z) {
+             tileCoordinates = getEntityRelativeTilePosition(entityIndex, x, z);
+ 
+             if (tileCoordinates.y != 65535.0f) {   
+-                terrainIndex = getTileIndexFromGrid(mapControllers[gMainMapIndex].mainMapIndex, tileCoordinates.x, tileCoordinates.z);
++                terrainIndex = getTileIndexFromGrid(mapControllers[gMainMapIndex].mainMapIndex, HM64_F2U(tileCoordinates.x), HM64_F2U(tileCoordinates.z));
+             }
+         }
+     
+@@ -1587,7 +1587,7 @@ bool setMapAdditionAtEntityPosition(u16 entityIndex, f32 arg1, f32 arg2, u16 arg
+             if (tileCoordinates.y != 65535.0f) {
+ 
+                 // set map additions
+-                initializeMapAdditionAtPosition(mapControllers[gMainMapIndex].mainMapIndex, arg3, tileCoordinates.x, tileCoordinates.z);
++                initializeMapAdditionAtPosition(mapControllers[gMainMapIndex].mainMapIndex, arg3, HM64_F2U(tileCoordinates.x), HM64_F2U(tileCoordinates.z));
+                 set = TRUE;
+ 
+             }
+@@ -2326,7 +2326,7 @@ void updateEntities(void) {
+                 entities[i].coordinates.x + mainMap[MAIN_MAP_INDEX].mapGrid.tileSizeX / 2,
+                 entities[i].coordinates.z + mainMap[MAIN_MAP_INDEX].mapGrid.tileSizeZ / 2);
+             
+-            if (mainMap[MAIN_MAP_INDEX].visibilityGrid[(u8)tileCoordinates.z][(u8)tileCoordinates.x] || entities[i].flags & ENTITY_CAMERA_TRACKING) {
++            if (mainMap[MAIN_MAP_INDEX].visibilityGrid[(u8)HM64_F2U(tileCoordinates.z)][(u8)HM64_F2U(tileCoordinates.x)] || entities[i].flags & ENTITY_CAMERA_TRACKING) {
+ 
+                 if ((directionalOffset + entities[i].animationIndices.animationIndex) != entities[i].animationIndices.nextAnimationIndex) {
+                     
 diff --git a/src/system/globalSprites.c b/src/system/globalSprites.c
-index 6099847..fed296b 100644
+index 6099847..93c5946 100644
 --- a/src/system/globalSprites.c
 +++ b/src/system/globalSprites.c
 @@ -155,15 +155,15 @@ bool dmaSprite(u16 index,
@@ -449,6 +1112,15 @@ index 6099847..fed296b 100644
      
  }
  
+@@ -1302,7 +1302,7 @@ void setBitmapFromSpriteObject(u16 spriteIndex, AnimationFrameMetadata* animatio
+             setBitmapViewSpacePosition(bitmapIndex, viewSpacePositionX, viewSpacePositionY, viewSpacePositionZ);
+             setBitmapScale(bitmapIndex, globalSprites[spriteIndex].scale.x, globalSprites[spriteIndex].scale.y, globalSprites[spriteIndex].scale.z);
+             setBitmapRotation(bitmapIndex, globalSprites[spriteIndex].rotation.x, globalSprites[spriteIndex].rotation.y, globalSprites[spriteIndex].rotation.z);
+-            setBitmapRGBA(bitmapIndex, globalSprites[spriteIndex].currentRGBA.r, globalSprites[spriteIndex].currentRGBA.g, globalSprites[spriteIndex].currentRGBA.b, globalSprites[spriteIndex].currentRGBA.a);
++            setBitmapRGBA(bitmapIndex, HM64_F2U(globalSprites[spriteIndex].currentRGBA.r), HM64_F2U(globalSprites[spriteIndex].currentRGBA.g), HM64_F2U(globalSprites[spriteIndex].currentRGBA.b), HM64_F2U(globalSprites[spriteIndex].currentRGBA.a));
+             setBitmapAnchor(bitmapIndex, bitmapMetadata.anchorX, bitmapMetadata.anchorY);
+             
+             setBitmapFlip(bitmapIndex, globalSprites[spriteIndex].renderingFlags & SPRITE_RENDERING_FLIP_HORIZONTAL, globalSprites[spriteIndex].renderingFlags & SPRITE_RENDERING_FLIP_VERTICAL);
 diff --git a/src/system/graphic.c b/src/system/graphic.c
 index c01bbf7..8094f42 100644
 --- a/src/system/graphic.c
@@ -505,7 +1177,7 @@ index c01bbf7..8094f42 100644
  }
  
 diff --git a/src/system/map.c b/src/system/map.c
-index 4720b9f..4cdfebd 100644
+index 4720b9f..22ee668 100644
 --- a/src/system/map.c
 +++ b/src/system/map.c
 @@ -184,6 +184,12 @@ static const Gfx D_8011EDD8;
@@ -546,6 +1218,23 @@ index 4720b9f..4cdfebd 100644
          
          nuPiReadRom(romTextureStart + offset1, mainMap[mapIndex].groundObjects.textureIndex, offset2 - offset1);
          nuPiReadRom(romTextureStart + offset2, mainMap[mapIndex].groundObjects.paletteIndex, offset3 - offset2);
+@@ -954,14 +961,14 @@ f32 getTerrainHeightAtPosition(u16 mapIndex, f32 x, f32 z) {
+         worldX = x + mainMap[mapIndex].mapState.mapOriginX;
+         tileX = worldX / mainMap[mapIndex].mapGrid.tileSizeX;
+         
+-        tileIndexX = (u8)tileX;
++        tileIndexX = (u8)HM64_F2U(tileX);
+         
+         worldZ = z + mainMap[mapIndex].mapState.mapOriginZ;
+         tileZ = worldZ / mainMap[mapIndex].mapGrid.tileSizeZ;
+         
+         xRemainder = worldX - tileIndexX * mainMap[mapIndex].mapGrid.tileSizeX;
+         
+-        tileIndexZ = (u8)tileZ; 
++        tileIndexZ = (u8)HM64_F2U(tileZ); 
+         
+         tileOriginZ = tileIndexZ * mainMap[mapIndex].mapGrid.tileSizeZ;        
+ 
 @@ -1309,7 +1316,7 @@ u8 updateGridsWithMapAdditions(u16 mapIndex, u16 mapAdditionIndex, u8 xCoord, u8
  
                      tempIndex = (mainMap[mapIndex].mapGrid.mapWidth * (z + i)) + x + j;
@@ -555,6 +1244,42 @@ index 4720b9f..4cdfebd 100644
  
                  }
                  
+@@ -1363,7 +1370,7 @@ u8 getLevelInteractionIndexFromPosition(u16 mapIndex, f32 x, f32 z) {
+ 
+             ptr = mainMap[mapIndex].gridToLevelInteractionIndex + 1; 
+ 
+-            levelInteractionIndex = (ptr + (mainMap[mapIndex].mapGrid.mapWidth * (u8)vec1.z))[(u8)vec1.x];
++            levelInteractionIndex = (ptr + (mainMap[mapIndex].mapGrid.mapWidth * (u8)HM64_F2U(vec1.z)))[(u8)HM64_F2U(vec1.x)];
+             
+         }
+         
+@@ -1396,7 +1403,7 @@ bool setLevelInteractionIndexAtPosition(u16 mapIndex, u8 levelInteractionIndex,
+ 
+         ptr = mainMap[mapIndex].gridToLevelInteractionIndex + 1;
+         
+-        (ptr + (mainMap[mapIndex].mapGrid.mapWidth * (u8)vec1.z))[(u8)vec1.x] = levelInteractionIndex;
++        (ptr + (mainMap[mapIndex].mapGrid.mapWidth * (u8)HM64_F2U(vec1.z)))[(u8)HM64_F2U(vec1.x)] = levelInteractionIndex;
+ 
+         result = TRUE;
+         
+@@ -1471,7 +1478,7 @@ u16 getMapGroundObjectSpriteIndex(u16 mapIndex, f32 x, f32 z) {
+     u16 result = 0;
+     
+     if (mapIndex == MAIN_MAP_INDEX && mainMap[mapIndex].mapState.flags & MAP_ACTIVE) {
+-        result = mainMap[mapIndex].groundObjects.gridToSpriteIndex[((u8)z * 20) + (u8)x];        
++        result = mainMap[mapIndex].groundObjects.gridToSpriteIndex[((u8)HM64_F2U(z) * 20) + (u8)HM64_F2U(x)];        
+     }
+ 
+     return result;
+@@ -1489,7 +1496,7 @@ bool setMapGroundObjectSpriteIndexFromFloat(u16 mapIndex, u16 spriteIndex, f32 x
+     if (mapIndex == MAIN_MAP_INDEX && mainMap[mapIndex].mapState.flags & MAP_ACTIVE) {
+ 
+         // FIXME: array indexing
+-        mainMap[mapIndex].groundObjects.gridToSpriteIndex[(u8)z * 0x14 + (u8)x] = spriteIndex;    
++        mainMap[mapIndex].groundObjects.gridToSpriteIndex[(u8)HM64_F2U(z) * 0x14 + (u8)HM64_F2U(x)] = spriteIndex;    
+         result = TRUE;
+         
+     }
 @@ -1921,7 +1928,7 @@ u8* setTileVertexData(Tile* tile, u8* data) {
  u16* getTileVtxPtrFromCount(u16 count, void* vtxDataPtr) {
  
@@ -564,6 +1289,21 @@ index 4720b9f..4cdfebd 100644
      
      return (u16*)(vtxDataPtr + offset);
  
+@@ -1966,10 +1973,10 @@ u32 setTileVertices(MainMap* mainMap, u16 tileIndex, f32 x, f32 y, f32 z) {
+             tileVertices[gGraphicsBufferIndex][vtxNumber].v.ob[2] = *vtx + z;
+             vtx++;
+ 
+-            tileVertices[gGraphicsBufferIndex][vtxNumber].v.cn[0] = mainMap->mapGlobals.currentRGBA.r;
+-            tileVertices[gGraphicsBufferIndex][vtxNumber].v.cn[1] = mainMap->mapGlobals.currentRGBA.g;
+-            tileVertices[gGraphicsBufferIndex][vtxNumber].v.cn[2] = mainMap->mapGlobals.currentRGBA.b;
+-            tileVertices[gGraphicsBufferIndex][vtxNumber].v.cn[3] = mainMap->mapGlobals.currentRGBA.a;
++            tileVertices[gGraphicsBufferIndex][vtxNumber].v.cn[0] = HM64_F2U(mainMap->mapGlobals.currentRGBA.r);
++            tileVertices[gGraphicsBufferIndex][vtxNumber].v.cn[1] = HM64_F2U(mainMap->mapGlobals.currentRGBA.g);
++            tileVertices[gGraphicsBufferIndex][vtxNumber].v.cn[2] = HM64_F2U(mainMap->mapGlobals.currentRGBA.b);
++            tileVertices[gGraphicsBufferIndex][vtxNumber].v.cn[3] = HM64_F2U(mainMap->mapGlobals.currentRGBA.a);
+             
+             vtxNumber++;
+             count++;
 @@ -2019,8 +2026,8 @@ Gfx* renderTiles(Gfx* dl, MainMap* mainMap, u16 gridIndex, u8 textureIndex) {
              }
  
@@ -604,8 +1344,65 @@ index 4720b9f..4cdfebd 100644
  }
  
  //INCLUDE_ASM("asm/nonmatchings/system/map", setupCoreMapObjectSprites);
+@@ -2719,7 +2731,7 @@ void setupCoreMapObjectSprites(MainMap* mainMap) {
+             
+             vec = vec2;
+ 
+-            if (mainMap->visibilityGrid[(u8)vec.z][(u8)vec.x]) {
++            if (mainMap->visibilityGrid[(u8)HM64_F2U(vec.z)][(u8)HM64_F2U(vec.x)]) {
+ 
+                 texturePtr = getTexturePtrInline(mainMap->coreMapObjectsMetadata[i].spriteIndex, mainMap->coreMapObjectsTextures);
+                 palettePtr = getPalettePtrTypeInline(mainMap->coreMapObjectsMetadata[i].spriteIndex, mainMap->coreMapObjectsPalettes);
+@@ -2806,7 +2818,7 @@ void setupCoreMapObjectSprites(MainMap* mainMap) {
+                     setBitmapBlendMode(bitmapIndex, SPRITE_BLEND_ALPHA_DECAL);
+                 }
+ 
+-                setBitmapRGBA(bitmapIndex, mainMap->mapGlobals.currentRGBA.r, mainMap->mapGlobals.currentRGBA.g, mainMap->mapGlobals.currentRGBA.b, mainMap->mapGlobals.currentRGBA.a);
++                setBitmapRGBA(bitmapIndex, HM64_F2U(mainMap->mapGlobals.currentRGBA.r), HM64_F2U(mainMap->mapGlobals.currentRGBA.g), HM64_F2U(mainMap->mapGlobals.currentRGBA.b), HM64_F2U(mainMap->mapGlobals.currentRGBA.a));
+                 setBitmapAnchor(bitmapIndex, 0, 0);
+                 
+                 bitmaps[bitmapIndex].flags |= BITMAP_USE_BILINEAR_FILTERING;
+@@ -2939,7 +2951,7 @@ void setupMapObjectSprites(MainMap *mainMap) {
+                 setSpriteRotation(mainMap->mapObjects[i].spriteIndex, mainMap->mapGlobals.rotation.x, mainMap->mapGlobals.rotation.y + mainMap->mapObjects[i].unk_10, mainMap->mapGlobals.rotation.z);
+             }
+             
+-            setSpriteColor(mainMap->mapObjects[i].spriteIndex, mainMap->mapGlobals.currentRGBA.r, mainMap->mapGlobals.currentRGBA.g, mainMap->mapGlobals.currentRGBA.b, mainMap->mapGlobals.currentRGBA.a);
++            setSpriteColor(mainMap->mapObjects[i].spriteIndex, HM64_F2U(mainMap->mapGlobals.currentRGBA.r), HM64_F2U(mainMap->mapGlobals.currentRGBA.g), HM64_F2U(mainMap->mapGlobals.currentRGBA.b), HM64_F2U(mainMap->mapGlobals.currentRGBA.a));
+             setBilinearFiltering(mainMap->mapObjects[i].spriteIndex, TRUE);
+         
+         }
+@@ -3030,10 +3042,10 @@ void setupWeatherSprites(MainMap* mainMap) {
+                 xPosition, yPosition, zPosition);
+ 
+             setSpriteColor(mainMap->weatherSprites[i].spriteIndex, 
+-                   mainMap->mapGlobals.currentRGBA.r, 
+-                   mainMap->mapGlobals.currentRGBA.g, 
+-                   mainMap->mapGlobals.currentRGBA.b, 
+-                   mainMap->mapGlobals.currentRGBA.a);
++                   HM64_F2U(mainMap->mapGlobals.currentRGBA.r), 
++                   HM64_F2U(mainMap->mapGlobals.currentRGBA.g), 
++                   HM64_F2U(mainMap->mapGlobals.currentRGBA.b), 
++                   HM64_F2U(mainMap->mapGlobals.currentRGBA.a));
+             
+             setBilinearFiltering(mainMap->weatherSprites[i].spriteIndex, TRUE);
+                 
+@@ -3356,10 +3368,10 @@ Gfx* renderGroundObject(Gfx* dl, MainMap* map, GroundObjectBitmap* bitmap, u16 v
+         0, 
+         0, 
+         (BITMAP_ANCHOR_H(SPRITE_ANCHOR_CENTER) | BITMAP_ANCHOR_V(SPRITE_ANCHOR_CENTER) | BITMAP_AXIS(SPRITE_BILLBOARD_XY)),
+-        map->mapGlobals.currentRGBA.r, 
+-        map->mapGlobals.currentRGBA.g, 
+-        map->mapGlobals.currentRGBA.b,
+-        map->mapGlobals.currentRGBA.a);
++        HM64_F2U(map->mapGlobals.currentRGBA.r), 
++        HM64_F2U(map->mapGlobals.currentRGBA.g), 
++        HM64_F2U(map->mapGlobals.currentRGBA.b),
++        HM64_F2U(map->mapGlobals.currentRGBA.a));
+  
+     // FIXME: might be a wrapper around gSPVertex
+     gSPVertex(&tempDl[1], &groundObjectVertices[gGraphicsBufferIndex][vtxIndex][0], 4, 0);
 diff --git a/src/system/mapController.c b/src/system/mapController.c
-index 652b8c2..801212e 100644
+index 652b8c2..87afab9 100644
 --- a/src/system/mapController.c
 +++ b/src/system/mapController.c
 @@ -173,7 +173,7 @@ bool loadMap(u16 index, u16 mapIndex) {
@@ -617,8 +1414,26 @@ index 652b8c2..801212e 100644
  }
  
  //INCLUDE_ASM("asm/nonmatchings/system/mapController", dmaMapAssets);
+@@ -641,7 +641,7 @@ void updateMapViewport(MapController* mapController) {
+     f32 temp2;
+     
+     x = mapController->viewPosition.x + ((mainMap[mapController->mainMapIndex].mapGrid.mapWidth * mainMap[mapController->mainMapIndex].mapGrid.tileSizeX) / 2);
+-    param1 = x / mainMap[mapController->mainMapIndex].mapGrid.tileSizeX;
++    param1 = HM64_F2U(x / mainMap[mapController->mainMapIndex].mapGrid.tileSizeX);
+     
+     z = mapController->viewPosition.z + ((mainMap[mapController->mainMapIndex].mapGrid.mapHeight * mainMap[mapController->mainMapIndex].mapGrid.tileSizeZ) / 2);
+     
+@@ -651,7 +651,7 @@ void updateMapViewport(MapController* mapController) {
+     
+     y = mapController->viewPosition.y;
+     
+-    param2 = z / mainMap[mapController->mainMapIndex].mapGrid.tileSizeZ;
++    param2 = HM64_F2U(z / mainMap[mapController->mainMapIndex].mapGrid.tileSizeZ);
+ 
+     temp2 = param2 * mainMap[mapController->mainMapIndex].mapGrid.tileSizeZ;
+ 
 diff --git a/src/system/message.c b/src/system/message.c
-index 17ab5e0..53af7a9 100644
+index 17ab5e0..008b0c1 100644
 --- a/src/system/message.c
 +++ b/src/system/message.c
 @@ -1919,7 +1919,11 @@ void updateMessageBoxText(u16 index) {
@@ -633,8 +1448,37 @@ index 17ab5e0..53af7a9 100644
      u32 padding[4];
  
      u16 character;
+@@ -2092,11 +2096,11 @@ Gfx* setupMessageBoxScissor(Gfx* dl, MessageBox* messageBox) {
+ 
+     temp = (messageBox->fontContext.characterCellWidth / 2);
+ 
+-    ulx = messageBox->viewSpacePosition.x + 160.0f - temp - ((messageBox->textBoxLineCharWidth * messageBox->fontContext.characterCellWidth) / 2) + temp - ((messageBox->textBoxLineCharWidth * messageBox->characterSpacing) / 2);
++    ulx = HM64_F2U(messageBox->viewSpacePosition.x + 160.0f - temp - ((messageBox->textBoxLineCharWidth * messageBox->fontContext.characterCellWidth) / 2) + temp - ((messageBox->textBoxLineCharWidth * messageBox->characterSpacing) / 2));
+ 
+     temp = (messageBox->fontContext.characterCellHeight / 2);
+ 
+-    uly = 120.0f - messageBox->viewSpacePosition.y - temp - (messageBox->textBoxVisibleRows * messageBox->fontContext.characterCellHeight / 2) + temp - (messageBox->textBoxVisibleRows * messageBox->lineSpacing / 2);
++    uly = HM64_F2U(120.0f - messageBox->viewSpacePosition.y - temp - (messageBox->textBoxVisibleRows * messageBox->fontContext.characterCellHeight / 2) + temp - (messageBox->textBoxVisibleRows * messageBox->lineSpacing / 2));
+     
+     lrx = ulx  + (messageBox->textBoxLineCharWidth * messageBox->fontContext.characterCellWidth) 
+         + (messageBox->textBoxLineCharWidth * messageBox->characterSpacing);
+@@ -2158,10 +2162,10 @@ Gfx* renderMessageBoxLine(Gfx* dl, MessageBox* messageBox, u8 lineNumber, s32 ar
+                 ((messageBox->fontContext.characterCellWidth + messageBox->characterSpacing)*i),
+                 0,
+                 flags,
+-                messageBox->targetRGBA.r,
+-                messageBox->targetRGBA.g,
+-                messageBox->targetRGBA.b,
+-                messageBox->targetRGBA.a
++                HM64_F2U(messageBox->targetRGBA.r),
++                HM64_F2U(messageBox->targetRGBA.g),
++                HM64_F2U(messageBox->targetRGBA.b),
++                HM64_F2U(messageBox->targetRGBA.a)
+             );
+ 
+             sprite.timg = fontTexturesBuffer[gGraphicsBufferIndex][messageBox->totalCharactersProcessed + charOffset].timg;
 diff --git a/src/system/sprite.c b/src/system/sprite.c
-index 7836959..ea328b8 100644
+index 7836959..6ece45a 100644
 --- a/src/system/sprite.c
 +++ b/src/system/sprite.c
 @@ -366,7 +366,7 @@ bool setBitmapAnchor(u16 index, s16 anchorX, s16 anchorY) {
@@ -655,3 +1499,18 @@ index 7836959..ea328b8 100644
  
  }
  
+@@ -585,10 +585,10 @@ Gfx* generateBitmapDisplayList(Gfx* dl, BitmapObject* bitmap, u16 spriteNumber)
+             bitmap->anchorX,
+             bitmap->anchorY,
+             bitmap->renderingFlags,
+-            bitmap->rgba.r,
+-            bitmap->rgba.g,
+-            bitmap->rgba.b,
+-            bitmap->rgba.a
++            HM64_F2U(bitmap->rgba.r),
++            HM64_F2U(bitmap->rgba.g),
++            HM64_F2U(bitmap->rgba.b),
++            HM64_F2U(bitmap->rgba.a)
+         );
+ 
+         dl = loadBitmapTexture(dl, bitmap, textureDimensions, textureSize);
