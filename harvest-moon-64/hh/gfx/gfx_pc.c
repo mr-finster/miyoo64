@@ -4389,6 +4389,12 @@ static void gfx_dp_load_tlut(UNUSED uint8_t tile, uint32_t high_index) {
 
     SUPPORT_CHECK(tile == G_TX_LOADTILE);
     SUPPORT_CHECK(rdp.texture_to_load.siz == G_IM_SIZ_16b);
+    /* An unresolved or low palette address (0 from the game's own tables: the N64's RDP loads whatever RDRAM holds there):
+     * as for texture loads (import_texture_any), reading it hard-faults on the Mini, so the previous palette stays
+     * (the farm's ground objects in winter, reached by the release review's warps) */
+    if (rdp.texture_to_load.addr == NULL || (uintptr_t) rdp.texture_to_load.addr < 0x08000000u) {
+        return;
+    }
     rdp.palette = rdp.texture_to_load.addr;
 #ifdef PM64
     {   /* bank(s) by the load tile's TMEM address; mirror into the TMEM upper half */
