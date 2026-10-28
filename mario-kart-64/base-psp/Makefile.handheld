@@ -245,9 +245,9 @@ $(BUILD_DIR)/src/port/sdl/miyoo_watchdog.o: CFLAGS += -U_GNU_SOURCE '-DMIYOO_WD_
 # miyoo_clock.c (the shared miyoo/kit 27a1311, the CPU clock): MK64_CPUCLOCK=<MHz>, 0 = left alone
 $(BUILD_DIR)/src/port/sdl/miyoo_clock.o: CFLAGS += '-DMIYOO_CLOCK_ENV="MK64_CPUCLOCK"'
 # miyoo_sleepdiag.c (the sleep/wake diagnostic, MK64_SLEEPDIAG=1|2): make SLEEPDIAG=1 builds the owner's test
-# binary, the light diagnostic on by default and 1.1.1-test on the first log line (rebuild the .o between the two)
+# binary, the light diagnostic on by default and <version>-test on the first log line (rebuild the .o between the two)
 ifeq ($(SLEEPDIAG),1)
-$(BUILD_DIR)/src/port/sdl/miyoo_sleepdiag.o: CFLAGS += -DMK64_SLEEPDIAG_DEFAULT=1 '-DMK64_VERSION_TAG="1.1.2-test"'
+$(BUILD_DIR)/src/port/sdl/miyoo_sleepdiag.o: CFLAGS += -DMK64_SLEEPDIAG_DEFAULT=1 '-DMK64_VERSION_TAG="1.1.6-test"'
 endif
 
 #==============================================================================#
