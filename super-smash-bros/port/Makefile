@@ -22,6 +22,9 @@ endif
 ifeq ($(UBSAN),1)
   BUILD := $(BUILD)-ubsan
 endif
+ifneq ($(SAN),)
+  BUILD := $(BUILD)-san
+endif
 TARGET   := $(BUILD)/ssb64
 
 ifeq ($(PLAT),miyoo)
@@ -55,6 +58,11 @@ else
 endif
 ifeq ($(UBSAN),1)
   ARCH += -fsanitize=shift-exponent,float-cast-overflow
+endif
+# `make PLAT=desktop SAN="-fsanitize=address,bounds,object-size --param asan-globals=0"` (into build/desktop-san):
+# the crash sweep's build (an index past a fixed-size array, stack and heap overruns); asan-globals=0 keeps the layout.
+ifneq ($(SAN),)
+  ARCH += $(SAN) -fno-omit-frame-pointer
 endif
 CC := $(CROSS)gcc
 

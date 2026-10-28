@@ -29,7 +29,7 @@ SHELL := /bin/bash
 # reached the banks until this was set). Always compile for real.
 export BR_NO_CCACHE := 1
 # UBSAN=1 (desktop only) builds in its own dir, so build/pc stays the release proxy.
-BUILD_DIR := build/$(PLAT)$(if $(filter pc1,$(PLAT)$(UBSAN)),-ubsan)
+BUILD_DIR := build/$(PLAT)$(if $(filter pc1,$(PLAT)$(UBSAN)),-ubsan)$(if $(SAN),-san)
 ELF       := $(BUILD_DIR)/sf64
 GEN       := $(BUILD_DIR)/gen
 N64_ELF   := build/starfox64.us.rev1.elf
@@ -136,6 +136,12 @@ LDFLAGS := $(MARCH) -no-pie -Wl,-Ttext-segment=0x10000000 \
 ifeq ($(PLAT)$(UBSAN),pc1)
   CFLAGS  += -fsanitize=shift-exponent,float-cast-overflow -g
   LDFLAGS += -fsanitize=shift-exponent,float-cast-overflow
+endif
+# `make ... SAN="-fsanitize=address,bounds,object-size --param asan-globals=0"` (own build dir, -san): the crash
+# sweep's build (an index past a fixed-size array, stack and heap overruns); asan-globals=0 keeps the data layout.
+ifneq ($(SAN),)
+  CFLAGS  += $(SAN) -g -fno-omit-frame-pointer
+  LDFLAGS += $(filter -fsanitize=%,$(SAN))
 endif
 
 LIBS := $(SDL_LIBS) -lm -lpthread
@@ -285,6 +291,10 @@ else
   PLAT_LD := ld -m elf_i386
 endif
 RADIO_BIN := $(BUILD_DIR)/radio/ast_radio_port.bin
+# the radio data is linked on its own into a raw image: no sanitizer code (SAN builds)
+ifneq ($(SAN),)
+$(RADIO_O): CFLAGS += -fno-sanitize=all
+endif
 $(RADIO_BIN): $(RADIO_O) $(ELF)
 	$(V)addr=$$(nm $(ELF) | awk '$$3 == "ast_radio_VRAM" {print $$1}'); \
 	  $(PLAT_LD) -e 0 --section-start=.ast_radio.data=0x$$addr -o $(BUILD_DIR)/radio/ast_radio.elf $(RADIO_O) && \

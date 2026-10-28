@@ -20,6 +20,12 @@ MARCH     := -march=armv7ve+neon-vfpv4 -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat
 OPT       ?= -O2
 
 BUILD_DIR := build/miyoo
+# `make SAN="-fsanitize=bounds,object-size"` (into build/miyoo-san, run under qemu-arm): the crash sweep's build
+# (an index past a fixed-size array; the toolchain's libubsan reports file:line).
+ifneq ($(SAN),)
+  MARCH     += $(SAN) -fno-omit-frame-pointer
+  BUILD_DIR := build/miyoo-san
+endif
 ELF       := $(BUILD_DIR)/pd.arm
 
 V ?= @

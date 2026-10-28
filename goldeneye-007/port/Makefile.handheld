@@ -11,7 +11,7 @@
 PLAT    ?= pc
 .DEFAULT_GOAL := all
 SHELL := /bin/bash
-BUILD_DIR := build/$(PLAT)$(if $(filter 1,$(UBSAN)),_ubsan)$(if $(filter 1,$(SSP)),_ssp)
+BUILD_DIR := build/$(PLAT)$(if $(filter 1,$(UBSAN)),_ubsan)$(if $(filter 1,$(SSP)),_ssp)$(if $(SAN),_san)
 ELF       := $(BUILD_DIR)/ge007
 
 VERBOSE ?= 0
@@ -139,6 +139,13 @@ ifeq ($(UBSAN),1)
   CFLAGS     += -fsanitize=shift-exponent
   GFX_CFLAGS += -fsanitize=shift-exponent
   LDFLAGS    += -fsanitize=shift-exponent
+endif
+# `make ... SAN="-fsanitize=address,bounds,object-size --param asan-globals=0"` (own build dir, -san): the crash
+# sweep's build (an index past a fixed-size array, stack and heap overruns); asan-globals=0 keeps the data layout.
+ifneq ($(SAN),)
+  CFLAGS     += $(SAN) -g -fno-omit-frame-pointer
+  GFX_CFLAGS += $(SAN) -g -fno-omit-frame-pointer
+  LDFLAGS    += $(filter -fsanitize=%,$(SAN))
 endif
 
 #------------------------------------------------------------------------------

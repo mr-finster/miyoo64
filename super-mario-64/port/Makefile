@@ -281,7 +281,7 @@ BUILD_DIR_BASE := build
 ifeq ($(TARGET_N64),1)
   BUILD_DIR := $(BUILD_DIR_BASE)/$(VERSION)
 else ifeq ($(TARGET_HANDHELD),1)
-  BUILD_DIR := $(BUILD_DIR_BASE)/$(VERSION)_$(PLAT)$(if $(filter 1,$(UBSAN)),_ubsan)
+  BUILD_DIR := $(BUILD_DIR_BASE)/$(VERSION)_$(PLAT)$(if $(filter 1,$(UBSAN)),_ubsan)$(if $(SAN),_san)
 else ifeq ($(TARGET_WEB),1)
   BUILD_DIR := $(BUILD_DIR_BASE)/$(VERSION)_web
 else
@@ -759,6 +759,12 @@ ifeq ($(UBSAN),1)
   # print file:line; into a build dir of its own.
   CFLAGS += -fsanitize=shift-exponent,float-cast-overflow -fsanitize-recover=all
   LDFLAGS += -fsanitize=shift-exponent,float-cast-overflow
+endif
+# `make PLAT=pc SAN="-fsanitize=address,bounds,object-size --param asan-globals=0"` (into build/us_pc_san): the
+# crash sweep's build (an index past a fixed-size array, stack and heap overruns); asan-globals=0 keeps the data layout.
+ifneq ($(SAN),)
+  CFLAGS += $(SAN) -fno-omit-frame-pointer -g
+  LDFLAGS += $(filter -fsanitize=%,$(SAN))
 endif
 ifneq ($(filter miyoo,$(PLAT)),)
   # the audio mixer's inner loops (MK64: mixer.o, synthesis.o)

@@ -76,6 +76,13 @@ else
     BUILD_DIR := build/hh-ubsan
     ELF       := $(BUILD_DIR)/oot
   endif
+  # `make ... SAN="-fsanitize=address,bounds,object-size --param asan-globals=0"` (own build dir, -san): the crash
+  # sweep's build (an index past a fixed-size array, stack and heap overruns); asan-globals=0 keeps the data layout.
+  ifneq ($(SAN),)
+    MARCH     += $(SAN) -fno-omit-frame-pointer
+    BUILD_DIR := build/hh-san
+    ELF       := $(BUILD_DIR)/oot
+  endif
 endif
 
 #==============================================================================#
