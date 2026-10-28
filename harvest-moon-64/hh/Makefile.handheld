@@ -24,6 +24,17 @@ AS      := $(CROSS)as
 LD      := $(CROSS)ld
 OBJCOPY := $(CROSS)objcopy
 MARCH   := -march=armv7ve+neon-vfpv4 -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+# `make ... SAN="-fsanitize=bounds,object-size"` (own build dir, build/hh-san, with its own pack): the crash sweep's
+# build, run under qemu-arm; the data layout is kept.
+ifneq ($(SAN),)
+  MARCH += $(SAN) -fno-omit-frame-pointer
+  B     := build/hh-san
+  ELF   := $(B)/hm64
+  # the N64 microcode addresses nusys stores in its task lists (the port runs the microcode in C and never reads
+  # them): the optimised build drops those stores, the instrumented one keeps them
+  SAN_LD := -Wl,--defsym=rspbootTextStart=0 -Wl,--defsym=rspbootTextEnd=0 -Wl,--defsym=aspMainTextStart=0 \
+            -Wl,--defsym=aspMainDataStart=0
+endif
 
 V := @
 ifeq ($(VERBOSE),1)
@@ -94,7 +105,7 @@ $(SYMS_LD): $(N64_ELF) $(HH)/tools/hm64_syms.py
 # linked at 0x40000000: the N64's RAM (0x80000000-0x807FFFFF) is mapped at its own address (hh_ram.c)
 LDFLAGS := $(MARCH) -no-pie -Wl,-Ttext-segment=0x40000000 -Wl,-T,$(HH)/gamestate.ld \
            -Wl,--defsym=_ftext=__executable_start -Wl,--defsym=_fbss=__bss_start \
-           -Wl,--defsym=__assets_start=__bss_start -Wl,--defsym=__assets_end=__bss_start
+           -Wl,--defsym=__assets_start=__bss_start -Wl,--defsym=__assets_end=__bss_start $(SAN_LD)
 LIBS := -L$(SYSROOT)/usr/lib -Wl,-rpath-link,$(SYSROOT)/usr/lib -lSDL -lz -lm -lpthread -lrt
 
 # the release name (console.log's SESSION line, and what a card install greps the binary for)
