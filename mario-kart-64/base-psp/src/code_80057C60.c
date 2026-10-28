@@ -1318,7 +1318,16 @@ void func_80059AC8(void) {
         func_8008C1D8(&D_80165678);
         gRaceFrameCounter++;
         for (i = 0; i < NUM_PLAYERS; i++) {
+#ifdef TARGET_N64
             D_8018CF68[i] = func_8008A890(&camera1[i]);
+#else
+            /* NUM_PLAYERS is 8 but there are four cameras: camera1[4..7] read past cameras[]
+             * and looked a garbage index up in gCollisionMesh (a wild read that can fault).
+             * Only D_8018CF68[0..3] (per camera) is ever read. */
+            if (i < 4) {
+                D_8018CF68[i] = func_8008A890(&camera1[i]);
+            }
+#endif
             func_800892E0(i);
         }
         switch (gScreenModeSelection) {
