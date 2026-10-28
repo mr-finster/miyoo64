@@ -1483,6 +1483,26 @@ index 4720b9f..6c95639 100644
   
      // FIXME: might be a wrapper around gSPVertex
      gSPVertex(&tempDl[1], &groundObjectVertices[gGraphicsBufferIndex][vtxIndex][0], 4, 0);
+diff --git a/src/system/map.h b/src/system/map.h
+index cb99b54..fab2350 100644
+--- a/src/system/map.h
++++ b/src/system/map.h
+@@ -206,8 +206,15 @@ typedef struct  {
+     MapGrid mapGrid; // 0x24
+     Tile tiles[MAX_MAP_TILES]; // 0x30
+     u16 textureToFirstGrid[MAX_TILE_TEXTURES + 1]; // 0x3030
++#ifdef TARGET_HANDHELD
++    /* indexed by grid position (up to the map's grid size), not by texture: on the N64 it runs on through what the
++     * decomp calls unused1, up to mapCameraView. Declared with that extent (the same bytes, the same layout) so that
++     * GCC compiles the game's accesses as written instead of as an overrun of 80 entries */
++    u16 nextGridPositionWithSharedTile[(0x3D4C - 0x30D2) / 2]; // 0x30D2
++#else
+     u16 nextGridPositionWithSharedTile[MAX_TILE_TEXTURES]; // 0x30D2
+     u32 unused1[758];
++#endif
+     MapCameraView mapCameraView; // 0x3D4C
+     CoreMapObjectsMetadata coreMapObjectsMetadata[16]; // 0x3D98
+     MapObject mapObjects[12]; // 0x3DD8
 diff --git a/src/system/mapController.c b/src/system/mapController.c
 index 652b8c2..87afab9 100644
 --- a/src/system/mapController.c
