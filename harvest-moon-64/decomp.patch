@@ -1245,7 +1245,7 @@ index c01bbf7..8094f42 100644
  }
  
 diff --git a/src/system/map.c b/src/system/map.c
-index 4720b9f..6c95639 100644
+index 4720b9f..6e3916d 100644
 --- a/src/system/map.c
 +++ b/src/system/map.c
 @@ -65,7 +65,13 @@ Vtx tileVertices[2][2560];
@@ -1386,7 +1386,7 @@ index 4720b9f..6c95639 100644
              
              vtxNumber++;
              count++;
-@@ -2019,8 +2032,8 @@ Gfx* renderTiles(Gfx* dl, MainMap* mainMap, u16 gridIndex, u8 textureIndex) {
+@@ -2019,13 +2032,19 @@ Gfx* renderTiles(Gfx* dl, MainMap* mainMap, u16 gridIndex, u8 textureIndex) {
              }
  
              // FIXME: should be inline swap16TileIndex?
@@ -1397,7 +1397,18 @@ index 4720b9f..6c95639 100644
          
              temp = swap.halfword;
  
-@@ -2251,9 +2264,14 @@ Gfx* appendTileToDL(Gfx* dl, MainMap* mainMap, u16 tileIndex, f32 x, f32 y, f32
+             tileIndex = temp - 1;
+             
++#ifdef TARGET_HANDHELD
++            /* a grid position with no tile (0) gives tile 0xFFFF: on the N64 that reads 786 KB past the tile table (inside
++             * globalSprites, which the port does not keep at its N64 address); on the Mini it read whatever memory was
++             * there and followed a pointer from it (a crash when that memory is unmapped) */
++            if (tileIndex < MAX_MAP_TILES)
++#endif
+             dl = appendTileToDL(dl, 
+                     mainMap,
+                     tileIndex, 
+@@ -2251,9 +2270,14 @@ Gfx* appendTileToDL(Gfx* dl, MainMap* mainMap, u16 tileIndex, f32 x, f32 y, f32
      count = setTileVertices(mainMap, tileIndex, x, *(f32*)&y, z);
  
      // FIXME: might be a wrapper around gSPVertex
@@ -1412,7 +1423,7 @@ index 4720b9f..6c95639 100644
      *dl++ = tempDl2;
      
      mainMap->mapState.renderedVertexCount += count;
-@@ -2642,11 +2660,11 @@ bool setMapAdditionIndexFromCoordinates(u16 mapIndex, u16 mapAdditionIndex, u8 x
+@@ -2642,11 +2666,11 @@ bool setMapAdditionIndexFromCoordinates(u16 mapIndex, u16 mapAdditionIndex, u8 x
  }
  
  static inline u8* getTexturePtrInline(u8 spriteIndex, u32* textureIndex) {
@@ -1426,7 +1437,7 @@ index 4720b9f..6c95639 100644
  }
  
  //INCLUDE_ASM("asm/nonmatchings/system/map", setupCoreMapObjectSprites);
-@@ -2719,7 +2737,7 @@ void setupCoreMapObjectSprites(MainMap* mainMap) {
+@@ -2719,7 +2743,7 @@ void setupCoreMapObjectSprites(MainMap* mainMap) {
              
              vec = vec2;
  
@@ -1435,7 +1446,7 @@ index 4720b9f..6c95639 100644
  
                  texturePtr = getTexturePtrInline(mainMap->coreMapObjectsMetadata[i].spriteIndex, mainMap->coreMapObjectsTextures);
                  palettePtr = getPalettePtrTypeInline(mainMap->coreMapObjectsMetadata[i].spriteIndex, mainMap->coreMapObjectsPalettes);
-@@ -2806,7 +2824,7 @@ void setupCoreMapObjectSprites(MainMap* mainMap) {
+@@ -2806,7 +2830,7 @@ void setupCoreMapObjectSprites(MainMap* mainMap) {
                      setBitmapBlendMode(bitmapIndex, SPRITE_BLEND_ALPHA_DECAL);
                  }
  
@@ -1444,7 +1455,7 @@ index 4720b9f..6c95639 100644
                  setBitmapAnchor(bitmapIndex, 0, 0);
                  
                  bitmaps[bitmapIndex].flags |= BITMAP_USE_BILINEAR_FILTERING;
-@@ -2939,7 +2957,7 @@ void setupMapObjectSprites(MainMap *mainMap) {
+@@ -2939,7 +2963,7 @@ void setupMapObjectSprites(MainMap *mainMap) {
                  setSpriteRotation(mainMap->mapObjects[i].spriteIndex, mainMap->mapGlobals.rotation.x, mainMap->mapGlobals.rotation.y + mainMap->mapObjects[i].unk_10, mainMap->mapGlobals.rotation.z);
              }
              
@@ -1453,7 +1464,7 @@ index 4720b9f..6c95639 100644
              setBilinearFiltering(mainMap->mapObjects[i].spriteIndex, TRUE);
          
          }
-@@ -3030,10 +3048,10 @@ void setupWeatherSprites(MainMap* mainMap) {
+@@ -3030,10 +3054,10 @@ void setupWeatherSprites(MainMap* mainMap) {
                  xPosition, yPosition, zPosition);
  
              setSpriteColor(mainMap->weatherSprites[i].spriteIndex, 
@@ -1468,7 +1479,7 @@ index 4720b9f..6c95639 100644
              
              setBilinearFiltering(mainMap->weatherSprites[i].spriteIndex, TRUE);
                  
-@@ -3356,10 +3374,10 @@ Gfx* renderGroundObject(Gfx* dl, MainMap* map, GroundObjectBitmap* bitmap, u16 v
+@@ -3356,10 +3380,10 @@ Gfx* renderGroundObject(Gfx* dl, MainMap* map, GroundObjectBitmap* bitmap, u16 v
          0, 
          0, 
          (BITMAP_ANCHOR_H(SPRITE_ANCHOR_CENTER) | BITMAP_ANCHOR_V(SPRITE_ANCHOR_CENTER) | BITMAP_AXIS(SPRITE_BILLBOARD_XY)),
