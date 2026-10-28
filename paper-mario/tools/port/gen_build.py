@@ -31,6 +31,11 @@ C_DECOMP = C_ROOT + '/refs/papermario'
 MAC_CC = {'pc': 'clang -target i686-linux-gnu -msse2 -mfpmath=sse -malign-double -fno-pic -fno-pie',
           'handheld': 'clang -target armv7a-unknown-linux-musleabihf -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard '
                     '-marm -fno-pic -fno-pie'}
+# PM64_SAN="-fsanitize=address,bounds,object-size -fsanitize-recover=address" python3 tools/port/gen_build.py pc: the crash
+# sweep's desktop build (a clean build/game/pc). Globals are left unpadded so the data layout is kept.
+PM64_SAN = os.environ.get('PM64_SAN', '')
+if PM64_SAN:
+    MAC_CC['pc'] += ' ' + PM64_SAN + ' -fno-omit-frame-pointer' + (' -mllvm -asan-globals=0' if 'address' in PM64_SAN else '')
 MAC_CFLAGS = ('-O2 -g1 -funsigned-char -fno-strict-aliasing -fwrapv -fno-math-errno -ffp-contract=off -fno-common '
               '-fno-builtin-bcopy -w -Wno-error=incompatible-function-pointer-types -Wno-error=implicit-function-declaration '
               '-Wno-error=implicit-int -Wno-error=int-conversion -Wno-error=incompatible-pointer-types -Wno-error=return-mismatch')
@@ -262,6 +267,8 @@ def main():
 
     if plat == 'pc':
         cc = 'gcc -m32 -fno-pie -malign-data=abi -malign-double -msse2 -mfpmath=sse'
+        if PM64_SAN:
+            cc += ' ' + PM64_SAN + ' -fno-omit-frame-pointer' + (' --param asan-globals=0' if 'address' in PM64_SAN else '')
     else:  # miyoo, and the handheld game side's own host half (the Miyoo links only its game objects)
         mtc = os.environ.get('MIYOO_TOOLCHAIN', '/opt/miyoomini-toolchain')
         cc = f'{mtc}/usr/bin/arm-linux-gnueabihf-gcc -march=armv7ve+neon-vfpv4 -mtune=cortex-a7 -mfloat-abi=hard'
