@@ -3,6 +3,20 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## 1.4.1 (Mario Kart 64 1.1.6 hotfix)
+
+Only Mario Kart 64 is rebuilt (1.1.6); the other eleven games are the 1.4.0 zips.
+
+- Mario Kart 64: no more crash on the DRIVER'S POINTS screen after a Bowser's Castle race
+  ([issue #4](https://github.com/mr-finster/miyoo64/issues/4)). A Thwomp's landing shook the camera of each of the
+  eight racers, but there are only four cameras: a CPU racer near a landing Thwomp overwrote half of the second view's
+  camera pointer, which only the four-view points screen reads. Now only the four real cameras shake.
+- Mario Kart 64: no more crash at the end of a cup. The podium's YOU PLACED text wrote five bytes into a three-byte
+  buffer.
+- Mario Kart 64: the first line of `data/console.log` shows the real version (it said 1.1.2 since 1.1.2).
+- Save states (RESUME GAME) from Mario Kart 64 1.1.5 may not load in 1.1.6: they are kept as `.rejected`. In-game saves
+  carry over.
+
 ## 1.4.0 (MENU > CONTROLS in all twelve games)
 
 Every game is rebuilt: Majora's Mask 1.0.6, Harvest Moon 64 1.0.2, Perfect Dark 1.0.6, Ocarina of Time 1.1.6, and
