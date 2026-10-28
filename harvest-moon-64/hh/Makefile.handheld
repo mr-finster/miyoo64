@@ -109,7 +109,7 @@ LDFLAGS := $(MARCH) -no-pie -Wl,-Ttext-segment=0x40000000 -Wl,-T,$(HH)/gamestate
 LIBS := -L$(SYSROOT)/usr/lib -Wl,-rpath-link,$(SYSROOT)/usr/lib -lSDL -lz -lm -lpthread -lrt
 
 # the release name (console.log's SESSION line, and what a card install greps the binary for)
-HM64_RELEASE ?= 1.0.3
+HM64_RELEASE ?= 1.0.4
 # the version: the source commit (HM64_VERSION=<commit> for a release built from a copy outside git)
 HM64_VERSION ?=
 STAMP_C := $(B)/build_stamp.c

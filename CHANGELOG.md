@@ -3,7 +3,10 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
-## Next (1.4.3: the crash sweep of Majora's Mask, Harvest Moon 64 and Paper Mario)
+## 1.4.3 (the crash sweep of Majora's Mask, Harvest Moon 64 and Paper Mario)
+
+Rebuilt: Harvest Moon 64 1.0.4 and Majora's Mask 1.0.7 beta; the other ten games are the 1.4.2 zips (Paper Mario's
+sweep found nothing to fix).
 
 The three games the 1.4.2 sweep skipped, under the same memory checkers: Majora's Mask over all 454 entrances, Harvest
 Moon 64 over the release review's runs plus the mines, winter and the festivals, Paper Mario over every map and all 563
