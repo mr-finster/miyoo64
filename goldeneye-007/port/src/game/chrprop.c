@@ -3497,7 +3497,14 @@ void sub_GAME_7F03ECC0(f32 x1, f32 x2, f32 y1, f32 y2, f32 z1, f32 z2, Mtxf *m, 
     s32 maxxi = 0;
     s32 minzi;
     s32 maxzi = 0;
+#ifdef PORT
+    /* filterloop keeps the corners that are none of the four extremes: 4 when they are distinct, up to 7
+     * when two extremes are the same corner (a box seen edge-on). Only rem[0..3] is read; on the N64 the
+     * rest went into the frame's padding, under GCC onto live locals. */
+    s32 rem[8];
+#else
     s32 rem[4];
+#endif
     s32 cnt;
     f64 x1d = x1;
     f64 x2d = x2;
