@@ -114,6 +114,13 @@ void controller_psp_read(OSContPad *pad) {
         if (t < 4 && !(sAuto == 2 && gGamestate == 4 /* RACING */)) b |= CONT_START;
         else if (t >= 60 && t < 64) b |= CONT_A;
         if (sFrame > 1800) b |= CONT_A; /* after ~60 s of menus, just hold A */
+        { /* MK64_AUTO_PULSEA=1 (tests): A let go for 2 frames in every 30, so held A also moves on
+           * the driver's points screens and the cup goes on to the next race and the podium
+           * (with MK64_FINISH_ALL). */
+            static int sPulse SAVESTATE_EXCLUDE = -1;
+            if (sPulse < 0) { const char *e = getenv("MK64_AUTO_PULSEA"); sPulse = e && e[0] == '1'; }
+            if (sPulse && sFrame > 1800 && sFrame % 30 < 2) b &= ~CONT_A;
+        }
         { /* MK64_AUTO_HOLDA=1 (save-state tests): while racing, A held and nothing else, so the input
            * never depends on the process's frame count -- a state loaded at any frame, in-process or
            * by a fresh process, plays on exactly as the run that saved it. */

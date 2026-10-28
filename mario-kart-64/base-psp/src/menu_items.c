@@ -8476,8 +8476,14 @@ void func_800A761C(MenuItem* arg0) {
     UNUSED s32 stackPadding0;
     s32 sp48;
     s32 sp44;
+#ifdef TARGET_N64
     UNUSED s32 stackPadding1;
     char sp3C[3];
+#else
+    /* func_800A79F4 writes five bytes (two two-byte digits and the end): on the N64 the two
+     * extra went into stackPadding1; here they smashed the stack (podium ceremony, issue #4). */
+    char sp3C[5];
+#endif
     s32 temp_a0;
 
     temp_a0 = D_802874D8.unk1D + 1;
