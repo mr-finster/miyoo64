@@ -3,7 +3,25 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
-## Next (Harvest Moon 64 1.0.3)
+## Next (1.4.2: the crash sweep, Harvest Moon 64 1.0.3)
+
+Nine of the games ran under memory checkers (a build that reports a read or write outside its variable) over their
+attract modes, menus, levels and courses, multiplayer screens and results. What they found:
+
+- Super Smash Bros.: no more crash on the results screen after a battle with a tie for a place. The game looks up the
+  podium spot of a fighter behind the tie one slot before its table; on the N64 that slot held a 1, on the Mini
+  whatever was there, which then picked a position far outside the screen's tables.
+- GoldenEye 007: three writes past the end of a variable, each into whatever the compiler put next on the stack:
+  Bond's movement wrote 8 bytes past its floor-search record on every move; setting up a prop's collision outline
+  could store up to three corners past its list when two of the box's extremes are the same corner; and the game's
+  own `strncpy` wrote a zero one byte past the buffer.
+- Mario Kart 64: the per-camera track sections were looked up for eight cameras (there are four): the other four
+  read past the cameras into a stray collision lookup. Nothing used them.
+- Diddy Kong Racing: the lens flare read two bytes past its position on the stack to pick a sprite frame (the flares
+  have one frame, so nothing changes on screen).
+- Harvest Moon 64: `data/console.log` names the release (it said 1.0.0).
+
+### Harvest Moon 64 1.0.3
 
 - Harvest Moon 64: a negative number turned into a colour, a tile position or a screen position now wraps as on the
   N64 instead of becoming 0 on the Mini (the same fix as Paper Mario's in 1.4.0; `HM64_F2U`). In the scenes checked
