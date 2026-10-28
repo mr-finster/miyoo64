@@ -27,7 +27,7 @@ include util.mk
 PLAT ?= pc
 VERSION     := us
 TARGET      := mk64
-BUILD_DIR   := build/$(PLAT)$(if $(PROFILE),-prof,)$(if $(filter 1,$(UBSAN)),-ubsan,)
+BUILD_DIR   := build/$(PLAT)$(if $(PROFILE),-prof,)$(if $(filter 1,$(UBSAN)),-ubsan,)$(if $(SAN),-san,)
 ELF         := $(BUILD_DIR)/$(TARGET)
 BASEROM     := baserom.$(VERSION).z64
 
@@ -215,6 +215,13 @@ LDFLAGS += -Wl,--defsym=_ftext=__executable_start -Wl,--defsym=_fbss=__bss_start
 ifeq ($(ASAN),1)
   CFLAGS  += -fsanitize=address -g -fno-omit-frame-pointer
   LDFLAGS += -fsanitize=address
+endif
+# `make ... PLAT=pc SAN="-fsanitize=address,bounds,object-size --param asan-globals=0"` -> build/pc-san: the crash
+# sweep's build (an index past a fixed-size array, as the 8-player loop over 4 cameras of issue #4; stack and heap
+# overruns). asan-globals=0 keeps the data layout, so the asset region and the recipes stay valid.
+ifneq ($(SAN),)
+  CFLAGS  += $(SAN) -g -fno-omit-frame-pointer
+  LDFLAGS += $(filter -fsanitize=%,$(SAN))
 endif
 # `make ... PLAT=pc UBSAN=1` -> report shift counts that are negative or >= the width at run time.
 # MIPS and x86 mask the count to 5 bits, ARM uses its low byte (x >> 32 is 0 on the device, x on

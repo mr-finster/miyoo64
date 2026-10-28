@@ -245,15 +245,16 @@ void setup_race(void) {
         }
         if (sForceChar >= 0 && sForceChar <= 7) gCharacterSelections[0] = (s8) sForceChar;
     }
-    { /* MK64_PLAYERS=4: a 4-player VS race whatever the menus chose (players 2-4 sit idle) --
+    { /* MK64_PLAYERS=4: a 4-player VS race whatever the menus chose (players 2-4 sit idle); 40 the same in BATTLE --
        * desktop screenshots of the split-screen HUD (MK64_HUD). */
         static int sForcePlayers = -2;
         if (sForcePlayers == -2) {
             const char *e = getenv("MK64_PLAYERS");
             sForcePlayers = e ? atoi(e) : -1;
         }
-        if (sForcePlayers == 4) {
-            gModeSelection = VERSUS;
+        if (sForcePlayers == 4 || sForcePlayers == 40) { /* 40: a 4-player BATTLE (with MK64_COURSE=15/16/17/19) */
+            gModeSelection = sForcePlayers == 40 ? BATTLE : VERSUS;
+            if (sForcePlayers == 40) gCCSelection = CC_BATTLE;
             gPlayerCount = gPlayerCountSelection1 = 4;
             gScreenModeSelection = gActiveScreenMode = SCREEN_MODE_3P_4P_SPLITSCREEN;
             gCharacterSelections[1] = 1; gCharacterSelections[2] = 2; gCharacterSelections[3] = 3;
