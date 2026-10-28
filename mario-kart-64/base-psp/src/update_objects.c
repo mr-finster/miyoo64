@@ -5961,7 +5961,18 @@ void func_80080A4C(s32 objectIndex, s32 cameraPlayerId) {
     if (gScreenModeSelection != SCREEN_MODE_3P_4P_SPLITSCREEN) {
         if ((func_80072320(objectIndex, 0x00000010) != 0) &&
             (is_within_horizontal_distance_of_player(objectIndex, player, 500.0f) != false)) {
+#ifdef TARGET_N64
             func_8001CA10(camera);
+#else
+            /* The caller passes all eight players, but there are four cameras: on the N64,
+             * camera1[4..7] shook memory past cameras[]. Here camera1[5]'s shake zeroed the low
+             * half of D_8015F480[1].camera, and the 4-way driver's points screen after a Bowser's
+             * Castle race (the second view renders that wrapper) crashed in render_course_segments
+             * (issue #4). Only a real camera shakes. */
+            if (cameraPlayerId < 4) {
+                func_8001CA10(camera);
+            }
+#endif
             func_800C98B8(gObjectList[objectIndex].pos, gObjectList[objectIndex].velocity,
                           SOUND_ARG_LOAD(0x19, 0x00, 0x80, 0x0F));
         }
