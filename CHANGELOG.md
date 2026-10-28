@@ -3,6 +3,22 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## Next (1.4.3: the crash sweep of Majora's Mask, Harvest Moon 64 and Paper Mario)
+
+The three games the 1.4.2 sweep skipped, under the same memory checkers: Majora's Mask over all 454 entrances, Harvest
+Moon 64 over the release review's runs plus the mines, winter and the festivals, Paper Mario over every map and all 563
+battle formations. What they found:
+
+- Harvest Moon 64: a new game's start cleared 64 bytes past the event flags on the Mini: the mail, album, power nut and
+  recipe flags and the first tiles of the mountain field. The game clears 32 words of each flag set, which the N64
+  keeps room for; the port declared 16. Three more of the game's tables are now as big as on the N64 (the map's tile
+  texture list, the dialogue banks, the tile chain), so the game's own writes past their declared ends stay inside them.
+- Harvest Moon 64: no crash drawing the farm's ground objects in winter (a palette at address 0, which the N64 reads
+  from its memory and the Mini could not); a map cell with no tile no longer reads the tile table 786 KB past its
+  end (whatever memory lies there on the Mini: a crash in a build laid out differently).
+- Majora's Mask: with no field music playing, the game reads the sequence flags past their table; the Mini now reads
+  the byte the N64 does there (an enemy nearby could otherwise change the music's volume scale).
+
 ## 1.4.2 (the crash sweep: Smash Bros. results screen, GoldenEye, Harvest Moon 64 1.0.3)
 
 Rebuilt: Super Smash Bros. 1.1.6, GoldenEye 007 1.1.6, Mario Kart 64 1.1.7, Diddy Kong Racing 1.1.6 and Harvest
