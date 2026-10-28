@@ -15,7 +15,7 @@
 
 PLAT     ?= pc
 VERSION  := us_v80
-BUILD    := build/$(PLAT)$(if $(filter 1,$(UBSAN)),-ubsan)
+BUILD    := build/$(PLAT)$(if $(filter 1,$(UBSAN)),-ubsan)$(if $(SAN),-san)
 ELF      := $(BUILD)/dkr
 PYTHON   ?= python3
 
@@ -76,6 +76,12 @@ endif
 # device's vcvt saturates (float-cast-overflow; the MK64 port b2dff40).
 ifeq ($(UBSAN),1)
   MARCH += -fsanitize=shift-exponent,float-cast-overflow
+endif
+# `make PLAT=pc SAN="-fsanitize=address,bounds,object-size --param asan-globals=0"` -> build/pc-san/dkr:
+# the crash sweep's build (out-of-range indexes, stack and heap overruns). asan-globals=0 keeps the data
+# layout, so the asset region and recipes stay valid.
+ifneq ($(SAN),)
+  MARCH += $(SAN) -fno-omit-frame-pointer
 endif
 
 # IDO treats plain char as unsigned; so does ARM. -fwrapv and

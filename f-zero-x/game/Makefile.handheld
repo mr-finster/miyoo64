@@ -11,7 +11,7 @@
 
 PLAT        ?= pc
 TARGET      := fzerox
-BUILD_DIR   := build/$(PLAT)$(if $(filter 1,$(UBSAN)),-ubsan)$(if $(filter 1,$(STAT)),-stat)
+BUILD_DIR   := build/$(PLAT)$(if $(filter 1,$(UBSAN)),-ubsan)$(if $(filter 1,$(STAT)),-stat)$(if $(SAN),-san)
 GEN_DIR     := $(BUILD_DIR)/gen
 ELF         := $(BUILD_DIR)/$(TARGET)
 N64_ELF     := build/us/rev0/fzerox.us.rev0.elf
@@ -66,6 +66,11 @@ endif
 # fit: x86 gives INT_MIN where ARM saturates (float-cast-overflow; mario-kart-64 b2dff40).
 ifeq ($(UBSAN),1)
   MARCH += -fsanitize=shift-exponent,float-cast-overflow
+endif
+# `make ... PLAT=pc SAN="-fsanitize=address,bounds,object-size --param asan-globals=0"` (into build/pc-san): the
+# crash sweep's build (an index past a fixed-size array, stack and heap overruns); asan-globals=0 keeps the data layout.
+ifneq ($(SAN),)
+  MARCH += $(SAN) -fno-omit-frame-pointer
 endif
 # `make ... STAT=1` (into build/<plat>-stat): the renderer's overdraw census
 # (src/port/gfx/gfx_soft_stat.h). A measuring tool, never a release build.
