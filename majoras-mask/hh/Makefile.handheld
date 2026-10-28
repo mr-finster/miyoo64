@@ -46,6 +46,9 @@ SDL_CFLAGS := -I$(MM_SYSROOT)/usr/include -I$(MM_SYSROOT)/usr/include/SDL -D_REE
 SDL_LIBS   := -L$(MM_SYSROOT)/usr/lib -Wl,-rpath-link,$(MM_SYSROOT)/usr/lib -lSDL -lrt
 HH_VERSION ?= dev
 HH_RELEASE ?= 1.0.7
+# the two objects that print HH_VERSION / HH_RELEASE are rebuilt by every make (a changed release number alone does not
+# touch their sources: 1.0.6 shipped printing 1.0.4)
+VERSION_O := $(BUILD_DIR)/$(HH)/src/hh_mm.o $(BUILD_DIR)/$(HH)/src/hh_port.o
 PLAT_DEFINES := -DHH_VERSION=\"$(HH_VERSION)\" -DHH_RELEASE=\"$(HH_RELEASE)\" -DTARGET_HANDHELD=1 -DHANDHELD=1 -DTARGET_MIYOO=1 -DMIYOO=1
 
 #==============================================================================#
@@ -228,3 +231,7 @@ print-%: ; @echo '$*=$($*)'
 
 .PHONY: all objs clean pack
 -include $(DEP_FILES)
+
+$(VERSION_O): FORCE
+.PHONY: FORCE
+FORCE:
