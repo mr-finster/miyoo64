@@ -2406,6 +2406,13 @@ typedef struct Weapon1PTransformKeyframe {
 struct move_bond_temp_struct {
     s32 unk00;
     s32 unk04;
+#ifdef PORT
+    /* MoveBond passes this to stanTileDistanceRelated as a 16-byte StandTileLocusCallbackRecord, which
+     * sets all four of its fields: the last two landed 8 bytes past it in MoveBond's frame (on the N64,
+     * in padding; under GCC, on whatever the compiler put there). */
+    s32 unk08;
+    s32 unk0C;
+#endif
 };
 
 //D:80036424
