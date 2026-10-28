@@ -706,9 +706,26 @@ void lensflare_render(Gfx **dList, Mtx **mats, Vertex **verts, Camera *camera) {
                             gDPSetPrimColor((*dList)++, 0, 0, lensFlareData->colour.r, lensFlareData->colour.g,
                                             lensFlareData->colour.b,
                                             (s32) (lensFlareData->colour.a * magSquareSquared));
+#if defined(PORT)
+                            {
+                                // Port: render_sprite_billboard takes this as an Object and reads its
+                                // animFrame (0x18), past the 0x18-byte transform: a stack overread, then
+                                // sprite->frames[] indexed by whatever lay there (harmless while the
+                                // flare sprites have one frame and the mode is NORMALIZED, as now). Frame 0.
+                                struct {
+                                    ObjectTransform t;
+                                    s16 animFrame;
+                                } flare = { 0 };
+                                flare.t = trans;
+                                render_sprite_billboard(dList, mats, verts, (Object *) &flare,
+                                                        gLensFlare->sprites[lensFlareData->count],
+                                                        (RENDER_SEMI_TRANSPARENT | RENDER_Z_UPDATE));
+                            }
+#else
                             render_sprite_billboard(dList, mats, verts, (Object *) &trans,
                                                     gLensFlare->sprites[lensFlareData->count],
                                                     (RENDER_SEMI_TRANSPARENT | RENDER_Z_UPDATE));
+#endif
                             lensFlareData++;
                         }
                     }
