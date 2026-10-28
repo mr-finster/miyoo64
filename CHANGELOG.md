@@ -3,7 +3,10 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
-## Next (1.4.2: the crash sweep, Harvest Moon 64 1.0.3)
+## 1.4.2 (the crash sweep: Smash Bros. results screen, GoldenEye, Harvest Moon 64 1.0.3)
+
+Rebuilt: Super Smash Bros. 1.1.6, GoldenEye 007 1.1.6, Mario Kart 64 1.1.7, Diddy Kong Racing 1.1.6 and Harvest
+Moon 64 1.0.3; the other seven games are the 1.4.1 zips.
 
 Nine of the games ran under memory checkers (a build that reports a read or write outside its variable) over their
 attract modes, menus, levels and courses, multiplayer screens and results. What they found:
@@ -20,6 +23,7 @@ attract modes, menus, levels and courses, multiplayer screens and results. What 
 - Diddy Kong Racing: the lens flare read two bytes past its position on the stack to pick a sprite frame (the flares
   have one frame, so nothing changes on screen).
 - Harvest Moon 64: `data/console.log` names the release (it said 1.0.0).
+- Mario Kart 64: the first log line says 1.1.7.
 
 ### Harvest Moon 64 1.0.3
 

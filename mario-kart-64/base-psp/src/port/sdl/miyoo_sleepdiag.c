@@ -36,7 +36,7 @@
 #include "savestate.h"
 
 #ifndef MK64_VERSION_TAG
-#define MK64_VERSION_TAG "1.1.6" /* the release: bump with every Mario Kart 64 version */
+#define MK64_VERSION_TAG "1.1.7" /* the release: bump with every Mario Kart 64 version */
 #endif
 #ifndef MK64_SLEEPDIAG_DEFAULT
 #define MK64_SLEEPDIAG_DEFAULT 0
