@@ -34,6 +34,13 @@ CC      := $(MM_CROSS)gcc
 OBJCOPY := $(MM_CROSS)objcopy
 NM      := $(MM_CROSS)nm
 MARCH   := -march=armv7ve+neon-vfpv4 -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+# `make ... SAN="-fsanitize=bounds,object-size"` (own build dir, build/hh-$(PLAT)-san): the crash sweep's build, run
+# under qemu-arm (an index past a fixed-size array, a read past an object); the data layout is kept.
+ifneq ($(SAN),)
+  MARCH     += $(SAN) -fno-omit-frame-pointer
+  BUILD_DIR := build/hh-$(PLAT)-san
+  ELF       := $(BUILD_DIR)/mm
+endif
 OPT_FLAGS = -O2 -g -fno-math-errno -ffp-contract=off $(EXTRA_CFLAGS)
 SDL_CFLAGS := -I$(MM_SYSROOT)/usr/include -I$(MM_SYSROOT)/usr/include/SDL -D_REENTRANT -D_FILE_OFFSET_BITS=64
 SDL_LIBS   := -L$(MM_SYSROOT)/usr/lib -Wl,-rpath-link,$(MM_SYSROOT)/usr/lib -lSDL -lrt
