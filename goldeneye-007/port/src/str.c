@@ -8,11 +8,23 @@ char *strcpy(char *dst, const char *src) {
 
 char *strncpy(char *dst, const char *src, size_t n) {
     unsigned char *ptr = dst;
+#ifdef PORT
+    /* The game's strncpy wrote n + 1 bytes when src is shorter than n: the copied terminator is not
+     * counted, then n more zeros follow (one past the buffer: strncpy(buf, s, sizeof(buf)) zeroed the
+     * byte after buf, a stack slot under GCC). Here: at most n bytes, as the C library's. */
+    while (n != 0 && (*ptr++ = *src++)) {
+        n--;
+    }
+    if (n != 0) {
+        n--;
+    }
+#else
     while((*ptr++ = *src++)) { 
         if (--n == 0) {
             break;
         }
     }
+#endif
     while(n--) {
         (*ptr++) = '\0';
     }
