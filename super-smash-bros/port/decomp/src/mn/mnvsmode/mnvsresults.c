@@ -1026,7 +1026,19 @@ s32 mnVSResultsGetSpot(s32 player)
 	sb32 aheads[/* */] = { 0, 0, 1, 1 };
 	sb32 places[/* */] = { 0, 0, 1, 1, 1 };
 
+#ifdef PORT
+	/* With a tie the places are dense (0, 1, 1, 2), so a fighter after the tie has more players ahead than its
+	 * place and aheads[] is read at -1..-3: on the N64 that is places[] just below it on the stack, 1 for those
+	 * indexes (the last fighter's spot is 3). Under GCC it read garbage, and the spot then indexed the results
+	 * screen's position tables (a crash after a battle with a tie for second). */
+	{
+		s32 i = sMNVSResultsPlaces[player] - mnVSResultsGetPlayerCountAhead(player);
+
+		return sMNVSResultsPlaces[player] + ((i < 0) ? 1 : aheads[i]) + places[mnVSResultsGetPlayerCountPlace(sMNVSResultsPlaces[player])];
+	}
+#else
 	return sMNVSResultsPlaces[player] + aheads[sMNVSResultsPlaces[player] - mnVSResultsGetPlayerCountAhead(player)] + places[mnVSResultsGetPlayerCountPlace(sMNVSResultsPlaces[player])];
+#endif
 }
 
 // 0x801338EC
