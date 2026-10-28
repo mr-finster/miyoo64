@@ -254,6 +254,189 @@ index 2bcb8f6..78cdfe6 100644
  
  
  /**
+diff --git a/src/audio/code_8019AF00.c b/src/audio/code_8019AF00.c
+index 97d6d2d..bb896fe 100644
+--- a/src/audio/code_8019AF00.c
++++ b/src/audio/code_8019AF00.c
+@@ -1043,6 +1043,47 @@ AmbienceDataIO sAmbienceData[20] = {
+     },
+ };
+ 
++#ifdef TARGET_HANDHELD
++/* The sequence flags are read with a sequence id's low byte, and NA_BGM_DISABLED (0xFFFF) reads entry 255 of a 128-entry
++ * table (Audio_UpdateEnemyBgmVolume, the fanfare checks). On the N64 that lands in sSpecReverbs and sAmbienceData,
++ * which follow it in RAM (0x801D6700, +0x80, +0x94); on the Mini GCC puts other data there (entry 255 read 0x82 instead
++ * of the N64's 0xFE, so a near enemy with no field music changed the BGM volume scale where the N64 leaves it). Past the
++ * table, the byte the N64 reads, in its byte order. */
++static u8 AudioSeq_N64SeqFlag(u32 index) {
++    const AmbienceDataIO* ambience;
++    u32 offset;
++
++    if (index < ARRAY_COUNT(sSeqFlags)) {
++        return sSeqFlags[index];
++    }
++    index -= ARRAY_COUNT(sSeqFlags);
++    if (index < ARRAY_COUNT(sSpecReverbs)) {
++        return (u8)sSpecReverbs[index];
++    }
++    index -= ARRAY_COUNT(sSpecReverbs);
++    if (index >= sizeof(sAmbienceData)) {
++        return 0;
++    }
++    ambience = &sAmbienceData[index / sizeof(AmbienceDataIO)];
++    offset = index % sizeof(AmbienceDataIO);
++    switch (offset) {
++        case 0:
++            return ambience->initChannelMask >> 8;
++        case 1:
++            return ambience->initChannelMask & 0xFF;
++        case 2:
++            return ambience->initMuteChannelMask >> 8;
++        case 3:
++            return ambience->initMuteChannelMask & 0xFF;
++        default:
++            return ambience->channelProperties[offset - 4];
++    }
++}
++#define SEQ_FLAGS(index) AudioSeq_N64SeqFlag(index)
++#else
++#define SEQ_FLAGS(index) sSeqFlags[index]
++#endif
++
+ // AudioOcarina Data
+ u8 sIsOcarinaInputEnabled = false;
+ s8 sOcarinaInstrumentId = OCARINA_INSTRUMENT_OFF;
+@@ -5339,7 +5380,7 @@ void Audio_StartSceneSequence(u16 seqId) {
+     u8 fadeInDuration = 0;
+     u8 skipHarpIntro;
+ 
+-    if ((sSeqFlags[sPrevSceneSeqId] & SEQ_FLAG_RESUME_PREV) && (sSeqFlags[seqId & 0xFF & 0xFF] & SEQ_FLAG_RESUME)) {
++    if ((SEQ_FLAGS(sPrevSceneSeqId) & SEQ_FLAG_RESUME_PREV) && (SEQ_FLAGS(seqId & 0xFF & 0xFF) & SEQ_FLAG_RESUME)) {
+         // Resume the sequence from the point where it left off last time it was played in the scene
+         if ((sSeqResumePoint & 0x3F) != 0) {
+             fadeInDuration = 30;
+@@ -5353,14 +5394,14 @@ void Audio_StartSceneSequence(u16 seqId) {
+         // Start the sequence from the beginning
+ 
+         // Writes to ioPort 7. See `SEQ_FLAG_SKIP_HARP_INTRO` for writing a value of 1 to ioPort 7.
+-        if (sSeqFlags[seqId & 0xFF & 0xFF] & SEQ_FLAG_SKIP_HARP_INTRO) {
++        if (SEQ_FLAGS(seqId & 0xFF & 0xFF) & SEQ_FLAG_SKIP_HARP_INTRO) {
+             skipHarpIntro = 1;
+         } else {
+             skipHarpIntro = (u8)SEQ_IO_VAL_NONE;
+         }
+         Audio_PlaySequenceWithSeqPlayerIO(SEQ_PLAYER_BGM_MAIN, seqId, 0, 7, skipHarpIntro);
+ 
+-        if (!(sSeqFlags[seqId] & SEQ_FLAG_RESUME_PREV)) {
++        if (!(SEQ_FLAGS(seqId) & SEQ_FLAG_RESUME_PREV)) {
+             // Reset the sequence resumePoint
+             sSeqResumePoint = SEQ_RESUME_POINT_NONE;
+         }
+@@ -5371,7 +5412,7 @@ void Audio_StartSceneSequence(u16 seqId) {
+ void Audio_UpdateSceneSequenceResumePoint(void) {
+     u16 seqId = AudioSeq_GetActiveSeqId(SEQ_PLAYER_BGM_MAIN);
+ 
+-    if ((seqId != NA_BGM_DISABLED) && (sSeqFlags[seqId & 0xFF & 0xFF] & SEQ_FLAG_RESUME)) {
++    if ((seqId != NA_BGM_DISABLED) && (SEQ_FLAGS(seqId & 0xFF & 0xFF) & SEQ_FLAG_RESUME)) {
+         if (sSeqResumePoint != SEQ_RESUME_POINT_NONE) {
+             // Get the current point to resume from
+             sSeqResumePoint = gAudioCtx.seqPlayers[SEQ_PLAYER_BGM_MAIN].seqScriptIO[3];
+@@ -5435,11 +5476,11 @@ void Audio_IncreaseTempoForTimedMinigame(void) {
+ }
+ 
+ void Audio_PlaySequenceInCutscene(u16 seqId) {
+-    if (sSeqFlags[seqId & 0xFF & 0xFF] & SEQ_FLAG_FANFARE) {
++    if (SEQ_FLAGS(seqId & 0xFF & 0xFF) & SEQ_FLAG_FANFARE) {
+         Audio_PlayFanfare(seqId);
+-    } else if (sSeqFlags[seqId & 0xFF & 0xFF] & SEQ_FLAG_FANFARE_KAMARO) {
++    } else if (SEQ_FLAGS(seqId & 0xFF & 0xFF) & SEQ_FLAG_FANFARE_KAMARO) {
+         SEQCMD_PLAY_SEQUENCE(SEQ_PLAYER_FANFARE, 0, seqId);
+-    } else if (sSeqFlags[seqId & 0xFF & 0xFF] & SEQ_FLAG_NO_AMBIENCE) {
++    } else if (SEQ_FLAGS(seqId & 0xFF & 0xFF) & SEQ_FLAG_NO_AMBIENCE) {
+         SEQCMD_PLAY_SEQUENCE(SEQ_PLAYER_BGM_SUB, 0, seqId);
+     } else {
+         Audio_PlaySequenceWithSeqPlayerIO(SEQ_PLAYER_BGM_MAIN, seqId, 0, 7, SEQ_IO_VAL_NONE);
+@@ -5450,11 +5491,11 @@ void Audio_PlaySequenceInCutscene(u16 seqId) {
+ }
+ 
+ void Audio_StopSequenceInCutscene(u16 seqId) {
+-    if (sSeqFlags[seqId & 0xFF & 0xFF] & SEQ_FLAG_FANFARE) {
++    if (SEQ_FLAGS(seqId & 0xFF & 0xFF) & SEQ_FLAG_FANFARE) {
+         SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_FANFARE, 0);
+-    } else if (sSeqFlags[seqId & 0xFF & 0xFF] & SEQ_FLAG_FANFARE_KAMARO) {
++    } else if (SEQ_FLAGS(seqId & 0xFF & 0xFF) & SEQ_FLAG_FANFARE_KAMARO) {
+         SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_FANFARE, 0);
+-    } else if (sSeqFlags[seqId & 0xFF & 0xFF] & SEQ_FLAG_NO_AMBIENCE) {
++    } else if (SEQ_FLAGS(seqId & 0xFF & 0xFF) & SEQ_FLAG_NO_AMBIENCE) {
+         SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_BGM_SUB, 0);
+     } else {
+         SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 0);
+@@ -5464,9 +5505,9 @@ void Audio_StopSequenceInCutscene(u16 seqId) {
+ s32 Audio_IsSequencePlaying(u8 seqId) {
+     u8 seqPlayerIndex = SEQ_PLAYER_BGM_MAIN;
+ 
+-    if (sSeqFlags[seqId & 0xFF] & SEQ_FLAG_FANFARE) {
++    if (SEQ_FLAGS(seqId & 0xFF) & SEQ_FLAG_FANFARE) {
+         seqPlayerIndex = SEQ_PLAYER_FANFARE;
+-    } else if (sSeqFlags[seqId & 0xFF] & SEQ_FLAG_FANFARE_KAMARO) {
++    } else if (SEQ_FLAGS(seqId & 0xFF) & SEQ_FLAG_FANFARE_KAMARO) {
+         seqPlayerIndex = SEQ_PLAYER_FANFARE;
+     }
+ 
+@@ -5488,7 +5529,7 @@ void Audio_PlayBgm_StorePrevBgm(u16 seqId) {
+         Audio_SetSequenceMode(SEQ_MODE_IGNORE);
+ 
+         // Ensure the sequence about to be stored isn't also storing a separate sequence
+-        if (!(sSeqFlags[curSeqId] & SEQ_FLAG_RESTORE)) {
++        if (!(SEQ_FLAGS(curSeqId) & SEQ_FLAG_RESTORE)) {
+             sPrevMainBgmSeqId = curSeqId;
+         }
+ 
+@@ -5501,7 +5542,7 @@ void Audio_PlayBgm_StorePrevBgm(u16 seqId) {
+  */
+ void Audio_RestorePrevBgm(void) {
+     if ((AudioSeq_GetActiveSeqId(SEQ_PLAYER_BGM_MAIN) != NA_BGM_DISABLED) &&
+-        (sSeqFlags[AudioSeq_GetActiveSeqId(SEQ_PLAYER_BGM_MAIN) & 0xFF] & SEQ_FLAG_RESTORE)) {
++        (SEQ_FLAGS(AudioSeq_GetActiveSeqId(SEQ_PLAYER_BGM_MAIN) & 0xFF) & SEQ_FLAG_RESTORE)) {
+         if ((sPrevMainBgmSeqId == NA_BGM_DISABLED) || (sPrevMainBgmSeqId == NA_BGM_GENERAL_SFX)) {
+             SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 0);
+         } else {
+@@ -5619,7 +5660,7 @@ void Audio_SetSequenceMode(u8 seqMode) {
+ 
+         seqId = gActiveSeqs[SEQ_PLAYER_BGM_MAIN].seqId;
+ 
+-        if ((seqId == NA_BGM_DISABLED) || (sSeqFlags[(u8)(seqId & 0xFF)] & SEQ_FLAG_ENEMY) ||
++        if ((seqId == NA_BGM_DISABLED) || (SEQ_FLAGS((u8)(seqId & 0xFF)) & SEQ_FLAG_ENEMY) ||
+             ((sPrevSeqMode & 0x7F) == SEQ_MODE_ENEMY)) {
+             if (seqMode != (sPrevSeqMode & 0x7F)) {
+                 if (seqMode == SEQ_MODE_ENEMY) {
+@@ -5654,7 +5695,7 @@ void Audio_SetSequenceMode(u8 seqMode) {
+                 if (seqMode == SEQ_MODE_ENEMY) {
+                     // If both seqMode = sPrevSeqMode = SEQ_MODE_ENEMY
+                     if ((AudioSeq_GetActiveSeqId(SEQ_PLAYER_BGM_SUB) == NA_BGM_DISABLED) &&
+-                        (seqId != NA_BGM_DISABLED) && (sSeqFlags[seqId & 0xFF & 0xFF] & SEQ_FLAG_ENEMY)) {
++                        (seqId != NA_BGM_DISABLED) && (SEQ_FLAGS(seqId & 0xFF & 0xFF) & SEQ_FLAG_ENEMY)) {
+                         SEQCMD_PLAY_SEQUENCE(SEQ_PLAYER_BGM_SUB, 10, NA_BGM_ENEMY | 0x800);
+                         sPrevSeqMode = seqMode + 0x80;
+                     }
+@@ -5700,7 +5741,7 @@ void Audio_UpdateEnemyBgmVolume(f32 dist) {
+             sBgmEnemyVolume = ((350.0f - adjDist) * 127.0f) / 350.0f;
+             AudioSeq_SetVolumeScale(SEQ_PLAYER_BGM_SUB, VOL_SCALE_INDEX_BGM_SUB, sBgmEnemyVolume, 10);
+ 
+-            if ((seqId >= NA_BGM_TERMINA_FIELD) && !(sSeqFlags[seqId & 0xFF & 0xFF] & SEQ_FLAG_FANFARE_KAMARO)) {
++            if ((seqId >= NA_BGM_TERMINA_FIELD) && !(SEQ_FLAGS(seqId & 0xFF & 0xFF) & SEQ_FLAG_FANFARE_KAMARO)) {
+                 AudioSeq_SetVolumeScale(SEQ_PLAYER_BGM_MAIN, VOL_SCALE_INDEX_BGM_SUB, (0x7F - sBgmEnemyVolume), 10);
+             }
+         }
+@@ -6281,7 +6322,7 @@ void Audio_PlayAmbience(u8 ambienceId) {
+     u8 ioData;
+ 
+     if (!((gActiveSeqs[SEQ_PLAYER_AMBIENCE].seqId != NA_BGM_DISABLED) &&
+-          (sSeqFlags[gActiveSeqs[SEQ_PLAYER_AMBIENCE].seqId & 0xFF & 0xFF] & SEQ_FLAG_NO_AMBIENCE))) {
++          (SEQ_FLAGS(gActiveSeqs[SEQ_PLAYER_AMBIENCE].seqId & 0xFF & 0xFF) & SEQ_FLAG_NO_AMBIENCE))) {
+         if (gActiveSeqs[SEQ_PLAYER_AMBIENCE].seqId != NA_BGM_AMBIENCE) {
+             sPrevAmbienceSeqId = gActiveSeqs[SEQ_PLAYER_AMBIENCE].seqId;
+         }
 diff --git a/src/audio/lib/effects.c b/src/audio/lib/effects.c
 index a1dde23..bd4596e 100644
 --- a/src/audio/lib/effects.c
