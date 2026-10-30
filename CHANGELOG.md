@@ -3,9 +3,9 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
-## Next
+## 1.4.4 (Diddy Kong Racing 1.1.7: Adventure 2's mirrored races)
 
-Rebuilt so far: Diddy Kong Racing 1.1.7.
+Rebuilt: Diddy Kong Racing 1.1.7; the other eleven games are the 1.4.3 zips.
 
 - Diddy Kong Racing: Adventure 2's mirrored races are drawn again ([issue #5](https://github.com/mr-finster/miyoo64/issues/5)).
   Only the trees, the characters and the HUD showed; the track, the karts and the sky were missing. The game mirrors a
