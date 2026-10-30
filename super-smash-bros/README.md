@@ -21,9 +21,10 @@ Download `SuperSmashBros-miyoo.zip` from https://miyoo-n64.pages.dev, and instal
 | R1 (hold) | Walk, tilts |
 | A / B | A / B |
 | X | Jump |
-| Y or L2 | Shield (with A: grab) |
+| Y | Shield (with A: grab) |
 | L1 | N64 R |
-| R2 or SELECT | Taunt |
+| SELECT | Taunt |
+| L2 / R2 | N64 C-left / C-right: the fighter's colour on the character select (jump in a fight) |
 | START | Start |
 | MENU | Game menu: save, load, exit |
 
