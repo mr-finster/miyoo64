@@ -717,8 +717,18 @@ s32 port_bench_level_to_load(void) {
             exit(0);
         }
     }
+    { /* DKR_ADV2=2 (tests, issue #5): the flag held every frame, as the N64 reference's GameShark code
+       * 810DFA16 0001 holds it (us.v80 gIsInAdventureTwo at 0x800DFA14): the attract mode's races mirrored */
+        static int sAdv2 = -1;
+        if (sAdv2 < 0) { const char *a2 = getenv("DKR_ADV2"); sAdv2 = a2 && a2[0] == '2'; }
+        if (sAdv2) { extern s32 gIsInAdventureTwo; gIsInAdventureTwo = TRUE; }
+    }
     if (sDevPending) {
         sDevPending = 0;
+        { /* DKR_ADV2=1 (tests, issue #5): the warp races as Adventure 2 does, mirrored (get_filtered_cheats) */
+            const char *a2 = getenv("DKR_ADV2");
+            if (a2 && a2[0] == '1') { extern s32 gIsInAdventureTwo; gIsInAdventureTwo = TRUE; port_log_always("LEVEL adventure two (mirrored)\n"); }
+        }
         port_log_always("LEVEL load %d, %d player(s), vehicle %d, entrance %d\n", sDevLevel, sDevPlayers, (int) port_bench_vehicle(), sDevEntrance);
         return sDevLevel;
     }

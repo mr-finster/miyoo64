@@ -3,6 +3,17 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## Next
+
+Rebuilt so far: Diddy Kong Racing 1.1.7.
+
+- Diddy Kong Racing: Adventure 2's mirrored races are drawn again ([issue #5](https://github.com/mr-finster/miyoo64/issues/5)).
+  Only the trees, the characters and the HUD showed; the track, the karts and the sky were missing. The game mirrors a
+  race by turning the screen's x around and asks the N64 to cull the triangles' other side, which is then their back
+  again. The Mini took that as "cull both sides" and dropped every one-sided triangle. It now culls the side the N64
+  does, so a mirrored race shows the same faces as the normal one. Adventure 1 and the menus are drawn exactly as
+  before. The Tracks menu's Adventure 2 races and the mirrored-tracks cheat had the same bug and are fixed with it.
+
 ## 1.4.3 (the crash sweep of Majora's Mask, Harvest Moon 64 and Paper Mario)
 
 Rebuilt: Harvest Moon 64 1.0.4 and Majora's Mask 1.0.7 beta; the other ten games are the 1.4.2 zips (Paper Mario's

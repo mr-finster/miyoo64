@@ -241,6 +241,18 @@ static struct RSP {
 #endif
 } rsp  __attribute__((aligned(16)));
 
+/* The RSP tests a triangle's winding in screen space, after the viewport. A viewport with one axis
+ * scaled negative (vscale[0] < 0: DKR's Adventure 2 and its mirrored-tracks cheat, camera.c
+ * viewport_rsp_set) turns every triangle around on screen. The CPU cull here tests the winding in
+ * clip space, before the viewport, so under such a viewport G_CULL_FRONT and G_CULL_BACK trade
+ * places (issue #5). Set by gfx_calc_and_set_viewport. */
+static bool gfx_vp_mirror;
+static inline uint32_t gfx_cull_mode(void) {
+    uint32_t c = rsp.geometry_mode & G_CULL_BOTH;
+    if (gfx_vp_mirror && (c == G_CULL_FRONT || c == G_CULL_BACK)) c ^= G_CULL_BOTH;
+    return c;
+}
+
 static struct RDP {
     const uint8_t *palette;
     struct {
@@ -3319,7 +3331,7 @@ static void gfx_ge_tl_near_clip(const struct LoadedVertex *a, const struct Loade
     struct LoadedVertex *out = bufB;
 
     // Back-face cull the clipped polygon (every vertex has w > 0 => exact winding).
-    uint32_t cull = rsp.geometry_mode & G_CULL_BOTH;
+    uint32_t cull = gfx_cull_mode();
     if (cull) {
         float w1 = out[0]._w, w2 = out[1]._w, w3 = out[2]._w;
         float cross = (out[0]._x * w2 - out[1]._x * w1) * (out[2]._y * w2 - out[1]._y * w3)
@@ -3554,7 +3566,7 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
         float dx2 = v3->_x * w2 - v2->_x * w3;
         float dy2 = v3->_y * w2 - v2->_y * w3;
         float cross = dx1 * dy2 - dy1 * dx2;
-        switch (rsp.geometry_mode & G_CULL_BOTH) {
+        switch (gfx_cull_mode()) {
             case G_CULL_FRONT:
                 if (cross <= 0) {
                     return; }
@@ -3690,7 +3702,7 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
         if (w1 * w3 < 0.0f) {
             cross = -cross;
         }
-        switch (rsp.geometry_mode & G_CULL_BOTH) {
+        switch (gfx_cull_mode()) {
             case G_CULL_FRONT:
                 if (cross <= 0) return;
                 break;
@@ -3885,9 +3897,15 @@ static void gfx_dkr_vertex(int n, bool append, const uint8_t *src) {
 static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx);
 /* gSPPolygon: n 16-byte triangles {flags, vi0, vi1, vi2, uv0, uv1, uv2}.
  * Each triangle writes its UVs into the three (shared) vertices, and flag 0x40
- * draws the back face; otherwise it is culled. */
+ * draws the back face; otherwise it is culled.
+ * F3DDKR's cull side (issue #5): the game never sets G_CULL_BACK; a one-sided triangle is culled on
+ * the side G_CULL_FRONT picks, the back normally, the front (on screen) while the game sets
+ * G_CULL_FRONT under its mirrored viewport (tracks.c render_scene, Adventure 2), which is the
+ * triangle's back face again. Or-ing G_CULL_BACK into the game's G_CULL_FRONT made G_CULL_BOTH:
+ * every one-sided triangle of a mirrored race was dropped. */
 static void gfx_dkr_triangles(int n, const Triangle *tris) {
     const uint32_t saved = rsp.geometry_mode;
+    const uint32_t one_sided = (saved & G_CULL_FRONT) ? G_CULL_FRONT : G_CULL_BACK;
     /* G_TEXTURE's scale: DKR never sends one, and the microcode takes 0 (and
      * 0xFFFF) as 1.0 (DKR-GC gfx_gx.c gfx_texture). */
     const int32_t ss = (rsp.texture_scaling_factor.s == 0 || rsp.texture_scaling_factor.s == 0xFFFF) ? 0x10000 : rsp.texture_scaling_factor.s;
@@ -3903,8 +3921,7 @@ static void gfx_dkr_triangles(int n, const Triangle *tris) {
         b->v = (int16_t) (t->uv1.v * st >> 16);
         c->u = (int16_t) (t->uv2.u * ss >> 16);
         c->v = (int16_t) (t->uv2.v * st >> 16);
-        if (t->flags & BACKFACE_DRAW) rsp.geometry_mode &= ~G_CULL_BACK;
-        else rsp.geometry_mode |= G_CULL_BACK;
+        rsp.geometry_mode = (rsp.geometry_mode & ~G_CULL_BOTH) | ((t->flags & BACKFACE_DRAW) ? 0 : one_sided);
         gfx_sp_tri1(t->vi0 & (MAX_VERTICES - 1), t->vi1 & (MAX_VERTICES - 1), t->vi2 & (MAX_VERTICES - 1));
     }
     rsp.geometry_mode = (saved & ~G_CULL_BACK) | (rsp.geometry_mode & G_CULL_BACK);
@@ -4167,6 +4184,7 @@ static void gfx_calc_and_set_viewport(const Vp_t *viewport) {
     rdp.viewport.y = y;
     rdp.viewport.width = width;
     rdp.viewport.height = height;
+    gfx_vp_mirror = (viewport->vscale[0] < 0) != (viewport->vscale[1] < 0);
 
     rdp.viewport_or_scissor_changed = true;
     tri_state.valid = false;
