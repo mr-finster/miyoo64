@@ -23,11 +23,7 @@
 #define STICK_HALF 40   /* >= 20 tilts/walks, < 50 never runs or smashes */
 
 enum { K_UP, K_DOWN, K_LEFT, K_RIGHT, K_A, K_B, K_X, K_Y, K_L, K_R, K_START, K_SELECT,
-       K_CUP, K_CDOWN, K_CLEFT, K_CRIGHT, K_Z,
-#if defined(MIYOO)
-       K_L2, K_R2, /* the Miyoo Mini's extra shoulder buttons */
-#endif
-       K_COUNT };
+       K_CUP, K_CDOWN, K_CLEFT, K_CRIGHT, K_Z, K_COUNT };
 static volatile bool sKeys[K_COUNT];
 static int sAutoFrame;
 extern uint32_t port_time_us(void);
@@ -71,15 +67,15 @@ void controller_sdl_key(int sc, bool down)
 const struct miyoo_remap_row miyoo_remap_rows[] = {
     { MR_A, MB_A, 0, 0, "ATTACK" },
     { MR_B, MB_B, 0, 0, "SPECIAL" },
-    { MR_Z, MB_Y, MB_L2, 0, "SHIELD" },
+    { MR_Z, MB_Y, 0, 0, "SHIELD" },
     { MR_R, MB_L1, 0, 0, "GRAB" },
     { MR_START, MB_START, 0, 0, "PAUSE" },
     { MR_CUP, MB_X, 0, 0, "JUMP" },
-    { MR_L, MB_SELECT, MB_R2, 0, "TAUNT" },
+    { MR_L, MB_SELECT, 0, 0, "TAUNT" },
     { MR_TEXT, MB_R1, 0, 0, "HALF STICK (WALK)" },
     { MR_CDOWN, MB_NONE, 0, 0, NULL },
-    { MR_CLEFT, MB_NONE, 0, 0, NULL },
-    { MR_CRIGHT, MB_NONE, 0, 0, NULL },
+    { MR_CLEFT, MB_L2, 0, 0, "COLOUR / JUMP" },
+    { MR_CRIGHT, MB_R2, 0, 0, "COLOUR / JUMP" },
     { MR_STICK, MB_DPAD, 0, 0, "MOVE" },
     { MR_DPAD, MB_NONE, 0, 0, NULL },
 };
@@ -94,8 +90,9 @@ void controller_handheld_key(int sym, int down)
     int k = -1;
     (void) sym;
 #if defined(MIYOO)
-    /* The Miyoo Mini's SDL keys (kit miyoo_panel.h): L1 = N64 R, R1 = half stick, SELECT = N64 L (taunt), L2 = N64 Z
-     * (shield, as Y) and R2 = N64 L (taunt). MENU (Escape) opens the menu in gfx_sdl12.c and never reaches here. */
+    /* The Miyoo Mini's SDL keys (kit miyoo_panel.h): L1 = N64 R, R1 = half stick, SELECT = N64 L (taunt), L2 = N64
+     * C-left and R2 = N64 C-right (on the character select a fighter's colour, as C-up and C-down give the other two;
+     * in a fight a jump, as every C button). MENU (Escape) opens the menu in gfx_sdl12.c and never reaches here. */
     switch (sym) {
     case 273: k = K_UP; break;     /* MIYOO_KEY_UP */
     case 274: k = K_DOWN; break;   /* MIYOO_KEY_DOWN */
@@ -107,8 +104,8 @@ void controller_handheld_key(int sym, int down)
     case 308: k = K_Y; break;      /* MIYOO_KEY_Y */
     case 101: k = K_L; break;      /* MIYOO_KEY_L1 */
     case 116: k = K_R; break;      /* MIYOO_KEY_R1 */
-    case 9:   k = K_L2; break;     /* MIYOO_KEY_L2 */
-    case 8:   k = K_R2; break;     /* MIYOO_KEY_R2 */
+    case 9:   k = K_CLEFT; break;  /* MIYOO_KEY_L2 */
+    case 8:   k = K_CRIGHT; break; /* MIYOO_KEY_R2 */
     case 305: k = K_SELECT; break; /* MIYOO_KEY_SELECT */
     case 13:  k = K_START; break;  /* MIYOO_KEY_START */
     default: break;
@@ -118,7 +115,8 @@ void controller_handheld_key(int sym, int down)
 }
 
 /* Scheme 1 (notes/controls.md): d-pad = full stick, R held = half stick,
- * A/B as is, X = C (jump), Y = Z (shield), L = R trigger, Select = L (taunt). */
+ * A/B as is, X = C (jump), Y = Z (shield), L = R trigger, Select = L (taunt);
+ * on the Miyoo also L2 = C-left, R2 = C-right. */
 void hh_input_read(HhPad *pad)
 {
     { extern void hh_demo_stage_poll(void); hh_demo_stage_poll(); } /* SSB64_DEMOSTAGE (n64/bench.c) */
@@ -136,10 +134,6 @@ void hh_input_read(HhPad *pad)
     if (sKeys[K_Y]) b |= N64_Z;
     if (sKeys[K_L]) b |= N64_R;
     if (sKeys[K_SELECT]) b |= N64_L;
-#if defined(MIYOO)
-    if (sKeys[K_L2]) b |= N64_Z;
-    if (sKeys[K_R2]) b |= N64_L;
-#endif
     if (sKeys[K_START]) b |= N64_START;
     if (sKeys[K_CUP]) b |= N64_CUP;
     if (sKeys[K_CDOWN]) b |= N64_CDOWN;

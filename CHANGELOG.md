@@ -3,6 +3,17 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## Next
+
+Rebuilt: Super Smash Bros. 1.1.7.
+
+- Super Smash Bros.: L2 is now the N64's C-left and R2 its C-right ([issue #6](https://github.com/mr-finster/miyoo64/issues/6)).
+  On the character select they give a fighter two more of its colours (X, the N64's C-up, gives the first one); in a
+  fight they jump, as every C button does on the N64. Before, no Miyoo button gave C-left or C-right. Shield stays on Y
+  and taunt on SELECT (L2 and R2 were their second buttons). C-left and C-right are in MENU > CONTROLS, so they can go
+  on any button. A layout saved there before still loads: a button that was swapped with L2 or R2 now gives C-left or
+  C-right in place of the second shield or taunt button; RESET TO DEFAULT gives the new layout.
+
 ## 1.4.4 (Diddy Kong Racing 1.1.7: Adventure 2's mirrored races)
 
 Rebuilt: Diddy Kong Racing 1.1.7; the other eleven games are the 1.4.3 zips.

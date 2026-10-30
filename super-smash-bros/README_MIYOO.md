@@ -102,9 +102,10 @@ Control scheme 1, plus the Mini's extra shoulder buttons:
 | R1 (hold) | the d-pad becomes a half stick: walk, tilts |
 | A / B | A / B |
 | X | C (jump; tap = short hop) |
-| Y or L2 | Z (shield; with A = grab) |
+| Y | Z (shield; with A = grab) |
 | L1 | R (A + Z: shield-grab) |
-| SELECT or R2 | L (taunt) |
+| SELECT | L (taunt) |
+| L2 / R2 | C-left / C-right (the character select's fighter colours; in a fight a jump, as every C button) |
 | START | START |
 | MENU | the game menu (resume, save/load state, exit) |
 
