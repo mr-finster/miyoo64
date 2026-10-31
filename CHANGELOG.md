@@ -5,7 +5,18 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
-Rebuilt: Super Smash Bros. 1.1.7.
+New game: Banjo-Kazooie 1.0.0 beta. Rebuilt: Super Smash Bros. 1.1.7.
+
+- Banjo-Kazooie (USA 1.0 ROM), version 1.0.0, a beta: the whole game, built from the
+  [banjo.decomp/banjo-kazooie](https://gitlab.com/banjo.decomp/banjo-kazooie) decompilation on the GoldenEye 007
+  port's handheld layer (Rare's engine too) and Harvest Moon 64's audio mixer. Save states, the game menu with
+  MENU > CONTROLS, the auto save on power-off and before sleep, and the Mini v4 / Flip full screen, as in the other
+  games. The intro was compared scene by scene against an N64 renderer (angrylion), and every world was entered under
+  the memory checkers (one fix: the game rewrites its BANJOKAZOOIE cheat code in place, which crashed the port on
+  entering Treasure Trove Cove's sandcastle).
+- The first start finds the ROM anywhere on the card (any name, .z64, .v64 or .n64), checks it and keeps a 16 MB
+  copy in `App/BanjoKazooie/data/`. Known issues: Click Clock Wood in winter is too slow on the original Mini, and the
+  molehills' shadow is darker than on the N64 ([README](banjo-kazooie/README.md#known-issues)).
 
 - Super Smash Bros.: L2 is now the N64's C-left and R2 its C-right ([issue #6](https://github.com/mr-finster/miyoo64/issues/6)).
   On the character select they give a fighter two more of its colours (X, the N64's C-up, gives the first one); in a

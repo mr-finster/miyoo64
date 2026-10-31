@@ -1,0 +1,13 @@
+{
+  "id": "bk",
+  "title": "Banjo-Kazooie",
+  "folder": "BanjoKazooie",
+  "exe": "banjo",
+  "files": ["banjo"],
+  "icon": "icon.png",
+  "env": "BK",
+  "data": "data",
+  "rom": {"name": "Banjo-Kazooie (USA 1.0)", "sha1": "1fe1632098865f639e22c11b9a81ee8f29c75d7a", "size": 16777216},
+  "system": "BANJO",
+  "minui_tag": "BK"
+}

@@ -1,0 +1,180 @@
+# Banjo-Kazooie (USA 1.0) -> Miyoo Mini build, from a tree made by tools/setup.sh (the decomp at the pinned
+# commit + decomp.patch + this hh/ directory).
+#
+#   make -f hh/Makefile.handheld PLAT=miyoo -j6     # Miyoo Mini (ARM, SDL 1.2)
+#   make -f hh/Makefile.handheld PLAT=pc -j6        # 32-bit x86 proxy (headless, no SDL): same layout, fast tests
+#
+# Game code: the decomp's src/ (core1, core2, the level overlays) compiled natively, with libultra's OS replaced by
+# hh/ (coroutine threads with the N64's priorities, the RSP tasks run by the renderer and the n_audio mixer, the
+# cartridge read from the player's ROM). The binary is linked at 0x80400000 and the first 4 MB of N64 DRAM are mapped
+# at 0x80000000, so every address the game sees is a KSEG0 one, as on the N64.
+
+PLAT    ?= miyoo
+HH_RELEASE ?= 1.0.0
+HH_VERSION ?= $(shell git -C hh rev-parse --short HEAD 2>/dev/null)
+.DEFAULT_GOAL := all
+SHELL := /bin/bash
+# SAN=address,undefined (PLAT=pc): the sanitizer build for the crash sweep, in build/hh-pc-san (globals unpadded, so
+# the layout stays the N64's)
+SAN ?=
+BUILD_DIR := build/hh-$(PLAT)$(if $(SAN),-san)
+ELF       := $(BUILD_DIR)/banjo
+
+VERBOSE ?= 0
+ifeq ($(VERBOSE),0)
+  V := @
+endif
+
+ifeq ($(PLAT),miyoo)
+  MIYOO_TOOLCHAIN ?= /opt/miyoomini-toolchain
+  MM_SYSROOT := $(MIYOO_TOOLCHAIN)/usr/arm-linux-gnueabihf/sysroot
+  CC      := $(MIYOO_TOOLCHAIN)/usr/bin/arm-linux-gnueabihf-gcc
+  MARCH   := -march=armv7ve+neon-vfpv4 -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+  OPT     := -O2
+  SDL_CFLAGS := -I$(MM_SYSROOT)/usr/include -I$(MM_SYSROOT)/usr/include/SDL -D_REENTRANT
+  SDL_LIBS   := -L$(MM_SYSROOT)/usr/lib -Wl,-rpath-link,$(MM_SYSROOT)/usr/lib -lSDL -lrt
+  PLAT_DEFS  := -DTARGET_HANDHELD=1 -DHANDHELD=1 -DTARGET_MIYOO=1 -DMIYOO=1 -D_FILE_OFFSET_BITS=64
+else
+  CC      := gcc
+  MARCH   := -m32 -msse2 -mfpmath=sse -malign-data=abi
+  OPT     := -O1
+  SDL_CFLAGS :=
+  SDL_LIBS   := -lrt
+  PLAT_DEFS  := -DTARGET_HANDHELD=1 -DTARGET_PC=1 -DHH_NO_SDL=1
+endif
+
+#------------------------------------------------------------------------------
+# Sources
+#------------------------------------------------------------------------------
+# Game: every C file of core1, core2 and the level overlays. Not the boot segment (it unpacks core1 on the N64).
+GAME_DIRS := core1 core2 MM TTC CC BGS FP lair GV CCW RBB MMM SM fight cutscenes emptyLvl
+GAME_C    := $(filter-out src/core1/overlay.c src/SM/code_46C0.us.v10.c src/core2/bss_pad_pal.c,$(sort $(foreach d,$(GAME_DIRS),$(shell find src/$(d) -name '*.c'))))
+# libultra (lib/ultralib) pieces the game links that are plain C: gu, the audio library (al) and libc helpers.
+# The OS, PI, SI, VI, AI and SP calls are hh/'s.
+ULTRA_AUDIO := bnkf cents2ratio copy cseq cspgettempo cspplay cspsetbank cspsetseq cspsettempo cspsetvol cspstop \
+               drvrnew env event filter heapalloc heapinit load mainbus auxbus resample reverb save seq sl synthesizer \
+               syndelete synallocfx
+ULTRA_C   := $(foreach f,$(ULTRA_AUDIO),lib/ultralib/src/audio/$(f).c) \
+             $(foreach f,mtxutil ortho translate rotate normalize,lib/ultralib/src/gu/$(f).c) \
+             lib/ultralib/src/libc/ll.c lib/ultralib/src/libc/bcopy.c lib/ultralib/src/libc/bzero.c
+ULTRA_C   := $(filter $(wildcard lib/ultralib/src/*/*.c),$(ULTRA_C))
+HH_C      := $(sort $(wildcard hh/*.c))
+GFX_C     := hh/gfx/gfx_pc.c hh/gfx/gfx_cc.c hh/gfx/gfx_soft.c \
+             $(if $(filter miyoo,$(PLAT)),hh/gfx/gfx_sdl12.c,hh/gfx/gfx_null.c)
+AUDIO_C   := hh/audio/hh_aspmain.c hh/audio/hh_mixer.c $(if $(filter miyoo,$(PLAT)),hh/audio/hh_audio_sdl.c,hh/audio/hh_audio_null.c)
+HH_SS     := hh/hh_ctx.S
+KIT_C     := $(if $(filter miyoo,$(PLAT)),hh/kit/platform/miyoo_menu.c hh/kit/platform/miyoo_worker.c \
+             hh/kit/platform/miyoo_clock.c hh/kit/platform/miyoo_sleepsave.c hh/kit/platform/miyoo_remap.c,) \
+             hh/kit/platform/savestate.c hh/kit/platform/hh_priority.c
+
+C_FILES  := $(GAME_C) $(ULTRA_C) $(HH_C) $(GFX_C) $(AUDIO_C) $(KIT_C)
+O_FILES  := $(patsubst %.c,$(BUILD_DIR)/%.o,$(C_FILES)) $(patsubst %.S,$(BUILD_DIR)/%.o,$(HH_SS))
+DEP_FILES := $(O_FILES:.o=.d)
+
+#------------------------------------------------------------------------------
+# Flags
+#------------------------------------------------------------------------------
+# The decomp's US 1.0 defines (Makefile CFLAGS/CPPFLAGS), the anti-tamper checks off (they checksum N64 code).
+GAME_DEFS := -D_FINALROM -DF3DEX_GBI -DVERSION=0 -DNDEBUG -DBUILD_VERSION=VERSION_I -DBKDIFFS -DN_MICRO \
+             -DANTI_TAMPER=0 -DANTI_PIRACY=0 -D_LANGUAGE_C -DPORT=1 $(PLAT_DEFS)
+INCLUDES  := -I hh/include -I hh/kit/platform -I . -I include -idirafter lib/ultralib/include \
+             -idirafter lib/ultralib/include/PR -idirafter lib/ultralib/include/PRinternal \
+             -I include/n_audio/PR -idirafter lib/ultralib/src/audio
+# IDO semantics: unsigned plain char, wrapping signed math, no strict aliasing, variables in source order.
+CFLAGS    := -std=gnu89 $(MARCH) $(OPT) -g -funsigned-char -fplan9-extensions \
+             -fno-common -fno-toplevel-reorder -fwrapv -fno-strict-aliasing -fno-pie -ffp-contract=off \
+             -fno-math-errno -fno-builtin-sinf -fno-builtin-cosf -fno-builtin-sin -fno-builtin-cos \
+             $(GAME_DEFS) $(INCLUDES) $(SDL_CFLAGS) -MMD -MP -include hh/include/hh_game.h -w $(EXTRA_CFLAGS)
+GFX_CFLAGS := -std=gnu11 $(MARCH) -O2 -g -fsigned-char -fno-strict-aliasing -fwrapv -fno-common \
+              -ffp-contract=off -fno-pie -D_LANGUAGE_C -DHH_PORT_LAYER=1 -DPORT_GE_RAWCC=1 -DPORT=1 -DF3DEX_GBI $(PLAT_DEFS) \
+              -I hh/include -I hh/gfx -I hh/audio -I hh/kit/platform -I . -idirafter lib/ultralib/include \
+              -idirafter lib/ultralib/include/PR $(SDL_CFLAGS) -MMD -MP -w $(EXTRA_CFLAGS)
+# the port layer (hh/*.c): the host's headers first (the decomp has a time.h of its own), then the game's
+PORT_INCLUDES := -I hh/include -I hh/kit/platform -I hh -I . -idirafter include -idirafter lib/ultralib/include \
+             -idirafter lib/ultralib/include/PR -idirafter lib/ultralib/include/PRinternal -idirafter include/n_audio/PR
+PORT_CFLAGS := -std=gnu11 $(MARCH) $(OPT) -g -funsigned-char -fno-common -fwrapv -fno-strict-aliasing -fno-pie \
+             -ffp-contract=off -fno-math-errno $(GAME_DEFS) -DHH_PORT_LAYER=1 -D_GNU_SOURCE $(PORT_INCLUDES) $(SDL_CFLAGS) \
+             -MMD -MP -include hh/include/hh_game.h -w $(EXTRA_CFLAGS)
+LDFLAGS   := $(MARCH) -no-pie -Wl,-Ttext-segment=0x80400000 -Wl,-Map,$(BUILD_DIR)/banjo.map \
+             -Wl,--defsym=_ftext=0 -Wl,--defsym=_fbss=0 -Wl,--defsym=__assets_start=0 -Wl,--defsym=__assets_end=0 -Wl,--wrap=alBnkfNew \
+             -T hh/banjo.ld
+LIBS      := $(SDL_LIBS) -lm -lpthread
+ifneq ($(SAN),)
+  EXTRA_CFLAGS += -fsanitize=$(SAN) -fno-omit-frame-pointer -fno-sanitize-recover=all -g \
+                  $(if $(findstring address,$(SAN)),--param asan-globals=0)
+  LDFLAGS += -fsanitize=$(SAN)
+endif
+
+all: $(ELF)
+
+STAMP_C := $(BUILD_DIR)/build_stamp.c
+# the stamp (the version line console.log starts with) is written and compiled by every make: a new commit or release
+# number alone must change it (MM 1.0.6 shipped printing 1.0.4)
+$(STAMP_C): $(O_FILES) FORCE
+	$(V)printf '#include <stdint.h>\nconst uint32_t port_build_stamp = 0x%s;\nconst char port_build_version[] = "%s";\nconst char port_build_release[] = "Banjo-Kazooie %s";\n' \
+	  "$$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')" "$(HH_VERSION)" "$(HH_RELEASE)" > $@
+$(STAMP_C:.c=.o): $(STAMP_C)
+	$(V)$(CC) -c $(GFX_CFLAGS) -o $@ $<
+
+$(ELF): $(O_FILES) $(STAMP_C:.c=.o) hh/banjo.ld
+	@echo "LD  $@"
+	$(V)$(CC) $(LDFLAGS) -o $@ $(O_FILES) $(STAMP_C:.c=.o) $(LIBS)
+
+# Each level overlay's .data/.bss go to sections of their own (hh/banjo.ld), so the overlay manager can put them
+# back as the N64 does when it loads that overlay again (hh_ovl.c).
+OVL_OF = $(word 2,$(subst /, ,$(1)))
+OVLS := MM TTC CC BGS FP lair GV CCW RBB MMM SM fight cutscenes emptyLvl
+
+$(BUILD_DIR)/src/%.o: src/%.c
+	@mkdir -p $(dir $@)
+	@echo "CC  $<"
+	$(V)$(CC) $(CFLAGS) -c -o $@ $<
+	$(V)o=$(call OVL_OF,$<); if [ -n "$$(echo ' $(OVLS) core2 ' | grep " $$o ")" ]; then \
+	  $(OBJCOPY) --rename-section .data=.ovl_$${o}_data --rename-section .bss=.ovl_$${o}_bss \
+	    --rename-section .sdata=.ovl_$${o}_data --rename-section .sbss=.ovl_$${o}_bss $@; fi
+
+$(BUILD_DIR)/lib/%.o: lib/%.c
+	@mkdir -p $(dir $@)
+	@echo "CC  $<"
+	$(V)$(CC) $(CFLAGS) -c -o $@ $<
+
+$(BUILD_DIR)/hh/gfx/%.o: hh/gfx/%.c
+	@mkdir -p $(dir $@)
+	@echo "CC  $<"
+	$(V)$(CC) $(GFX_CFLAGS) -c -o $@ $<
+
+$(BUILD_DIR)/hh/kit/%.o: hh/kit/%.c
+	@mkdir -p $(dir $@)
+	@echo "CC  $<"
+	$(V)$(CC) $(GFX_CFLAGS) -c -o $@ $<
+
+$(BUILD_DIR)/hh/audio/%.o: hh/audio/%.c
+	@mkdir -p $(dir $@)
+	@echo "CC  $<"
+	$(V)$(CC) $(GFX_CFLAGS) -c -o $@ $<
+
+$(BUILD_DIR)/hh/%.o: hh/%.c
+	@mkdir -p $(dir $@)
+	@echo "CC  $<"
+	$(V)$(CC) $(PORT_CFLAGS) -c -o $@ $<
+
+$(BUILD_DIR)/%.o: %.S
+	@mkdir -p $(dir $@)
+	@echo "AS  $<"
+	$(V)$(CC) $(MARCH) -c -o $@ $<
+
+ifeq ($(PLAT),miyoo)
+  OBJCOPY := $(MIYOO_TOOLCHAIN)/usr/bin/arm-linux-gnueabihf-objcopy
+else
+  OBJCOPY := objcopy
+endif
+
+clean:
+	rm -rf $(BUILD_DIR)
+
+-include $(DEP_FILES)
+
+.PHONY: all clean
+
+.PHONY: FORCE
+FORCE:
