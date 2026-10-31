@@ -5,6 +5,7 @@
 #   tools/build_miyoo.sh <build tree>          (the tree tools/setup.sh made)
 # OUT_DIR=<dir> puts the zip there (default: this folder, where git ignores it). HH_RELEASE=<x.y.z> overrides the
 # release number in the version line (hh/Makefile.handheld's default otherwise).
+# JOBS=<n>: make's parallel jobs (default: every core).
 #
 # The build: make with this repository's commit as the version, so console.log's first line names the build
 # ("SESSION banjo Banjo-Kazooie <release> version <commit> build <stamp>", rewritten by every make).
@@ -36,7 +37,7 @@ REL=${HH_RELEASE:-$(sed -n 's/^HH_RELEASE ?= *//p' "$HERE/hh/Makefile.handheld")
 
 echo "build $REL ($VER)"
 rm -rf "$TREE/hh" && cp -r "$HERE/hh" "$TREE/hh"
-make -C "$TREE" -f hh/Makefile.handheld PLAT=miyoo HH_VERSION="$VER" HH_RELEASE="$REL" -j"$(nproc)" | tail -1
+make -C "$TREE" -f hh/Makefile.handheld PLAT=miyoo HH_VERSION="$VER" HH_RELEASE="$REL" -j"${JOBS:-$(nproc)}" | tail -1
 
 STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE"' EXIT
