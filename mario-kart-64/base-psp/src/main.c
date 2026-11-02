@@ -539,8 +539,27 @@ void display_and_vsync(void) {
     gGlobalTimer++;
 }
 
+#ifndef TARGET_N64
+/* The N64 copies these two code segments from ROM again here and zeroes their .bss; the port links them in, so
+ * their variables kept their values from the last race or ceremony. Put back the ones the game reads before it sets
+ * them: the race's random seed (gRandomSeed16 sits in the racing segment's .bss on the N64: the @bug at RACING),
+ * the box trucks' design counter (each later visit to Toad's Turnpike started its 7 trucks one design on), the fog
+ * position Banshee Boardwalk and Moo Moo Farm draw with (Toad's Turnpike leaves 993, the segment holds 995), and the
+ * podium's random seed and firework colour counter (a second ceremony carried on from the first). */
+static void port_racing_segment_reset(void) {
+    extern u16 gRandomSeed16, D_802BA260;
+    extern s16 D_802B87B0, D_802B87B4;
+    gRandomSeed16 = 0;
+    D_802BA260 = 0;
+    D_802B87B0 = 995;
+    D_802B87B4 = 1000;
+}
+#endif
+
 void init_segment_ending_sequences(void) {
 #ifndef TARGET_N64
+    extern void port_podium_ceremony_reset(void);
+    port_podium_ceremony_reset();
     return; // no code overlays on ported targets
 #endif
     bzero((void*) SEG_ENDING, SEG_ENDING_SIZE);
@@ -552,6 +571,7 @@ void init_segment_ending_sequences(void) {
 
 void init_segment_racing(void) {
 #ifndef TARGET_N64
+    port_racing_segment_reset();
     return; // no code overlays on ported targets
 #endif
     bzero((void*) SEG_RACING, SEG_RACING_SIZE);

@@ -336,9 +336,20 @@ extern s32 fireworkColour[];
  * resulting in a small variety of amusing colours.
  * D_802874BE appears to be zero.
  */
+#ifndef TARGET_N64
+static u32 D_80287540; /* at file scope so the ending segment's reload can clear it (main.c) */
+
+void port_podium_ceremony_reset(void) {
+    sRandomSeed16 = 0;
+    D_80287540 = 0;
+}
+#endif
+
 void spawn_firework_cone(s32 arg0, s32 arg1, s32 arg2) {
     f32 num;
+#ifdef TARGET_N64
     static u32 D_80287540;
+#endif
 
     if (((f32) random_float_between_0_and_1() * (D_802874B0[7] + 0xD)) < 1.0f) {
         Firework* cone;
