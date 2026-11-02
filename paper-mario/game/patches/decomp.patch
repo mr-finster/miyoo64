@@ -890,6 +890,24 @@ index 86d6340df..19f8903ed 100644
                  src++;
                  dest++;
  
+diff --git a/src/battle/area/kzn2/actor/lava_piranha.c b/src/battle/area/kzn2/actor/lava_piranha.c
+index fef58ecc5..8cc6f6c02 100644
+--- a/src/battle/area/kzn2/actor/lava_piranha.c
++++ b/src/battle/area/kzn2/actor/lava_piranha.c
+@@ -1350,6 +1350,13 @@ EvtScript N(EVS_Attack_FireBreath) = {
+ extern s32 N(FakeoutMusicTime);
+ 
+ API_CALLABLE(N(ManageFakeoutMusic)) {
++#ifdef PM64_PORT
++    if (isInitialCall) {
++        // 0 as the N64's fresh copy of the battle area leaves it: natively a second fight in a session started past
++        // 340, so the victory song played on through the second phase and the boss theme never came back
++        N(FakeoutMusicTime) = 0;
++    }
++#endif
+     N(FakeoutMusicTime)++;
+ 
+     // play 'end battle' song
 diff --git a/src/battle/btl_states_actions.c b/src/battle/btl_states_actions.c
 index 22cbf2bb6..fdb7a712c 100644
 --- a/src/battle/btl_states_actions.c
@@ -910,6 +928,30 @@ index 22cbf2bb6..fdb7a712c 100644
              general_heap_free(compressedAsset);
  
              ASSERT(size <= 0x8000);
+diff --git a/src/battle/common/move/StarBeamSupport.inc.c b/src/battle/common/move/StarBeamSupport.inc.c
+index cfe477316..ba9d3ea90 100644
+--- a/src/battle/common/move/StarBeamSupport.inc.c
++++ b/src/battle/common/move/StarBeamSupport.inc.c
+@@ -76,6 +76,19 @@ API_CALLABLE(N(ProcessPeachStarBeam)) {
+ 
+     if (isInitialCall) {
+         N(StarBeamStage) = 0;
++#ifdef PM64_PORT
++        {
++            // as the N64's fresh copy of the move leaves them (it is copied from the ROM at each use): natively the
++            // second beam of a session found every spirit's delay at -1, so the spirits jumped into place and left at once
++            static const s32 delays[] = { 35, 0, 5, 10, 15, 20, 25, 30 };
++            s32 j;
++
++            for (j = 0; j < ARRAY_COUNT(delays); j++) {
++                N(SpiritsFlyDelay)[j] = delays[j];
++                N(SpiritsFlyAwayDelay)[j] = delays[j];
++            }
++        }
++#endif
+         script->functionTemp[FT_IS_PEACH_BEAM] = evt_get_variable(script, *args++);
+         script->functionTemp[FT_STATE] = PEACH_STAR_BEAM_CREATE_EFFECT;
+     }
 diff --git a/src/battle/move/jump/power_bounce.c b/src/battle/move/jump/power_bounce.c
 index 9d024bb54..5610bad6d 100644
 --- a/src/battle/move/jump/power_bounce.c

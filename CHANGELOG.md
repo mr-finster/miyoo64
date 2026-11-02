@@ -42,12 +42,14 @@ New game: Banjo-Kazooie 1.0.0 beta. Rebuilt: Super Smash Bros. 1.1.7.
 - Perfect Dark: the same renderer fix as GoldenEye 007's: a rare broken triangle no longer makes the seam filler mark
   a stray strip from the left edge of a screen row.
 - Paper Mario: the N64 reloads the battle code at every battle, a move's code each time it is used and a map's code
-  each time it is entered, which puts their numbers back; the Mini kept them from the last time. Four places where
+  each time it is entered, which puts their numbers back; the Mini kept them from the last time. Six places where
   that showed are now as on the N64:
   - after a button skipped the title screen's demo while it showed a battle, every later battle of that session ended
     the moment it began;
   - Power Bounce's chance of going on was carried from one use to the next, so after a few long chains it stopped
     after the first bounce for the rest of the session;
+  - the second Star Beam or Peach Beam of a session had its star spirits jump into place and leave at once;
+  - a second fight against Lava Piranha in one session kept the victory song playing through its second phase;
   - the opening story, when the title screen was left alone long enough to show it a second time, had no storybook
     pages or narration, started its camera moves at their ends and wrote past the end of an effect's memory;
   - in Yoshi's Village, after leaving while Mario was behind the big palm tree, the tree no longer hid on the next
