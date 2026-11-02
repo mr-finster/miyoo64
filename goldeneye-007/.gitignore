@@ -15,6 +15,7 @@
 !tools/*.sh
 !tools/*.txt
 !tools/*.json
+!tools/aspref.c
 # The Miyoo Mini release (tools/build_miyoo.sh): the packer and its launch templates (the shared
 # miyoo/), the game's game.json and its icon (miyoo/icon.png, drawn as miyoo/icon.svg); the developer-only bench Apps entry (miyoo/bench, not in the zip).
 !miyoo/
