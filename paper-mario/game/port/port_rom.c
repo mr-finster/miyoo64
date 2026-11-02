@@ -77,7 +77,10 @@ void port_pi_read(uint32_t rom_addr, void *dst, uint32_t size) {
     /* data the N64 links at address 0 and reads as <seg>_ROM_START + symbol (imgfx_data, charset, entity animations)
      * is linked in natively with <seg>_ROM_START = 0 (gen_build.py): the "ROM address" is the data itself */
     if (rom_addr >= 0x10000000u) { memmove(dst, (const void *) (uintptr_t) rom_addr, size); return; }
-    if (port_code_segment(rom_addr, rom_addr + size, &seg)) return; /* linked in: see port_segments.c */
+    if (port_code_segment(rom_addr, rom_addr + size, &seg)) { /* linked in: see port_segments.c */
+        port_segment_loaded(seg, rom_addr);
+        return;
+    }
     port_rom_read(rom_addr, dst, size);
 }
 
