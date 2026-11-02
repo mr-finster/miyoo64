@@ -3,9 +3,10 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
-## Next
+## 1.4.5 (Banjo-Kazooie beta; Paper Mario's and Mario Kart 64's numbers start over as on the N64)
 
-New game: Banjo-Kazooie 1.0.0 beta. Rebuilt: Super Smash Bros. 1.1.7.
+New game: Banjo-Kazooie 1.0.0 beta. Rebuilt: Paper Mario 1.1.6, Mario Kart 64 1.1.8, GoldenEye 007 1.1.7, Perfect
+Dark 1.0.7, Super Mario 64 1.1.6 and Super Smash Bros. 1.1.7; the other six games are the 1.4.4 zips.
 
 - Banjo-Kazooie (USA 1.0 ROM), version 1.0.0, a beta: the whole game, built from the
   [banjo.decomp/banjo-kazooie](https://gitlab.com/banjo.decomp/banjo-kazooie) decompilation on the GoldenEye 007
@@ -63,6 +64,8 @@ New game: Banjo-Kazooie 1.0.0 beta. Rebuilt: Super Smash Bros. 1.1.7.
     visit and covered him;
   - the title screen's demo, shown a second time, set up its scenes at once instead of after their first frames, and
     the whale ride, the inside of the whale and the chapter end scenes kept their timers from the last showing.
+- Save states (RESUME GAME) from the older versions of the rebuilt games may not load: they are kept as `.rejected`.
+  In-game saves carry over.
 
 ## 1.4.4 (Diddy Kong Racing 1.1.7: Adventure 2's mirrored races)
 
