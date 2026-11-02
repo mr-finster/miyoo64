@@ -13,6 +13,11 @@ Rebuilt: Super Smash Bros. 1.1.7.
   and taunt on SELECT (L2 and R2 were their second buttons). C-left and C-right are in MENU > CONTROLS, so they can go
   on any button. A layout saved there before still loads: a button that was swapped with L2 or R2 now gives C-left or
   C-right in place of the second shield or taunt button; RESET TO DEFAULT gives the new layout.
+- Mario Kart 64: every race starts as on the N64 again. The N64 reloads the race code at each race start (and the
+  ceremony code at each ceremony), which puts some of its numbers back; the Mini kept them from the race before. So
+  the race's random numbers (the starting grid's order) carried on from the last race, each later visit to Toad's
+  Turnpike gave its box trucks other designs, Banshee Boardwalk and Moo Moo Farm took Toad's Turnpike's fog distance,
+  and a second award ceremony's balloons and fireworks carried on from the first.
 
 ## 1.4.4 (Diddy Kong Racing 1.1.7: Adventure 2's mirrored races)
 
