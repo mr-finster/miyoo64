@@ -21,6 +21,8 @@ Rebuilt: Super Smash Bros. 1.1.7.
 - GoldenEye 007: a rare broken triangle (one edge with no position) no longer makes the renderer's seam filler mark
   a stray strip from the left edge of a screen row (the same fix as Banjo-Kazooie's; on the PC test build it was a
   crash).
+- Perfect Dark: the same renderer fix as GoldenEye 007's: a rare broken triangle no longer makes the seam filler mark
+  a stray strip from the left edge of a screen row.
 
 ## 1.4.4 (Diddy Kong Racing 1.1.7: Adventure 2's mirrored races)
 
