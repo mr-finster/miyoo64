@@ -791,10 +791,59 @@ index 9bd45ea8e..ba67cb9a0 100644
                  gDPFillRectangle(gMainGfxPos++, backgroundMinX, backgroundMinY, backgroundMaxX - 1, backgroundMaxY - 1);
              } else {
 diff --git a/src/battle/16C8E0.c b/src/battle/16C8E0.c
-index 1cf11648f..91046b385 100644
+index 1cf11648f..a5f79aad3 100644
 --- a/src/battle/16C8E0.c
 +++ b/src/battle/16C8E0.c
-@@ -753,7 +753,7 @@ void tattle_cam_pre_render(Camera* camera) {
+@@ -13,6 +13,48 @@ s16 EndDemoWhiteOut = -1;
+ s16 DemoBattleBeginDelay = 0;
+ u16 gTattleBgTextureYOffset = 0;
+ 
++#ifdef PM64_PORT
++/* The port: battle_code's initialised data as each battle starts. The N64 copies the segment from the ROM at every
++ * battle (state_battle.c, DMA_COPY_SEGMENT), so every battle starts from these values; natively the segment is linked
++ * in, the copy does nothing, and what one battle left stayed for the next. Skipping the title screen's demo during
++ * one of its battles left EndDemoWhiteOut at 255: every later battle ended as a demo battle the frame it began. */
++extern s32 BattleScreenFadeAmt;
++extern s8 BattleCam_IsFrozen;
++extern s32 BattleCam_CurrentPresetID;
++extern PopupMessage* bPopupMessage;
++extern u8* gBattleDmaDest;
++extern s32 bFadeToBlackAmt;
++extern f32 D_802938A4;
++extern s16 D_802938A8;
++extern EffectInstance* gDamageCountEffects[24];
++extern s32 gDamageCountTimers[24];
++extern s32 bCurRumbleScript;
++
++void btl_port_reset_code_data(void) {
++    s32 i;
++
++    StarPointsIncrementInterp = 0.0f;
++    BtlStarPointsBlinking = false;
++    StarPointsBlinkTimer = 0;
++    EndDemoWhiteOut = -1;
++    DemoBattleBeginDelay = 0;
++    gTattleBgTextureYOffset = 0;
++    BattleScreenFadeAmt = 255;
++    BattleCam_IsFrozen = false;
++    BattleCam_CurrentPresetID = -1;
++    bPopupMessage = nullptr;
++    gBattleDmaDest = nullptr;
++    bFadeToBlackAmt = 255;
++    D_802938A4 = 0.0f;
++    D_802938A8 = 4;
++    for (i = 0; i < ARRAY_COUNT(gDamageCountEffects); i++) {
++        gDamageCountEffects[i] = nullptr;
++        gDamageCountTimers[i] = 0;
++    }
++    bCurRumbleScript = 0;
++}
++#endif
++
+ BSS s32 bSavedPartner;
+ BSS s32 bSavedOverrideFlags;
+ BSS s32 D_8029DA38; // unused?
+@@ -753,7 +795,7 @@ void tattle_cam_pre_render(Camera* camera) {
          mdl_get_shroud_tint_params(&r1, &g1, &b1, &a1);
          if (fogA == 255) {
              for (i = 0; i < ARRAY_COUNT(gTattleBgPalette); i++) {
@@ -803,7 +852,7 @@ index 1cf11648f..91046b385 100644
              }
          } else {
              for (i = 0; i < ARRAY_COUNT(gTattleBgPalette); i++) {
-@@ -761,7 +761,7 @@ void tattle_cam_pre_render(Camera* camera) {
+@@ -761,7 +803,7 @@ void tattle_cam_pre_render(Camera* camera) {
                  u16 blendedB = blend_tattle_background_channel(UNPACK_PAL_B(palColor), fogB >> 3, fogA);
                  u16 blendedG = blend_tattle_background_channel(UNPACK_PAL_G(palColor), fogG >> 3, fogA);
                  u16 blendedR = blend_tattle_background_channel(UNPACK_PAL_R(palColor), fogR >> 3, fogA);
@@ -861,6 +910,22 @@ index 22cbf2bb6..fdb7a712c 100644
              general_heap_free(compressedAsset);
  
              ASSERT(size <= 0x8000);
+diff --git a/src/battle/move/jump/power_bounce.c b/src/battle/move/jump/power_bounce.c
+index 9d024bb54..5610bad6d 100644
+--- a/src/battle/move/jump/power_bounce.c
++++ b/src/battle/move/jump/power_bounce.c
+@@ -36,6 +36,11 @@ BSS s32 N(HitCounter);
+ 
+ API_CALLABLE(N(InitializeHitCounter)) {
+     N(HitCounter) = 0;
++#ifdef PM64_PORT
++    // the N64 copies this move from the ROM each time it is used (LoadMoveScript), so every use starts at 200; natively
++    // the chance a use ended on stayed for the next one, and after a few chains Power Bounce stopped after a bounce
++    N(BaseHitChance) = 200;
++#endif
+     return ApiStatus_DONE2;
+ }
+ 
 diff --git a/src/collision.c b/src/collision.c
 index 481d03230..07548ec83 100644
 --- a/src/collision.c
@@ -1428,7 +1493,7 @@ index 106932bca..e04ae7c08 100644
      gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
      gDPSetCombineMode(gMainGfxPos++, PM_CC_10, PM_CC_10);
 diff --git a/src/state_battle.c b/src/state_battle.c
-index e3467a502..ad44bf416 100644
+index e3467a502..bc62e5482 100644
 --- a/src/state_battle.c
 +++ b/src/state_battle.c
 @@ -1,4 +1,5 @@
@@ -1437,7 +1502,20 @@ index e3467a502..ad44bf416 100644
  #include "nu/nusys.h"
  #include "hud_element.h"
  #include "ld_addrs.h"
-@@ -180,6 +181,9 @@ void state_step_end_battle(void) {
+@@ -95,6 +96,12 @@ void state_step_battle(void) {
+         clear_entity_data(true);
+         clear_trigger_data();
+         DMA_COPY_SEGMENT(battle_code);
++#ifdef PM64_PORT
++        {
++            void btl_port_reset_code_data(void);
++            btl_port_reset_code_data(); // what the N64's copy of the segment does to its data (16C8E0.c)
++        }
++#endif
+         initialize_battle();
+         btl_save_world_cameras();
+         load_battle_section();
+@@ -180,6 +187,9 @@ void state_step_end_battle(void) {
                  load_map_script_lib();
                  mapShape = load_asset_by_name(wMapShapeName, &sizeTemp);
                  decode_yay0(mapShape, &gMapShapeData);
@@ -1544,8 +1622,51 @@ index a92b3ba3a..83c920126 100644
              dma_load_msg(entry->msgID, N(CreditsMessageBuffers)[N(CreditsBufferIndex)]);
              line->message = N(CreditsMessageBuffers)[N(CreditsBufferIndex)];
              N(CreditsBufferIndex)++;
+diff --git a/src/world/area_hos/common/Narrator.inc.c b/src/world/area_hos/common/Narrator.inc.c
+index 8286216a5..9c11ab51a 100644
+--- a/src/world/area_hos/common/Narrator.inc.c
++++ b/src/world/area_hos/common/Narrator.inc.c
+@@ -102,6 +102,14 @@ void N(UpdateIntroMessages)(IntroMessage** introMessageLists) {
+ API_CALLABLE(N(SetCurtainCallback)) {
+     Bytecode* args = script->ptrReadPos;
+ 
++#ifdef PM64_PORT
++    // as the N64's fresh copy of the map leaves them: natively a second showing of the intro (the title screen left
++    // idle) went on from where the first ended and showed no narration
++    N(IntroMessageState) = 0;
++    N(IntroMessageAlpha) = 0;
++    N(CurMessageList) = nullptr;
++#endif
++
+     set_curtain_draw_callback((void (*)) evt_get_variable(script, *args++));
+     return ApiStatus_DONE2;
+ }
+diff --git a/src/world/area_hos/hos_04/intro.c b/src/world/area_hos/hos_04/intro.c
+index 9bb9a7fe5..4ba01b401 100644
+--- a/src/world/area_hos/hos_04/intro.c
++++ b/src/world/area_hos/hos_04/intro.c
+@@ -80,6 +80,9 @@ API_CALLABLE(N(AnimateBoomLengthPostHeist)) {
+ 
+     if (isInitialCall) {
+         N(CurrentBoomLengthPost) = N(CamSettings_PostHeist).boomLength;
++#ifdef PM64_PORT
++        N(TargetBoomLengthPost) = 0; // as the N64's fresh copy of the map (the second intro started at the end)
++#endif
+     }
+     N(interp_value_with_easing)(INTRO_MATH_EASING_SIN_OUT, N(CamSettings_PostHeist).boomLength, 700.0f,
+         N(TargetBoomLengthPost), 70.0f, &N(CurrentBoomLengthPost));
+@@ -100,6 +103,9 @@ API_CALLABLE(N(AnimateViewPitchPostHeist)) {
+ 
+     if (isInitialCall) {
+         N(CurrentViewPitch) = N(CamSettings_PostHeist).viewPitch;
++#ifdef PM64_PORT
++        N(TargetViewPitch) = 0; // as the N64's fresh copy of the map (the second intro never reached 200: no end)
++#endif
+     }
+     N(interp_value_with_easing)(INTRO_MATH_EASING_5, N(CamSettings_PostHeist).viewPitch, -80.0f,
+         N(TargetViewPitch), 200.0f, &N(CurrentViewPitch));
 diff --git a/src/world/area_hos/hos_05/intro.c b/src/world/area_hos/hos_05/intro.c
-index 7a969348b..5a15f5729 100644
+index 7a969348b..d2247325b 100644
 --- a/src/world/area_hos/hos_05/intro.c
 +++ b/src/world/area_hos/hos_05/intro.c
 @@ -1496,7 +1496,11 @@ void N(load_story_image)(s32 loadBackImage, s32 imageIdx) {
@@ -1560,6 +1681,105 @@ index 7a969348b..5a15f5729 100644
          }
          return;
      }
+@@ -1516,12 +1520,19 @@ void N(load_story_image)(s32 loadBackImage, s32 imageIdx) {
+     }
+ }
+ 
++#ifdef PM64_PORT
++void N(port_reset_intro_data)(void);
++#endif
++
+ API_CALLABLE(N(InitializeStoryGraphicsData)) {
+     u8* dmaEnd;
+     u8* dmaStart;
+     s32 tapeOffset;
+     u8* it;
+ 
++#ifdef PM64_PORT
++    N(port_reset_intro_data)();
++#endif
+     N(StoryGraphicsPtr)->workerID = create_worker_frontUI(nullptr, N(worker_draw_story_graphics));
+     N(StoryGraphicsPtr)->imgFront = it = mdl_get_next_texture_address(
+         (STORY_IMG_SIZE + PAL_256_SIZE) +
+@@ -2529,3 +2540,59 @@ EvtScript N(EVS_Scene_IntroStory) = {
+     Return
+     End
+ };
++
++#ifdef PM64_PORT
++/* The port: this map's intro state as the N64's fresh copy of the map leaves it, at the start of each showing of the
++ * intro (the title screen left idle shows it again and again). Natively the map is linked in and the values the first
++ * showing ended on stayed: the next one had no storybook pages, its camera moves started at their ends, and the card
++ * counters went on from 7, so the star spirits' capture wrote past the 8 parts of their effect (heap memory). */
++void N(port_reset_intro_data)(void) {
++    N(D_802495DC_A3381C) = 0;
++    N(D_802495E0_A33820) = 0;
++    N(StoryCameraAngle) = 240.0;
++    N(ColorBufPtr) = nullptr;
++    IntroCamStateA_BoomLength = 130.4;
++    IntroCamStateA_BoomPitch = 12.4;
++    IntroCamStateA_ViewPitch = -16.8;
++    IntroCamStateA_Vfov = 62.0;
++    IntroCamStateB_BoomLength = 130.4;
++    IntroCamStateB_BoomPitch = 12.4;
++    IntroCamStateB_ViewPitch = -16.8;
++    IntroCamStateB_Vfov = 62.0;
++    N(D_802498F8_A33B38) = 0;
++    N(D_802498FC_A33B3C) = 0;
++    N(StoryCameraShake1Angle) = 0;
++    N(StoryCameraShake1Scale) = 1.0;
++    N(StoryCameraShake2Angle) = 0;
++    N(StoryCameraShake2Scale) = 12.0;
++    N(UnusedBowserLeapTime) = 0;
++    N(BowserHoverTime) = 0;
++    N(UnusedStoryCameraZoomAmt) = 30.0;
++    N(UnusedKammyMoveTime) = 0;
++    N(KammyHoverTime) = 0;
++    N(BoomLengthInhale) = 121.6;
++    N(CamMoveInhaleTime) = 0;
++    N(BoomLengthExhale) = 90.0;
++    N(CamMoveExhaleTime) = 0;
++    N(FlyToStarRodTime) = 0;
++    N(HoldStarRodTime) = 0;
++    N(PanAcrossRoomCamX) = 40.0;
++    N(PanAcrossRoomCamZ) = -40.0;
++    N(PanAcrossRoomAngle) = 45.0;
++    N(PanAcrossRoomTime) = 0;
++    N(OrbitKammyFov) = 50.0;
++    N(OrbitKammyBoomLength) = 246.1;
++    N(OrbitKammyCamY) = 200.0;
++    N(OrbitKammyAngle) = 25.0;
++    N(OrbitKammyTime) = 0;
++    N(FinalCamMoveBoomLength) = 130.0;
++    N(FlyToBowserTime) = 0;
++    N(StoryPageState) = STORY_PAGE_STATE_BEGIN;
++    N(CurrentStoryPageIdx) = 0;
++    N(CurrentStoryPageTime) = 0;
++    N(BowserSilhouetteTime) = 0;
++    N(FadeAwayTapeTime) = 30;
++    N(AnimBowser_FlyOff_Time) = 0.0;
++    N(AnimKammy_FlyOff_Time) = 0.0;
++}
++#endif
+diff --git a/src/world/area_jan/jan_02/main.c b/src/world/area_jan/jan_02/main.c
+index 8520f6257..c4d6bec05 100644
+--- a/src/world/area_jan/jan_02/main.c
++++ b/src/world/area_jan/jan_02/main.c
+@@ -13,6 +13,14 @@ API_CALLABLE(N(ClearTrackVols)) {
+ API_CALLABLE(N(ManageBigPalmTreeVisibility)) {
+     u16 currentFloor = gCollisionStatus.curFloor;
+ 
++#ifdef PM64_PORT
++    if (isInitialCall) {
++        // the tree is drawn on entry: as the N64's fresh copy of the map (natively, leaving while it was hidden kept
++        // it from hiding on the next visit, and it covered Mario)
++        N(PrevPalmTreeVisibility) = true;
++    }
++#endif
++
+     if (N(PrevPalmTreeVisibility) != 0) {
+         if (currentFloor == COLLIDER_o327 || currentFloor == COLLIDER_o330) {
+             mdl_group_set_visibility(MODEL_g70, MODEL_FLAG_HIDDEN, MODEL_GROUP_HIDDEN);
 diff --git a/src/world/area_kmr/kmr_21/main.c b/src/world/area_kmr/kmr_21/main.c
 index 03e3ffee0..440be7459 100644
 --- a/src/world/area_kmr/kmr_21/main.c
