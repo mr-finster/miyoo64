@@ -13,7 +13,9 @@ New game: Banjo-Kazooie 1.0.0 beta. Rebuilt: Super Smash Bros. 1.1.7.
   MENU > CONTROLS, the auto save on power-off and before sleep, and the Mini v4 / Flip full screen, as in the other
   games. The intro was compared scene by scene against an N64 renderer (angrylion), and every world was entered under
   the memory checkers (one fix: the game rewrites its BANJOKAZOOIE cheat code in place, which crashed the port on
-  entering Treasure Trove Cove's sandcastle).
+  entering Treasure Trove Cove's sandcastle). Every cutscene was also played on the Miyoo build itself (in an
+  emulator): five of the decompilation's cutscene helpers took a number as a float on one side and as an integer on
+  the other, harmless on the N64 and the PC but a crash on the Miyoo in the opening Nintendo logo scene. Fixed.
 - The first start finds the ROM anywhere on the card (any name, .z64, .v64 or .n64), checks it and keeps a 16 MB
   copy in `App/BanjoKazooie/data/`. Known issues: Click Clock Wood in winter is too slow on the original Mini, and the
   molehills' shadow is darker than on the N64 ([README](banjo-kazooie/README.md#known-issues)).

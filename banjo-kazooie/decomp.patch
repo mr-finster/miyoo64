@@ -764,6 +764,42 @@ index a360ef8b..bbb15cfe 100644
  }
  
  void viewport_getLookVector(f32 arg0[3]) {
+diff --git a/src/core2/anseq.c b/src/core2/anseq.c
+index edb478dc..60287afc 100644
+--- a/src/core2/anseq.c
++++ b/src/core2/anseq.c
+@@ -151,20 +151,23 @@ void anSeq_PushStep_ManyArg(vector(AnSeqElement) **ppAnSeq, f32 duration, void *
+     bk_memcpy(&out->arg0, arg_ptr, arg_size);
+ }
+ 
+-void anSeq_func_80288E68(vector(AnSeqElement) **ppAnSeq, f32 duration, s32 arg2, s32 arg3, s32 arg4){
+-    anSeq_PushStep_3Arg(ppAnSeq, duration, __anSeq_func_80288914, arg2, arg3, arg4);
++/* port: arg3/arg4 (and arg3 below) are f32, as the only callers (cutscenes/code_0.c) declare and pass them. The decomp's
++ * s32 only worked on the N64 (o32 passes both in a3/the stack); with the ARM hard-float ABI the callers' floats went to
++ * s1/s2 and the steps got whatever r3 and the stack held (RC1: the intro's 30.0f then reached func_80361C24). */
++void anSeq_func_80288E68(vector(AnSeqElement) **ppAnSeq, f32 duration, s32 arg2, f32 arg3, f32 arg4){
++    anSeq_PushStep_3Arg(ppAnSeq, duration, __anSeq_func_80288914, arg2, reinterpret_cast(s32, arg3), reinterpret_cast(s32, arg4));
+ }
+ 
+-void anSeq_func_80288EB0(vector(AnSeqElement) **ppAnSeq, f32 duration, s32 arg2, s32 arg3, s32 arg4){
+-    anSeq_PushStep_3Arg(ppAnSeq, duration, __anSeq_func_8028894C, arg2, arg3, arg4);
++void anSeq_func_80288EB0(vector(AnSeqElement) **ppAnSeq, f32 duration, s32 arg2, f32 arg3, f32 arg4){
++    anSeq_PushStep_3Arg(ppAnSeq, duration, __anSeq_func_8028894C, arg2, reinterpret_cast(s32, arg3), reinterpret_cast(s32, arg4));
+ }
+ 
+-void anSeq_func_80288EF8(vector(AnSeqElement) **ppAnSeq, f32 duration, s32 arg2, s32 arg3){
+-    anSeq_PushStep_2Arg(ppAnSeq, duration, __anSeq_func_8028984, arg2, arg3);
++void anSeq_func_80288EF8(vector(AnSeqElement) **ppAnSeq, f32 duration, s32 arg2, f32 arg3){
++    anSeq_PushStep_2Arg(ppAnSeq, duration, __anSeq_func_8028984, arg2, reinterpret_cast(s32, arg3));
+ }
+ 
+-void anSeq_func_80288F38(vector(AnSeqElement) **ppAnSeq, f32 duration, s32 arg2, s32 arg3){
+-    anSeq_PushStep_2Arg(ppAnSeq, duration, __anSeq_func_80289C8, arg2, arg3);
++void anSeq_func_80288F38(vector(AnSeqElement) **ppAnSeq, f32 duration, s32 arg2, f32 arg3){
++    anSeq_PushStep_2Arg(ppAnSeq, duration, __anSeq_func_80289C8, arg2, reinterpret_cast(s32, arg3));
+ }
+ 
+ void anSeq_func_80288F78(vector(AnSeqElement) **ppAnSeq, f32 duration, s32 arg2){
 diff --git a/src/core2/ba/marker.c b/src/core2/ba/marker.c
 index c0e0a962..b2ca3307 100644
 --- a/src/core2/ba/marker.c
@@ -1869,6 +1905,25 @@ index 6041512d..584a1eb7 100644
      {func_80351FE0, func_80352114}
  };
  
+diff --git a/src/core2/code_DAAA0.c b/src/core2/code_DAAA0.c
+index e07da232..e2723111 100644
+--- a/src/core2/code_DAAA0.c
++++ b/src/core2/code_DAAA0.c
+@@ -148,8 +148,12 @@ void func_80361BD0(s32 arg0, s32 arg1, s32 arg2){
+     actor->unk124_11 = arg2;
+ }
+ 
+-void func_80361C24(s32 arg0, f32 arg1, ActorMarker * arg2, f32 arg3){
+-    anSeq_PushStep_2Arg(arg0, arg1, func_80361B68, reinterpret_cast(s32, arg2), reinterpret_cast(s32, arg3));
++/* port: arg3 is the appendage index, an s32 (the callers in cutscenes/code_0.c pass 6 and 7). The decomp's f32
++ * only worked on the N64 (o32 puts it in a3 either way); with the ARM hard-float and x86 ABIs the caller's r2/edx index
++ * was ignored and a leftover s1/xmm1 value became the index: func_803246F0 then wrote 0xFF far outside the 16-byte
++ * array (RC1 device crash, intro concert). */
++void func_80361C24(s32 arg0, f32 arg1, ActorMarker * arg2, s32 arg3){
++    anSeq_PushStep_2Arg(arg0, arg1, func_80361B68, reinterpret_cast(s32, arg2), arg3);
+ }
+ 
+ void func_80361C64(s32 arg0, f32 arg1, ActorMarker * arg2, s32 arg3, s32 arg4){
 diff --git a/src/core2/commonParticle.c b/src/core2/commonParticle.c
 index 73a48066..53442467 100644
 --- a/src/core2/commonParticle.c
