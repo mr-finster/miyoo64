@@ -5184,7 +5184,9 @@ static void __attribute__((noinline)) tj_mark_batch(const SoftVtx *v, size_t num
             const float xl = a->x + (yc - a->y) * sac;
             const float xs = yc < b->y ? a->x + (yc - a->y) * sab : b->x + (yc - b->y) * sbc;
             const float lo = (xl < xs ? xl : xs) - 0.5f, hi = (xl < xs ? xs : xl) - 0.5f;
-            if (!(hi >= 0.0f) || lo >= fw - 1.0f) continue;
+            /* (NaN either side: a degenerate vertex can leave one edge NaN while the other is fine; (int)NaN is 0 on
+             * ARM (a stray span from the left edge) and INT_MIN on x86 (a 2 GB memset); the Banjo-Kazooie port 732cd8a) */
+            if (!(hi >= 0.0f) || !(lo < fw - 1.0f)) continue;
             int x0 = lo <= 0.0f ? 0 : (int)lo; if ((float)x0 < lo) x0++;  /* ceil: the first centre at or right of lo */
             const int x1 = hi >= fw - 1.0f ? sW : (int)hi + 1;           /* past the last centre at or left of hi */
             if (x0 < x1) { memset(sTjMask + y * sTjMaskW + x0, 1, (size_t)(x1 - x0)); sTjRow[y] = 1; }
