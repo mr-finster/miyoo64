@@ -79,6 +79,9 @@ uint32_t port_rom_size(void);
 void port_pi_read(uint32_t rom_addr, void *dst, uint32_t size);
 /* 1 = [rom_start, rom_end) lies inside a code segment (its descriptor, if any, in *seg_index) */
 int port_code_segment(uint32_t rom_start, uint32_t rom_end, int *seg_index);
+/* A DMA from rom_start inside code segment seg: when it is an overlay's load (from the segment's start), its data goes
+ * back to the linked values, as the N64's copy from the ROM leaves them (port_segments.c) */
+void port_segment_loaded(int seg, uint32_t rom_start);
 
 /* The frame: the game's display lists go to the renderer (port_gfx.c). */
 void port_gfx_init(void);
@@ -94,6 +97,8 @@ void port_input_read(uint16_t *button, int8_t *stick_x, int8_t *stick_y);
 void port_state_init(void);
 void port_state_stage(void);
 void port_state_frame(uint32_t frame);
+/* n bytes of the pristine region from offset off (the region as filled at start): 0 when there is no pristine source */
+int port_state_pristine_bytes(uint32_t off, void *dst, uint32_t n);
 void port_audio_out_set_muted(int muted);
 
 extern int port_quit; /* set by the window or the frame limit: the main loop ends */

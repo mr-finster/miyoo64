@@ -75,6 +75,12 @@ static int pristine(uint32_t p, uint8_t *out) {
     return sPristineFd >= 0 && pread(sPristineFd, out, PG, (off_t) (sPristineOff + (long) p * (long) PG)) == (ssize_t) PG;
 }
 
+int port_state_pristine_bytes(uint32_t off, void *dst, uint32_t n) {
+    if (!sReady || off > sPages * PG || n > sPages * PG - off) return 0;
+    if (sPristineCopy) { memcpy(dst, sPristineCopy + off, n); return 1; }
+    return sPristineFd >= 0 && pread(sPristineFd, dst, n, (off_t) (sPristineOff + (long) off)) == (ssize_t) n;
+}
+
 /* assets.bin's header (port_assets_hh.c): the region verbatim at data_off, for this build only */
 struct StateAssetHeader { char magic[8]; uint32_t version, region_addr, region_size, reloc_count, sym_count, names_size, build_id, data_crc, data_off; };
 

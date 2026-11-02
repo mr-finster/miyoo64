@@ -23,19 +23,24 @@ Rebuilt: Super Smash Bros. 1.1.7.
   crash).
 - Perfect Dark: the same renderer fix as GoldenEye 007's: a rare broken triangle no longer makes the seam filler mark
   a stray strip from the left edge of a screen row.
-- Paper Mario: the N64 reloads the battle code at every battle, a move's code each time it is used and a map's code
-  each time it is entered, which puts their numbers back; the Mini kept them from the last time. Six places where
-  that showed are now as on the N64:
-  - after a button skipped the title screen's demo while it showed a battle, every later battle of that session ended
-    the moment it began;
+- Paper Mario: the N64 copies a map's code from the ROM each time Mario enters it (and again after every battle), the
+  battle code at every battle, a move each time it is used, a partner, an action or an effect each time it is loaded,
+  which puts the numbers they keep back to where they start. The Mini kept them from the last time. It now puts them
+  back whenever the game loads one, as the N64 does, for every map, battle, move and effect at once
+  (`PM64_OVLRESET=0` turns it off). Places where that showed:
+  - after a button skipped the title screen's demo while it showed a battle, the next battle ended the moment it
+    began; when that was the demo's own next battle, the game crashed;
   - Power Bounce's chance of going on was carried from one use to the next, so after a few long chains it stopped
     after the first bounce for the rest of the session;
   - the second Star Beam or Peach Beam of a session had its star spirits jump into place and leave at once;
   - a second fight against Lava Piranha in one session kept the victory song playing through its second phase;
-  - the opening story, when the title screen was left alone long enough to show it a second time, had no storybook
-    pages or narration, started its camera moves at their ends and wrote past the end of an effect's memory;
+  - the opening story, when the title screen was left alone long enough to show it a second time, showed only the
+    starry sky: no storybook pages or narration, its camera moves at their ends, and it wrote past the end of an
+    effect's memory;
   - in Yoshi's Village, after leaving while Mario was behind the big palm tree, the tree no longer hid on the next
-    visit and covered him.
+    visit and covered him;
+  - the title screen's demo, shown a second time, set up its scenes at once instead of after their first frames, and
+    the whale ride, the inside of the whale and the chapter end scenes kept their timers from the last showing.
 
 ## 1.4.4 (Diddy Kong Racing 1.1.7: Adventure 2's mirrored races)
 
