@@ -25,6 +25,7 @@
 !tools/
 !tools/*.py
 !tools/*.sh
+!tools/aspref.c
 # The port itself (subtree of beckerd/psp_mk64_portable + our port
 # branch). base-psp/.gitignore keeps assets, baserom, build/ out.
 !base-psp/
