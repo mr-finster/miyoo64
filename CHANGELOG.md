@@ -18,6 +18,9 @@ Rebuilt: Super Smash Bros. 1.1.7.
   the race's random numbers (the starting grid's order) carried on from the last race, each later visit to Toad's
   Turnpike gave its box trucks other designs, Banshee Boardwalk and Moo Moo Farm took Toad's Turnpike's fog distance,
   and a second award ceremony's balloons and fireworks carried on from the first.
+- GoldenEye 007: a rare broken triangle (one edge with no position) no longer makes the renderer's seam filler mark
+  a stray strip from the left edge of a screen row (the same fix as Banjo-Kazooie's; on the PC test build it was a
+  crash).
 
 ## 1.4.4 (Diddy Kong Racing 1.1.7: Adventure 2's mirrored races)
 
