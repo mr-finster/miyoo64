@@ -13,6 +13,7 @@
 !tools/
 !tools/*.sh
 !tools/*.py
+!tools/aspref.c
 # the asset split: packer, recipe derivation/emission, leak scan (numbers only, never data)
 !tools/assets/
 !tools/assets/*.py
