@@ -1023,29 +1023,107 @@ index ece50b6d..9e9aa2a4 100644
      }
  }
 diff --git a/src/core2/code_5C870.c b/src/core2/code_5C870.c
-index 411af648..00e31348 100644
+index 411af648..5107332d 100644
 --- a/src/core2/code_5C870.c
 +++ b/src/core2/code_5C870.c
-@@ -279,7 +279,30 @@ s32 func_802E3F80(void){
+@@ -279,7 +279,108 @@ s32 func_802E3F80(void){
      return sGameState.unk0;
  }
  
 +#ifdef TARGET_HANDHELD
-+/* BK_WARP=<map hex>:<exit hex> (tests): while the intro's tower scene (map 0x85) is up, request that map and exit
-+ * every frame, as the angrylion runs' cheat does (the same four bytes of sGameState) */
++static void hh_warp_check(void);
++/* prototypes exactly as defined (an int/float mismatch is an ARM hard-float bug: RC1) */
++extern void ability_setAllLearned(u32 val);
++extern void fileProgressFlag_set(enum file_progress_e index, bool value);
++extern void fileProgressFlag_setN(enum file_progress_e start_index, u32 values, s32 count);
++extern void itemscore_noteScoress_maxAll(void);
++extern void item_set(s32 item, s32 val);
++extern void item_setMaxCount(s32 item);
++extern bool player_transform(enum transformation_e xform_id);
++extern u32 player_getTransformation(void);
++extern void port_log_always(const char *fmt, ...);
++extern unsigned int hh_vicount;
++#define HH_TESTSTATE __attribute__((section("dontsave"))) /* save-state loads leave the test schedule alone */
++/* BK_WARP=<map hex>:<exit hex>[:<transform>][,<map>:<exit>[:<transform>]...] (tests): while the intro's tower scene
++ * (map 0x85) is up, request the first map and exit every frame, as the angrylion runs' cheat does (the same four bytes
++ * of sGameState). With BK_TOUR_EVERY=<frames>, each further entry is requested that many frames after the last map
++ * change (a tour: one process through many maps; BK_TOUR_LOOP=1 starts over after the last). <transform> (2 termite,
++ * 3 pumpkin, 4 walrus, 5 croc, 6 bee) is player_transform'ed 60 frames after the arrival.
++ * BK_LATEGAME=1 (tests): at the first warp, the late-game file state a full run has: every move learned, the worlds,
++ * note doors, puzzles, CCW seasons and transformations paid, 1000 notes, 99 jiggies and Mumbo tokens, double health,
++ * the first-time texts seen; lives and health topped up at each arrival. Off by default, as BK_WARP is. */
++static void hh_lategame(void) {
++    static const u16 flags[] = { 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0x11, 0x12, 0x15, 0x16, 0x17,
++        0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, 0x41, 0x42, 0x43,
++        0x44, 0x45, 0x82, 0x83, 0x84, 0x8B, 0x8C, 0x8D, 0x8E, 0x90, 0x91, 0x92, 0x93, 0x94, 0x96, 0x97, 0x98, 0x99,
++        0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xDC, 0xF3 };
++    /* puzzle pieces placed: first flag, bits, pieces (MM 1 ... the Door of Grunty 25, double health 4) */
++    static const u8 puzzles[][3] = { { 0x5D, 1, 1 }, { 0x5E, 2, 2 }, { 0x60, 3, 5 }, { 0x63, 3, 7 }, { 0x66, 4, 8 },
++        { 0x6A, 4, 9 }, { 0x6E, 4, 10 }, { 0x72, 4, 12 }, { 0x76, 4, 15 }, { 0x7A, 5, 25 }, { 0x7F, 3, 4 } };
++    unsigned i;
++    ability_setAllLearned(0xFFFFF);
++    for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) fileProgressFlag_set(flags[i], TRUE);
++    for (i = 0; i < sizeof(puzzles) / sizeof(puzzles[0]); i++) fileProgressFlag_setN(puzzles[i][0], puzzles[i][2], puzzles[i][1]);
++    itemscore_noteScoress_maxAll();
++    item_set(ITEM_26_JIGGY_TOTAL, 99);
++    item_set(ITEM_1C_MUMBO_TOKEN, 99);
++    item_set(ITEM_D_EGGS, 100);
++    item_set(ITEM_F_RED_FEATHER, 50);
++    item_set(ITEM_10_GOLD_FEATHER, 10);
++    port_log_always("TOUR late-game file state set\n");
++}
++
 +static void hh_warp_check(void) {
-+    static int on = -1;
-+    static u32 map, exit_;
++    static int on HH_TESTSTATE = -1, n HH_TESTSTATE, idx HH_TESTSTATE, every HH_TESTSTATE, loop HH_TESTSTATE,
++        late HH_TESTSTATE, from HH_TESTSTATE, wait HH_TESTSTATE, dwell HH_TESTSTATE, arrived HH_TESTSTATE, laps HH_TESTSTATE;
++    static u8 list[256][3] HH_TESTSTATE;
++    s32 cur;
 +    if (on < 0) {
 +        const char *e = getenv("BK_WARP");
 +        on = e != NULL;
-+        if (on) { map = strtoul(e, NULL, 16); exit_ = strchr(e, ':') ? strtoul(strchr(e, ':') + 1, NULL, 16) : 0; }
++        while (e != NULL && *e && n < 256) {
++            char *p;
++            list[n][0] = strtoul(e, &p, 16); list[n][1] = 0; list[n][2] = 0;
++            if (*p == ':') { list[n][1] = strtoul(p + 1, &p, 16); }
++            if (*p == ':') { list[n][2] = strtoul(p + 1, &p, 16); }
++            n++;
++            e = strchr(p, ',') ? strchr(p, ',') + 1 : NULL;
++        }
++        every = getenv("BK_TOUR_EVERY") ? atoi(getenv("BK_TOUR_EVERY")) : 0;
++        loop = getenv("BK_TOUR_LOOP") != NULL;
++        late = getenv("BK_LATEGAME") != NULL;
++        from = 0x85;
 +    }
-+    if (on && gsworld_getMap() == 0x85) {
-+        sGameState.map = map;
-+        sGameState.exit = exit_;
-+        sGameState.map_transition = 1;
-+        sGameState.transition = 1;
++    if (!on || n == 0) return;
++    cur = gsworld_getMap();
++    if (!arrived) { /* requested: wait for the map change */
++        if (idx == 0 && laps == 0 && wait == 0 && cur != 0x85) return; /* the first warp leaves from the intro's tower scene */
++        if (cur == from && wait < 600) {
++            if (wait++ % 200 == 0 || (idx == 0 && laps == 0)) {
++                if (late && idx == 0 && laps == 0 && wait == 1) hh_lategame();
++                sGameState.map = list[idx][0];
++                sGameState.exit = list[idx][1];
++                sGameState.map_transition = 1;
++                sGameState.transition = 1;
++            }
++            return;
++        }
++        port_log_always("TOUR %d map %x exit %x -> map %x%s (after %d frames, vi %u)\n", idx, list[idx][0], list[idx][1], cur,
++                cur == from ? " STUCK" : "", wait, hh_vicount);
++        arrived = 1; dwell = 0; wait = 0;
++        if (late) { item_set(ITEM_16_LIFE, 9); item_setMaxCount(ITEM_14_HEALTH); }
++        return;
++    }
++    dwell++;
++    if (list[idx][2] && dwell >= 60 && dwell % 30 == 0 && dwell <= 900 && player_getTransformation() != list[idx][2]) {
++        /* retried until the player is in a state that can transform (on the ground, not in a cutscene) */
++        if (player_transform(list[idx][2])) port_log_always("TOUR %d transform %d at frame %d\n", idx, list[idx][2], dwell);
++        else if (dwell == 900) port_log_always("TOUR %d transform %d FAILED\n", idx, list[idx][2]);
++    }
++    if (every > 0 && dwell >= every && (idx + 1 < n || loop)) {
++        idx++;
++        if (idx >= n) { idx = 0; laps++; }
++        arrived = 0; from = cur; wait = 0;
 +    }
 +}
 +#endif
@@ -1057,7 +1135,7 @@ index 411af648..00e31348 100644
      Gfx *gfx, *gfx_start, *gfx_end;
      Mtx *mtx;
      Vtx *vtx;
-@@ -317,6 +340,9 @@ void game_transitionToMapResettingLevel(s32 map, s32 exit, s32 transition){
+@@ -317,6 +418,9 @@ void game_transitionToMapResettingLevel(s32 map, s32 exit, s32 transition){
  
  //take me there
  void transitionToMap(enum map_e map, s32 exit, s32 transition){
@@ -1165,7 +1243,7 @@ index 46fdb498..e0b062c4 100644
      f32 sp74[4];
      f32 scale[3];
 diff --git a/src/core2/code_7060.c b/src/core2/code_7060.c
-index e2803c33..e0ecc5e7 100644
+index e2803c33..a1bf9953 100644
 --- a/src/core2/code_7060.c
 +++ b/src/core2/code_7060.c
 @@ -61,7 +61,11 @@ bool player_getExitPosition(s32 exitId, s32 position[3]) {
@@ -1180,6 +1258,23 @@ index e2803c33..e0ecc5e7 100644
          return TRUE;
      }
      else{
+@@ -195,6 +199,16 @@ void player_spawnAtMapExit(void) {
+     D_8037BFB9 = FALSE;
+     bsmethods_reset();
+     sp20 = gsworld_getExit();
++#ifdef TARGET_HANDHELD
++    if (hh_dbg_env("BK_EXITLOG")) { /* tests: the exits this map's setup has (the entries a warp can use) */
++        extern void port_log_always(const char *, ...);
++        char hh_l[160]; s32 hh_i, hh_n = 0;
++        hh_l[0] = 0;
++        for (hh_i = 1; hh_i < 0x63 && hh_n < 150; hh_i++) /* nodeprop_getExitActorId's ids: 1-0x19, 0x5B-0x62 */
++            if ((hh_i < 0x1A || hh_i >= 0x5B) && player_getExitPosition(hh_i, sp24)) { hh_l[hh_n++] = ' '; if (hh_i >= 16) hh_l[hh_n++] = "0123456789abcdef"[(hh_i >> 4) & 15]; hh_l[hh_n++] = "0123456789abcdef"[hh_i & 15]; hh_l[hh_n] = 0; }
++        port_log_always("EXITS map %x exit %x:%s\n", gsworld_getMap(), sp20, hh_l);
++    }
++#endif
+     D_8037BFB8 = 0;
+     playerPosition_set(D_803636C0);
+     if (volatileFlag_get(VOLATILE_FLAG_E) || func_802D686C() || (sp20 == 0x65)){
 diff --git a/src/core2/code_74290.c b/src/core2/code_74290.c
 index 0e15cf55..868c9cee 100644
 --- a/src/core2/code_74290.c

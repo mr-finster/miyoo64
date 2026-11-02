@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <malloc.h>
 #include "hh_os.h"
 #include "savestate.h"
 
@@ -199,6 +200,27 @@ void hh_heap_check(void)
             fprintf(stderr, "CAM vi %u map %x pos %.1f %.1f %.1f rot %.1f %.1f\n", hh_vicount, (unsigned)hh_bk_map(),
                     sViewportPosition[0], sViewportPosition[1], sViewportPosition[2], sViewportRotation[0],
                     sViewportRotation[1]);
+    }
+    { /* BK_MEMLOG=<n> (tests, soaks): memory every n frames: the game heap (free, used, largest free block), the
+       * host's malloc arena in use, the process's resident and virtual size and the texture arena */
+        static long every = -1;
+        extern unsigned int hh_frames, hh_vicount;
+        extern u32 heap_get_free_size(void), heap_get_occupied_size(void);
+        extern s32 heap_findLargestEmptyBlock(s32 *size_ptr);
+        extern size_t gfx_soft_arena_used(void) __attribute__((weak));
+        if (every < 0) every = getenv("BK_MEMLOG") ? atol(getenv("BK_MEMLOG")) : 0;
+        if (every > 0 && hh_frames % every == 0) {
+            long vm = 0, rss = 0;
+            s32 largest = 0;
+            FILE *f = fopen("/proc/self/statm", "r");
+            struct mallinfo mi = mallinfo();
+            if (f) { if (fscanf(f, "%ld %ld", &vm, &rss) != 2) vm = rss = 0; fclose(f); }
+            heap_findLargestEmptyBlock(&largest);
+            fprintf(stderr, "MEM vi %u frame %u map %x heap free %u used %u largest %d | malloc %u kB | rss %ld kB vm %ld kB"
+                    " | texarena %u kB\n", hh_vicount, hh_frames, (unsigned)hh_bk_map(), (unsigned)heap_get_free_size(),
+                    (unsigned)heap_get_occupied_size(), (int)largest, (unsigned)(mi.uordblks / 1024), rss * 4, vm * 4,
+                    gfx_soft_arena_used ? (unsigned)(gfx_soft_arena_used() / 1024) : 0u);
+        }
     }
     static int on = -1, done;
     extern unsigned int hh_frames;

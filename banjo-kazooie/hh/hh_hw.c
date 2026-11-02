@@ -375,15 +375,19 @@ static s32 hh_eeprom_flush_buf(const u8 *img)
  * game starts, a 427 ms stall): the game's write copies the image and goes on; the writer saves the latest image.
  * At exit the process waits for it (atexit). BK_EEPSYNC=1: in the game's thread, as before. */
 #include <pthread.h>
-static pthread_mutex_t sEepMu = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t sEepCv = PTHREAD_COND_INITIALIZER, sEepIdle = PTHREAD_COND_INITIALIZER;
-static u8 sEepSnap[sizeof(g_eeprom)] SAVESTATE_EXCLUDE;
+/* All of the writer's state is outside save states (RC3): a state load rewrote the mutex and condition variables
+ * under the waiting writer (the snapshot's futex words), its wake-up was lost, no game save reached the card after
+ * the first state load, and the exit's wait for the writer never returned. The image being written is the writer's
+ * own too. */
+static pthread_mutex_t sEepMu SAVESTATE_EXCLUDE = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t sEepCv SAVESTATE_EXCLUDE = PTHREAD_COND_INITIALIZER, sEepIdle SAVESTATE_EXCLUDE = PTHREAD_COND_INITIALIZER;
+static u8 sEepSnap[sizeof(g_eeprom)] SAVESTATE_EXCLUDE, sEepImg[sizeof(g_eeprom)] SAVESTATE_EXCLUDE;
 static int sEepPending SAVESTATE_EXCLUDE, sEepBusy SAVESTATE_EXCLUDE, sEepStarted SAVESTATE_EXCLUDE;
 static struct { u8 address; int nbytes; } sEepWhat SAVESTATE_EXCLUDE;
 
 static void *hh_eeprom_writer(void *arg)
 {
-    static u8 img[sizeof(g_eeprom)];
+    u8 *img = sEepImg;
     extern s32 hh_bk_map(void);
     (void)arg;
     for (;;) {
@@ -393,7 +397,7 @@ static void *hh_eeprom_writer(void *arg)
         pthread_mutex_lock(&sEepMu);
         while (!sEepPending)
             pthread_cond_wait(&sEepCv, &sEepMu);
-        memcpy(img, sEepSnap, sizeof(img));
+        memcpy(img, sEepSnap, sizeof(sEepImg));
         address = sEepWhat.address;
         nbytes = sEepWhat.nbytes;
         sEepPending = 0;
