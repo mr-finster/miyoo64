@@ -23,6 +23,10 @@ Rebuilt: Super Smash Bros. 1.1.7.
   crash).
 - Perfect Dark: the same renderer fix as GoldenEye 007's: a rare broken triangle no longer makes the seam filler mark
   a stray strip from the left edge of a screen row.
+- Super Mario 64: a panned sound's right channel now fades in and out smoothly, as on the N64. When a sound off the
+  centre changed volume, the Mini started the right channel's fade from the left channel's volume, so for that audio
+  frame the right side's volume jumped back every 8 samples: a faint buzz on sounds moving or fading on one side. The
+  left channel, and sounds in the centre, were right.
 - Paper Mario: the N64 copies a map's code from the ROM each time Mario enters it (and again after every battle), the
   battle code at every battle, a move each time it is used, a partner, an action or an effect each time it is loaded,
   which puts the numbers they keep back to where they start. The Mini kept them from the last time. It now puts them
