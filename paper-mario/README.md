@@ -1,5 +1,12 @@
 # Paper Mario for the Miyoo Mini
 
+<!-- PAL-ALPHA-BEGIN -->
+PAL support and region-specific builds are documented in [PAL_ALPHA.md](PAL_ALPHA.md). The PAL build uses `tools/port/pal_build.py --rom <own-pal.z64>` from the documented /work pm64hh:decomp environment (ARM toolchain plus PyYAML), after the pinned decomp has been configured for PAL. Recipes are derived locally into build/game/pal; do not use US recipes.
+
+This current-main PAL branch includes the general overlay restoration. It differs from the separately hardware-tested historical alpha binary; no hardware validation is claimed for this branch. Its PAL overlay classifier uses canonical segment/object identities rather than US VRAM windows. Rebuild all affected overlays, derive a new pair and validate on hardware before shipping.
+<!-- PAL-ALPHA-END -->
+
+
 A native port of Paper Mario, built from the [pmret/papermario](https://github.com/pmret/papermario) decompilation, with a software renderer that shares the 3D between the Mini's two cores. The decompilation is fetched at build time at a pinned commit; this folder holds the port and its patch. It runs on the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip).
 
 **No game data is included**, here or in the zip. You need your own ROM.
