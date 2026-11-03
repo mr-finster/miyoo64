@@ -2149,6 +2149,34 @@ static inline uint8x8_t lean_pair(uint32_t lo, uint32_t hi) {
             LEAN_TBL(M) LEAN_STORE(M)                                                                   \
             if (ZT) ze[i] = (uint16_t)uz;                                                               \
         }
+/* LEAN_LOOP(1, ...) with cm_bilin_span_neon's z rule for a decal bias or no z write (BK_LEANZB): the test against
+ * the stored z plus zbias, the write under dmask */
+#define LEAN_LOOP_ZB(...)                                                                               \
+        for (int i = -span; i < 0; i++, uf += duf, vf += dvf, zq += zdq, acc = vaddq_s32(acc, dacc)) {  \
+            const int uz = clamp16_sh8(zq);                                                             \
+            if (uz > ze[i] + zbias) continue;                                                           \
+            uint16x4_t T;                                                                               \
+            __VA_ARGS__                                                                                 \
+            const uint16x4_t S = vmin_u16(vqshrun_n_s32(acc, 16), v255);                                \
+            const uint16x4_t M = lean_div255(vmul_u16(T, S));                                           \
+            LEAN_TBL(M) LEAN_STORE(M)                                                                   \
+            if (dmask) ze[i] = (uint16_t)uz;                                                            \
+        }
+/* BK_LEANZB (RC5): cm_bilin_span_neon's span (32-bit texels, both masks set, every tap inside or repeating) in the
+ * lean loop: the same taps (masked = wrapf there), lerps (LEAN_LERP2 is the CM lerp in one multiply), combine, z rule
+ * and store. Out of line, so hot_row_lean_body's own loops keep their code. */
+static void __attribute__((noinline))
+cm_bilin_span_lean(uint32_t *fb, uint16_t *zp, int span, int32_t uf, int32_t vf, int32_t duf, int32_t dvf, int32_t zq,
+                   int32_t zdq, int zbias, bool dmask, const CmTex *t, int32x4_t acc, int32x4_t dacc) {
+    const int mu = t->mu, mv = t->mv;
+    uint32_t *const fe = fb + span;
+    uint16_t *const ze = zp + span;
+    const uint32_t *const p32 = (const uint32_t *)t->px;
+    const uint16x4_t v255 = vdup_n_u16(255);
+    const uint8x8_t lean_ix = vcreate_u8(0x0f0f0f0f0f040200ull);
+    uf -= 0x8000; vf -= 0x8000;
+    LEAN_LOOP_ZB(LEAN_BIL32)
+}
 /* K + trunc((S - K) * T / 255) (vk_div255_trunc on 32-bit lanes) in 16-bit lanes: |S - K| * T <= 255 * 255 fits,
  * trunc(P / 255) is sign(P) * floor(|P| / 255) = sign * div255(|P|) (exact to 65,534), and the result lies between
  * K and S, so K + q and K - q never wrap */
@@ -2550,6 +2578,7 @@ static inline __attribute__((always_inline)) bool lean_np2_inside(int32_t uf, in
  * non-power-of-two blended sprites (BK_LEANNP2) are tested on both axes by lean_np2_inside, which holds for clamp as
  * for repeat, so they need no repeat either. BK_LEANCLAMP=0: repeating textures only, as before. */
 static int sLeanClamp SAVESTATE_EXCLUDE = -1;
+static int sLeanZb SAVESTATE_EXCLUDE = -1; /* BK_LEANZB: see hot_row_lean_body */
 static inline __attribute__((always_inline)) bool lean_axis_in(int32_t f, int32_t df, int n, int size, int filt) {
     int32_t d, e;
     if (__builtin_mul_overflow(df, n - 1, &d) || __builtin_add_overflow(f, d, &e)) return false;
@@ -3135,9 +3164,14 @@ static inline __attribute__((always_inline)) void hot_row_lean_body(const HotTri
                 else
                     vk_mip_span_neon(h->fbuf + idx, h->zb + idx, span, uf, vf, duf, dvf, zq, h->zdq, h->zbias, h->dmask, h->ztest,
                                      h->texa, &ct, mtri, texpx2, tw2, mfrac, acc, dacc, kacc, dkacc, (nl && h->tbil) && mtri);
-            } else if (use_bilin)
-                cm_bilin_span_neon(h->fbuf + idx, h->zb + idx, span, uf, vf, duf, dvf, zq, h->zdq, h->zbias, h->dmask, &ct, acc, dacc);
-            else
+            } else if (use_bilin) {
+                /* BK_LEANZB (RC5, CCW winter's snow under a decal bias): the lean loop when the taps need no wrap */
+                if (sLeanZb > 0 && !h->t16 && tmask_u >= 0 && tmask_v >= 0 &&
+                    ((ws == WRAP_REPEAT && wt == WRAP_REPEAT) || lean_span_in(uf, vf, duf, dvf, span, tw, th, ws, wt, 1)))
+                    cm_bilin_span_lean(h->fbuf + idx, h->zb + idx, span, uf, vf, duf, dvf, zq, h->zdq, h->zbias, h->dmask, &ct, acc, dacc);
+                else
+                    cm_bilin_span_neon(h->fbuf + idx, h->zb + idx, span, uf, vf, duf, dvf, zq, h->zdq, h->zbias, h->dmask, &ct, acc, dacc);
+            } else
                 cm_mip_span_neon(h->fbuf + idx, h->zb + idx, span, uf, vf, duf, dvf, zq, h->zdq, h->zbias, h->dmask, &ct,
                                  mtri, texpx2, tw2, mfrac, acc, dacc, (nl && h->tbil) && mtri);
         }
@@ -3493,6 +3527,7 @@ unsigned long gfx_soft_cvg_tris[3] SAVESTATE_EXCLUDE; /* triangles taken opaque,
  * row test costs more than the divides it saves there); BK_EDGESKIP=1 turns it on. */
 static int sEdgeSkip SAVESTATE_EXCLUDE = -1;
 static int sEmptyTri SAVESTATE_EXCLUDE = -1; /* BK_EMPTYTRI: see raster_tri_body */
+static int sRow0 SAVESTATE_EXCLUDE = 1;      /* BK_ROW0=0: the first row solved again (gfx_soft_init reads it) */
 static inline void edge_end_setup(int n, float d, float *p, float *m) {
     *p = (float)n * d;
     const float t = -*p * (1.0f / 1048576.0f);
@@ -3773,7 +3808,8 @@ static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *
         } else if (B < 0.0f) {                                                                          \
             continue; /* row entirely outside this edge */                                              \
         }
-#define TRI_ROW_ENDS() \
+#define TRI_ROW_ENDS() TRI_ROW_BASES TRI_ROW_SOLVE
+#define TRI_ROW_BASES \
         const float py = y + 0.5f;                                                                                     \
         /* Row bases recomputed exactly each row (no row-to-row drift). */                                             \
         const float b0 = (e0c - (py - e0y) * e0x) * inv_area;                                                          \
@@ -3781,7 +3817,8 @@ static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *
         const float b2 = (e2c - (py - e2y) * e2x) * inv_area;                                                          \
 \
         /* Solve b_i + (x - minx) * w_i_dx >= 0 for the pixel interval. */                                             \
-        int xs = minx, xe = maxx;                                                                                      \
+        int xs = minx, xe = maxx;
+#define TRI_ROW_SOLVE \
         /* Bias both bounds toward inclusion: a 1-px overlap between neighbouring triangles is                         \
          * invisible, a 1-px crack is not. The snap loop below restores exactness on the left edge.                    \
          * A near-horizontal edge (|ds| ~ 1 ulp) on a large off-screen polygon makes the quotient                      \
@@ -3845,13 +3882,18 @@ static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *
      * BK_EMPTYTRI=0: the old order. */
     if (sEmptyTri < 0) { const char *e = getenv("BK_EMPTYTRI"); sEmptyTri = !(e && e[0] == '0'); }
     int y0 = miny;
+    /* BK_ROW0 (RC5, tiny triangles): the row loop takes the first row's ends from the scan above instead of solving
+     * them again (the same expressions on the same values: the same ends). -1: none (BK_EMPTYTRI=0). */
+    int pre_y = -1, pre_xs = 0, pre_xe = 0;
     if (sEmptyTri) {
         for (; y0 < maxy; y0++) {
             const int y = y0;
             TRI_ROW_ENDS()
+            pre_xs = xs; pre_xe = xe; /* the main loop's first row: these ends again (BK_ROW0) */
             break;
         }
         if (y0 >= maxy) return 0;
+        if (sRow0) pre_y = y0;
     }
 
     int tmask_u = tex ? pow2mask(tex->w) : -1, tmask_v = tex ? pow2mask(tex->h) : -1; /* per span with mips */
@@ -4132,7 +4174,9 @@ static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *
 #else
     for (int y = y0; y < maxy; y++) {
 #endif
-        TRI_ROW_ENDS()
+        TRI_ROW_BASES
+        if (y == pre_y) { xs = pre_xs; xe = pre_xe; }
+        else { TRI_ROW_SOLVE }
         if (sDefOp != DEF_OP_NONE && def_row(y, xs, xe)) continue;
         tri_px += (uint32_t)(xe - xs); /* fill/overdraw proxy (before z-reject) */
 
@@ -4561,6 +4605,8 @@ static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *
     }
 #endif
 #undef TRI_ROW_ENDS
+#undef TRI_ROW_BASES
+#undef TRI_ROW_SOLVE
 #undef EDGE_SOLVE
 #if defined(MIYOO)
 #undef sUseAlpha
@@ -4582,17 +4628,19 @@ static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *
 #define BATCH_MAX 512
 static int sBatchPxW[BATCH_MAX] SAVESTATE_EXCLUDE, sBatchPxC[BATCH_MAX] SAVESTATE_EXCLUDE;
 static int sBatchMin SAVESTATE_EXCLUDE = -1;
+static float sBatchSetup SAVESTATE_EXCLUDE = -1.0f; /* BK_BATCHSETUP: a triangle's set-up in span pixels (the estimate) */
 unsigned gfx_soft_batch_splits SAVESTATE_EXCLUDE; /* batches shared (hh_gfx.c's PERF line reads and clears it) */
 /* the split row of a batch's work, or -1 for too little to share: each triangle's area spread evenly over its rows
  * plus its setup at its first row, rows [ylo, yhi) (an estimate: only the balance depends on it) */
 static int batch_split_row(const SoftVtx *v, int n, int ylo, int yhi) {
     if (sBatchMin < 0) { const char *e = getenv("BK_BATCHPX"); sBatchMin = e && e[0] ? atoi(e) : 384; }
+    if (sBatchSetup < 0.0f) { const char *e = getenv("BK_BATCHSETUP"); sBatchSetup = e && e[0] ? (float)atoi(e) : 12.0f; }
     if (sBatchMin <= 0 || yhi - ylo < 2 || yhi > 512) return -1;
     float dens[513], pm[513], quick = 0.0f;
     for (int i = 0; i < n; i++) {
         const SoftVtx *a = &v[i * 3], *b = &v[i * 3 + 1], *c = &v[i * 3 + 2];
         const float cr = (b->x - a->x) * (c->y - a->y) - (c->x - a->x) * (b->y - a->y);
-        quick += (cr < 0.0f ? -cr : cr) * 0.5f + 12.0f;
+        quick += (cr < 0.0f ? -cr : cr) * 0.5f + sBatchSetup;
     }
     if (!(quick >= (float)sBatchMin)) return -1; /* even unclipped too little (or NaN) */
     for (int y = ylo; y <= yhi; y++) { dens[y] = 0.0f; pm[y] = 0.0f; }
@@ -4607,7 +4655,7 @@ static int batch_split_row(const SoftVtx *v, int n, int ylo, int yhi) {
         const float d = (cr < 0.0f ? -cr : cr) * 0.5f / (float)(t1 - t0 > 0 ? t1 - t0 : 1);
         dens[r0] += d;
         dens[r1] -= d;
-        pm[r0] += 12.0f;
+        pm[r0] += sBatchSetup;
     }
     float w = 0.0f, total = 0.0f;
     for (int y = ylo; y < yhi; y++) { w += dens[y]; total += (w > 0.0f ? w : 0.0f) + pm[y]; }
@@ -5878,6 +5926,8 @@ static void gfx_soft_init(void) { PEND_FLUSH();
     unpack_lut_init();
 #if defined(HH_CM_NEON)
     { const char *e = getenv("BK_CMNEON"); if (e && e[0] == '0') sCmNeon = 0; }
+    { const char *e = getenv("BK_ROW0"); if (e && e[0] == '0') sRow0 = 0; }
+    { const char *e = getenv("BK_LEANZB"); sLeanZb = !(e && e[0] == '0'); } /* before the second core reads it */
 #endif
     if (!sTexArena) {
         sTexArena = aligned_alloc(16, TEXARENA_SZ);
