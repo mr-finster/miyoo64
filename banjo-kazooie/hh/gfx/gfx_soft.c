@@ -4628,13 +4628,18 @@ static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *
 #define BATCH_MAX 512
 static int sBatchPxW[BATCH_MAX] SAVESTATE_EXCLUDE, sBatchPxC[BATCH_MAX] SAVESTATE_EXCLUDE;
 static int sBatchMin SAVESTATE_EXCLUDE = -1;
-static float sBatchSetup SAVESTATE_EXCLUDE = -1.0f; /* BK_BATCHSETUP: a triangle's set-up in span pixels (the estimate) */
+/* BK_BATCHSETUP: a triangle's set-up in span pixels (the estimate). RC5: 400 (was 12). A triangle's set-up is
+ * ~2,000-5,000 instructions and a lean pixel ~25, and the batches are mostly small triangles (CCW winter: ~1,600 a
+ * frame over ~130 k pixels), so balancing by pixels left most of the set-ups in the game thread's band; qemu counts on
+ * CCW winter, game thread / worker (M instructions, two frames): 12: 54.9 / 22.6, 100: 49.0 / 30.8, 300: 45.3 / 34.4,
+ * 450: 44.1 / 35.6, 700: 42.7 / 37.1, 1000: 41.2 / 38.5 with the game thread's wait growing again past ~700. */
+static float sBatchSetup SAVESTATE_EXCLUDE = -1.0f;
 unsigned gfx_soft_batch_splits SAVESTATE_EXCLUDE; /* batches shared (hh_gfx.c's PERF line reads and clears it) */
 /* the split row of a batch's work, or -1 for too little to share: each triangle's area spread evenly over its rows
  * plus its setup at its first row, rows [ylo, yhi) (an estimate: only the balance depends on it) */
 static int batch_split_row(const SoftVtx *v, int n, int ylo, int yhi) {
     if (sBatchMin < 0) { const char *e = getenv("BK_BATCHPX"); sBatchMin = e && e[0] ? atoi(e) : 384; }
-    if (sBatchSetup < 0.0f) { const char *e = getenv("BK_BATCHSETUP"); sBatchSetup = e && e[0] ? (float)atoi(e) : 12.0f; }
+    if (sBatchSetup < 0.0f) { const char *e = getenv("BK_BATCHSETUP"); sBatchSetup = e && e[0] ? (float)atoi(e) : 400.0f; }
     if (sBatchMin <= 0 || yhi - ylo < 2 || yhi > 512) return -1;
     float dens[513], pm[513], quick = 0.0f;
     for (int i = 0; i < n; i++) {
