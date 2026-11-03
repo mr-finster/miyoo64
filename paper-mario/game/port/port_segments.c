@@ -47,8 +47,9 @@ void port_segment_loaded(int seg, uint32_t rom_start) {
     }
     if (!sOn || seg < 0 || seg >= port_code_segs_n || rom_start != port_code_segs[seg].start) return;
     uint8_t *d = port_code_segs[seg].data;
+    if (d == NULL || port_code_segs[seg].data_end == NULL) return;
     const uint32_t n = (uint32_t) (port_code_segs[seg].data_end - d);
-    if (d == NULL || n == 0) return;
+    if (n == 0) return;
     if (!port_state_pristine_bytes((uint32_t) (d - __assets_start), d, n)) {
         if (!sWarned++) port_log("segments: no pristine region: overlay data kept as it was (%s)\n", port_code_segs[seg].name);
         return;
