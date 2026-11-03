@@ -3,6 +3,13 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## Next
+
+- Banjo-Kazooie (RC4): faster frames everywhere, Click Clock Wood's seasons included (3-8% fewer instructions a frame
+  on the Miyoo build, measured on replayed frames; the pictures are identical): the copy of each frame the game reads
+  back is made without a divide per pixel and four pixels at a time, and the renderer's clock reads lost a slow
+  64-bit divide.
+
 ## 1.4.5 (Banjo-Kazooie beta; Paper Mario's and Mario Kart 64's numbers start over as on the N64)
 
 New game: Banjo-Kazooie 1.0.0 beta. Rebuilt: Paper Mario 1.1.6, Mario Kart 64 1.1.8, GoldenEye 007 1.1.7, Perfect

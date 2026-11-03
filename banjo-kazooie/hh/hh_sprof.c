@@ -51,11 +51,23 @@ static void sprof_handler(int sig, siginfo_t *si, void *ctx)
     }
 }
 
+#if defined(__i386__) || defined(__x86_64__)
+#include <valgrind/callgrind.h> /* x86 profiles of the replay window: valgrind --tool=callgrind --instr-atstart=no (no-ops natively) */
+#define HH_CG_START() do { CALLGRIND_START_INSTRUMENTATION; CALLGRIND_ZERO_STATS; } while (0)
+#define HH_CG_STOP() do { CALLGRIND_DUMP_STATS; CALLGRIND_STOP_INSTRUMENTATION; } while (0)
+#else
+#define HH_CG_START() do { } while (0)
+#define HH_CG_STOP() do { } while (0)
+#endif
+
+void hh_sprof_cg(int on) { if (on) HH_CG_START(); else HH_CG_STOP(); }
+
 void hh_sprof_start(void)
 {
     const char *path = getenv("BK_SPROF");
     const char *us = getenv("BK_SPROF_US");
     long period = us ? atol(us) : 500;
+    HH_CG_START();
     struct sigaction sa;
     struct sigevent sev;
     struct itimerspec its;
@@ -92,6 +104,7 @@ void hh_sprof_stop(void)
     FILE *f, *m;
     uint32_t n;
     char line[512];
+    HH_CG_STOP();
     if (sState != 1)
         return;
     timer_delete(sTimer);

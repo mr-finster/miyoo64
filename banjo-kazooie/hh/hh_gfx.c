@@ -18,6 +18,9 @@
 #include "hh_os.h"
 #include "hh_hw.h"
 #include "hh_plat.h"
+#if defined(__ARM_NEON)
+#include <arm_neon.h>
+#endif
 #include "savestate.h" /* SAVESTATE_EXCLUDE: host state a state load must not overwrite (port/kit) */
 
 extern struct GfxRenderingAPI gfx_soft_api;
@@ -59,7 +62,18 @@ void port_log_always(const char *fmt, ...)
     fflush(stdout);
 }
 
-uint64_t port_time_us64(void) { return hh_host_ns() / 1000u; }
+/* ns / 1000 without the libgcc 64-bit division (__udivmoddi4, ~170 instructions on the A7; the renderer's timers call
+ * this thousands of times a frame): long division in 16-bit digits, each step a 32-bit divide. Exact. */
+static inline uint64_t div1000_u64(uint64_t n)
+{
+    uint32_t r = 0, q3, q2, q1, q0, d;
+    d = (uint32_t)(n >> 48);                    q3 = d / 1000u; r = d - q3 * 1000u;
+    d = r << 16 | (uint32_t)(n >> 32 & 0xFFFF); q2 = d / 1000u; r = d - q2 * 1000u;
+    d = r << 16 | (uint32_t)(n >> 16 & 0xFFFF); q1 = d / 1000u; r = d - q1 * 1000u;
+    d = r << 16 | (uint32_t)(n & 0xFFFF);       q0 = d / 1000u;
+    return (uint64_t)q3 << 48 | (uint64_t)q2 << 32 | (uint64_t)q1 << 16 | q0;
+}
+uint64_t port_time_us64(void) { return div1000_u64(hh_host_ns()); }
 uint32_t port_time_us(void) { return (uint32_t)port_time_us64(); }
 
 const char *port_save_dir(void) { return hh_plat_save_dir(); }
@@ -445,15 +459,28 @@ void hh_gfx_before_swap(void)
     for (k = 0; k < 2; k++) {
         uint8_t *dst = n64 + k * 292 * 216 * 2;
         if (!both && hh_gfx_cimg_fb >= 0 && k != hh_gfx_cimg_fb) continue;
+        /* the source column of each N64 column, kept while the sizes hold (was a divide a pixel) */
+        static uint16_t sCol[292] SAVESTATE_EXCLUDE; static int sColW SAVESTATE_EXCLUDE, sColFw SAVESTATE_EXCLUDE;
+        if (sColW != w || sColFw != fw) { for (x = 0; x < fw; x++) sCol[x] = (uint16_t)(x * w / fw); sColW = w; sColFw = fw; }
         for (y = 0; y < fh; y++) {
             const uint32_t *row = fb + (size_t)(y * h / fh) * w;
-            for (x = 0; x < fw; x++) {
-                uint32_t c = row[x * w / fw];
-                uint16_t p = (uint16_t)(((c >> 19) & 0x1F) << 11 | ((c >> 11) & 0x1F) << 6 | ((c >> 3) & 0x1F) << 1 | 1);
-                dst[0] = (uint8_t)(p >> 8);
-                dst[1] = (uint8_t)p;
-                dst += 2;
+            x = 0;
+#if defined(__ARM_NEON)
+            for (; x + 4 <= fw; x += 4) { /* four at a time: the same bits as the loop below */
+                const uint32x4_t c = { row[sCol[x]], row[sCol[x + 1]], row[sCol[x + 2]], row[sCol[x + 3]] };
+                const uint32x4_t p = vorrq_u32(vorrq_u32(vshlq_n_u32(vandq_u32(vshrq_n_u32(c, 19), vdupq_n_u32(0x1F)), 11),
+                                                         vshlq_n_u32(vandq_u32(vshrq_n_u32(c, 11), vdupq_n_u32(0x1F)), 6)),
+                                               vorrq_u32(vshlq_n_u32(vandq_u32(vshrq_n_u32(c, 3), vdupq_n_u32(0x1F)), 1), vdupq_n_u32(1)));
+                vst1_u16((uint16_t *)dst + x, vreinterpret_u16_u8(vrev16_u8(vreinterpret_u8_u16(vmovn_u32(p)))));
             }
+#endif
+            for (; x < fw; x++) {
+                const uint32_t c = row[sCol[x]];
+                /* RGBA5551 stored big-endian: the same two bytes as before, one 16-bit store */
+                const uint32_t p = ((c >> 19) & 0x1F) << 11 | ((c >> 11) & 0x1F) << 6 | ((c >> 3) & 0x1F) << 1 | 1;
+                ((uint16_t *)dst)[x] = (uint16_t)(p >> 8 | (p & 0xFF) << 8);
+            }
+            dst += fw * 2;
         }
     }
     if (hh_fb_post != NULL && hh_frames - hh_fb_post_frame <= 2) {
@@ -489,11 +516,18 @@ void hh_gfx_run_task(OSTask *task)
         const uint32_t all = port_time_us() - t0;
         hh_perf_frame(all > hh_rsp_away_us ? all - hh_rsp_away_us : 0);
     }
+    { /* BK_CGWIN=<vi>:<vi> (tests, x86): a callgrind window over whole frames (game, audio, render), hh_sprof.c */
+        static long w0 SAVESTATE_EXCLUDE = -2, w1 SAVESTATE_EXCLUDE; static int on SAVESTATE_EXCLUDE;
+        extern unsigned int hh_vicount;
+        if (w0 == -2) { const char *e = getenv("BK_CGWIN"); w0 = -1; if (e) { char *q; w0 = strtol(e, &q, 10); w1 = *q == ':' ? strtol(q + 1, NULL, 10) : w0 + 300; } }
+        if (w0 >= 0 && !on && (long)hh_vicount >= w0) { extern void hh_sprof_cg(int); hh_sprof_cg(1); on = 1; }
+        if (on == 1 && (long)hh_vicount >= w1) { extern void hh_sprof_cg(int); hh_sprof_cg(0); on = 2; printf("CGWIN done vi %u\n", hh_vicount); fflush(stdout); exit(0); }
+    }
     { /* BK_REPLAY=<vi>:<n>[:<frames>] (a microbenchmark, tests): from the first frame at or after VI <vi>, <frames>
        * frames (default 1) each drawn again <n> times right away -- the game waits, its display list and memory
        * unchanged -- each draw timed; the best and median per frame, the sum of the frames' best, and a hash of
        * each frame's last picture (the output check between builds) go to stdout, then the program exits. */
-        static long at = -2, reps, nfr, done; static double sumbest; static uint32_t hall;
+        static long at SAVESTATE_EXCLUDE = -2, reps SAVESTATE_EXCLUDE, nfr SAVESTATE_EXCLUDE, done SAVESTATE_EXCLUDE; static double sumbest SAVESTATE_EXCLUDE; static uint32_t hall SAVESTATE_EXCLUDE;
         if (at == -2) { const char *e = getenv("BK_REPLAY"); at = -1;
             if (e) { char *q; at = strtol(e, &q, 10); reps = *q == ':' ? strtol(q + 1, &q, 10) : 20; nfr = *q == ':' ? strtol(q + 1, &q, 10) : 1; } }
         extern unsigned int hh_vicount;
@@ -504,6 +538,7 @@ void hh_gfx_run_task(OSTask *task)
             { extern void hh_sprof_start(void); if (done == 0) hh_sprof_start(); }
             extern uint32_t gfx_soft_t_wait, gfx_soft_t_shared, gfx_soft_t_solo, gfx_soft_n_solo; extern unsigned gfx_soft_pend_draws, gfx_soft_pend_batches;
             gfx_soft_t_wait = gfx_soft_t_shared = gfx_soft_t_solo = gfx_soft_n_solo = 0; gfx_soft_pend_draws = gfx_soft_pend_batches = 0;
+            extern uint64_t gfx_soft_span_px, gfx_soft_tris; const uint64_t rt0 = gfx_soft_tris, rp0 = gfx_soft_span_px;
             for (i = 0; i < reps; i++) {
                 const uint32_t a = port_time_us();
                 { extern int gfx_soft_holdlog; gfx_soft_holdlog = getenv("BK_HOLDLOG") && done == 0 && i == reps - 1; }
@@ -515,9 +550,14 @@ void hh_gfx_run_task(OSTask *task)
             fb = gfx_soft_get_framebuffer(&w, &h);
             if (fb) for (i = 0; i < w * h; i++) hs = (hs ^ fb[i]) * 16777619u;
             sumbest += tt[0] / 1000.0; hall = (hall ^ hs) * 16777619u;
+            if (fb && getenv("BK_REPLAY_PPM")) { /* each frame's picture as <dir>/replay_<n>.ppm (tests: before/after crops) */
+                char pn[512]; FILE *pf; snprintf(pn, sizeof(pn), "%s/replay_%ld.ppm", getenv("BK_REPLAY_PPM"), done);
+                if ((pf = fopen(pn, "wb")) != NULL) { fprintf(pf, "P6\n%d %d\n255\n", w, h);
+                    for (i = 0; i < w * h; i++) { const uint32_t c = fb[i]; fputc((c >> 16) & 255, pf); fputc((c >> 8) & 255, pf); fputc(c & 255, pf); }
+                    fclose(pf); } }
             printf("REPLAY split frame %ld: per draw wait %.3f shared %.3f solo %.3f ms, solo tris %u, held draws %u in %u batches\n", done, gfx_soft_t_wait / 1000.0 / reps, gfx_soft_t_shared / 1000.0 / reps, gfx_soft_t_solo / 1000.0 / reps, gfx_soft_n_solo / (unsigned)reps, gfx_soft_pend_draws / (unsigned)reps, gfx_soft_pend_batches / (unsigned)reps);
             { extern const char *gfx_soft_flush_fn[16]; extern unsigned gfx_soft_flush_cnt[16]; for (int q = 0; q < 16 && gfx_soft_flush_fn[q]; q++) printf("  flush by %s %u\n", gfx_soft_flush_fn[q], gfx_soft_flush_cnt[q] / (unsigned)reps); }
-            printf("REPLAY frame %ld vi %u: best %.3f ms median %.3f ms of %ld, picture %08x\n", done, hh_vicount, tt[0] / 1000.0, tt[reps / 2] / 1000.0, reps, (unsigned)hs);
+            printf("REPLAY frame %ld vi %u: best %.3f ms median %.3f ms of %ld, picture %08x, tris %u px %u\n", done, hh_vicount, tt[0] / 1000.0, tt[reps / 2] / 1000.0, reps, (unsigned)hs, (unsigned)((gfx_soft_tris - rt0) / (uint64_t)reps), (unsigned)((gfx_soft_span_px - rp0) / (uint64_t)reps));
             if (done + 1 >= nfr) { extern void hh_sprof_stop(void); hh_sprof_stop(); }
             if (++done >= nfr) { printf("REPLAY total best %.3f ms over %ld frames, pictures %08x\n", sumbest, nfr, (unsigned)hall); fflush(stdout); exit(0); }
             fflush(stdout);
