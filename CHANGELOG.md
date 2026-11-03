@@ -5,6 +5,11 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Banjo-Kazooie (RC5): Click Clock Wood's winter and most scenes faster on the Miyoo build (the pictures are
+  identical): the second core takes a fairer share of each batch of small triangles (a triangle's set-up now counts as
+  much as ~400 pixels when the two cores split a batch, where it counted as 12), which cuts the game thread's
+  rendering by about 10-20% in the seasons; winter's snow ground under a decal bias goes through the fast pixel loop;
+  each triangle's first row is solved once instead of twice.
 - Banjo-Kazooie (RC4): faster frames everywhere, Click Clock Wood's seasons included (3-8% fewer instructions a frame
   on the Miyoo build, measured on replayed frames; the pictures are identical): the copy of each frame the game reads
   back is made without a divide per pixel and four pixels at a time, and the renderer's clock reads lost a slow
