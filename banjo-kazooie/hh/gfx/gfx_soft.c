@@ -4634,18 +4634,24 @@ static int sBatchMin SAVESTATE_EXCLUDE = -1;
  * CCW winter, game thread / worker (M instructions, two frames): 12: 54.9 / 22.6, 100: 49.0 / 30.8, 300: 45.3 / 34.4,
  * 450: 44.1 / 35.6, 700: 42.7 / 37.1, 1000: 41.2 / 38.5 with the game thread's wait growing again past ~700. */
 static float sBatchSetup SAVESTATE_EXCLUDE = -1.0f;
+/* BK_BATCHQUAL: the set-up weight in the share-or-not test (RC4: 12, the same as the split's). RC5: 100. With 400 here
+ * too, batches of a few big triangles were shared as well, and both threads set each of them up: the CCW hub's frame
+ * went from 106 to 122 M instructions and its game thread up 3%. Game thread M instructions, hub / winter (exit 1):
+ * 12: 55.6 / 47.2, 100: 57.1 / 45.0, 200: 65.3 / 44.6, 400: 65.2 / 44.5 (RC4: 63.2 / 55.6). */
+static float sBatchQual SAVESTATE_EXCLUDE = -1.0f;
 unsigned gfx_soft_batch_splits SAVESTATE_EXCLUDE; /* batches shared (hh_gfx.c's PERF line reads and clears it) */
 /* the split row of a batch's work, or -1 for too little to share: each triangle's area spread evenly over its rows
  * plus its setup at its first row, rows [ylo, yhi) (an estimate: only the balance depends on it) */
 static int batch_split_row(const SoftVtx *v, int n, int ylo, int yhi) {
     if (sBatchMin < 0) { const char *e = getenv("BK_BATCHPX"); sBatchMin = e && e[0] ? atoi(e) : 384; }
     if (sBatchSetup < 0.0f) { const char *e = getenv("BK_BATCHSETUP"); sBatchSetup = e && e[0] ? (float)atoi(e) : 400.0f; }
+    if (sBatchQual < 0.0f) { const char *e = getenv("BK_BATCHQUAL"); sBatchQual = e && e[0] ? (float)atoi(e) : 100.0f; }
     if (sBatchMin <= 0 || yhi - ylo < 2 || yhi > 512) return -1;
     float dens[513], pm[513], quick = 0.0f;
     for (int i = 0; i < n; i++) {
         const SoftVtx *a = &v[i * 3], *b = &v[i * 3 + 1], *c = &v[i * 3 + 2];
         const float cr = (b->x - a->x) * (c->y - a->y) - (c->x - a->x) * (b->y - a->y);
-        quick += (cr < 0.0f ? -cr : cr) * 0.5f + sBatchSetup;
+        quick += (cr < 0.0f ? -cr : cr) * 0.5f + sBatchQual;
     }
     if (!(quick >= (float)sBatchMin)) return -1; /* even unclipped too little (or NaN) */
     for (int y = ylo; y <= yhi; y++) { dens[y] = 0.0f; pm[y] = 0.0f; }
@@ -4662,9 +4668,9 @@ static int batch_split_row(const SoftVtx *v, int n, int ylo, int yhi) {
         dens[r1] -= d;
         pm[r0] += sBatchSetup;
     }
-    float w = 0.0f, total = 0.0f;
-    for (int y = ylo; y < yhi; y++) { w += dens[y]; total += (w > 0.0f ? w : 0.0f) + pm[y]; }
-    if (!(total >= (float)sBatchMin)) return -1;
+    float w = 0.0f, total = 0.0f, pxs = 0.0f;
+    for (int y = ylo; y < yhi; y++) { w += dens[y]; pxs += w > 0.0f ? w : 0.0f; total += (w > 0.0f ? w : 0.0f) + pm[y]; }
+    if (!(pxs + (total - pxs) * (sBatchQual / sBatchSetup) >= (float)sBatchMin)) return -1;
     const float half = total * 0.5f;
     float acc = 0.0f;
     w = 0.0f;
