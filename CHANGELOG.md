@@ -3,9 +3,10 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
-## Next
+## 1.4.5 (Paper Mario's and Mario Kart 64's numbers start over as on the N64)
 
-Rebuilt: Super Smash Bros. 1.1.7.
+Rebuilt: Paper Mario 1.1.6, Mario Kart 64 1.1.8, GoldenEye 007 1.1.7, Perfect Dark 1.0.7, Super Mario 64 1.1.6 and
+Super Smash Bros. 1.1.7; the other six games are the 1.4.4 zips.
 
 - Super Smash Bros.: L2 is now the N64's C-left and R2 its C-right ([issue #6](https://github.com/mr-finster/miyoo64/issues/6)).
   On the character select they give a fighter two more of its colours (X, the N64's C-up, gives the first one); in a
@@ -19,8 +20,7 @@ Rebuilt: Super Smash Bros. 1.1.7.
   Turnpike gave its box trucks other designs, Banshee Boardwalk and Moo Moo Farm took Toad's Turnpike's fog distance,
   and a second award ceremony's balloons and fireworks carried on from the first.
 - GoldenEye 007: a rare broken triangle (one edge with no position) no longer makes the renderer's seam filler mark
-  a stray strip from the left edge of a screen row (the same fix as Banjo-Kazooie's; on the PC test build it was a
-  crash).
+  a stray strip from the left edge of a screen row (on the PC test build it was a crash).
 - Perfect Dark: the same renderer fix as GoldenEye 007's: a rare broken triangle no longer makes the seam filler mark
   a stray strip from the left edge of a screen row.
 - Super Mario 64: a panned sound's right channel now fades in and out smoothly, as on the N64. When a sound off the
@@ -45,6 +45,8 @@ Rebuilt: Super Smash Bros. 1.1.7.
     visit and covered him;
   - the title screen's demo, shown a second time, set up its scenes at once instead of after their first frames, and
     the whale ride, the inside of the whale and the chapter end scenes kept their timers from the last showing.
+- Save states (RESUME GAME) from the older versions of the rebuilt games may not load: they are kept as `.rejected`.
+  In-game saves carry over.
 
 ## 1.4.4 (Diddy Kong Racing 1.1.7: Adventure 2's mirrored races)
 
