@@ -5,13 +5,19 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
-Rebuilt: Super Smash Bros. 1.1.8.
+Rebuilt: Super Smash Bros. 1.1.8, GoldenEye 007 1.1.8 and Perfect Dark 1.0.8.
 
 - Super Smash Bros.: the N64's C-down can now go on a button in MENU > CONTROLS ([issue #6](https://github.com/mr-finster/miyoo64/issues/6)).
   On the character select it gives a fighter its fourth colour (in a fight a jump). Every Miyoo button already has a
   job, so C-down has none by default: its row shows "-", and the button you give it does C-down in place of what it
   did (that row then shows "-" until it gets a button back; RESET TO DEFAULT puts everything back). A layout saved
   before still loads as it was.
+- GoldenEye 007 and Perfect Dark: faster frames from Banjo-Kazooie's two-core change. When both cores share a batch of
+  triangles, each triangle's set-up now counts for what it really costs, so the second core takes its share of the
+  set-ups too: the game's own thread does 13-26% less work a frame in GoldenEye (Dam, Facility, Surface, Archives,
+  Streets, Jungle, Control) and 8-22% less in Perfect Dark (dataDyne Central, Area 51, Chicago, Air Force One),
+  measured on the Miyoo build in an emulator; the pictures are identical. Each triangle's first row is also worked out
+  once instead of twice.
 
 ## 1.4.6 (Banjo-Kazooie, Pilotwings 64 and The New Tetris betas)
 
