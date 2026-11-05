@@ -45,8 +45,8 @@ MENU > CONTROLS moves any of these to another button ([how](../README.md#control
 
 ## Known issues
 
-- Click Clock Wood in winter is too slow on the original Mini: about 37 ms a frame (an estimate from the emulator,
-  not measured on a device), so it plays below the N64's speed there. The other seasons and worlds are lighter.
+- Click Clock Wood in winter is the heaviest scene and may play below the N64's speed on the original Mini (not yet
+  measured on a device). The other seasons and worlds are lighter.
 - The molehills' shadow (Bottles' hills in Spiral Mountain and the worlds) is drawn darker than on the N64.
 - Over the intro, the port's frame pacing drifts from the N64's by about 100 frames; scenes and music still match.
 - Not yet played on a real Mini with this build's renderer: speed numbers are from the emulator.
