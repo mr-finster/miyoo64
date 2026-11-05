@@ -39,7 +39,6 @@ MENU > CONTROLS moves any of these to another button ([how](../README.md#control
 
 ## Known issues
 
-- One player only.
 - Text is a little sharper than on the N64 (no N64 video filter).
 - On the original Mini, Marathon may draw 30 frames a second (a test build did; the game itself keeps its speed).
   Menus and vs CPU run at 60.
