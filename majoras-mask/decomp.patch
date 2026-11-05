@@ -1366,7 +1366,7 @@ index 053a032..a919d31 100644
          s32 i;
  
 diff --git a/src/code/z_play.c b/src/code/z_play.c
-index dc076fc..81baa08 100644
+index dc076fc..7b43e95 100644
 --- a/src/code/z_play.c
 +++ b/src/code/z_play.c
 @@ -145,6 +145,12 @@ void Play_DisableMotionBlur(void) {
@@ -1416,6 +1416,34 @@ index dc076fc..81baa08 100644
  
                      r = RGBA16_GET_R(pixel);
                      g = RGBA16_GET_G(pixel);
+@@ -371,6 +377,9 @@ Gfx* Play_SetFog(PlayState* this, Gfx* gfx) {
+ void Play_Destroy(GameState* thisx) {
+     PlayState* this = (PlayState*)thisx;
+     GraphicsContext* gfxCtx = this->state.gfxCtx;
++#ifdef TARGET_HANDHELD
++    { extern u8 gHhAimCam; gHhAimCam = 0; } /* the menus after play steer at full tilt */
++#endif
+ 
+     if (sBombersNotebookOpen) {
+         Sched_FlushTaskQueue();
+@@ -1042,6 +1051,17 @@ void Play_UpdateMain(PlayState* this) {
+         }
+         Camera_Update(this->cameraPtrs[this->nextCamera]);
+     }
++#ifdef TARGET_HANDHELD
++    { /* hh_input.c's fine aim (issue #8): the d-pad eases in while the view is first person or aiming (the
++       * C-up look, the bow, the hookshot, Deku bubbles, Zora fins; not the Z-targeted BOWARROWZ, where the
++       * stick walks), never on the pause screen */
++        extern u8 gHhAimCam;
++        const s16 mode = GET_ACTIVE_CAM(this)->mode;
++        gHhAimCam = (this->pauseCtx.state == PAUSE_STATE_OFF) &&
++                    (mode == CAM_MODE_FIRSTPERSON || mode == CAM_MODE_SLINGSHOT || mode == CAM_MODE_BOWARROW ||
++                     mode == CAM_MODE_DEKUSHOOT || mode == CAM_MODE_ZORAFIN);
++    }
++#endif
+ 
+     if (!sp5C) {
+         Play_UpdateWaterCamera(this, this->cameraPtrs[this->nextCamera]);
 diff --git a/src/code/z_player_lib.c b/src/code/z_player_lib.c
 index a90113c..55de6b2 100644
 --- a/src/code/z_player_lib.c

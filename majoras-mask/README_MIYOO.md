@@ -5,7 +5,7 @@ A port to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip), built on 
 states and a first-start data builder. **There is no game data in it.** It builds everything from your
 own USA ROM the first time you run it.
 
-**Status:** version 1.0.6, a beta. It plays on the Mini (OG, 640x480) with Onion from Apps at the game's own
+**Status:** version 1.0.8, a beta. It plays on the Mini (OG, 640x480) with Onion from Apps at the game's own
 20 fps; test builds have been played on that device. The Mini Plus, Mini v4 and Flip, and Onion's Ports list,
 MinUI, Allium and spruce still need a first run. Known issues: [README.md](README.md#known-issues).
 
@@ -61,7 +61,7 @@ records which data it is), so keep the ROM on the card.
 
 | Miyoo | N64 |
 |---|---|
-| D-pad | Stick |
+| D-pad | Stick (fine aim in first person and aiming, below) |
 | A / B | A / B |
 | L1 | Z (target) |
 | R1 | R (shield) |
@@ -76,6 +76,12 @@ records which data it is), so keep the ROM on the card.
 
 While you play an instrument, the d-pad is the four C notes and A is A. B puts it away.
 
+**Fine aim:** in first person and while aiming (the C-up look, the bow and its magic arrows, the hookshot,
+Deku bubbles, Zora fins), the d-pad starts as a small push of the stick, 20% of full tilt, for the first
+quarter second, then eases up to full tilt at one second. A tap nudges the aim by about 0.4 degrees (7.9
+before); holding turns as fast as before. Walking, menus and every other view are unchanged (full tilt). The
+port has no walk or half-stick button.
+
 ## Settings (in `launch.sh`)
 
 - `MM_ROTATE=0`: draw the picture unturned, for an SDL that turns the panel itself (the MinUI launcher
@@ -84,6 +90,9 @@ While you play an instrument, the d-pad is the four C notes and A is A. B puts i
 - `MM_THREADS=1`: draw on one core.
 - `MM_SLEEPSAVE=0`: no auto save before sleep.
 - `MM_PACE=0`: frames go up when they are drawn rather than on the panel's refresh.
+- `MM_FINEAIM=0`: no fine aim, the d-pad at full tilt when aiming too (as before 1.0.8).
+  `MM_FINEAIMPCT=<5..100>` sets where it starts (default 20, percent of full tilt) and
+  `MM_FINEAIMMS=<ms>` when it reaches full tilt (default 1000).
 - `MM_FLIPFILL=0`: on a Mini v4 or Mini Flip, keep the 2x picture with a border instead of the full height
   (`OOT_FLIPFILL`, the test builds' name, still works).
 
