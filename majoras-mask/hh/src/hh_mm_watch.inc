@@ -348,6 +348,25 @@ s32 HhMm_Boundary(GameStateOverlay* ovl) {
             }
         }
     }
+    {   /* MM_AIMLOG=1 (tests, fine aim, issue #8): one line a frame in Play -- the camera mode, the fine-aim flag,
+         * the stick the game read, the player's view (focus) pitch and yaw in binary angle units, the buttons and
+         * the player's x and z */
+        static int sAimLog = -1;
+        if (sAimLog < 0) {
+            sAimLog = getenv("MM_AIMLOG") != NULL;
+        }
+        if (sAimLog && gHhGameState != NULL && ovl == &gGameStateOverlayTable[3]) {
+            extern u8 gHhAimCam;
+            PlayState* play = (PlayState*)gHhGameState;
+            Actor* a = (Actor*)GET_PLAYER(play);
+            if (a != NULL && GET_ACTIVE_CAM(play) != NULL) {
+                port_log_always("AIM f%ld mode %d fine %d stick %d %d focus %d %d btn %04x pos %.1f %.1f\n",
+                                sFrames, GET_ACTIVE_CAM(play)->mode, gHhAimCam, play->state.input[0].cur.stick_x,
+                                play->state.input[0].cur.stick_y, a->focus.rot.x, a->focus.rot.y,
+                                play->state.input[0].cur.button, a->world.pos.x, a->world.pos.z);
+            }
+        }
+    }
     {   /* MM_WARP=<frame>:<entrance hex>[:<day>:<time hex>][,<frame>:<entrance hex>...] (tests, the soak): at that
          * frame, the map select's "load game" (the debug save: every item, mask and song, as file 1) into that
          * entrance from any game state (the title's demo too); in a file's game, the area exit instead (day and

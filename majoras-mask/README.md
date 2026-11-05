@@ -4,7 +4,7 @@ A native port of Majora's Mask, built from the [zeldaret/mm](https://github.com/
 of this repository's Ocarina of Time port (its software renderer, audio, the Miyoo kit). It runs on the Miyoo Mini
 family (Mini, Mini Plus, Mini v4, Mini Flip).
 
-**Version 1.0.6, a beta:** the whole game plays, and it was compared scene by scene against an N64 renderer
+**Version 1.0.8, a beta:** the whole game plays, and it was compared scene by scene against an N64 renderer
 (angrylion), but it has had less play on real devices than the other games. Please report what you find.
 
 **No game data is included**, here or in the zip. You need your own ROM.
@@ -25,7 +25,7 @@ Download `MajorasMask-miyoo.zip` from https://miyoo-n64.pages.dev, and install i
 
 | Miyoo | Does |
 |---|---|
-| D-pad | Control stick |
+| D-pad | Control stick (eases in when aiming, for fine aim) |
 | A / B | A / B |
 | L1 | Z-target |
 | R1 | Shield |
