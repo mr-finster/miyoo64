@@ -1522,24 +1522,30 @@ index 106932b..e04ae7c 100644
      gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
      gDPSetCombineMode(gMainGfxPos++, PM_CC_10, PM_CC_10);
 diff --git a/src/sprite.c b/src/sprite.c
-index 5e0cae2..06d46b7 100644
+index 5e0cae2..596e23a 100644
 --- a/src/sprite.c
 +++ b/src/sprite.c
-@@ -1270,7 +1270,7 @@ s32 spr_get_comp_position(s32 spriteIdx, s32 compListIdx, s32* outX, s32* outY,
+@@ -1270,7 +1270,11 @@ s32 spr_get_comp_position(s32 spriteIdx, s32 compListIdx, s32* outX, s32* outY,
      u32* spriteData;
  
      if (sprite->componentList == nullptr) {
--        return; // bug: does not return a value
++#if VERSION_PAL
 +        return -1;
++#else
+         return; // bug: does not return a value
++#endif
      }
  
      animID = sprite->curAnimID;
-@@ -1298,7 +1298,7 @@ s32 spr_get_comp_position(s32 spriteIdx, s32 compListIdx, s32* outX, s32* outY,
+@@ -1298,7 +1302,11 @@ s32 spr_get_comp_position(s32 spriteIdx, s32 compListIdx, s32* outX, s32* outY,
              }
          }
      } else {
--        return; // bug: does not return a value
++#if VERSION_PAL
 +        return -1;
++#else
+         return; // bug: does not return a value
++#endif
      }
      return -1;
  }

@@ -33,7 +33,11 @@ int port_rom_open(const char *path) {
     uint8_t cc[4];
     port_rom_read(0x3B, cc, 4); /* media, game code, region */
     if (memcmp(name, "PAPER MARIO", 11) != 0 || memcmp(cc, PM64_ROM_CODE, 4) != 0) {
+#if defined(PM64_ROM_REGION_PAL)
         port_log("rom: %s is \"%s\" (%c%c%c%c), not %s\n", path, name, cc[0], cc[1], cc[2], cc[3], PM64_ROM_NAME);
+#else
+        port_log("rom: %s is \"%s\" (%c%c%c%c), not Paper Mario (USA)\n", path, name, cc[0], cc[1], cc[2], cc[3]);
+#endif
         return 0;
     }
     port_log("rom: %s, %u bytes, %s order\n", path, sRomSize, sRomOrder == 0 ? "z64" : sRomOrder == 1 ? "v64" : "n64");

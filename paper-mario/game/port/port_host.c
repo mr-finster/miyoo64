@@ -387,7 +387,11 @@ int main(int argc, char **argv) {
         const char *env = getenv("PM64_ROM");
         if (!env && port_known_rom(rom, sizeof rom)) opened = port_rom_open(rom);
         if (!opened && port_find_rom(rom, sizeof rom, why, sizeof why)) opened = port_rom_open(rom);
+#if defined(PM64_ROM_REGION_PAL)
         if (!opened) port_log("port: no %s ROM found%s%s (set PM64_ROM)\n", PM64_ROM_NAME, why[0] ? ": " : "", why);
+#else
+        if (!opened) port_log("port: no Paper Mario (USA) ROM found%s%s (set PM64_ROM)\n", why[0] ? ": " : "", why);
+#endif
         else port_assets_rom_hint(rom); /* the region's build uses it: one scan of the card, not two */
     }
     port_assets_load(argv[0]); /* shows its own screen and exits when there is no ROM and no cache */

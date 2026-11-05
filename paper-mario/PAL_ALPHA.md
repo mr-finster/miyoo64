@@ -6,7 +6,7 @@ Supply your own canonical Paper Mario (Europe, PAL) ROM, SHA-1 2111d39265a317414
 
 The package definition miyoo/game-pal.json selects App/PaperMarioPAL with its own data directory. Run the fatal pal_release_gates.py checks on the final packaged app. Never substitute the historical alpha recipes for a newly linked overlay build.
 
-This branch has host/regression checks only: no ARM rebuild or hardware validation is claimed. It differs from the hardware-tested historical release snapshot. A new ARM binary/recipe pair and hardware regression are required. Preserve the pinned upstream source notices; upstream MIT covers port code only, not all decompiled/third-party code.
+A private build of PR head 9a867e0720744215b36a1fe9fa74ef994ffd243e passed 8/8 user-reported checks on Miyoo Mini Plus in its specific M14.44 test package (M14.45). This does not establish full-game stability or validate other devices, builds or packages. A new ARM binary/recipe pair and hardware regression are required for a new build. Preserve the pinned upstream source notices; upstream MIT covers port code only, not all decompiled/third-party code.
 
 ## Source build prerequisites
 

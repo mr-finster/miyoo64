@@ -3,7 +3,7 @@
 <!-- PAL-ALPHA-BEGIN -->
 PAL support and region-specific builds are documented in [PAL_ALPHA.md](PAL_ALPHA.md). The PAL build uses `tools/port/pal_build.py --rom <own-pal.z64>` from the documented /work pm64hh:decomp environment (ARM toolchain plus PyYAML), after the pinned decomp has been configured for PAL. Recipes are derived locally into build/game/pal; do not use US recipes.
 
-This current-main PAL branch includes the general overlay restoration. It differs from the separately hardware-tested historical alpha binary; no hardware validation is claimed for this branch. Its PAL overlay classifier uses canonical segment/object identities rather than US VRAM windows. Rebuild all affected overlays, derive a new pair and validate on hardware before shipping.
+This PAL branch includes the general overlay restoration and uses canonical segment/object identities rather than US VRAM windows. A private build of PR head 9a867e0720744215b36a1fe9fa74ef994ffd243e passed 8/8 user-reported hardware checks on Miyoo Mini Plus (M14.45), in its specific M14.44 test package. This does not establish full-game stability or validate other builds or packages. Rebuild all affected overlays, derive a new pair and validate on hardware before shipping.
 <!-- PAL-ALPHA-END -->
 
 
