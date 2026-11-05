@@ -73,7 +73,7 @@ const struct miyoo_remap_row miyoo_remap_rows[] = {
     { MR_CUP, MB_X, 0, 0, "JUMP" },
     { MR_L, MB_SELECT, 0, 0, "TAUNT" },
     { MR_TEXT, MB_R1, 0, 0, "HALF STICK (WALK)" },
-    { MR_CDOWN, MB_NONE, 0, 0, NULL },
+    { MR_CDOWN, MB_FREE, 0, 0, "COLOUR / JUMP" }, /* no button left: unassigned until given one */
     { MR_CLEFT, MB_L2, 0, 0, "COLOUR / JUMP" },
     { MR_CRIGHT, MB_R2, 0, 0, "COLOUR / JUMP" },
     { MR_STICK, MB_DPAD, 0, 0, "MOVE" },
@@ -108,6 +108,7 @@ void controller_handheld_key(int sym, int down)
     case 8:   k = K_CRIGHT; break; /* MIYOO_KEY_R2 */
     case 305: k = K_SELECT; break; /* MIYOO_KEY_SELECT */
     case 13:  k = K_START; break;  /* MIYOO_KEY_START */
+    case MIYOO_REMAP_SYM(MR_CDOWN): k = K_CDOWN; break; /* a button given C-down in MENU > CONTROLS */
     default: break;
     }
 #endif
@@ -116,7 +117,7 @@ void controller_handheld_key(int sym, int down)
 
 /* Scheme 1 (notes/controls.md): d-pad = full stick, R held = half stick,
  * A/B as is, X = C (jump), Y = Z (shield), L = R trigger, Select = L (taunt);
- * on the Miyoo also L2 = C-left, R2 = C-right. */
+ * on the Miyoo also L2 = C-left, R2 = C-right; C-down on the button MENU > CONTROLS gives it (none by default). */
 void hh_input_read(HhPad *pad)
 {
     { extern void hh_demo_stage_poll(void); hh_demo_stage_poll(); } /* SSB64_DEMOSTAGE (n64/bench.c) */

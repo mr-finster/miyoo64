@@ -3,6 +3,16 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## Next
+
+Rebuilt: Super Smash Bros. 1.1.8.
+
+- Super Smash Bros.: the N64's C-down can now go on a button in MENU > CONTROLS ([issue #6](https://github.com/mr-finster/miyoo64/issues/6)).
+  On the character select it gives a fighter its fourth colour (in a fight a jump). Every Miyoo button already has a
+  job, so C-down has none by default: its row shows "-", and the button you give it does C-down in place of what it
+  did (that row then shows "-" until it gets a button back; RESET TO DEFAULT puts everything back). A layout saved
+  before still loads as it was.
+
 ## 1.4.6 (Banjo-Kazooie, Pilotwings 64 and The New Tetris betas)
 
 New games, betas: Banjo-Kazooie 1.0.0, Pilotwings 64 1.0.0 and The New Tetris 1.0.0; the other twelve games are the

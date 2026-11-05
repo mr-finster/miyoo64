@@ -17,6 +17,11 @@ enum {
     MB_NONE, MB_A, MB_B, MB_X, MB_Y, MB_L1, MB_L2, MB_R1, MB_R2, MB_START, MB_SELECT, MB_DPAD, MB_COUNT
 };
 #define MB_REMAPPABLE 10 /* MB_A .. MB_SELECT */
+/* A row's btn: a free row, no button by default; the player gives it one here, which that button then gives in
+ * place of what it gave (that row is then unassigned until it gets a button again). miyoo_remap_key() returns
+ * MIYOO_REMAP_SYM(n64) for it, which the port's key mapping takes as that N64 input. */
+#define MB_FREE 0xFE
+#define MIYOO_REMAP_SYM(n64) (0x4000 + (n64))
 
 /* The N64's inputs (the rows' icons); MR_TEXT: a port action drawn as its name, no N64 icon. */
 enum {
@@ -26,7 +31,7 @@ enum {
 /* One row of the screen: the N64 input and the Miyoo button that gives it in the port's default
  * layout (in play). alt: a second button that gives it too (0: none). mod: a button held with
  * btn for it (a chord, e.g. START + L1 = N64 L; 0: none). A row whose btn is MB_NONE or
- * MB_DPAD, or with a mod, is shown but cannot be changed here. what: a few words (or NULL). */
+ * MB_DPAD, or with a mod, is shown but cannot be changed here; MB_FREE: see above. what: a few words (or NULL). */
 struct miyoo_remap_row {
     unsigned char n64, btn, alt, mod;
     const char *what;

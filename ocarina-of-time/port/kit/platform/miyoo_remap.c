@@ -6,6 +6,12 @@
  * button, "<pressed>=<acts as>" (names A B X Y L1 L2 R1 R2 START SELECT); a file that is not a
  * permutation of the ten is ignored. Back to the defaults: the file is removed.
  *
+ * A port's free row (btn MB_FREE, e.g. an N64 C button with no Miyoo button left for it) has no button by
+ * default. Given one here, that button gives the row's N64 input (miyoo_remap_key: MIYOO_REMAP_SYM(n64)) in place
+ * of what it gave, and that row is unassigned until it gets a button back; the file's line is then e.g.
+ * "L2=C-DOWN". So sMap is a permutation with free rows standing in for some of the ten; a file that names an
+ * output twice is ignored, and a file of the old kind (a permutation) loads as it did.
+ *
  * The screen lists the port's rows (miyoo_remap_rows: each N64 input and the Miyoo button that
  * gives it), drawn as button icons made here from rectangles and circles (no images), in the
  * menu's 8x8 font. A on a row, then the new button: done, or, when that button already gives
@@ -38,7 +44,9 @@ static const char *const kName[MB_COUNT] = { "-", "A", "B", "X", "Y", "L1", "L2"
 #define SYM_RIGHT 275
 #define SYM_LEFT 276
 
-static unsigned char sMap[MB_REMAPPABLE + 1]; /* pressed -> acts as */
+static unsigned char sMap[MB_REMAPPABLE + 1]; /* pressed -> acts as: MB_A..MB_SELECT, or OUT_FREE(n64) */
+#define OUT_FREE(n64) (16 + (n64))
+#define OUT_IS_FREE(o) ((o) >= 16)
 static int sLoaded;
 
 static int mb_of_sym(int sym) {
@@ -57,11 +65,20 @@ static int map_is_default(void) {
     return 1;
 }
 
-/* the pressed button that acts as `as` */
+/* the pressed button that acts as `as`, or 0 (none: `as` was given up for a free row) */
 static int map_inv(int as) {
     for (int b = 1; b <= MB_REMAPPABLE; b++)
         if (sMap[b] == as) return b;
-    return as;
+    return 0;
+}
+
+static const char *const kN64Name[MR_TEXT] = { "A", "B", "Z", "START", "L", "R", "C-UP", "C-DOWN", "C-LEFT", "C-RIGHT", "STICK", "D-PAD" };
+
+/* a free row of the port for this N64 input, or -1 */
+static int free_row(int n64) {
+    for (int i = 0; i < miyoo_remap_nrows; i++)
+        if (miyoo_remap_rows[i].btn == MB_FREE && miyoo_remap_rows[i].n64 == n64) return i;
+    return -1;
 }
 
 /* The game's data folder: the port's save folder (port_save_dir), else the kit's (miyoo_data_dir). */
@@ -80,6 +97,19 @@ static int name_to_mb(const char *s) {
     return 0;
 }
 
+/* what a pressed button acts as: one of the ten, or a free row's N64 input ("C-DOWN") */
+static int name_to_out(const char *s) {
+    const int b = name_to_mb(s);
+    if (b) return b;
+    for (int n = 0; n < MR_TEXT; n++)
+        if (strcmp(s, kN64Name[n]) == 0 && free_row(n) >= 0) return OUT_FREE(n);
+    return 0;
+}
+
+static const char *out_name(int o) {
+    return OUT_IS_FREE(o) ? kN64Name[o - 16] : kName[o];
+}
+
 static void map_load(void) {
     char path[512], line[96];
     unsigned char m[MB_REMAPPABLE + 1];
@@ -95,11 +125,11 @@ static void map_load(void) {
         *eq = 0;
         for (e = eq + 1; *e && *e != '\r' && *e != '\n' && *e != ' '; e++) { }
         *e = 0;
-        const int p = name_to_mb(line), as = name_to_mb(eq + 1);
+        const int p = name_to_mb(line), as = name_to_out(eq + 1);
         if (p && as) m[p] = (unsigned char)as;
     }
     fclose(f);
-    int seen[MB_REMAPPABLE + 1] = { 0 };
+    int seen[OUT_FREE(MR_TEXT)] = { 0 };
     for (int b = 1; b <= MB_REMAPPABLE; b++) {
         if (seen[m[b]]) { MIYOO_REMAP_LOG("controls: %s is not a whole layout, the defaults are used\n", path); return; }
         seen[m[b]] = 1;
@@ -117,7 +147,7 @@ static void map_save(void) {
     if (!f) return;
     fprintf(f, "# MENU > CONTROLS: <button pressed>=<the button it acts as>\n");
     for (int b = 1; b <= MB_REMAPPABLE; b++)
-        if (sMap[b] != b) fprintf(f, "%s=%s\n", kName[b], kName[sMap[b]]);
+        if (sMap[b] != b) fprintf(f, "%s=%s\n", kName[b], out_name(sMap[b]));
     if (fflush(f) == 0 && fclose(f) == 0) rename(tmp, path);
     else remove(tmp);
 }
@@ -128,9 +158,10 @@ int miyoo_remap_key(int sym) {
     if (p && sMap[p] != p) {
         static int log = -1; /* MIYOO_REMAP_LOG=1 (tests): each moved key as the port takes it */
         if (log < 0) { const char *e = getenv("MIYOO_REMAP_LOG"); log = e && e[0] == '1'; }
-        if (log) MIYOO_REMAP_LOG("remap: %s acts as %s\n", kName[p], kName[sMap[p]]);
+        if (log) MIYOO_REMAP_LOG("remap: %s acts as %s\n", kName[p], out_name(sMap[p]));
     }
-    return p ? kSym[sMap[p]] : sym;
+    if (!p) return sym;
+    return OUT_IS_FREE(sMap[p]) ? MIYOO_REMAP_SYM(sMap[p] - 16) : kSym[sMap[p]];
 }
 
 /* -------- drawing (32-bit surfaces, 0x00RRGGBB) -------- */
@@ -256,26 +287,31 @@ static void icon_n64(int cx, int cy, int n) {
     }
 }
 
-static const char *const kN64Name[MR_TEXT] = { "A", "B", "Z", "START", "L", "R", "C-UP", "C-DOWN", "C-LEFT", "C-RIGHT", "STICK", "D-PAD" };
 
 static int row_fixed(const struct miyoo_remap_row *r) {
+    if (r->btn == MB_FREE) return 0;
     return r->btn < MB_A || r->btn > MB_SELECT || r->mod != 0;
+}
+
+/* what a row's button acts as in sMap: its logical button, or its free output */
+static int row_out(const struct miyoo_remap_row *r) {
+    return r->btn == MB_FREE ? OUT_FREE(r->n64) : r->btn;
 }
 
 static const char *row_name(const struct miyoo_remap_row *r) {
     return r->n64 < MR_TEXT ? kN64Name[r->n64] : (r->what ? r->what : "?");
 }
 
-/* the pressed buttons that give the row now (a logical button b is given by map_inv(b)) */
+/* the pressed buttons that give the row now (a logical button b is given by map_inv(b); 0: none) */
 static int shown(int logical) {
-    return logical >= MB_A && logical <= MB_SELECT ? map_inv(logical) : logical;
+    return (logical >= MB_A && logical <= MB_SELECT) || OUT_IS_FREE(logical) ? map_inv(logical) : logical;
 }
 
 /* the first row (other than skip) that `logical` gives, or -1 */
 static int row_using(int logical, int skip) {
     for (int i = 0; i < miyoo_remap_nrows; i++) {
         const struct miyoo_remap_row *r = &miyoo_remap_rows[i];
-        if (i != skip && (r->btn == logical || r->alt == logical || r->mod == logical)) return i;
+        if (i != skip && (row_out(r) == logical || r->alt == logical || r->mod == logical)) return i;
     }
     return -1;
 }
@@ -319,7 +355,7 @@ static void compose(SDL_Surface *draw, SDL_Surface *backdrop, int cur, int top, 
             text(x, cy - 7, 2, "+", C_TEXT);
             x += 22;
         }
-        x += icon_miyoo(x, cy, shown(r->btn));
+        x += icon_miyoo(x, cy, shown(row_out(r)));
         if (r->alt) {
             text(x + 6, cy - 7, 2, "/", C_DIM);
             icon_miyoo(x + 28, cy, shown(r->alt));
@@ -332,7 +368,9 @@ static void compose(SDL_Surface *draw, SDL_Surface *backdrop, int cur, int top, 
     if (mode == M_LISTEN) {
         text_c(px + pw / 2, fy, 2, "PRESS THE NEW BUTTON  MENU: CANCEL", C_SEL);
     } else if (mode == M_SWAP) {
-        snprintf(buf, sizeof(buf), "SWAP WITH %.10s? A: YES  B: NO", row_name(&miyoo_remap_rows[pend >> 8]));
+        /* the row has no button to give back: the other row is left without one */
+        snprintf(buf, sizeof(buf), "%s %.10s? A: YES  B: NO", map_inv(row_out(&miyoo_remap_rows[cur])) ? "SWAP WITH" : "TAKE FROM",
+                 row_name(&miyoo_remap_rows[pend >> 8]));
         text_c(px + pw / 2, fy, 2, buf, C_SEL);
     } else if (mode == M_RESET) {
         text_c(px + pw / 2, fy, 2, "RESET ALL? A: YES  B: NO", C_SEL);
@@ -346,11 +384,12 @@ static void compose(SDL_Surface *draw, SDL_Surface *backdrop, int cur, int top, 
     if (SDL_MUSTLOCK(draw)) SDL_UnlockSurface(draw);
 }
 
-/* the row gets the pressed button p: p and the button that gave the row trade places */
+/* the row gets the pressed button p: p and the button that gave the row trade places (none gave it: what p
+ * gave is left without a button) */
 static void assign(int row, int p) {
-    const int as = miyoo_remap_rows[row].btn, q = map_inv(as), other = sMap[p];
+    const int as = row_out(&miyoo_remap_rows[row]), q = map_inv(as), other = sMap[p];
     sMap[p] = (unsigned char)as;
-    sMap[q] = (unsigned char)other;
+    if (q) sMap[q] = (unsigned char)other;
     map_save();
 }
 
@@ -381,7 +420,7 @@ void miyoo_remap_screen(SDL_Surface *draw, SDL_Surface *backdrop, void (*show)(v
                 const int p = mb_of_sym(sym);
                 mode = M_BROWSE;
                 if (!p) break; /* MENU, a direction: cancel */
-                const int as = miyoo_remap_rows[cur].btn;
+                const int as = row_out(&miyoo_remap_rows[cur]);
                 if (map_inv(as) == p) break;
                 const int other = row_using(sMap[p], cur);
                 if (other >= 0) { mode = M_SWAP; pend = other << 8 | p; }
@@ -463,8 +502,9 @@ void miyoo_remap_test_dump(SDL_Surface *draw, SDL_Surface *backdrop, const char 
     snprintf(path, sizeof(path), "%s/controls_3_reset.ppm", dir); dump_ppm(draw, path);
     /* a moved layout: the first changeable row on Y (swapped), as the screen then shows it */
     if (first < miyoo_remap_nrows) {
-        const int as = miyoo_remap_rows[first].btn, q = map_inv(as), other = sMap[MB_Y];
-        sMap[MB_Y] = (unsigned char)as; sMap[q] = (unsigned char)other;
+        const int as = row_out(&miyoo_remap_rows[first]), q = map_inv(as), other = sMap[MB_Y];
+        sMap[MB_Y] = (unsigned char)as;
+        if (q) sMap[q] = (unsigned char)other;
         compose(draw, backdrop, first, 0, M_BROWSE, 0, 1);
         snprintf(path, sizeof(path), "%s/controls_4_moved.ppm", dir); dump_ppm(draw, path);
     }
