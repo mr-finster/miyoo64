@@ -25,6 +25,7 @@ Download `SuperSmashBros-miyoo.zip` from https://miyoo-n64.pages.dev, and instal
 | L1 | N64 R |
 | SELECT | Taunt |
 | L2 / R2 | N64 C-left / C-right: the fighter's colour on the character select (jump in a fight) |
+| (none) | N64 C-down: no button by default; give it one in MENU > CONTROLS (that button then gives C-down in place of its own input) |
 | START | Start |
 | MENU | Game menu: save, load, exit |
 

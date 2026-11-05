@@ -106,6 +106,7 @@ Control scheme 1, plus the Mini's extra shoulder buttons:
 | L1 | R (A + Z: shield-grab) |
 | SELECT | L (taunt) |
 | L2 / R2 | C-left / C-right (the character select's fighter colours; in a fight a jump, as every C button) |
+| (none) | C-down: no button by default; MENU > CONTROLS can put it on any button, which then gives C-down in place of its own input |
 | START | START |
 | MENU | the game menu (resume, save/load state, exit) |
 
