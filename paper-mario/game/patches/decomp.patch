@@ -1,5 +1,5 @@
 diff --git a/include/PR/R4300.h b/include/PR/R4300.h
-index 51fe709..371195b 100644
+index 51fe7097a..371195b62 100644
 --- a/include/PR/R4300.h
 +++ b/include/PR/R4300.h
 @@ -62,8 +62,13 @@
@@ -17,7 +17,7 @@ index 51fe709..371195b 100644
  #define	PHYS_TO_K0(x)	((u32)(x)|0x80000000)	/* physical to kseg0 */
  #define	PHYS_TO_K1(x)	((u32)(x)|0xA0000000)	/* physical to kseg1 */
 diff --git a/include/PR/mbi.h b/include/PR/mbi.h
-index 2f88d6e..c08eb7c 100644
+index 2f88d6ef4..c08eb7cd7 100644
 --- a/include/PR/mbi.h
 +++ b/include/PR/mbi.h
 @@ -44,8 +44,15 @@
@@ -38,7 +38,7 @@ index 2f88d6e..c08eb7c 100644
      ((unsigned int)(((unsigned int)(v) >> (s)) & ((0x01 << (w)) - 1)))
  
 diff --git a/include/PR/os_convert.h b/include/PR/os_convert.h
-index 3797d1b..425e3b1 100644
+index 3797d1b53..425e3b16c 100644
 --- a/include/PR/os_convert.h
 +++ b/include/PR/os_convert.h
 @@ -71,7 +71,10 @@ extern "C" {
@@ -68,7 +68,7 @@ index 3797d1b..425e3b1 100644
  
  /**************************************************************************
 diff --git a/include/common_structs.h b/include/common_structs.h
-index 41eacf3..8475b7f 100644
+index 41eacf3e7..8475b7fce 100644
 --- a/include/common_structs.h
 +++ b/include/common_structs.h
 @@ -1034,6 +1034,18 @@ typedef struct TextureHeader {
@@ -127,7 +127,7 @@ index 41eacf3..8475b7f 100644
      /* 0x07 */ Vec2bu size2;
      /* 0x09 */ Vec2bu size3;
 diff --git a/include/entity.h b/include/entity.h
-index 8b14bbc..bf12a4f 100644
+index 8b14bbc76..bf12a4fce 100644
 --- a/include/entity.h
 +++ b/include/entity.h
 @@ -61,7 +61,12 @@ enum {
@@ -145,7 +145,7 @@ index 8b14bbc..bf12a4f 100644
  
  #define BLOCK_GRID_SIZE 25
 diff --git a/include/macros.h b/include/macros.h
-index 32afae5..600ca43 100644
+index 32afae551..600ca4377 100644
 --- a/include/macros.h
 +++ b/include/macros.h
 @@ -62,8 +62,38 @@
@@ -225,7 +225,7 @@ index 32afae5..600ca43 100644
  #define PM_RM_SHROUD    GBL_c1(G_BL_CLR_BL, G_BL_A_FOG, G_BL_CLR_IN, G_BL_1MA)
  
 diff --git a/include/model.h b/include/model.h
-index b1455b1..8d4ed23 100644
+index b1455b10e..8d4ed2397 100644
 --- a/include/model.h
 +++ b/include/model.h
 @@ -168,7 +168,11 @@ typedef enum ExtraTileTypes {
@@ -241,7 +241,7 @@ index b1455b1..8d4ed23 100644
  typedef struct ShapeFileHeader {
      /* 0x00 */ ModelNode* root;
 diff --git a/src/101b90_len_8f0.c b/src/101b90_len_8f0.c
-index 20dd4af..34ccce0 100644
+index 20dd4afe4..34ccce000 100644
 --- a/src/101b90_len_8f0.c
 +++ b/src/101b90_len_8f0.c
 @@ -3,6 +3,7 @@
@@ -324,7 +324,7 @@ index 20dd4af..34ccce0 100644
  
  IMG_PTR spr_get_player_raster(s32 rasterIndex, s32 playerSpriteID) {
 diff --git a/src/animator.c b/src/animator.c
-index a3ea4e5..037df7f 100644
+index a3ea4e571..037df7f05 100644
 --- a/src/animator.c
 +++ b/src/animator.c
 @@ -79,7 +79,7 @@ Vtx* animator_copy_vertices_to_buffer(ModelAnimator* animator, AnimatorNode* nod
@@ -366,7 +366,7 @@ index a3ea4e5..037df7f 100644
      }
  
 diff --git a/src/audio.h b/src/audio.h
-index 3c37acf..01bdbff 100644
+index 3c37acf6b..01bdbff74 100644
 --- a/src/audio.h
 +++ b/src/audio.h
 @@ -1319,10 +1319,19 @@ typedef struct AmbienceSavedVoice {
@@ -390,7 +390,7 @@ index 3c37acf..01bdbff 100644
      s32 all;
  } AmbVoiceStateInfo;
 diff --git a/src/audio/bgm_player.c b/src/audio/bgm_player.c
-index 3f78074..a5ada20 100644
+index 3f780743f..a5ada20e5 100644
 --- a/src/audio/bgm_player.c
 +++ b/src/audio/bgm_player.c
 @@ -13,6 +13,27 @@ extern u8 SeqCmdArgCounts[];
@@ -447,7 +447,7 @@ index 3f78074..a5ada20 100644
  
  void au_BGMCmd_F7_ReverbType(BGMPlayer* player, BGMPlayerTrack* track) {
 diff --git a/src/audio/core/engine.c b/src/audio/core/engine.c
-index 0df5774..2e4f4c0 100644
+index 0df57742c..2e4f4c0a7 100644
 --- a/src/audio/core/engine.c
 +++ b/src/audio/core/engine.c
 @@ -1,4 +1,5 @@
@@ -630,7 +630,7 @@ index 0df5774..2e4f4c0 100644
                  group = au_get_BK_instruments(bankSet, bankIndex);
                  inst = (*group);
 diff --git a/src/audio/load_banks.c b/src/audio/load_banks.c
-index e78212b..bc34237 100644
+index e78212bbc..bc342372b 100644
 --- a/src/audio/load_banks.c
 +++ b/src/audio/load_banks.c
 @@ -1,5 +1,6 @@
@@ -651,7 +651,7 @@ index e78212b..bc34237 100644
      for (i = 0; i < ARRAY_COUNT(buffer); i++) {
          if (buffer[i].fileIndex == 0xFFFF) {
 diff --git a/src/background.c b/src/background.c
-index 946e396..a29e01a 100644
+index 946e39631..a29e01a80 100644
 --- a/src/background.c
 +++ b/src/background.c
 @@ -1,4 +1,5 @@
@@ -698,7 +698,7 @@ index 946e396..a29e01a 100644
                  break;
          }
 diff --git a/src/background_gfx.c b/src/background_gfx.c
-index 9bd45ea..ba67cb9 100644
+index 9bd45ea8e..ba67cb9a0 100644
 --- a/src/background_gfx.c
 +++ b/src/background_gfx.c
 @@ -1,9 +1,15 @@
@@ -791,7 +791,7 @@ index 9bd45ea..ba67cb9 100644
                  gDPFillRectangle(gMainGfxPos++, backgroundMinX, backgroundMinY, backgroundMaxX - 1, backgroundMaxY - 1);
              } else {
 diff --git a/src/battle/16C8E0.c b/src/battle/16C8E0.c
-index 1cf1164..91046b3 100644
+index 1cf11648f..91046b385 100644
 --- a/src/battle/16C8E0.c
 +++ b/src/battle/16C8E0.c
 @@ -753,7 +753,7 @@ void tattle_cam_pre_render(Camera* camera) {
@@ -813,7 +813,7 @@ index 1cf1164..91046b3 100644
          }
      }
 diff --git a/src/battle/190B20.c b/src/battle/190B20.c
-index c5fa2c8..51c8d23 100644
+index c5fa2c849..51c8d2309 100644
 --- a/src/battle/190B20.c
 +++ b/src/battle/190B20.c
 @@ -1759,7 +1759,7 @@ Actor* create_actor(Formation formation) {
@@ -826,7 +826,7 @@ index c5fa2c8..51c8d23 100644
          y = StandardActorHomePositions[formation->home.index].y;
          z = StandardActorHomePositions[formation->home.index].z;
 diff --git a/src/battle/actor_rendering.c b/src/battle/actor_rendering.c
-index 86d6340..19f8903 100644
+index 86d6340df..19f8903ed 100644
 --- a/src/battle/actor_rendering.c
 +++ b/src/battle/actor_rendering.c
 @@ -2050,7 +2050,11 @@ void make_flash_palettes(ActorPart* part) {
@@ -842,7 +842,7 @@ index 86d6340..19f8903 100644
                  dest++;
  
 diff --git a/src/battle/btl_states_actions.c b/src/battle/btl_states_actions.c
-index 22cbf2b..fdb7a71 100644
+index 22cbf2bb6..fdb7a712c 100644
 --- a/src/battle/btl_states_actions.c
 +++ b/src/battle/btl_states_actions.c
 @@ -1,4 +1,5 @@
@@ -862,7 +862,7 @@ index 22cbf2b..fdb7a71 100644
  
              ASSERT(size <= 0x8000);
 diff --git a/src/collision.c b/src/collision.c
-index 481d032..07548ec 100644
+index 481d03230..07548ec83 100644
 --- a/src/collision.c
 +++ b/src/collision.c
 @@ -1,5 +1,6 @@
@@ -938,7 +938,7 @@ index 481d032..07548ec 100644
          map->hitAssetCollisionOffset = uncompressedData->collisionOffset;
  
 diff --git a/src/encounter.c b/src/encounter.c
-index 821fc54..9507acc 100644
+index 821fc54ad..9507acccf 100644
 --- a/src/encounter.c
 +++ b/src/encounter.c
 @@ -2532,7 +2532,7 @@ void create_encounters(void) {
@@ -951,7 +951,7 @@ index 821fc54..9507acc 100644
                      } else {
                          enemy->initBytecode = nullptr;
 diff --git a/src/entity.c b/src/entity.c
-index 0be512c..fca05d4 100644
+index 0be512c20..fca05d4d4 100644
 --- a/src/entity.c
 +++ b/src/entity.c
 @@ -903,34 +903,57 @@ void entity_swizzle_anim_pointers(EntityBlueprint* entityData, void* baseAnim, v
@@ -1035,7 +1035,7 @@ index 0be512c..fca05d4 100644
          entity_swizzle_anim_pointers(entityData, animBaseAddr, entity->gfxBaseAddr);
      }
 diff --git a/src/evt/demo_api.c b/src/evt/demo_api.c
-index c986122..c76d404 100644
+index c9861224a..c76d4048c 100644
 --- a/src/evt/demo_api.c
 +++ b/src/evt/demo_api.c
 @@ -1,4 +1,5 @@
@@ -1063,7 +1063,7 @@ index c986122..c76d404 100644
      // load shading data
      dataOffset = (s32)sprite_shading_profiles_data_ROM_START + data + ShadingOffsetsBuffer[0];
 diff --git a/src/evt/evt.c b/src/evt/evt.c
-index 348c585..5d2ffe9 100644
+index 348c585a0..5d2ffe9fa 100644
 --- a/src/evt/evt.c
 +++ b/src/evt/evt.c
 @@ -975,6 +975,12 @@ ApiStatus evt_handle_exec_wait(Evt* script) {
@@ -1089,7 +1089,7 @@ index 348c585..5d2ffe9 100644
      }
  
 diff --git a/src/evt/npc_api.c b/src/evt/npc_api.c
-index ad4fc9a..4d42acf 100644
+index ad4fc9a1b..4d42acffe 100644
 --- a/src/evt/npc_api.c
 +++ b/src/evt/npc_api.c
 @@ -8,7 +8,7 @@ extern s32 wExtraPartnerNpcID;
@@ -1102,7 +1102,7 @@ index ad4fc9a..4d42acf 100644
      } else {
          return (Npc*) npcIdOrPtr;
 diff --git a/src/evt/player_api.c b/src/evt/player_api.c
-index 40bdb1a..b09142e 100644
+index 40bdb1ab5..b09142ec0 100644
 --- a/src/evt/player_api.c
 +++ b/src/evt/player_api.c
 @@ -400,7 +400,7 @@ API_CALLABLE(PlayerFaceNpc) {
@@ -1115,7 +1115,7 @@ index 40bdb1a..b09142e 100644
          } else {
              npc = get_npc_safe(npcID);
 diff --git a/src/filemenu/filemenu_common.c b/src/filemenu/filemenu_common.c
-index 4b8b88b..a37e38a 100644
+index 4b8b88b7b..a37e38a2b 100644
 --- a/src/filemenu/filemenu_common.c
 +++ b/src/filemenu/filemenu_common.c
 @@ -1135,6 +1135,10 @@ void filemenu_cleanup(void) {
@@ -1130,7 +1130,7 @@ index 4b8b88b..a37e38a 100644
      }
  
 diff --git a/src/filemenu/filemenu_msg.c b/src/filemenu/filemenu_msg.c
-index 018496f..4ed8ff4 100644
+index 018496fca..4ed8ff4e2 100644
 --- a/src/filemenu/filemenu_msg.c
 +++ b/src/filemenu/filemenu_msg.c
 @@ -811,7 +811,7 @@ void filemenu_draw_message(u8* message, s32 x, s32 y, s32 alpha, s32 color, u32
@@ -1143,7 +1143,7 @@ index 018496f..4ed8ff4 100644
          filemenu_draw_char(0xF3, x, y, flag1, color, flag2);
          tmp = message;
 diff --git a/src/filemenu/filemenu_selectlanguage.c b/src/filemenu/filemenu_selectlanguage.c
-index fb2e1ba..62d7eea 100644
+index fb2e1badd..62d7eea55 100644
 --- a/src/filemenu/filemenu_selectlanguage.c
 +++ b/src/filemenu/filemenu_selectlanguage.c
 @@ -235,8 +235,14 @@ void filemenu_selectlanguage_init(MenuPanel* menu) {
@@ -1204,7 +1204,7 @@ index fb2e1ba..62d7eea 100644
 +#endif
  }
 diff --git a/src/heaps2.c b/src/heaps2.c
-index 4e4dbb1..b1b33d6 100644
+index 4e4dbb121..b1b33d64b 100644
 --- a/src/heaps2.c
 +++ b/src/heaps2.c
 @@ -1,7 +1,7 @@
@@ -1219,7 +1219,7 @@ index 4e4dbb1..b1b33d6 100644
 +BSS u8 WorldEntityHeapBase[0x10] ALIGNED(16);
 +BSS u8 heap_collisionHead[COLLISION_HEAP_SIZE] ALIGNED(16);
 diff --git a/src/heaps3.c b/src/heaps3.c
-index 3097275..63b83f1 100644
+index 3097275e6..63b83f151 100644
 --- a/src/heaps3.c
 +++ b/src/heaps3.c
 @@ -1,7 +1,7 @@
@@ -1236,7 +1236,7 @@ index 3097275..63b83f1 100644
 +BSS u16 gFrameBuf1[FRAME_BUFFER_SIZE / 2] ALIGNED(64);
 +BSS u16 gFrameBuf2[FRAME_BUFFER_SIZE / 2] ALIGNED(64);
 diff --git a/src/inventory.c b/src/inventory.c
-index 3e703ab..2c1850d 100644
+index 3e703abc2..2c1850d3b 100644
 --- a/src/inventory.c
 +++ b/src/inventory.c
 @@ -1,7 +1,14 @@
@@ -1255,7 +1255,7 @@ index 3e703ab..2c1850d 100644
  
  enum BlinkModes {
 diff --git a/src/is_debug.c b/src/is_debug.c
-index 072e360..991b882 100644
+index 072e36068..991b88269 100644
 --- a/src/is_debug.c
 +++ b/src/is_debug.c
 @@ -1,4 +1,5 @@
@@ -1277,7 +1277,7 @@ index 072e360..991b882 100644
      if (data != ASCII_TO_U32('I', 'S', '6', '4')) {
          return (char*) 1;
 diff --git a/src/model.c b/src/model.c
-index a68a06b..5f05fff 100644
+index a68a06b44..5f05fff6b 100644
 --- a/src/model.c
 +++ b/src/model.c
 @@ -1,4 +1,5 @@
@@ -1382,7 +1382,7 @@ index a68a06b..5f05fff 100644
          // The following code will use last frame's depth value, since the copy that was just written won't be executed until the current frame is drawn.
  
 diff --git a/src/msg.c b/src/msg.c
-index ba82fe8..e7fe9b5 100644
+index ba82fe8be..e7fe9b520 100644
 --- a/src/msg.c
 +++ b/src/msg.c
 @@ -1,4 +1,5 @@
@@ -1471,7 +1471,7 @@ index ba82fe8..e7fe9b5 100644
          } else {
              mallocSpace = general_heap_malloc(0x400);
 diff --git a/src/msg_draw.c b/src/msg_draw.c
-index 89b1656..074f2c5 100644
+index 89b1656dc..074f2c523 100644
 --- a/src/msg_draw.c
 +++ b/src/msg_draw.c
 @@ -6,6 +6,9 @@
@@ -1497,7 +1497,7 @@ index 89b1656..074f2c5 100644
                              printer->windowSize.y = MSG_NORMAL_WIN_HEIGHT;
                              msg_drawState->textStartPos[0] = 26;
 diff --git a/src/screen_render_util.c b/src/screen_render_util.c
-index 106932b..e04ae7c 100644
+index 106932bca..e04ae7c08 100644
 --- a/src/screen_render_util.c
 +++ b/src/screen_render_util.c
 @@ -26,6 +26,10 @@ Gfx Gfx_DarknessStencilQuad[] = {
@@ -1522,7 +1522,7 @@ index 106932b..e04ae7c 100644
      gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
      gDPSetCombineMode(gMainGfxPos++, PM_CC_10, PM_CC_10);
 diff --git a/src/sprite.c b/src/sprite.c
-index 5e0cae2..596e23a 100644
+index 5e0cae21e..596e23a6a 100644
 --- a/src/sprite.c
 +++ b/src/sprite.c
 @@ -1270,7 +1270,11 @@ s32 spr_get_comp_position(s32 spriteIdx, s32 compListIdx, s32* outX, s32* outY,
@@ -1550,7 +1550,7 @@ index 5e0cae2..596e23a 100644
      return -1;
  }
 diff --git a/src/state_battle.c b/src/state_battle.c
-index e3467a5..ad44bf4 100644
+index e3467a502..ad44bf416 100644
 --- a/src/state_battle.c
 +++ b/src/state_battle.c
 @@ -1,4 +1,5 @@
@@ -1570,7 +1570,7 @@ index e3467a5..ad44bf4 100644
                  initialize_collision();
                  restore_map_collision_data();
 diff --git a/src/state_file_select.c b/src/state_file_select.c
-index d4e7a20..f3299fe 100644
+index d4e7a20d3..f3299fe56 100644
 --- a/src/state_file_select.c
 +++ b/src/state_file_select.c
 @@ -1,4 +1,5 @@
@@ -1590,7 +1590,7 @@ index d4e7a20..f3299fe 100644
                      initialize_collision();
                      restore_map_collision_data();
 diff --git a/src/state_pause.c b/src/state_pause.c
-index 136c5bf..fe44d02 100644
+index 136c5bf28..fe44d025b 100644
 --- a/src/state_pause.c
 +++ b/src/state_pause.c
 @@ -1,4 +1,5 @@
@@ -1610,7 +1610,7 @@ index 136c5bf..fe44d02 100644
                      initialize_collision();
                      restore_map_collision_data();
 diff --git a/src/state_startup.c b/src/state_startup.c
-index 28dc6ea..3e03db3 100644
+index 28dc6ea4e..3e03db308 100644
 --- a/src/state_startup.c
 +++ b/src/state_startup.c
 @@ -4,6 +4,9 @@
@@ -1634,7 +1634,7 @@ index 28dc6ea..3e03db3 100644
  }
  
 diff --git a/src/state_title_screen.c b/src/state_title_screen.c
-index 4648322..3b69f86 100644
+index 464832287..3b69f8641 100644
 --- a/src/state_title_screen.c
 +++ b/src/state_title_screen.c
 @@ -1,4 +1,5 @@
@@ -1684,7 +1684,7 @@ index 4648322..3b69f86 100644
  
      create_cameras();
 diff --git a/src/world/area_end/common/Credits.inc.c b/src/world/area_end/common/Credits.inc.c
-index a92b3ba..83c9201 100644
+index a92b3ba3a..83c920126 100644
 --- a/src/world/area_end/common/Credits.inc.c
 +++ b/src/world/area_end/common/Credits.inc.c
 @@ -778,7 +778,7 @@ void N(credits_load_message)(CreditsEntry* entry) {
@@ -1697,7 +1697,7 @@ index a92b3ba..83c9201 100644
              line->message = N(CreditsMessageBuffers)[N(CreditsBufferIndex)];
              N(CreditsBufferIndex)++;
 diff --git a/src/world/area_hos/hos_05/intro.c b/src/world/area_hos/hos_05/intro.c
-index 7a96934..5a15f57 100644
+index 7a969348b..5a15f5729 100644
 --- a/src/world/area_hos/hos_05/intro.c
 +++ b/src/world/area_hos/hos_05/intro.c
 @@ -1496,7 +1496,11 @@ void N(load_story_image)(s32 loadBackImage, s32 imageIdx) {
@@ -1713,7 +1713,7 @@ index 7a96934..5a15f57 100644
          return;
      }
 diff --git a/src/world/area_kmr/kmr_21/main.c b/src/world/area_kmr/kmr_21/main.c
-index 03e3ffe..440be74 100644
+index 03e3ffee0..440be7459 100644
 --- a/src/world/area_kmr/kmr_21/main.c
 +++ b/src/world/area_kmr/kmr_21/main.c
 @@ -1,4 +1,7 @@
@@ -1735,7 +1735,7 @@ index 03e3ffe..440be74 100644
      create_worker_frontUI(nullptr, worker_render_title_image);
      return ApiStatus_DONE2;
 diff --git a/src/world/common/atomic/WhaleAnim.inc.c b/src/world/common/atomic/WhaleAnim.inc.c
-index c33ba3c..6fea071 100644
+index c33ba3c71..6fea071f1 100644
 --- a/src/world/common/atomic/WhaleAnim.inc.c
 +++ b/src/world/common/atomic/WhaleAnim.inc.c
 @@ -4,7 +4,7 @@
@@ -1748,7 +1748,7 @@ index c33ba3c..6fea071 100644
      } else {
          return (Npc*) npcIdOrPtr;
 diff --git a/src/world/common/enemy/Bandit.inc.c b/src/world/common/enemy/Bandit.inc.c
-index dfa7373..b172d45 100644
+index dfa737305..b172d45b8 100644
 --- a/src/world/common/enemy/Bandit.inc.c
 +++ b/src/world/common/enemy/Bandit.inc.c
 @@ -17,7 +17,7 @@ API_CALLABLE(N(Bandit_TetherStolenCoin)) {
@@ -1761,7 +1761,7 @@ index dfa7373..b172d45 100644
          } else {
              npc = (Npc*)npcID;
 diff --git a/src/world/partner/goombario.c b/src/world/partner/goombario.c
-index 1c2cb27..f97f927 100644
+index 1c2cb2775..f97f92760 100644
 --- a/src/world/partner/goombario.c
 +++ b/src/world/partner/goombario.c
 @@ -376,7 +376,7 @@ API_CALLABLE(N(SelectTattleMsg)) {
@@ -1792,7 +1792,7 @@ index 1c2cb27..f97f927 100644
                  } else {
                      script->VAR_MSG = msgID;
 diff --git a/src/world/world.c b/src/world/world.c
-index b4289d6..0aa6cac 100644
+index b4289d6cf..0aa6cac8a 100644
 --- a/src/world/world.c
 +++ b/src/world/world.c
 @@ -1,4 +1,5 @@
