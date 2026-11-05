@@ -1259,11 +1259,13 @@ skip:
         PLAY_LOG(3814);
     }
 #if defined(TARGET_HANDHELD)
-    { /* hh_input.c's aim ramp: the d-pad eases in while the view is first person or aiming */
+    { /* hh_input.c's fine aim: the d-pad eases in while the view is first person or aiming (the C-up look, the
+       * bow, the hookshot, the slingshot, the boomerang), never on the pause screen */
         extern u8 gHhAimCam;
         const s16 mode = GET_ACTIVE_CAM(this)->mode;
-        gHhAimCam = mode == CAM_MODE_FIRST_PERSON || mode == CAM_MODE_AIM_ADULT || mode == CAM_MODE_AIM_CHILD ||
-                    mode == CAM_MODE_AIM_BOOMERANG;
+        gHhAimCam = (this->pauseCtx.state == PAUSE_STATE_OFF) &&
+                    (mode == CAM_MODE_FIRST_PERSON || mode == CAM_MODE_AIM_ADULT || mode == CAM_MODE_AIM_CHILD ||
+                     mode == CAM_MODE_AIM_BOOMERANG);
     }
 #endif
 

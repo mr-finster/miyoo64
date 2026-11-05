@@ -78,7 +78,7 @@ The zip comes from `miyoo/tools/miyoo_pack.py` (shared by all the ports, from th
 
 | Miyoo | N64 |
 |---|---|
-| D-pad | Stick (in first person and aiming it eases in for finer aim) |
+| D-pad | Stick (fine aim in first person and aiming, below) |
 | A / B | A / B |
 | L1 | Z (target) |
 | R1 | R (shield) |
@@ -92,6 +92,13 @@ The zip comes from `miyoo/tools/miyoo_pack.py` (shared by all the ports, from th
 | MENU | the game menu (resume, save/load state, exit) |
 
 While you play the ocarina, the d-pad is the four C notes and A is A; B puts the ocarina away.
+
+**Fine aim:** in first person and while aiming (the C-up look, the slingshot, the bow, the hookshot, the
+boomerang), the d-pad starts as a small push of the stick, 20% of full tilt, for the first quarter second,
+then eases up to full tilt at one second (until 1.1.6: a third, full tilt at 0.4 s). A tap nudges the aim by
+about 0.4 degrees (7.9 at full tilt); holding turns as fast as before. Walking, menus and every other view are
+unchanged (full tilt). The port has no walk or half-stick button. `fineaim=0` in `debug.cfg` turns it off;
+`fineaimpct=` (default 20) and `fineaimms=` (default 1000) tune it (SETTINGS.md).
 
 In the menu: up and down pick an entry, left and right change the slot, A or START selects, and
 B backs out of a confirmation or closes the menu (so does MENU).

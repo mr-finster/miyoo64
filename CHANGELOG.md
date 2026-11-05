@@ -5,8 +5,19 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
-Rebuilt: Super Smash Bros. 1.1.8, GoldenEye 007 1.1.8 and Perfect Dark 1.0.8.
+Rebuilt: Super Smash Bros. 1.1.8, GoldenEye 007 1.1.8, Perfect Dark 1.0.8, Majora's Mask 1.0.8 and Ocarina of
+Time 1.1.7.
 
+- Majora's Mask and Ocarina of Time: fine aim with the d-pad
+  ([issue #8](https://github.com/mr-finster/miyoo64/issues/8)). In first person and while aiming (the C-up look, the
+  bow and magic arrows, the hookshot, the slingshot, Deku bubbles, Zora fins, the boomerang), the d-pad starts as a
+  small push of the stick, 20% of full tilt, for the first quarter second, then eases up to full tilt at one second. A
+  one-frame tap now turns the aim 0.4 degrees, where it turned 7.9 in Majora's Mask and 1.1 in Ocarina of Time; a held
+  d-pad turns about 51 degrees in its first second and the full 159 degrees a second after that, as before (measured
+  on the Miyoo build in an emulator). Walking, menus and every other view are unchanged. Majora's Mask had no easing
+  at all before; Ocarina of Time's started at a third and was at full tilt after 0.4 s. `MM_FINEAIM=0` in Majora's
+  Mask's launch.sh, or `fineaim=0` in Ocarina of Time's debug.cfg, turns it off; `MM_FINEAIMPCT` / `fineaimpct`
+  (default 20) and `MM_FINEAIMMS` / `fineaimms` (default 1000) tune it.
 - Super Smash Bros.: the N64's C-down can now go on a button in MENU > CONTROLS ([issue #6](https://github.com/mr-finster/miyoo64/issues/6)).
   On the character select it gives a fighter its fourth colour (in a fight a jump). Every Miyoo button already has a
   job, so C-down has none by default: its row shows "-", and the button you give it does C-down in place of what it

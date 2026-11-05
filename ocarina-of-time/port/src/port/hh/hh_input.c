@@ -21,17 +21,48 @@
 
 #define HH_STICK_MAX 80
 
-/* The d-pad in first person and aiming (the C-up look, bow, hookshot, slingshot, boomerang: the
- * camera modes Play_Update copies to gHhAimCam). OoT turns the view by (1 - cos(stick * 200)) *
- * 1500 units a frame (z_player.c): 4.9 degrees at full tilt, 1.3 at half, 0.6 at a third, so full
- * tilt alone made small targets one-frame taps. There each d-pad axis starts at a third (20 past
- * PadUtils' dead zone of 7) and reaches full tilt after 0.4 s held. OOT_AIMRAMP=0: full tilt. */
+/* Fine aim (issue #8): the d-pad in first person and aiming -- the C-up look, the bow (magic arrows too),
+ * the hookshot, the slingshot, the boomerang: the camera modes Play_Update copies to gHhAimCam, never while
+ * paused. The game turns the aim by (1 - cos(stick * 200)) * 1500 units a frame (z_player.c): 7.9 degrees
+ * a frame at full tilt (stick 80). Each d-pad axis starts at OOT_FINEAIMPCT percent of full tilt (default
+ * 20: stick 16, 0.38 degrees a frame), stays there for the first 250 ms, then rises in a straight line to
+ * full tilt at OOT_FINEAIMMS (default 1000 ms). Until 1.1.6 it started at a third (stick 27, 1.1 degrees a
+ * frame) and reached full tilt at 0.4 s. Walking, menus and every other view: full tilt as before.
+ * OOT_FINEAIM=0: full tilt everywhere (debug.cfg fineaim=0, fineaimpct=, fineaimms=; the 1.1.6 switch
+ * OOT_AIMRAMP=0 still works). */
 u8 gHhAimCam;
-#define HH_AIM_MIN 20
-#define HH_AIM_RAMP_US 400000u
-static int sAimRamp = -1;
+#define HH_AIM_HOLD_US 250000u
+static int sFineAim = -1;
+static int sFineMin = 16;
+static uint64_t sFineHoldUs = HH_AIM_HOLD_US, sFineFullUs = 1000000u;
 static uint64_t sAimSinceX, sAimSinceY; /* when that axis' d-pad went down (0: up) */
 extern uint64_t port_time_us64(void);
+
+static int HhInput_EnvInt(const char* name, int def, int lo, int hi) {
+    const char* e = getenv(name);
+    int v;
+
+    if (e == NULL || e[0] == '\0') {
+        return def;
+    }
+    v = atoi(e);
+    return v < lo ? lo : (v > hi ? hi : v);
+}
+
+static void HhInput_FineAimInit(void) {
+    const char* e = getenv("OOT_FINEAIM");
+    int pct, ms;
+
+    if (e == NULL) {
+        e = getenv("OOT_AIMRAMP"); /* the 1.1.x name */
+    }
+    sFineAim = !(e != NULL && e[0] == '0');
+    pct = HhInput_EnvInt("OOT_FINEAIMPCT", 20, 5, 100);
+    ms = HhInput_EnvInt("OOT_FINEAIMMS", 1000, 0, 5000);
+    sFineMin = (HH_STICK_MAX * pct + 50) / 100;
+    sFineFullUs = (uint64_t)ms * 1000u;
+    sFineHoldUs = sFineFullUs < HH_AIM_HOLD_US ? sFineFullUs : HH_AIM_HOLD_US;
+}
 
 static int HhInput_AimTilt(uint64_t now, uint64_t* since, bool held) {
     uint64_t dt;
@@ -44,10 +75,13 @@ static int HhInput_AimTilt(uint64_t now, uint64_t* since, bool held) {
         *since = now;
     }
     dt = now - *since;
-    if (dt >= HH_AIM_RAMP_US) {
+    if (dt >= sFineFullUs) {
         return HH_STICK_MAX;
     }
-    return 7 + HH_AIM_MIN + (int)((60 - HH_AIM_MIN) * dt / HH_AIM_RAMP_US);
+    if (dt < sFineHoldUs) {
+        return sFineMin;
+    }
+    return sFineMin + (int)((uint64_t)(HH_STICK_MAX - sFineMin) * (dt - sFineHoldUs) / (sFineFullUs - sFineHoldUs));
 }
 
 typedef enum {
@@ -62,12 +96,18 @@ static volatile bool sKeys[HH_KEY_COUNT];
 static int sAutoFrame;
 
 /* OOT_INPUT="<reads>:<keys>,<reads>:<keys>,..." (debug, headless tests): hold
- * the keys -- u d l r (stick), a b z s R U H J K (A, B, Z, START, R, C-up, C-left, C-down, C-right) -- for that many input
- * reads, then the next step; nothing is held after the last. Walks Link into
- * walls and counters to check the collision against the prerendered rooms. */
+ * the keys -- u d l r (stick), a b z s R U H J K (A, B, Z, START, R, C-up, C-left, C-down, C-right) --
+ * and < > ^ v (the handheld's d-pad: left, right, up, down) -- for that many input reads, then the next
+ * step; nothing is held after the last. Walks Link into walls and counters to check the collision
+ * against the prerendered rooms. */
 static const char* sInputScript;
 static int sInputLeft = -1;
 static char sInputKeys[12];
+/* < > ^ v in OOT_INPUT: the handheld's d-pad itself, as a player presses it (the fine aim applies), on a clock of
+ * 50 ms a read (the game's 20 fps) so a test's numbers do not depend on the emulator's speed */
+static bool sScriptPad[4];
+static bool sScriptClockOn;
+static uint64_t sScriptClockUs;
 
 /* OOT_AUTOPATH (debug, hh_main.c HhAutoPath): the stick toward the next waypoint, [-1, 1] each way */
 int gHhAutoStickOn;
@@ -103,12 +143,17 @@ static void HhInput_Script(u16* btn, int* sx, int* sy) {
             sInputScript++;
         }
     }
+    memset(sScriptPad, 0, sizeof(sScriptPad));
     if (sInputLeft == 0) {
         return;
     }
     sInputLeft--;
     for (k = sInputKeys; *k != '\0'; k++) {
         switch (*k) {
+            case '^': sScriptPad[0] = true; sScriptClockOn = true; break;
+            case 'v': sScriptPad[1] = true; sScriptClockOn = true; break;
+            case '<': sScriptPad[2] = true; sScriptClockOn = true; break;
+            case '>': sScriptPad[3] = true; sScriptClockOn = true; break;
             case 'u': *sy += HH_STICK_MAX; break;
             case 'd': *sy -= HH_STICK_MAX; break;
             case 'l': *sx -= HH_STICK_MAX; break;
@@ -202,35 +247,41 @@ void HhInput_Read(SceCtrlData* pad) {
 
     memset(pad, 0, sizeof(*pad));
 
+    HhInput_Script(&btn, &sx, &sy);
+    sScriptClockUs += 50000u;
+
+    const bool up = sKeys[HH_KEY_UP] || sScriptPad[0];
+    const bool down = sKeys[HH_KEY_DOWN] || sScriptPad[1];
+    const bool left = sKeys[HH_KEY_LEFT] || sScriptPad[2];
+    const bool right = sKeys[HH_KEY_RIGHT] || sScriptPad[3];
     const bool chords = HhInput_StartChordOn();
     const bool chord = chords && sKeys[HH_KEY_START];
 
     if (ocarina || chord) {
         /* Ocarina mode: the d-pad plays the four C notes (notes/controls.md); with START held
          * (chords) the d-pad is the C buttons too. */
-        if (sKeys[HH_KEY_UP]) btn |= BTN_CUP;
-        if (sKeys[HH_KEY_DOWN]) btn |= BTN_CDOWN;
-        if (sKeys[HH_KEY_LEFT]) btn |= BTN_CLEFT;
-        if (sKeys[HH_KEY_RIGHT]) btn |= BTN_CRIGHT;
+        if (up) btn |= BTN_CUP;
+        if (down) btn |= BTN_CDOWN;
+        if (left) btn |= BTN_CLEFT;
+        if (right) btn |= BTN_CRIGHT;
     } else {
         int tx = HH_STICK_MAX, ty = HH_STICK_MAX;
 
-        if (sAimRamp < 0) {
-            const char* e = getenv("OOT_AIMRAMP");
-            sAimRamp = !(e != NULL && e[0] == '0');
+        if (sFineAim < 0) {
+            HhInput_FineAimInit();
         }
-        if (sAimRamp && gHhAimCam) {
-            const uint64_t now = port_time_us64();
+        if (sFineAim && gHhAimCam) {
+            const uint64_t now = sScriptClockOn ? sScriptClockUs : port_time_us64();
 
-            tx = HhInput_AimTilt(now, &sAimSinceX, sKeys[HH_KEY_LEFT] || sKeys[HH_KEY_RIGHT]);
-            ty = HhInput_AimTilt(now, &sAimSinceY, sKeys[HH_KEY_UP] || sKeys[HH_KEY_DOWN]);
+            tx = HhInput_AimTilt(now, &sAimSinceX, left || right);
+            ty = HhInput_AimTilt(now, &sAimSinceY, up || down);
         } else {
             sAimSinceX = sAimSinceY = 0;
         }
-        if (sKeys[HH_KEY_UP]) sy += ty;
-        if (sKeys[HH_KEY_DOWN]) sy -= ty;
-        if (sKeys[HH_KEY_LEFT]) sx -= tx;
-        if (sKeys[HH_KEY_RIGHT]) sx += tx;
+        if (up) sy += ty;
+        if (down) sy -= ty;
+        if (left) sx -= tx;
+        if (right) sx += tx;
     }
 
     if (sKeys[HH_KEY_A]) btn |= BTN_A;
@@ -258,8 +309,6 @@ void HhInput_Read(SceCtrlData* pad) {
     if (sKeys[HH_KEY_CLEFT]) btn |= BTN_CLEFT;
     if (sKeys[HH_KEY_CDOWN]) btn |= BTN_CDOWN;
     if (sKeys[HH_KEY_CRIGHT]) btn |= BTN_CRIGHT;
-
-    HhInput_Script(&btn, &sx, &sy);
 
     /* OOT_AUTO=1: headless autopilot -- tap START then A through the title and
      * menus (the desktop smoke test). */
