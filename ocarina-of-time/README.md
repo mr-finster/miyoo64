@@ -17,7 +17,7 @@ Download `OcarinaOfTime-miyoo.zip` from https://miyoo-n64.pages.dev, and install
 
 | Miyoo | Does |
 |---|---|
-| D-pad | Control stick |
+| D-pad | Control stick (eases in when aiming, for fine aim) |
 | A / B | A / B |
 | L1 | Z-target |
 | R1 | Shield |

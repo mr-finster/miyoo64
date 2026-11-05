@@ -59,6 +59,9 @@
 | `vdsoclock` | `1` | Reads the clock without a system call; `0` = the system call (the CLOCK line in console.log says which is used) |
 | `declick` | `1` | The sound fades out and back in around the menu, a save-state load and a moment the sound runs short, instead of stopping dead; `0` = the old hard cuts |
 | `savereapply` | `1` | Loading a save state keeps the saves made since (the file select's files, the sound and Z-targeting options); `0` = the state's older copy comes back, as before |
+| `fineaim` | `1` | Fine aim: in first person and aiming the d-pad starts at a small push of the stick and eases up to full tilt; `0` = full tilt at once (`aimramp=0`, the 1.1.6 name, works too) |
+| `fineaimpct` | `20` | With fineaim: where the d-pad starts, in percent of full tilt (5 to 100), for the first 250 ms |
+| `fineaimms` | `1000` | With fineaim: when the d-pad reaches full tilt, in ms |
 | `mixprof` | off | `mixprof=1` writes the audio mixer's time per command to `console.log` (MIXPROF lines) |
 | `prof` | off | `prof=1` writes a speed profile to `prof.txt` next to `debug.cfg` |
 

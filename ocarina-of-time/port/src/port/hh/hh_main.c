@@ -891,12 +891,29 @@ int main(int argc, char** argv) {
             }
             HhCropPanUpdate(L->curInit == Play_Init ? (PlayState*)L->gameState : NULL);
             /* the debug switches below, read once (the environment is set before the loop) */
-            static int sDbgInit, sDbgAutoPath, sDbgExitScan, sDbgTraceLink;
+            static int sDbgInit, sDbgAutoPath, sDbgExitScan, sDbgTraceLink, sDbgAimLog;
             if (!sDbgInit) {
                 sDbgInit = 1;
                 sDbgAutoPath = getenv("OOT_AUTOPATH") != NULL;
                 sDbgExitScan = getenv("OOT_EXITSCAN") != NULL;
                 sDbgTraceLink = getenv("OOT_TRACE_LINK") != NULL;
+                sDbgAimLog = getenv("OOT_AIMLOG") != NULL;
+            }
+            if (L->curInit == Play_Init && sDbgAimLog) {
+                /* OOT_AIMLOG=1 (tests, fine aim, issue #8): the camera mode, the fine-aim flag, the stick the game
+                 * read, Link's view (focus) pitch and yaw in binary angle units, the buttons and Link's x and z, each
+                 * frame */
+                extern u8 gHhAimCam;
+                PlayState* play = (PlayState*)L->gameState;
+                Player* player = GET_PLAYER(play);
+
+                if (player != NULL) {
+                    port_log_always("AIM f%ld mode %d fine %d stick %d %d focus %d %d btn %04x pos %.1f %.1f\n",
+                                    sFrames, GET_ACTIVE_CAM(play)->mode, gHhAimCam, play->state.input[0].cur.stick_x,
+                                    play->state.input[0].cur.stick_y, player->actor.focus.rot.x,
+                                    player->actor.focus.rot.y, play->state.input[0].cur.button,
+                                    player->actor.world.pos.x, player->actor.world.pos.z);
+                }
             }
             if (sDbgAutoPath) {
                 HhAutoPath(L->curInit == Play_Init ? (PlayState*)L->gameState : NULL, sFrames);
