@@ -40,7 +40,8 @@ MENU > CONTROLS moves any of these to another button ([how](../README.md#control
 ## Known issues
 
 - Text is a little sharper than on the N64 (no N64 video filter).
-- Not yet played much on a real Mini with this build: speed numbers are from the emulator.
+- On the original Mini, Marathon may draw 30 frames a second (a test build did; the game itself keeps its speed).
+  Menus and vs CPU run at 60.
 
 ## More
 

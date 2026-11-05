@@ -42,6 +42,9 @@ MENU > CONTROLS moves any of these to another button ([how](../README.md#control
 
 ## Known issues
 
+- The rain curtains in Class B are fainter than on the N64.
+- In the Class B rocket belt test, thin dark streaks can show on a far snowy mountain.
+- The rocket belt pilot's shoes get a little of his shadow (on the N64 they stay lit).
 - Not yet played much on a real Mini with this build: speed numbers are from the emulator.
 
 ## More
