@@ -3,9 +3,10 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
-## Next
+## 1.4.6 (Banjo-Kazooie, Pilotwings 64 and The New Tetris betas)
 
-New games, betas: Banjo-Kazooie 1.0.0, Pilotwings 64 1.0.0 and The New Tetris 1.0.0.
+New games, betas: Banjo-Kazooie 1.0.0, Pilotwings 64 1.0.0 and The New Tetris 1.0.0; the other twelve games are the
+1.4.5 zips. The sources of all three are in this repository.
 
 - Pilotwings 64 (USA ROM), version 1.0.0, a beta: hang glider, rocket belt, gyrocopter and the bonus games,
   built from the [n64decomp/pw64](https://github.com/n64decomp/pw64)
