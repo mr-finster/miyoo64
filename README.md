@@ -66,8 +66,8 @@ On the Mini v4 and Mini Flip (752x560 screens) every game fills the whole screen
 | The Legend of Zelda: Majora's Mask | [majoras-mask](majoras-mask/) | [zeldaret/mm](https://github.com/zeldaret/mm) |
 | Harvest Moon 64 | [harvest-moon-64](harvest-moon-64/) | [harvestwhisperer/hm64-decomp](https://github.com/harvestwhisperer/hm64-decomp) |
 | Banjo-Kazooie | [banjo-kazooie](banjo-kazooie/) | [banjo.decomp/banjo-kazooie](https://gitlab.com/banjo.decomp/banjo-kazooie) |
-| Pilotwings 64 | (not in this repository yet) | [n64decomp/pw64](https://github.com/n64decomp/pw64) |
-| The New Tetris | (not in this repository yet) | [chris-gilmore/tnt-splat](https://github.com/chris-gilmore/tnt-splat) |
+| Pilotwings 64 | [pilotwings-64](pilotwings-64/) | [n64decomp/pw64](https://github.com/n64decomp/pw64) |
+| The New Tetris | [the-new-tetris](the-new-tetris/) | [chris-gilmore/tnt-splat](https://github.com/chris-gilmore/tnt-splat) |
 
 Each folder is one game and builds on its own.
 

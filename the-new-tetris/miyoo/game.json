@@ -1,0 +1,13 @@
+{
+  "id": "tnt",
+  "title": "The New Tetris",
+  "folder": "NewTetris",
+  "exe": "tnt",
+  "files": ["tnt"],
+  "icon": "icon.png",
+  "env": "TNT",
+  "data": "data",
+  "rom": {"name": "The New Tetris (USA)", "sha1": "83fff25e82181a6993f28c91b9eeb8430396838b", "size": 12582912},
+  "system": "NEWTETRIS",
+  "minui_tag": "TNT"
+}

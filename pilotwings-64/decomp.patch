@@ -1,0 +1,2029 @@
+diff -ruN pw64/src/app/birdman0.c port/src/app/birdman0.c
+--- a/src/app/birdman0.c	2026-10-31 01:47:47.781039756 +0000
++++ b/src/app/birdman0.c	2026-10-31 07:48:31.320840565 +0000
+@@ -222,7 +222,7 @@
+             bmData->unkD0 = sp4C[0];
+             bmData->unk2D0 = sp4C[1];
+             bmData->unk2D4 = sp4C[2];
+-            bmData->unk2C0 = (u8)sp4C[3];
++            bmData->unk2C0 = (u8)(s32)(sp4C[3]);
+             bmData->unk304 = sp4C[4];
+             bmData->unk308 = sp4C[5];
+         }
+diff -ruN pw64/src/app/cannonball.c port/src/app/cannonball.c
+--- a/src/app/cannonball.c	2026-10-31 01:47:47.781039756 +0000
++++ b/src/app/cannonball.c	2026-10-31 07:48:31.321841873 +0000
+@@ -787,7 +787,7 @@
+         uvMat4RotateAxis(&sp58, temp_s1->zAxis, 'z');
+         uvMat4RotateAxis(&sp58, temp_s1->xAxis, 'x');
+     }
+-    func_802EDAF0(temp_s0, &sp58, temp_s1->unk120, temp_s1->unk1D0, 0.0f, 1.0f, temp_s1->unk4, temp_s1->unk8, 0, temp_s1->unk11C, 1);
++    func_802EDAF0(temp_s0, &sp58, temp_s1->unk120, temp_s1->unk1D0, 0.0f, 1.0f, temp_s1->unk4, (s32)temp_s1->unk8, 0, temp_s1->unk11C, 1);
+     if (temp_s1->unkD4 == 2) {
+         sp50 = 6;
+     }
+@@ -997,7 +997,7 @@
+ 
+     uvMat4Copy(&sp4C, &cbData->unk14);
+     uvMat4RotateAxis(&sp4C, 1.5707961f, 'x');
+-    func_802EDAF0(temp_s0, &cbData->unk14, cbData->unk120, cbData->unk1D0, 0.0f, 1.0f, cbData->unk4, cbData->unk8, 0, cbData->unk11C, 5);
++    func_802EDAF0(temp_s0, &cbData->unk14, cbData->unk120, cbData->unk1D0, 0.0f, 1.0f, cbData->unk4, (s32)cbData->unk8, 0, cbData->unk11C, 5);
+     saveFileWrite(temp_s0->unk8A);
+     return 1;
+ }
+diff -ruN pw64/src/app/code_B2900.c port/src/app/code_B2900.c
+--- a/src/app/code_B2900.c	2026-10-31 01:47:47.781039756 +0000
++++ b/src/app/code_B2900.c	2026-10-31 04:54:33.476528327 +0000
+@@ -266,6 +266,9 @@
+     s16 points;
+     s32 testIdx;
+     s32 pointsSum;
++#ifdef PORT
++    if (hh_dbg_env("PW64_UNLOCKALL")) return 100; /* test switch: every class and the extra games open */
++#endif
+     Unk80364210_Unk0_Unk0* var_s0;
+ 
+     pointsSum = 0;
+@@ -292,6 +295,9 @@
+     s32 testIdx;
+     s32 success;
+     int invalidPointCount = 0x7F;
++#ifdef PORT
++    if (hh_dbg_env("PW64_UNLOCKALL")) return 1;
++#endif
+ 
+     success = TRUE;
+     for (testIdx = 0; testIdx < taskGetTestCount(classIdx, vehIdx); testIdx++) {
+diff -ruN pw64/src/app/credits.c port/src/app/credits.c
+--- a/src/app/credits.c	2026-10-31 01:47:47.781039756 +0000
++++ b/src/app/credits.c	2026-10-31 07:48:31.322575280 +0000
+@@ -381,7 +381,7 @@
+             }
+ 
+             func_8031420C(D_8034F790, 1.0f, 1.0f, &r, &g, &b);
+-            uvFontColor(r * 255.0f, g * 255.0f, b * 255.0f, a);
++            uvFontColor((s32)(r * 255.0f), (s32)(g * 255.0f), (s32)(b * 255.0f), a);
+             // possibly fake: `a` is reused for y-coordinate
+             a *= 0;
+             a += 90;
+diff -ruN pw64/src/app/demo.c port/src/app/demo.c
+--- a/src/app/demo.c	2026-10-31 01:47:47.781039756 +0000
++++ b/src/app/demo.c	2026-10-31 07:48:31.323249421 +0000
+@@ -54,7 +54,7 @@
+ }
+ 
+ void demoPackInputs(DemoRecordingEntry* entry, f32 stickX, f32 stickY, u32 buttons) {
+-    entry->inputs = (u32)(((u32)((stickX + 1.0) * 127.0) << 0x18) | ((u32)((1.0 + stickY) * 127.0) << 0x10) | buttons);
++    entry->inputs = (u32)(((u32)(s32)((stickX + 1.0) * 127.0) << 0x18) | ((u32)(s32)((1.0 + stickY) * 127.0) << 0x10) | buttons);
+ }
+ 
+ s32 demoGetUserFileIdx(s32 pilot, s32 veh) {
+@@ -180,6 +180,9 @@
+         switch (tag) {
+         case 'RPKT': // 0x52504B54
+             _uvMediaCopy(&pkt, data, size);
++#ifdef PORT
++            hh_swap32n(&pkt, 4);
++#endif
+             sDemoRecording->entries[idx].time = pkt.time;
+             entry = &sDemoRecording->entries[idx];
+             demoPackInputs(entry, pkt.stickX, pkt.stickY, pkt.buttons);
+@@ -187,6 +190,9 @@
+             break;
+         case 'RHDR': // 0x52484452
+             _uvMediaCopy(&sDemoRecHeader, data, size);
++#ifdef PORT
++            hh_swap32n(&sDemoRecHeader, 5);
++#endif
+             break;
+         case 0:
+             if (tag && tag) { } // fakematch
+diff -ruN pw64/src/app/demo_attitude.c port/src/app/demo_attitude.c
+--- a/src/app/demo_attitude.c	2026-10-31 01:47:47.781039756 +0000
++++ b/src/app/demo_attitude.c	2026-10-31 03:25:21.860797107 +0000
+@@ -61,6 +61,9 @@
+         switch (tag) {
+         case 'PHDR': // 0x50484452
+             phdr = (PHDR*)data;
++#ifdef PORT
++            hh_swap32n(phdr, 2);
++#endif
+             D_8036D320 = phdr->unk0;
+             D_8036D324 = phdr->unk4;
+             D_8034F970 = (Unk8034F970*)_uvMemAllocAlign8(D_8036D324 * sizeof(Unk8034F970));
+@@ -79,6 +82,9 @@
+                 _uvDebugPrintf("Didn't get header yet\n");
+             } else if (idx < D_8036D324) {
+                 _uvMediaCopy(&D_8034F970->unk4[idx], data, size);
++#ifdef PORT
++                hh_swap32n(&D_8034F970->unk4[idx], size / 4);
++#endif
+                 idx++;
+             }
+             break;
+diff -ruN pw64/src/app/environment.c port/src/app/environment.c
+--- a/src/app/environment.c	2026-10-31 01:47:47.781039756 +0000
++++ b/src/app/environment.c	2026-10-31 07:48:31.324204752 +0000
+@@ -604,9 +604,9 @@
+         }
+         temp_v0 = D_8034EEE0[i];
+         var_fa1 = (var_fa0 - D_8034EEFC[i]) / (D_8034EEFC[i + 1] - D_8034EEFC[i]);
+-        fogR = ((temp_v0[3] - temp_v0[0]) * var_fa1) + temp_v0[0];
+-        fogG = ((temp_v0[4] - temp_v0[1]) * var_fa1) + temp_v0[1];
+-        fogB = ((temp_v0[5] - temp_v0[2]) * var_fa1) + temp_v0[2];
++        fogR = (s32)(((temp_v0[3] - temp_v0[0]) * var_fa1) + temp_v0[0]);
++        fogG = (s32)(((temp_v0[4] - temp_v0[1]) * var_fa1) + temp_v0[1]);
++        fogB = (s32)(((temp_v0[5] - temp_v0[2]) * var_fa1) + temp_v0[2]);
+         uvEnvProps(D_80362690->envId, ENV_PROP_FOG_COLOR(fogR, fogG, fogB, 0xFF), ENV_PROP_END);
+     }
+ }
+diff -ruN pw64/src/app/file_menu.c port/src/app/file_menu.c
+--- a/src/app/file_menu.c	2026-10-31 01:47:47.781039756 +0000
++++ b/src/app/file_menu.c	2026-10-31 07:48:31.326723189 +0000
+@@ -484,7 +484,7 @@
+     }
+ 
+     fileMenuColorLerp(sFileMenuFadeTime, sFileColorR1, sFileColorG1, sFileColorB1, sFileColorR2, sFileColorG2, sFileColorB2, &r, &g, &b);
+-    uvFontColor(r, g, b, 0xFF);
++    uvFontColor((s32)r, (s32)g, (s32)b, 0xFF);
+     switch (sFileMenuCurMenu) {
+     case 0:
+         titleStr = textGetDataByIdx(TEXT_FILE_SEL);
+diff -ruN pw64/src/app/game.c port/src/app/game.c
+--- a/src/app/game.c	2026-10-31 01:47:47.781039756 +0000
++++ b/src/app/game.c	2026-11-02 05:18:50.463550001 +0000
+@@ -45,7 +45,11 @@
+ 
+ Unk80362690* D_80362690;
+ Unk80362690 D_80362698;
++#ifdef PORT /* holds the vehicles' data (floats, matrices): word alignment on any host */
++u8 D_80362748[1][0x740] __attribute__((aligned(8))); // vehicle data buffer
++#else
+ u8 D_80362748[1][0x740]; // vehicle data buffer
++#endif
+ Camera D_80362E88[1];
+ Unk80364210 D_80364210[1];
+ HangGliderData* D_803676F0;
+@@ -169,11 +173,37 @@
+ }
+ 
+ void gameUpdate(void) {
++#ifdef PORT
++    { extern void hh_cheat_perfect(void*); hh_cheat_perfect(D_80364210); }
++#endif
++#ifdef PORT
++    { /* PW64_SOAK (tests, hh_soak.c): the next test in place of the vehicle/pilot/test menus */
++        extern int hh_soak_before(int state, u16* spec);
++        u16 spec[4];
++        Unk80362690_Unk0* u = &D_80362690->unkC[D_80362690->unk9C];
++        s32 o = hh_soak_before(D_80362690->state, spec);
++        if (o >= 0) {
++            u->pilot = spec[0];
++            u->veh = spec[1];
++            u->cls = spec[2];
++            u->test = spec[3];
++            D_80362690->state = o;
++        }
++    }
++#endif
+     if (D_80362690->state >= GAME_STATE_COUNT) {
+         _uvDebugPrintf("Game: Bad state %d\n", D_80362690->state);
+         return;
+     }
++#ifdef PORT
++    {
++        extern int hh_soak_after(int prev, int next);
++        s32 prev = D_80362690->state;
++        D_80362690->state = hh_soak_after(prev, sGameStateUpdateFuncs[D_80362690->state](D_80362690));
++    }
++#else
+     D_80362690->state = sGameStateUpdateFuncs[D_80362690->state](D_80362690);
++#endif
+ }
+ 
+ s32 gameUpdateStateTitle(Unk80362690* arg0) {
+diff -ruN pw64/src/app/hud.c port/src/app/hud.c
+--- a/src/app/hud.c	2026-10-31 01:47:47.784006120 +0000
++++ b/src/app/hud.c	2026-10-31 07:48:31.327867747 +0000
+@@ -1680,9 +1680,9 @@
+         }
+     }
+     if (invAlpha) {
+-        a = (u8)(255.0f * alphaF);
++        a = (u8)(s32)(255.0f * alphaF);
+     } else {
+-        a = (u8)((1.0f - alphaF) * 255.0f);
++        a = (u8)(s32)((1.0f - alphaF) * 255.0f);
+     }
+     uvGfxStatePush();
+     uvGfxSetFlags(GFX_STATE_XLU | GFX_STATE_AA);
+diff -ruN pw64/src/app/level.c port/src/app/level.c
+--- a/src/app/level.c	2026-10-31 01:47:47.784006120 +0000
++++ b/src/app/level.c	2026-10-31 03:25:06.615714231 +0000
+@@ -292,27 +292,48 @@
+         case 'ESND': // 0x45534E44
+             for (i = 0; i < temp->countESND; i++) {
+                 _uvMediaCopy(&esnd, srcPtr, sizeof(esnd));
++#ifdef PORT /* Mtx4F, 2 Vec3F, u8, f32 x2, s32, f32 x2, u8, s32 */
++                hh_swap_desc(&esnd, "wwwwwwwwwwwwwwwwwwwwwwbwwwwwbw", sizeof(esnd));
++#endif
+                 srcPtr += sizeof(esnd);
+                 envSoundLoad(&esnd);
+             }
+             break;
+         case 'WOBJ': // 0x574F424A
+             _uvMediaCopy(temp->dataWOBJ, srcPtr, size);
++#ifdef PORT
++            hh_swap_desc(temp->dataWOBJ, "wwwb", size);
++#endif
+             break;
+         case 'LPAD': // 0x4C504144
+             _uvMediaCopy(temp->dataLPAD, srcPtr, size);
++#ifdef PORT
++            hh_swap_desc(temp->dataLPAD, "wwwwwb", size);
++#endif
+             break;
+         case 'TOYS': // 0x544F5953
+             _uvMediaCopy(temp->dataTOYS, srcPtr, size);
++#ifdef PORT
++            hh_swap_desc(temp->dataTOYS, "wwwb", size);
++#endif
+             break;
+         case 'TPTS': // 0x54505453
+             _uvMediaCopy(temp->dataTPTS, srcPtr, size);
++#ifdef PORT
++            hh_swap_desc(temp->dataTPTS, "bwwwwwwwwwwww", size);
++#endif
+             break;
+         case 'APTS': // 0x41505453
+             _uvMediaCopy(temp->dataAPTS, srcPtr, size);
++#ifdef PORT
++            hh_swap_desc(temp->dataAPTS, "wwwwwwww", size);
++#endif
+             break;
+         case 'BNUS': // 0x424E5553
+             _uvMediaCopy(temp->dataBNUS, srcPtr, size);
++#ifdef PORT
++            hh_swap_desc(temp->dataBNUS, "wwwwwww", size);
++#endif
+             break;
+         case 'LEVL': // 0x4C45564C
+             ptr = (LevelLEVL*)srcPtr;
+diff -ruN pw64/src/app/level_select.c port/src/app/level_select.c
+--- a/src/app/level_select.c	2026-10-31 01:47:47.784006120 +0000
++++ b/src/app/level_select.c	2026-10-31 07:48:31.328946495 +0000
+@@ -755,7 +755,7 @@
+         D_8034F7E0 = -D_8034F7E0;
+     }
+     fileMenuColorLerp(D_8034F7DC, 44.0f, 214.0f, 44.0f, 145.0f, 183.0f, 255.0f, &r, &g, &b);
+-    uvFontColor(r, g, b, 0xFF);
++    uvFontColor((s32)r, (s32)g, (s32)b, 0xFF);
+     str16 = textGetDataByIdx(TEXT_LEVEL_SEL);
+ #if defined(VERSION_JP)
+     uvFontPrintStr16((SCREEN_WIDTH / 2) - (uvFontStr16Width(str16) / 2), 208, str16, 20, 0xFFE);
+diff -ruN pw64/src/app/mem.c port/src/app/mem.c
+--- a/src/app/mem.c	2026-10-31 01:47:47.784006120 +0000
++++ b/src/app/mem.c	2026-11-02 05:18:50.459549522 +0000
+@@ -3,7 +3,11 @@
+ #include "mem.h"
+ 
+ // .bss
++#ifdef PORT /* typed task records (floats) are carved out of it: word alignment on any host (x86 -m32 had it at 2) */
++STATIC_DATA u8 sLevelObjHeap[5000] __attribute__((aligned(8)));
++#else
+ STATIC_DATA u8 sLevelObjHeap[5000];
++#endif
+ 
+ // .data
+ STATIC_DATA u8* sLevelObjHeapPtr = sLevelObjHeap;
+diff -ruN pw64/src/app/menu_utils.c port/src/app/menu_utils.c
+--- a/src/app/menu_utils.c	2026-10-31 01:47:47.784006120 +0000
++++ b/src/app/menu_utils.c	2026-11-02 05:42:22.219297236 +0000
+@@ -262,12 +262,20 @@
+     f32 sp24;
+ 
+     func_8031420C(arg0, 1.0f, 1.0f, &sp2C, &sp28, &sp24);
+-    menuUtilSetColors(MENU_COLOR_ITEM, 255.0f * sp2C, 255.0f * sp28, 255.0f * sp24);
++    menuUtilSetColors(MENU_COLOR_ITEM, (s32)(255.0f * sp2C), (s32)(255.0f * sp28), (s32)(255.0f * sp24));
+ 
+     arg0 += 0.05f;
+     if (arg0 > 1.0f) {
+         arg0 -= 1.0f;
+     }
+     func_8031420C(arg0, 1.0f, 1.0f, &sp2C, &sp28, &sp24);
+-    menuUtilSetColors(MENU_COLOR_SELECTED, 255.0f * sp2C, 255.0f * sp28, 255.0f * sp24);
++    menuUtilSetColors(MENU_COLOR_SELECTED, (s32)(255.0f * sp2C), (s32)(255.0f * sp28), (s32)(255.0f * sp24));
+ }
++
++#ifdef PORT
++/* PW64_SOAK (tests, hh_soak.c): the open menu's cursor and size, to steer the results menus */
++void hh_soak_menu_state(s32* cur, s32* count) {
++    *cur = sMenuCurSelect;
++    *count = sMenuItemCount;
++}
++#endif
+diff -ruN pw64/src/app/pilot_select.c port/src/app/pilot_select.c
+--- a/src/app/pilot_select.c	2026-10-31 01:47:47.784006120 +0000
++++ b/src/app/pilot_select.c	2026-10-31 07:48:31.330745955 +0000
+@@ -459,7 +459,7 @@
+         D_8034EED8 = -D_8034EED8;
+     }
+     fileMenuColorLerp(D_8034EED4, 44.0f, 214.0f, 44.0f, 145.0f, 183.0f, 255.0f, &r, &g, &b);
+-    uvFontColor(r, g, b, 0xFF);
++    uvFontColor((s32)r, (s32)g, (s32)b, 0xFF);
+     selectPilotText = textGetDataByIdx(TEXT_PILOT_SEL);
+     if (selectPilotText != NULL) {
+         x = ((SCREEN_WIDTH / 2) - (uvFontStr16Width(selectPilotText) / 2));
+diff -ruN pw64/src/app/replay_screen.c port/src/app/replay_screen.c
+--- a/src/app/replay_screen.c	2026-10-31 01:47:47.784006120 +0000
++++ b/src/app/replay_screen.c	2026-10-31 07:48:31.331312366 +0000
+@@ -500,7 +500,7 @@
+         } else if (var_fs0 > 1.0f) {
+             var_fs0 = 1.0f;
+         }
+-        sp84 = 255.0f * var_fs0;
++        sp84 = (s32)(255.0f * var_fs0);
+         func_80314154();
+         uvGfxSetFlags(GFX_STATE_AA);
+         uvVtxBeginPoly();
+@@ -551,9 +551,9 @@
+             var_fs0 -= 1.0f;
+         }
+         func_8031420C(var_fs0, 1.0f, 1.0f, &r, &g, &b);
+-        r2 = 255.0f * r;
+-        g2 = 255.0f * g;
+-        b2 = 255.0f * b;
++        r2 = (s32)(255.0f * r);
++        g2 = (s32)(255.0f * g);
++        b2 = (s32)(255.0f * b);
+         uvGfxBegin();
+         uvGfxClearScreen(0x00, 0x00, 0x00, 0xFF);
+         func_80314154();
+diff -ruN pw64/src/app/results.c port/src/app/results.c
+--- a/src/app/results.c	2026-10-31 01:47:47.784006120 +0000
++++ b/src/app/results.c	2026-11-02 06:23:07.019612758 +0000
+@@ -284,7 +284,13 @@
+     if (arg0 != 0) {
+         resultGenMenu();
+         for (i = 0; i < ARRAY_COUNT(sPtsTallyStr); i++) {
++#ifdef PORT
++            /* Birdman (veh 6) has no row in the table: the N64 reads on past its end into the next data (ASan); here
++             * no tally rows for it */
++            ptType = (unkC->veh < ARRAY_COUNT(sResultPtTypes)) ? sResultPtTypes[unkC->veh][unkC->cls][unkC->test][i] : 0;
++#else
+             ptType = sResultPtTypes[unkC->veh][unkC->cls][unkC->test][i];
++#endif
+             res = &D_80364210[D_80362690->unk9C].unk40[unkC->cls].unk0[unkC->test][unkC->veh];
+             sPtsTallyStr[i][0] = sPtsTallyStr[i][1] = sPtsTallyStr[i][2] = -3;
+             sPtsTallyStr[i][3] = 0xFFE;
+diff -ruN pw64/src/app/snap.c port/src/app/snap.c
+--- a/src/app/snap.c	2026-10-31 01:47:47.788006120 +0000
++++ b/src/app/snap.c	2026-10-31 07:48:31.332197003 +0000
+@@ -2054,32 +2054,32 @@
+                     switch (j) {
+                     case 0:
+                         var_s1->unk9_4 = D_80373060[i].unk43[j];
+-                        var_s1->unkC = D_80373060[i].unk4C[j] * 255.0f;
++                        var_s1->unkC = (s32)(D_80373060[i].unk4C[j] * 255.0f);
+                         var_s1->unk12_10 = D_80373060[i].unk64[j];
+                         break;
+                     case 1:
+                         var_s1->unk9_8 = D_80373060[i].unk43[j];
+-                        var_s1->unkD = D_80373060[i].unk4C[j] * 255.0f;
++                        var_s1->unkD = (s32)(D_80373060[i].unk4C[j] * 255.0f);
+                         var_s1->unk12_13 = D_80373060[i].unk64[j];
+                         break;
+                     case 2:
+                         var_s1->unk9_12 = D_80373060[i].unk43[j];
+-                        var_s1->unkE = D_80373060[i].unk4C[j] * 255.0f;
++                        var_s1->unkE = (s32)(D_80373060[i].unk4C[j] * 255.0f);
+                         var_s1->unk12_16 = D_80373060[i].unk64[j];
+                         break;
+                     case 3:
+                         var_s1->unk9_16 = D_80373060[i].unk43[j];
+-                        var_s1->unkF = D_80373060[i].unk4C[j] * 255.0f;
++                        var_s1->unkF = (s32)(D_80373060[i].unk4C[j] * 255.0f);
+                         var_s1->unk12_19 = D_80373060[i].unk64[j];
+                         break;
+                     case 4:
+                         var_s1->unk9_20 = D_80373060[i].unk43[j];
+-                        var_s1->unk10 = D_80373060[i].unk4C[j] * 255.0f;
++                        var_s1->unk10 = (s32)(D_80373060[i].unk4C[j] * 255.0f);
+                         var_s1->unk12_22 = D_80373060[i].unk64[j];
+                         break;
+                     case 5:
+                         var_s1->unk12_0 = D_80373060[i].unk43[j];
+-                        var_s1->unk11 = D_80373060[i].unk4C[j] * 255.0f;
++                        var_s1->unk11 = (s32)(D_80373060[i].unk4C[j] * 255.0f);
+                         var_s1->unk12_25 = D_80373060[i].unk64[j];
+                         break;
+                     }
+diff -ruN pw64/src/app/spath.c port/src/app/spath.c
+--- a/src/app/spath.c	2026-10-31 01:47:47.788006120 +0000
++++ b/src/app/spath.c	2026-10-31 02:03:01.496445779 +0000
+@@ -71,21 +71,39 @@
+         switch (tag) {
+         case 'SCPX':
+             _uvMediaCopy(&spath->scpx, src, size);
++#ifdef PORT
++            hh_swap32n(&spath->scpx, size / 4);
++#endif
+             break;
+         case 'SCPY':
+             _uvMediaCopy(&spath->scpy, src, size);
++#ifdef PORT
++            hh_swap32n(&spath->scpy, size / 4);
++#endif
+             break;
+         case 'SCPZ':
+             _uvMediaCopy(&spath->scpz, src, size);
++#ifdef PORT
++            hh_swap32n(&spath->scpz, size / 4);
++#endif
+             break;
+         case 'SCPH':
+             _uvMediaCopy(&spath->scph, src, size);
++#ifdef PORT
++            hh_swap32n(&spath->scph, size / 4);
++#endif
+             break;
+         case 'SCPP':
+             _uvMediaCopy(&spath->scpp, src, size);
++#ifdef PORT
++            hh_swap32n(&spath->scpp, size / 4);
++#endif
+             break;
+         case 'SCPR':
+             _uvMediaCopy(&spath->scpr, src, size);
++#ifdef PORT
++            hh_swap32n(&spath->scpr, size / 4);
++#endif
+             break;
+         }
+     }
+diff -ruN pw64/src/app/task.c port/src/app/task.c
+--- a/src/app/task.c	2026-10-31 01:47:47.788006120 +0000
++++ b/src/app/task.c	2026-10-31 02:13:52.749275398 +0000
+@@ -612,6 +612,9 @@
+             break;
+         case 'COMM': // 0x434F4D4D
+             _uvMediaCopy(&dst->comm, data, sizeof(dst->comm));
++#ifdef PORT /* bytes to 0x10, words to 0x3E4, s16[4], words to 0x414, then u8 fields */
++            hh_swap_desc(&dst->comm, "bbbbwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwhhwwwwwwwwww", 0x414);
++#endif
+             mem_init();
+             dst->dataTPAD = mem_get(dst->comm.countTPAD * sizeof(TaskTPAD));
+             dst->dataLPAD = mem_get(dst->comm.countLPAD * sizeof(TaskLPAD));
+@@ -632,51 +635,99 @@
+             break;
+         case 'THER': // 0x54484552
+             _uvMediaCopy(dst->dataTHER, data, size);
++#ifdef PORT
++            hh_swap_desc(dst->dataTHER, "wwwwwwwwww", size);
++#endif
+             break;
+         case 'LWIN': // 0x4C57494E
+             _uvMediaCopy(dst->dataLWIN, data, size);
++#ifdef PORT
++            hh_swap_desc(dst->dataLWIN, "wwwwwwwwwwwwwwwwwwwwb", size);
++#endif
+             break;
+         case 'TPAD': // 0x54504144
+             _uvMediaCopy(dst->dataTPAD, data, size);
++#ifdef PORT
++            hh_swap_desc(dst->dataTPAD, "wwwwwwbwwwbw", size);
++#endif
+             break;
+         case 'LPAD': // 0x4C504144
+             _uvMediaCopy(dst->dataLPAD, data, size);
++#ifdef PORT
++            hh_swap_desc(dst->dataLPAD, "wwwwwwbwwwbb", size);
++#endif
+             break;
+         case 'LSTP': // 0x4C535450
+             _uvMediaCopy(dst->dataLSTP, data, size);
++#ifdef PORT
++            hh_swap_desc(dst->dataLSTP, "wwwwwwbbw", size);
++#endif
+             break;
+         case 'RNGS': // 0x524E4753
+             _uvMediaCopy(dst->dataRNGS, data, size);
++#ifdef PORT
++            hh_swap_desc(dst->dataRNGS, "wwwwwwwbwwwwwbwwwwwbwbwwbwwwbbbbb", size);
++#endif
+             break;
+         case 'BALS': // 0x42414C53
+             _uvMediaCopy(dst->dataBALS, data, size);
++#ifdef PORT
++            hh_swap_desc(dst->dataBALS, "wwwbbbwwbwwwwwwwwbwwwwwwww", size);
++#endif
+             break;
+         case 'PHTS': // 0x50485453
+             _uvMediaCopy(dst->dataPHTS, data, size);
++#ifdef PORT
++            hh_swap_desc(dst->dataPHTS, "wwwww", size);
++#endif
+             break;
+         case 'HOPD': // 0x484F5044
+             _uvMediaCopy(dst->dataHOPD, data, size);
++#ifdef PORT
++            hh_swap_desc(dst->dataHOPD, "wwwwwwwb", size);
++#endif
+             break;
+         case 'TARG': // 0x54415247
+             _uvMediaCopy(dst->dataTARG, data, size);
++#ifdef PORT
++            hh_swap_desc(dst->dataTARG, "wwwwwwbw", size);
++#endif
+             break;
+         case 'HPAD': // 0x48504144
+             _uvMediaCopy(dst->dataHPAD, data, size);
++#ifdef PORT
++            hh_swap_desc(dst->dataHPAD, "wwwwwwwbwbwwwwwb", size);
++#endif
+             break;
+         case 'BTGT': // 0x42544754
+             _uvMediaCopy(dst->dataBTGT, data, size);
++#ifdef PORT
++            hh_swap_desc(dst->dataBTGT, "wwwwwwb", size);
++#endif
+             break;
+         case 'FALC': // 0x46414C43
+             _uvMediaCopy(dst->dataFALC, data, size);
++#ifdef PORT
++            hh_swap_desc(dst->dataFALC, "wwwwbbwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww", size);
++#endif
+             break;
+         case 'CNTG': // 0x434E5447
+             _uvMediaCopy(dst->dataCNTG, data, size);
++#ifdef PORT
++            hh_swap_desc(dst->dataCNTG, "wwwwwwb", size);
++#endif
+             break;
+         case 'SDFM': // 0x5344464D
+             _uvMediaCopy(dst->dataSDFM, data, size);
++#ifdef PORT
++            hh_swap_desc(dst->dataSDFM, "wwwwwwwwwwwwwwwwwww", size);
++#endif
+             break;
+         case 'OBSV': // 0x4F425356
+             _uvMediaCopy(dst->dataOBSV, data, size);
++#ifdef PORT
++            hh_swap_desc(dst->dataOBSV, "wwww", size);
++#endif
+             break;
+         }
+     }
+diff -ruN pw64/src/app/test_summary.c port/src/app/test_summary.c
+--- a/src/app/test_summary.c	2026-10-31 01:47:47.788006120 +0000
++++ b/src/app/test_summary.c	2026-10-31 02:12:35.718202143 +0000
+@@ -200,7 +200,11 @@
+     s16* sp6C;
+     s16* sp68;
+     s32 pad;
++#ifdef PORT /* textFmtInt writes length + 2 entries */
++    s16 sp5C[5];
++#else
+     s16 sp5C[3];
++#endif
+     s32 sp58;
+     s32 var_v1;
+     s32 sp50;
+@@ -238,7 +242,7 @@
+     uvVtxEndPoly();
+     uvGfxClearFlags(GFX_STATE_AA);
+     func_803141E4();
+-    textFmtInt(sp5C, sp50, ARRAY_COUNT(sp5C));
++    textFmtInt(sp5C, sp50, 3);
+     uvSprtDraw(0);
+     uvSprtDraw(1);
+     uvFontSet(6);
+diff -ruN pw64/src/app/text_data.c port/src/app/text_data.c
+--- a/src/app/text_data.c	2026-10-31 01:47:47.788006120 +0000
++++ b/src/app/text_data.c	2026-10-31 02:10:43.601225076 +0000
+@@ -43,6 +43,9 @@
+         case 'DATA': // 0x44415441
+             sTextData[sTextDataCount] = _uvMemAllocAlign8(size + 2);
+             _uvMediaCopy(sTextData[sTextDataCount], data, size);
++#ifdef PORT /* s16 characters */
++            hh_swap16n(sTextData[sTextDataCount], size / 2);
++#endif
+ 
+ #if defined(VERSION_JP)
+             var_v1 = (size / 2) - 5;
+diff -ruN pw64/src/app/user_paths.c port/src/app/user_paths.c
+--- a/src/app/user_paths.c	2026-10-31 01:47:47.792006120 +0000
++++ b/src/app/user_paths.c	2026-10-31 02:04:49.577467333 +0000
+@@ -61,6 +61,10 @@
+         switch (var_v0) {
+         case 'COMM':
+             temp1 = sp88;
++#ifdef PORT
++            hh_swap32n(temp1, 5);
++            hh_swap16n(&temp1->unk14, 1);
++#endif
+             var_s3 = temp1->unk0;
+             temp_v1 = temp1->unk4;
+             temp_s0->unk22 = temp1->unkC;
+@@ -71,6 +75,10 @@
+             break;
+         case 'QUAT':
+             temp2 = sp88;
++#ifdef PORT /* count, unk4, then {Vec4F, s32, pad} */
++            hh_swap32n(temp2, 2);
++            hh_swap32n(temp2->unk8, temp2->count * 6);
++#endif
+             temp_s0->unk8 = temp2->count;
+             temp_s0->unk4 = temp2->unk4;
+             temp_s0->unk0 = 0;
+@@ -91,6 +99,10 @@
+             break;
+         case 'XLAT':
+             temp3 = sp88;
++#ifdef PORT /* count, unk4, then {Vec3F, s32} */
++            hh_swap32n(temp3, 2);
++            hh_swap32n(temp3->unk8, temp3->count * 4);
++#endif
+             temp_s0->unk18 = temp3->count;
+             temp_s0->unk14 = temp3->unk4;
+             temp_s0->unk10 = 0;
+diff -ruN pw64/src/kernel/anim.c port/src/kernel/anim.c
+--- a/src/kernel/anim.c	2026-10-31 01:47:47.792006120 +0000
++++ b/src/kernel/anim.c	2026-10-31 02:01:48.397670319 +0000
+@@ -30,6 +30,10 @@
+         switch (var_v0) {
+         case 'COMM':
+             temp1 = sp74;
++#ifdef PORT
++            hh_swap32n(temp1, 5);
++            hh_swap16n(&temp1->unk14, 1);
++#endif
+             var_s3 = _uvMemAlloc(sizeof(ParsedUVAN), 4);
+             var_s3->modelId = temp1->modelId;
+             var_s3->unk6 = 0;
+@@ -51,6 +55,13 @@
+             break;
+         case 'PART':
+             temp2 = sp74;
++#ifdef PORT
++            hh_swap32n(temp2, 2);
++            for (i = 0; i < temp2->count; i++) {
++                hh_swap32n(&temp2->unk8[i].unk0, 4);
++                hh_swap16n(&temp2->unk8[i].unk10, 2);
++            }
++#endif
+             temp_v0_3 = _uvMemAlloc(sizeof(ParsedUVAN_Unk0), 4);
+             if (var_s4 != NULL) {
+                 var_s4->unk0 = temp_v0_3;
+diff -ruN pw64/src/kernel/audio_event.c port/src/kernel/audio_event.c
+--- a/src/kernel/audio_event.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/audio_event.c	2026-11-02 06:25:26.655639817 +0000
+@@ -136,8 +136,14 @@
+                         var_a3->unk0[j].cb = var_a3->unk0[j + 1].cb;
+                         var_a3->unk0[j].arg = var_a3->unk0[j + 1].arg;
+                     }
++#ifdef PORT /* the freed last slot is count - 1: [count] is past a full list (its count field, then the next
++             * event's first callback: UBSan, MENU-jump soak into the credits) */
++                    var_a3->unk0[var_a3->count - 1].cb = NULL;
++                    var_a3->unk0[var_a3->count - 1].arg = NULL;
++#else
+                     var_a3->unk0[var_a3->count].cb = NULL;
+                     var_a3->unk0[var_a3->count].arg = NULL;
++#endif
+                     var_a3->count--;
+                 }
+             }
+@@ -149,8 +155,14 @@
+                         var_a1->unk0[j].cb = var_a1->unk0[j + 1].cb;
+                         var_a1->unk0[j].arg = var_a1->unk0[j + 1].arg;
+                     }
++#ifdef PORT /* the freed last slot is count - 1: [count] is past a full list (its count field, then the next
++             * event's first callback: UBSan, MENU-jump soak into the credits) */
++                    var_a1->unk0[var_a1->count - 1].cb = NULL;
++                    var_a1->unk0[var_a1->count - 1].arg = NULL;
++#else
+                     var_a1->unk0[var_a1->count].cb = NULL;
+                     var_a1->unk0[var_a1->count].arg = NULL;
++#endif
+                     var_a1->count--;
+                 }
+             }
+diff -ruN pw64/src/kernel/audio_manager.c port/src/kernel/audio_manager.c
+--- a/src/kernel/audio_manager.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/audio_manager.c	2026-10-31 01:59:46.839303953 +0000
+@@ -70,6 +70,9 @@
+     gALSynConfig.heap = &gAudioHeap;
+     if (gALSynConfig.fxType == AL_FX_CUSTOM) {
+         // clang-format off
++#ifdef PORT /* used after this block ends (amCreateAudioMgr) */
++        static
++#endif
+         s32 customFxParams[] = {
+             8, /* section count */
+             5200, /* total allocated memory (ms) */
+@@ -100,6 +103,9 @@
+         alCSPNew((ALCSPlayer*)gSeqPlayer, &gALSeqpConfig);
+         osSendMesg(&D_80261188, NULL, OS_MESG_BLOCK);
+         _uvMediaCopy(&seqFile, SEGMENT_ROM_START(audio_seq), 0x8);
++#ifdef PORT
++        seqFile.seqCount = (s16)__builtin_bswap16((u16)seqFile.seqCount);
++#endif
+         seqFileSize = (seqFile.seqCount * sizeof(ALSeqData)) + offsetof(ALSeqFile, seqArray);
+         gSeqFile = alHeapAlloc(&gAudioHeap, 1, seqFileSize);
+         _uvMediaCopy(gSeqFile, SEGMENT_ROM_START(audio_seq), seqFileSize);
+diff -ruN pw64/src/kernel/audio_seq.c port/src/kernel/audio_seq.c
+--- a/src/kernel/audio_seq.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/audio_seq.c	2026-10-31 02:02:49.941289488 +0000
+@@ -25,6 +25,9 @@
+         uvaSeqStop();
+     }
+     _uvMediaCopy(gSequenceData, gSeqFile->seqArray[arg0].offset, seq_align);
++#ifdef PORT /* ALCMidiHdr: s32 trackOffset[16], s32 division */
++    hh_swap32n(gSequenceData, 17);
++#endif
+     alCSeqNew(&D_80261230, gSequenceData);
+     alSeqpSetBank(gSeqPlayer, gWaveTableBank);
+     alSeqpSetSeq(gSeqPlayer, (ALSeq*)&D_80261230);
+diff -ruN pw64/src/kernel/code_7150.c port/src/kernel/code_7150.c
+--- a/src/kernel/code_7150.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/code_7150.c	2026-11-02 05:20:41.567605925 +0000
+@@ -60,6 +60,28 @@
+ 
+     uvMat4Copy(&sp54, &arg0->unk110);
+ 
++#ifdef PORT
++    typedef char hh_chk_7150[(__builtin_offsetof(UnkStruct_80204D94, unk208) == 0x208 &&
++                              __builtin_offsetof(UnkStruct_80204D94, unk250) == 0x250 &&
++                              __builtin_offsetof(UnkStruct_80204D94, unk298) == 0x298 &&
++                              __builtin_offsetof(UnkStruct_80204D94, unk2E0) == 0x2E0 &&
++                              __builtin_offsetof(UnkStruct_80204D94, unk328) == 0x328) ? 1 : -1];
++    { /* six points each: unk208[4] + unk238 + unk244 and unk298[4] + unk2C8 + unk2D4 (from unk250/unk2E0, 6 each with
++       * the padding after them); indexed through plain pointers, not past the [4]/[5] arrays (UBSan; GCC may assume an
++       * index inside the declared bounds, as with ALPHA2's unk328) */
++        Vec3F* src = (Vec3F*)((u8*)arg0 + 0x250);
++        Vec3F* dst = (Vec3F*)((u8*)arg0 + 0x208);
++        for (i = 0; i < 6; i++) {
++            uvMat4LocalToWorld(&sp54, &src[i], &dst[i]);
++        }
++        sp54.m[3][0] = sp54.m[3][1] = sp54.m[3][2] = 0.0f;
++        src = (Vec3F*)((u8*)arg0 + 0x2E0);
++        dst = (Vec3F*)((u8*)arg0 + 0x298);
++        for (i = 0; i < 6; i++) {
++            uvMat4LocalToWorld(&sp54, &src[i], &dst[i]);
++        }
++    }
++#else
+     for (i = 0; i < 6; i++) {
+         uvMat4LocalToWorld(&sp54, &arg0->unk250[i], &arg0->unk208[i]);
+     }
+@@ -68,6 +90,7 @@
+     for (i = 0; i < 6; i++) {
+         uvMat4LocalToWorld(&sp54, &arg0->unk2E0[i], &arg0->unk298[i]);
+     }
++#endif
+ 
+     if (gGfxUnkPtrs->terras[arg0->unk4] == NULL) {
+         return;
+diff -ruN pw64/src/kernel/code_8170.c port/src/kernel/code_8170.c
+--- a/src/kernel/code_8170.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/code_8170.c	2026-10-31 07:48:31.333774780 +0000
+@@ -195,7 +195,20 @@
+     *arg3 /= 360.0f;
+ }
+ 
++#ifdef PORT
++/* The texture recolouring below works on texels as u16/u8 values; 16-bit texels (RGBA16, or 16-bit IA) are kept in the
++ * N64's byte order (the renderer reads them so): to host order around the original code. */
++static void func_802077BC_impl(s32 arg0, s32 arg1, s32 arg2, void* arg3, f32 arg4, f32 arg5, f32 arg6, f32 arg7, f32 arg8, f32 arg9);
+ void func_802077BC(s32 arg0, s32 arg1, s32 arg2, void* arg3, f32 arg4, f32 arg5, f32 arg6, f32 arg7, f32 arg8, f32 arg9) {
++    int wide = (arg0 == 4) || (arg1 == 16);
++    if (wide) hh_swap16n(arg3, arg2 / 2);
++    func_802077BC_impl(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
++    if (wide) hh_swap16n(arg3, arg2 / 2);
++}
++static void func_802077BC_impl(s32 arg0, s32 arg1, s32 arg2, void* arg3, f32 arg4, f32 arg5, f32 arg6, f32 arg7, f32 arg8, f32 arg9) {
++#else
++void func_802077BC(s32 arg0, s32 arg1, s32 arg2, void* arg3, f32 arg4, f32 arg5, f32 arg6, f32 arg7, f32 arg8, f32 arg9) {
++#endif
+     u8* var_a0;
+     u16* var_a1;
+     f32 var_fv0;
+@@ -284,7 +297,7 @@
+             var_a0 = arg3;
+             for (i = 0; i < arg2; i++) {
+                 temp_fa0 = var_a0[i];
+-                var_a0[i] = (var_fv1 * temp_fa0) + var_fv0;
++                var_a0[i] = (s32)((var_fv1 * temp_fa0) + var_fv0);
+             }
+             break;
+         case 16:
+@@ -292,7 +305,7 @@
+             var_a1 = arg3;
+             for (i = 0; i < arg2 / 2; i++) {
+                 temp_fa0 = var_a1[i];
+-                var_a1[i] = (var_fv1 * temp_fa0) + var_fv0;
++                var_a1[i] = (s32)((var_fv1 * temp_fa0) + var_fv0);
+             }
+             break;
+         }
+@@ -300,7 +313,20 @@
+     }
+ }
+ 
++#ifdef PORT
++/* The texture recolouring below works on texels as u16/u8 values; 16-bit texels (RGBA16, or 16-bit IA) are kept in the
++ * N64's byte order (the renderer reads them so): to host order around the original code. */
++static void func_8020921C_impl(s32 arg0, s32 arg1, s32 arg2, void* arg3, f32 arg4, f32 arg5, f32 arg6, f32 arg7, f32 arg8, f32 arg9);
++void func_8020921C(s32 arg0, s32 arg1, s32 arg2, void* arg3, f32 arg4, f32 arg5, f32 arg6, f32 arg7, f32 arg8, f32 arg9) {
++    int wide = (arg0 == 4) || (arg1 == 16);
++    if (wide) hh_swap16n(arg3, arg2 / 2);
++    func_8020921C_impl(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
++    if (wide) hh_swap16n(arg3, arg2 / 2);
++}
++static void func_8020921C_impl(s32 arg0, s32 arg1, s32 arg2, void* arg3, f32 arg4, f32 arg5, f32 arg6, f32 arg7, f32 arg8, f32 arg9) {
++#else
+ void func_8020921C(s32 arg0, s32 arg1, s32 arg2, void* arg3, f32 arg4, f32 arg5, f32 arg6, f32 arg7, f32 arg8, f32 arg9) {
++#endif
+     s32 i;
+     f32 spB0;
+     f32 spAC;
+@@ -383,7 +409,7 @@
+             var_v0 = arg3;
+             for (i = 0; i < arg2; i++) {
+                 temp_fa0 = var_v0[i];
+-                var_v0[i] = (arg9 * temp_fa0) + temp_fv1;
++                var_v0[i] = (s32)((arg9 * temp_fa0) + temp_fv1);
+             }
+             break;
+         case 16:
+@@ -391,7 +417,7 @@
+             var_s0 = arg3;
+             for (i = 0; i < arg2 / 2; i++) {
+                 temp_fa0 = var_s0[i];
+-                var_s0[i] = (arg9 * temp_fa0) + temp_fv1;
++                var_s0[i] = (s32)((arg9 * temp_fa0) + temp_fv1);
+             }
+             break;
+         }
+@@ -429,21 +455,21 @@
+         } else {
+             var_fv0 = (temp_ft4 * temp_fa0) + temp_fs5;
+         }
+-        temp_a3->v.cn[0] = var_fv0;
++        temp_a3->v.cn[0] = (s32)(var_fv0);
+         temp_fa0 = temp_a3->v.cn[1];
+         if (temp_a3->v.flag != 0) {
+             var_fv0 = (arg6 * temp_fa0) + arg3;
+         } else {
+             var_fv0 = (temp_ft5 * temp_fa0) + sp40;
+         }
+-        temp_a3->v.cn[1] = var_fv0;
++        temp_a3->v.cn[1] = (s32)(var_fv0);
+         temp_fa0 = temp_a3->v.cn[2];
+         if (temp_a3->v.flag != 0) {
+             var_fv0 = (arg7 * temp_fa0) + arg4;
+         } else {
+             var_fv0 = (temp_fs3 * temp_fa0) + sp3C;
+         }
+-        temp_a3->v.cn[2] = var_fv0;
++        temp_a3->v.cn[2] = (s32)(var_fv0);
+     }
+ }
+ 
+@@ -486,13 +512,26 @@
+             var_fv0 = (temp_fs4 * spB4) + sp94;
+         }
+         func_80207410(var_fa0, var_fa1, var_fv0, &spA4, &spA0, &sp9C);
+-        temp_s0->v.cn[0] = spA4 * 255.0f;
+-        temp_s0->v.cn[1] = spA0 * 255.0f;
+-        temp_s0->v.cn[2] = sp9C * 255.0f;
++        temp_s0->v.cn[0] = (s32)(spA4 * 255.0f);
++        temp_s0->v.cn[1] = (s32)(spA0 * 255.0f);
++        temp_s0->v.cn[2] = (s32)(sp9C * 255.0f);
+     }
+ }
+ 
++#ifdef PORT
++/* The texture recolouring below works on texels as u16/u8 values; 16-bit texels (RGBA16, or 16-bit IA) are kept in the
++ * N64's byte order (the renderer reads them so): to host order around the original code. */
++static void func_8020B894_impl(s32 arg0, s32 arg1, s32 arg2, void* arg3, f32 arg4, f32 arg5, f32 arg6);
+ void func_8020B894(s32 arg0, s32 arg1, s32 arg2, void* arg3, f32 arg4, f32 arg5, f32 arg6) {
++    int wide = (arg0 == 4) || (arg1 == 16);
++    if (wide) hh_swap16n(arg3, arg2 / 2);
++    func_8020B894_impl(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
++    if (wide) hh_swap16n(arg3, arg2 / 2);
++}
++static void func_8020B894_impl(s32 arg0, s32 arg1, s32 arg2, void* arg3, f32 arg4, f32 arg5, f32 arg6) {
++#else
++void func_8020B894(s32 arg0, s32 arg1, s32 arg2, void* arg3, f32 arg4, f32 arg5, f32 arg6) {
++#endif
+     f32 var_fv1;
+     u16* var_a1;
+     u8* var_a0;
+@@ -567,14 +606,14 @@
+             var_a0 = arg3;
+             for (i = 0; i < arg2; i++) {
+                 temp_fa0 = var_a0[i];
+-                var_a0[i] = var_fv1 * temp_fa0;
++                var_a0[i] = (s32)(var_fv1 * temp_fa0);
+             }
+             break;
+         case 16:
+             var_a1 = arg3;
+             for (i = 0; i < arg2 / 2; i++) {
+                 temp_fa0 = var_a1[i];
+-                var_a1[i] = var_fv1 * temp_fa0;
++                var_a1[i] = (s32)(var_fv1 * temp_fa0);
+             }
+             break;
+         }
+@@ -582,7 +621,20 @@
+     }
+ }
+ 
++#ifdef PORT
++/* The texture recolouring below works on texels as u16/u8 values; 16-bit texels (RGBA16, or 16-bit IA) are kept in the
++ * N64's byte order (the renderer reads them so): to host order around the original code. */
++static void func_8020D0D8_impl(s32 arg0, s32 arg1, s32 arg2, void* arg3, f32 arg4, f32 arg5, f32 arg6);
++void func_8020D0D8(s32 arg0, s32 arg1, s32 arg2, void* arg3, f32 arg4, f32 arg5, f32 arg6) {
++    int wide = (arg0 == 4) || (arg1 == 16);
++    if (wide) hh_swap16n(arg3, arg2 / 2);
++    func_8020D0D8_impl(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
++    if (wide) hh_swap16n(arg3, arg2 / 2);
++}
++static void func_8020D0D8_impl(s32 arg0, s32 arg1, s32 arg2, void* arg3, f32 arg4, f32 arg5, f32 arg6) {
++#else
+ void func_8020D0D8(s32 arg0, s32 arg1, s32 arg2, void* arg3, f32 arg4, f32 arg5, f32 arg6) {
++#endif
+     s32 i;
+     f32 sp90;
+     f32 sp8C;
+@@ -652,14 +704,14 @@
+             var_v0 = arg3;
+             for (i = 0; i < arg2; i++) {
+                 temp_fa0 = var_v0[i];
+-                var_v0[i] = arg6 * temp_fa0;
++                var_v0[i] = (s32)(arg6 * temp_fa0);
+             }
+             break;
+         case 16:
+             var_s0 = arg3;
+             for (i = 0; i < arg2 / 2; i++) {
+                 temp_fa0 = var_s0[i];
+-                var_s0[i] = arg6 * temp_fa0;
++                var_s0[i] = (s32)(arg6 * temp_fa0);
+             }
+             break;
+         }
+@@ -681,21 +733,21 @@
+         } else {
+             var_fv0 = arg2 * arg2 * arg2 * temp_fa0;
+         }
+-        temp_a3->v.cn[0] = var_fv0;
++        temp_a3->v.cn[0] = (s32)(var_fv0);
+         temp_fa0 = temp_a3->v.cn[1];
+         if (temp_a3->v.flag != 0) {
+             var_fv0 = arg3 * temp_fa0;
+         } else {
+             var_fv0 = arg3 * arg3 * arg3 * temp_fa0;
+         }
+-        temp_a3->v.cn[1] = var_fv0;
++        temp_a3->v.cn[1] = (s32)(var_fv0);
+         temp_fa0 = temp_a3->v.cn[2];
+         if (temp_a3->v.flag != 0) {
+             var_fv0 = arg4 * temp_fa0;
+         } else {
+             var_fv0 = arg4 * arg4 * arg4 * temp_fa0;
+         }
+-        temp_a3->v.cn[2] = var_fv0;
++        temp_a3->v.cn[2] = (s32)(var_fv0);
+     }
+ }
+ 
+@@ -726,9 +778,9 @@
+             var_fv0 = arg4 * arg4 * arg4 * spB4;
+         }
+         func_80207410(var_fa0, var_fa1, var_fv0, &spA4, &spA0, &sp9C);
+-        temp_s0->v.cn[0] = spA4 * 255.0f;
+-        temp_s0->v.cn[1] = spA0 * 255.0f;
+-        temp_s0->v.cn[2] = sp9C * 255.0f;
++        temp_s0->v.cn[0] = (s32)(spA4 * 255.0f);
++        temp_s0->v.cn[1] = (s32)(spA0 * 255.0f);
++        temp_s0->v.cn[2] = (s32)(sp9C * 255.0f);
+     }
+ }
+ 
+diff -ruN pw64/src/kernel/dobj.c port/src/kernel/dobj.c
+--- a/src/kernel/dobj.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/dobj.c	2026-11-02 06:25:33.247451255 +0000
+@@ -517,6 +517,21 @@
+     }
+ 
+     currLod = &uvmd->lodTable[lodId];
++#ifdef PORT
++    if (hh_dbg_env("PW64_SHADLOG")) {
++        extern s32 D_80350470;
++        static int sN;
++        if ((arg0 - D_80263780) == D_80350470 || (arg0->unk34 & 0x20)) {
++            if (sN++ < 40) {
++                _uvDebugPrintf("SHADLOG dobj %d unk34 %x parts %d", (s32)(arg0 - D_80263780), arg0->unk34, currLod->partCount);
++                for (i = 0; i < currLod->partCount; i++)
++                    for (j = 0; j < currLod->partTable[i].stateCount; j++)
++                        _uvDebugPrintf(" [%d.%d %08x tri %d]", i, j, currLod->partTable[i].stateTable[j].state, currLod->partTable[i].stateTable[j].triCount);
++                _uvDebugPrintf("\n");
++            }
++        }
++    }
++#endif
+     for (i = 0; i < currLod->partCount; i++) {
+         currPart = &currLod->partTable[i];
+         if (i == 0) {
+@@ -644,3 +659,8 @@
+         arg1->unk190[i] = i + 1;
+     }
+ }
++
++#ifdef PORT
++typedef char hh_chk_unk80263780[(sizeof(Unk80263780) == 0x40 && __builtin_offsetof(Unk80263780, unk34) == 0x34 &&
++                                 __builtin_offsetof(Unk80263780, unk38) == 0x38) ? 1 : -1];
++#endif
+diff -ruN pw64/src/kernel/env.c port/src/kernel/env.c
+--- a/src/kernel/env.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/env.c	2026-10-31 07:54:07.774864039 +0000
+@@ -181,6 +181,24 @@
+         modelFlag = uven->modelTable[i].flag;
+         currLod = uvmd->lodTable;
+         currPart = currLod->partTable;
++#ifdef PORT
++        {
++            static u8 sEnvSeen[256];
++            if (hh_dbg_env("PW64_ENVLOG") && !(sEnvSeen[arg1 & 0xFF] & (1 << (i & 7)))) {
++                sEnvSeen[arg1 & 0xFF] |= 1 << (i & 7);
++                u32 k, p;
++                _uvDebugPrintf("ENVLOG env %d model %d/%d id %d flag %x lods %d parts %d\n", arg1, i, uven->modelCount,
++                               uven->modelTable[i].modelId, modelFlag, uvmd->lodCount, currLod->partCount);
++                for (p = 0; p < currLod->partCount; p++) {
++                    for (k = 0; k < currLod->partTable[p].stateCount; k++) {
++                        _uvDebugPrintf("ENVLOG   part %d state %d: %08x xfm %d tri %d\n", p, k,
++                                       currLod->partTable[p].stateTable[k].state, currLod->partTable[p].stateTable[k].xfmCount,
++                                       currLod->partTable[p].stateTable[k].triCount);
++                    }
++                }
++            }
++        }
++#endif
+ 
+         if (modelFlag & 8) {
+             D_80248DE0.m[3][0] = var_v0->unk110.m[3][0];
+@@ -218,7 +236,11 @@
+     }
+ 
+     uvGfxSetFogFactor(fogfact);
+-    if (uven->callback != NULL) {
++    if (uven->callback != NULL
++#ifdef PORT
++        && !hh_dbg_env("PW64_NOENVCB")
++#endif
++    ) {
+         uven->callback();
+     }
+ }
+diff -ruN pw64/src/kernel/filesystem.c port/src/kernel/filesystem.c
+--- a/src/kernel/filesystem.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/filesystem.c	2026-10-31 05:23:09.523029270 +0000
+@@ -72,6 +72,10 @@
+     tag = (u32)uvMemRead((void*)(dataInfo->address + dataInfo->offset), 4);
+     *sizeOut = (u32)uvMemRead((void*)(dataInfo->address + dataInfo->offset + 4), 4);
+     *arg2 = (void*)(dataInfo->address + dataInfo->offset + 8);
++#ifdef PORT
++    if (hh_dbg_env("PW64_FILELOG"))
++        _uvDebugPrintf("block %08X+%X tag %08X size %X\n", dataInfo->address, dataInfo->offset, tag, *sizeOut);
++#endif
+     if (tag == 'GZIP') { // 0x475A4950
+         size = (u32)uvMemRead((void*)(dataInfo->address + dataInfo->offset + 0xC), 4);
+         if (!(arg3 & 2)) {
+diff -ruN pw64/src/kernel/font.c port/src/kernel/font.c
+--- a/src/kernel/font.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/font.c	2026-10-31 02:02:01.672499256 +0000
+@@ -99,6 +99,9 @@
+             _uvMediaCopy((void*)ret->str, srcAddr, nbytes);
+             break;
+         case 'FRMT':
++#ifdef PORT
++            hh_swap32n(srcAddr, 2);
++#endif
+             ret->bmfmt = srcAddr[0];
+             ret->bmsiz = srcAddr[1];
+             break;
+@@ -106,6 +109,9 @@
+             bitmCount = nbytes / sizeof(Bitmap);
+             ret->bitmap = (Bitmap*)_uvMemAlloc(nbytes, 8);
+             _uvMediaCopy((void*)ret->bitmap, srcAddr, nbytes);
++#ifdef PORT
++            hh_swap_bitmaps(ret->bitmap, bitmCount);
++#endif
+             break;
+         case 'IMAG':
+             ret->imag[imagCount] = _uvMemAlloc(nbytes, 8);
+diff -ruN pw64/src/kernel/fx.c port/src/kernel/fx.c
+--- a/src/kernel/fx.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/fx.c	2026-10-31 07:48:31.334971600 +0000
+@@ -302,10 +302,10 @@
+             }
+             break;
+         case 5:
+-            var_a2->colorR = (f32)va_arg(args, f64) * 255.0f;
+-            var_a2->colorG = (f32)va_arg(args, f64) * 255.0f;
+-            var_a2->colorB = (f32)va_arg(args, f64) * 255.0f;
+-            var_a2->colorA = (f32)va_arg(args, f64) * 255.0f;
++            var_a2->colorR = (s32)((f32)va_arg(args, f64) * 255.0f);
++            var_a2->colorG = (s32)((f32)va_arg(args, f64) * 255.0f);
++            var_a2->colorB = (s32)((f32)va_arg(args, f64) * 255.0f);
++            var_a2->colorA = (s32)((f32)va_arg(args, f64) * 255.0f);
+             if (var_a2->type == 4) {
+                 temp_v0 = var_a2->unkA8;
+                 temp_v0->unk190.x = var_a2->colorR - var_a2->unk56;
+@@ -315,10 +315,10 @@
+             }
+             break;
+         case 6:
+-            var_a2->unk56 = (f32)va_arg(args, f64) * 255.0f;
+-            var_a2->unk57 = (f32)va_arg(args, f64) * 255.0f;
+-            var_a2->unk58 = (f32)va_arg(args, f64) * 255.0f;
+-            var_a2->unk59 = (f32)va_arg(args, f64) * 255.0f;
++            var_a2->unk56 = (s32)((f32)va_arg(args, f64) * 255.0f);
++            var_a2->unk57 = (s32)((f32)va_arg(args, f64) * 255.0f);
++            var_a2->unk58 = (s32)((f32)va_arg(args, f64) * 255.0f);
++            var_a2->unk59 = (s32)((f32)va_arg(args, f64) * 255.0f);
+             if (var_a2->type == 4) {
+                 temp_v0 = var_a2->unkA8;
+                 temp_v0->unk190.x = var_a2->colorR - var_a2->unk56;
+@@ -814,8 +814,8 @@
+     } else {
+         sp94 = 9;
+     }
+-    sp8A = temp_s6->unk1D4;
+-    sp6C = temp_s6->unk168[i];
++    sp8A = (s32)(temp_s6->unk1D4);
++    sp6C = (s32)(temp_s6->unk168[i]);
+     if ((sp8A == sp6C) && (sp6C == 0)) {
+         sp70->unk4 = 0;
+         temp_s6->unk1EC = 0;
+@@ -857,15 +857,15 @@
+     for (i = 0; i < sp94; i++) {
+         temp_v1 = temp_s6->unk1E8 - i;
+         j = (temp_v1 + 9) % 10;
+-        sp8A = temp_s6->unk168[j];
++        sp8A = (s32)(temp_s6->unk168[j]);
+         // FAKE
+         if (j / 10) { }
+         if (!sp8A) {
+             continue;
+         }
+-        sp8D = ((temp_s6->unk190.x / 10.0f) * (10 - i)) + sp70->unk56;
+-        sp8C = ((temp_s6->unk190.y / 10.0f) * (10 - i)) + sp70->unk57;
+-        sp8B = ((temp_s6->unk190.z / 10.0f) * (10 - i)) + sp70->unk58;
++        sp8D = (s32)(((temp_s6->unk190.x / 10.0f) * (10 - i)) + sp70->unk56);
++        sp8C = (s32)(((temp_s6->unk190.y / 10.0f) * (10 - i)) + sp70->unk57);
++        sp8B = (s32)(((temp_s6->unk190.z / 10.0f) * (10 - i)) + sp70->unk58);
+         uvVtx(temp_s6->unk0[j].unk6, temp_s6->unk0[j].unk8, temp_s6->unk0[j].unkA, 0, sp80 * var_fp, sp8D, sp8C, sp8B, sp8A);
+         uvVtx(temp_s6->unk0[j].unk12, temp_s6->unk0[j].unk14, temp_s6->unk0[j].unk16, sp82, sp80 * var_fp, sp8D, sp8C, sp8B, sp8A);
+ 
+@@ -881,8 +881,8 @@
+     } else {
+         sp94 = 9;
+     }
+-    sp8A = temp_s6->unk1D4;
+-    sp6C = temp_s6->unk168[i];
++    sp8A = (s32)(temp_s6->unk1D4);
++    sp6C = (s32)(temp_s6->unk168[i]);
+     sp8D = sp70->colorR;
+     sp8C = sp70->colorG;
+     sp8B = sp70->colorB;
+@@ -900,15 +900,15 @@
+     for (i = 0; i < sp94; i++) {
+         temp_v1 = temp_s6->unk1E8 - i;
+         j = (temp_v1 + 9) % 10;
+-        sp8A = temp_s6->unk168[j];
++        sp8A = (s32)(temp_s6->unk168[j]);
+         // FAKE
+         if (j / 10) { }
+         if (!sp8A) {
+             continue;
+         }
+-        sp8D = ((temp_s6->unk190.x / 10.0f) * (10 - i)) + sp70->unk56;
+-        sp8C = ((temp_s6->unk190.y / 10.0f) * (10 - i)) + sp70->unk57;
+-        sp8B = ((temp_s6->unk190.z / 10.0f) * (10 - i)) + sp70->unk58;
++        sp8D = (s32)(((temp_s6->unk190.x / 10.0f) * (10 - i)) + sp70->unk56);
++        sp8C = (s32)(((temp_s6->unk190.y / 10.0f) * (10 - i)) + sp70->unk57);
++        sp8B = (s32)(((temp_s6->unk190.z / 10.0f) * (10 - i)) + sp70->unk58);
+         uvVtx(temp_s6->unk0[j].unk0, temp_s6->unk0[j].unk2, temp_s6->unk0[j].unk4, 0, sp80 * var_fp, sp8D, sp8C, sp8B, sp8A);
+         uvVtx(temp_s6->unk0[j].unkC, temp_s6->unk0[j].unkE, temp_s6->unk0[j].unk10, sp82, sp80 * var_fp, sp8D, sp8C, sp8B, sp8A);
+         var_fp++;
+@@ -968,7 +968,7 @@
+     uvBeginGrid();
+     for (i = 0; i < ARRAY_COUNT(D_80248F34); i++) {
+         temp_fv0 = D_80248F34[i].unk4 * var_fs0;
+-        uvVtx(D_80248F34[i].unk0, 0, D_80248F34[i].unk2, 0, 0, temp_s1->colorR, temp_s1->colorG, (s32)temp_s1->colorB, (u8)(temp_fv0));
++        uvVtx(D_80248F34[i].unk0, 0, D_80248F34[i].unk2, 0, 0, temp_s1->colorR, temp_s1->colorG, (s32)temp_s1->colorB, (u8)(s32)(temp_fv0));
+     }
+     uvEndGrid(8, 8, 0, 0);
+     uvGfxMtxViewPop();
+@@ -1053,14 +1053,14 @@
+         sp8C = sp90;
+         uvGfxBindTexture(var_a0);
+         if (temp_s0->unk4C == 0.0f) {
+-            sp78 = 0;
+-            sp7A = 0;
+-            sp7C = sp90->width << 5;
+-            sp7E = 0;
+-            sp80 = sp8C->width << 5;
+-            sp82 = sp90->height << 5;
+-            sp84 = 0;
+-            sp86 = sp8C->height << 5;
++            sp78 = (s32)(0);
++            sp7A = (s32)(0);
++            sp7C = (s32)(sp90->width << 5);
++            sp7E = (s32)(0);
++            sp80 = (s32)(sp8C->width << 5);
++            sp82 = (s32)(sp90->height << 5);
++            sp84 = (s32)(0);
++            sp86 = (s32)(sp8C->height << 5);
+         } else {
+             sp74 = temp_s0->unk4C * 0.0174533f;
+             sp6C = uvSinF(sp74);
+@@ -1068,14 +1068,14 @@
+             temp_v0 = sp90->width << 4;
+             temp_a0 = sp90->height << 4;
+ 
+-            sp78 = (-temp_v0 * sp70) + (temp_a0 * sp6C) + temp_v0;
+-            sp7A = (-temp_v0 * sp6C) - (temp_a0 * sp70) + temp_a0;
+-            sp7C = (temp_v0 * sp70) + (temp_a0 * sp6C) + temp_v0;
+-            sp7E = (temp_v0 * sp6C) - (temp_a0 * sp70) + temp_a0;
+-            sp80 = (temp_v0 * sp70) - (temp_a0 * sp6C) + temp_v0;
+-            sp82 = (temp_v0 * sp6C) + (temp_a0 * sp70) + temp_a0;
+-            sp84 = (-temp_v0 * sp70) - (temp_a0 * sp6C) + temp_v0;
+-            sp86 = (-temp_v0 * sp6C) + (temp_a0 * sp70) + temp_a0;
++            sp78 = (s32)((-temp_v0 * sp70) + (temp_a0 * sp6C) + temp_v0);
++            sp7A = (s32)((-temp_v0 * sp6C) - (temp_a0 * sp70) + temp_a0);
++            sp7C = (s32)((temp_v0 * sp70) + (temp_a0 * sp6C) + temp_v0);
++            sp7E = (s32)((temp_v0 * sp6C) - (temp_a0 * sp70) + temp_a0);
++            sp80 = (s32)((temp_v0 * sp70) - (temp_a0 * sp6C) + temp_v0);
++            sp82 = (s32)((temp_v0 * sp6C) + (temp_a0 * sp70) + temp_a0);
++            sp84 = (s32)((-temp_v0 * sp70) - (temp_a0 * sp6C) + temp_v0);
++            sp86 = (s32)((-temp_v0 * sp6C) + (temp_a0 * sp70) + temp_a0);
+         }
+     } else {
+         uvGfxSetFlags(GFX_STATE_TEXTURE_NONE);
+@@ -1102,7 +1102,7 @@
+     sp94.m[2][0] *= temp_s0->unk28;
+     sp94.m[2][1] *= temp_s0->unk28;
+     sp94.m[2][2] *= temp_s0->unk28;
+-    sp8B = temp_s0->unk48 * temp_s0->colorA;
++    sp8B = (s32)(temp_s0->unk48 * temp_s0->colorA);
+     uvGfx_802236CC(&sp94);
+     uvVtxBeginPoly();
+     uvVtx(-100, 0, 0, sp78, sp7A, temp_s0->colorR, temp_s0->colorG, temp_s0->colorB, sp8B);
+diff -ruN pw64/src/kernel/matrix.c port/src/kernel/matrix.c
+--- a/src/kernel/matrix.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/matrix.c	2026-10-31 02:08:56.882422167 +0000
+@@ -227,6 +227,13 @@
+     ww = (s32)((src->m[3][3] * 65536.0f) + 0.5f);
+     dst2->i[3][3] = ww >> 0x10;
+     dst2->f[3][3] = ww & 0xFFFF;
++#ifdef PORT /* the s16 halves went in host order: each word as the N64 has it (int/frac pairs high half first) */
++    {
++        u32* w = (u32*)dst2;
++        s32 k;
++        for (k = 0; k < 16; k++) w[k] = (w[k] >> 16) | (w[k] << 16);
++    }
++#endif
+     if ((Mtx4F*)dst2 == src) {
+         uvMat4CopyL(dst, spA0);
+     }
+diff -ruN pw64/src/kernel/memory.c port/src/kernel/memory.c
+--- a/src/kernel/memory.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/memory.c	2026-11-02 04:47:59.902158192 +0000
+@@ -354,6 +354,9 @@
+         switch (tag) {
+         case 'COMM':
+             _uvMediaCopy(&gUVBlockCounts, source, length);
++#ifdef PORT /* f32, then u16 counts */
++            hh_swap_desc(&gUVBlockCounts, "whhhhhhhh", length);
++#endif
+             gLevelData.unk1608 = gUVBlockCounts.unk0;
+             break;
+         default:
+diff -ruN pw64/src/kernel/sched.c port/src/kernel/sched.c
+--- a/src/kernel/sched.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/sched.c	2026-11-02 04:31:03.481747746 +0000
+@@ -281,6 +281,11 @@
+     }
+ }
+ 
++#ifdef PORT
++int hh_audio_beside(void);            /* hh_plat.c: PW64_AUDBESIDE */
++void hh_plat_rsp_task(OSTask* task);  /* hh_plat.c: run a task synchronously */
++#endif
++
+ void _uvScHandleRetrace(void) {
+     OSScTask* msg;
+     u32 taskType;
+@@ -306,11 +311,22 @@
+     }
+ 
+     if (D_802B9C70 >= 51) {
++#ifdef PORT
++        /* the port's tasks always finish (the audio task at once, the graphics task when drawn): a frame drawn
++         * over 51 retraces (a stall, the device's menu) is not a hung RSP, and the made-up RSP/RDP done of the
++         * "recovery" is ALPHA8's crash. Keep counting from 0 (both counts: the RDP check below compares them). */
++        D_802B9C70 = 0;
++        D_802B9C6F = 0;
++        goto rsp_timeout_done;
++#endif
+         _uvDebugPrintf("RSP timeout on %c, sending wakeup...\n", gSchedRspStatus);
+         _uvScDlistRecover();
+         return;
+     }
+ 
++#ifdef PORT
++rsp_timeout_done:
++#endif
+     if ((D_802B9C70 + 50) < D_802B9C6F) {
+         D_802B9C6F = 0;
+         _uvDebugPrintf("RDP timeout on %c [%d], sending wakeup...\n", gSchedRdpStatus, gSchedRdpStatus);
+@@ -349,10 +365,43 @@
+ 
+     if (D_802B9C58 != NULL) {
+         if (gSchedRspStatus == 'g') {
++#ifdef PORT
++            /* ALPHA10: the audio task beside the graphics task. On the N64 the graphics task yields at this
++             * retrace, the audio task runs and the graphics task resumes: one audio frame per retrace. The port's
++             * graphics task cannot yield, so the audio task waited for the end of the frame: one audio frame per
++             * drawn frame (20-35 on the Mini), each at most frameSize + EXTRA_SAMPLES samples -- about 2/3 of the
++             * sound the card plays, the ring ran dry over and over ("aud dry" +15 per PERF line on the device).
++             * The port's audio "RSP" (hh_aspclassic) is plain C with its own DMEM, apart from the renderer, so the
++             * task runs here, at once, as a perfect yield would have it run; the graphics task carries on as if
++             * it had yielded and resumed. PW64_AUDBESIDE=0: wait for the frame, as ALPHA9. */
++            if (hh_audio_beside()) {
++                uvSc_8022C3C0(TRUE, EVENT_ID_AUDIO_START);
++                hh_plat_rsp_task(&D_802B9C58->list);
++                uvSc_8022C3C0(TRUE, EVENT_ID_AUDIO_DONE);
++                if (gNmiAsserted == 0) {
++                    osSendMesg(D_802B9C58->msgQ, D_802B9C58->msg, 1);
++                }
++                D_802B9C58 = NULL;
++                goto notify_clients;
++            }
++#endif
+             if (D_802B9C6C != 0) {
+                 _uvDebugPrintf("_uvScHandleRetrace:  2nd yield\n");
+             }
+             if (D_802B9C6B != 0) {
++#ifdef PORT
++                /* The port's graphics task cannot yield (osSpTaskYield is a no-op): a frame that takes more
++                 * than two retraces to draw is still drawing, not hung. "Recovering" sent a made-up RSP/RDP done
++                 * and started the audio task under it (qemu at real speed: fatal "RSP task started while another
++                 * is pending"; the Mini, ALPHA8: audio state wrecked, a crash in the sequence player). Wait: the
++                 * task's real completion runs the pending audio task (_uvScHandleRSP).
++                 * ALPHA10: and still tell the clients about the retrace (no early return). The audio manager makes
++                 * one frame per retrace message; returning here dropped a retrace for every frame that took longer
++                 * than two retraces to draw (most of them on the Mini, 20-35 fps), the mixer fell behind the card
++                 * and the ring ran dry all the time (device log: "aud dry" +15 per PERF line). The N64's yield path
++                 * (below) also notifies the clients. */
++                goto notify_clients;
++#endif
+                 _uvDebugPrintf("_uvScHandleRetrace: gfx task didn't yield\n");
+                 _uvScDlistRecover();
+                 return;
+@@ -367,6 +416,9 @@
+         _uvScRunGfx();
+     }
+ 
++#ifdef PORT
++notify_clients:
++#endif
+     var_s0 = gSchedInst.clientList;
+     while (var_s0 != NULL) {
+         osSendMesg(var_s0->msgQ, &gSchedInst, 0);
+diff -ruN pw64/src/kernel/sobj.c port/src/kernel/sobj.c
+--- a/src/kernel/sobj.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/sobj.c	2026-10-31 07:31:21.606939246 +0000
+@@ -1,3 +1,8 @@
++#if defined(PORT) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
++#define HH_MTXC(c) ((c) ^ 1) /* the s16 halves of a Mtx word, little-endian host */
++#else
++#define HH_MTXC(c) (c)
++#endif
+ #include "common.h"
+ #include <uv_chan.h>
+ #include <uv_dobj.h>
+@@ -40,6 +45,9 @@
+         }
+ 
+         if (!(var_s2->unk14 & arg2)) {
++#ifdef PORT
++            if (hh_dbg_env("PW64_SOBJLOG")) _uvDebugPrintf("sobj %d model %d flags %04X/%04X: masked\n", i, var_s2->modelId, var_s2->unk14, arg2);
++#endif
+             continue;
+         }
+         uvmd = uvmdTable[var_s2->modelId];
+@@ -56,6 +64,9 @@
+             spB4 = temp_fs2;
+             func_80214840(arg6 * -1, &spB8, &spB4);
+             if (func_80206F64(arg0->unk2E0, spB8, spB4, temp_fs0, uvmd->unk1C) == 0) {
++#ifdef PORT
++                if (hh_dbg_env("PW64_SOBJLOG")) _uvDebugPrintf("sobj %d model %d at %.1f %.1f %.1f r %.1f: frustum\n", i, var_s2->modelId, temp_fs1, temp_fs2, temp_fs0, uvmd->unk1C);
++#endif
+                 continue;
+             }
+         }
+@@ -65,6 +76,12 @@
+         } else {
+             var_s1 = lodId = uvSobjGetLODIndex(uvmd, arg0->unk200 * temp_fv0);
+         }
++#ifdef PORT
++        if (hh_dbg_env("PW64_SOBJLOG"))
++            _uvDebugPrintf("sobj %d model %d flags %04X/%04X/%04X dist %.1f lod %d (radii %d, last %.1f) bb %d\n", i, var_s2->modelId,
++                           var_s2->unk14, arg2, arg3, temp_fv0, (int)lodId, uvmd->lodCount, uvmd->lodRadius[uvmd->lodCount - 1],
++                           lodId != 0xFF ? uvmd->lodTable[lodId].billboard : -1);
++#endif
+         if (lodId == 0xFF) {
+             continue;
+         }
+@@ -174,14 +191,14 @@
+         arg4 /= temp_fv0;
+     }
+ 
+-    temp_s6->u.i[0][0] = (s32)(((-arg4 / sp70) * 65536.0f) + 0.5f) >> 0x10;
+-    temp_s6->u.i[0][1] = (s32)(((arg3 / sp70) * 65536.0f) + 0.5f) >> 0x10;
+-    temp_s6->u.f[0][0] = (s32)(((-arg4 / sp70) * 65536.0f) + 0.5f) & 0xFFFF;
+-    temp_s6->u.f[0][1] = (s32)(((arg3 / sp70) * 65536.0f) + 0.5f) & 0xFFFF;
+-    temp_s6->u.i[1][1] = (s32)(((-arg4 / sp70) * 65536.0f) + 0.5f) >> 0x10;
+-    temp_s6->u.i[1][0] = (s32)(((-arg3 / sp70) * 65536.0f) + 0.5f) >> 0x10;
+-    temp_s6->u.f[1][1] = (s32)(((-arg4 / sp70) * 65536.0f) + 0.5f) & 0xFFFF;
+-    temp_s6->u.f[1][0] = (s32)(((-arg3 / sp70) * 65536.0f) + 0.5f) & 0xFFFF;
++    temp_s6->u.i[0][HH_MTXC(0)] = (s32)(((-arg4 / sp70) * 65536.0f) + 0.5f) >> 0x10;
++    temp_s6->u.i[0][HH_MTXC(1)] = (s32)(((arg3 / sp70) * 65536.0f) + 0.5f) >> 0x10;
++    temp_s6->u.f[0][HH_MTXC(0)] = (s32)(((-arg4 / sp70) * 65536.0f) + 0.5f) & 0xFFFF;
++    temp_s6->u.f[0][HH_MTXC(1)] = (s32)(((arg3 / sp70) * 65536.0f) + 0.5f) & 0xFFFF;
++    temp_s6->u.i[1][HH_MTXC(1)] = (s32)(((-arg4 / sp70) * 65536.0f) + 0.5f) >> 0x10;
++    temp_s6->u.i[1][HH_MTXC(0)] = (s32)(((-arg3 / sp70) * 65536.0f) + 0.5f) >> 0x10;
++    temp_s6->u.f[1][HH_MTXC(1)] = (s32)(((-arg4 / sp70) * 65536.0f) + 0.5f) & 0xFFFF;
++    temp_s6->u.f[1][HH_MTXC(0)] = (s32)(((-arg3 / sp70) * 65536.0f) + 0.5f) & 0xFFFF;
+ 
+     for (i = 0; i < currLod->partCount; i++) {
+         currPart = &currLod->partTable[i];
+diff -ruN pw64/src/kernel/system.c port/src/kernel/system.c
+--- a/src/kernel/system.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/system.c	2026-10-31 03:37:51.156093277 +0000
+@@ -309,8 +309,10 @@
+ }
+ 
+ void Thread_App(void* arg) {
++#ifndef PORT /* the app overlay is compiled in */
+     _uvMediaCopy(app_TEXT_START, app_ROM_START, app_ROM_END - app_ROM_START);
+     uvMemSet(app_BSS_START, 0, app_BSS_END - app_BSS_START);
++#endif
+     app_entrypoint(arg);
+ }
+ 
+@@ -325,6 +327,9 @@
+         osStartThread(&gAppThread);
+     }
+     osSetThreadPri(NULL, 0);
++#ifdef PORT
++    hh_idle_forever();
++#endif
+     while (1) { }
+ }
+ 
+@@ -412,8 +417,18 @@
+     return 1;
+ }
+ 
++#ifdef PORT
++void hh_game_vlog(const char* fmt, __builtin_va_list ap);
+ void _uvDebugPrintf(char* fmt, ...) {
++    __builtin_va_list ap;
++    __builtin_va_start(ap, fmt);
++    hh_game_vlog(fmt, ap);
++    __builtin_va_end(ap);
+ }
++#else
++void _uvDebugPrintf(char* fmt, ...) {
++}
++#endif
+ 
+ void _uvDMA(void* vAddr, u32 devAddr, u32 nbytes) {
+     s32 dest = vAddr;
+diff -ruN pw64/src/kernel/terrain.c port/src/kernel/terrain.c
+--- a/src/kernel/terrain.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/terrain.c	2026-10-31 04:41:24.731804718 +0000
+@@ -487,6 +487,11 @@
+     var_a3 = ((arg0->unk374.unkC - spC8->unk0.unk0) / sp168);
+     sp170 = ((arg0->unk374.unk4 - spC8->unk0.unk4) / sp164);
+     sp16C = ((arg0->unk374.unk10 - spC8->unk0.unk4) / sp164);
++#ifdef PORT
++    if (hh_dbg_env("PW64_TERRALOG"))
++        _uvDebugPrintf("terra %d: a2 %d a3 %d s170 %d s16C %d (%f %f %f %f / %f %f)\n", arg1, var_a2, var_a3, sp170, sp16C,
++                       arg0->unk374.unk0, arg0->unk374.unkC, arg0->unk374.unk4, arg0->unk374.unk10, sp168, sp164);
++#endif
+     if (var_a2 < 0) {
+         var_a2 = 0;
+     }
+@@ -537,6 +542,11 @@
+         }
+     }
+ 
++#ifdef PORT
++    if (hh_dbg_env("PW64_TERRALOG"))
++        for (i = 0; i < arg0->unk370; i++)
++            _uvDebugPrintf("edge %d/%d: pt %f %f fc %f s110 %f e8 %f e0 %d\n", i, arg0->unk370, arg0->unk328[i].x, arg0->unk328[i].y, spFC[i], sp110[i], spE8[i], spE0[i]);
++#endif
+     for (sp188 = var_a2; sp188 <= var_a3; sp188++) {
+         for (sp184 = sp170; sp184 <= sp16C; sp184++) {
+             sp17C = (spC8->unk18 * sp184) + sp188;
+@@ -572,6 +582,11 @@
+             spDE = 0xFFFF;
+             for (i = 0; i < arg0->unk370; i++) {
+                 uvComputeLineEndP(&spCE, &spCC, &spDE, temp_fs2_2, temp_fs3, temp_fs4_2, temp_fs5, spFC[i], sp110[i], spE8[i], spE0[i], temp_fs0, temp_fs1);
++#ifdef PORT
++                if (hh_dbg_env("PW64_TERRALOG") && sp188 == 0 && sp184 == 1)
++                    _uvDebugPrintf("lep %d/%d: %f %f %f %f | %f %f %f %d | %f %f -> ce %d cc %d de %04X\n", i, arg0->unk370, temp_fs2_2, temp_fs3, temp_fs4_2, temp_fs5,
++                                   spFC[i], sp110[i], spE8[i], spE0[i], temp_fs0, temp_fs1, spCE, spCC, spDE);
++#endif
+                 if (spCE >= 0) {
+                     temp_s0_2 = uvTerra_8022F62C(temp_s2->unk44, spCE, spCC, 0);
+                     temp_v0_5 = uvTerra_8022F62C(temp_s2->unk44, spCE, spCC, 1);
+@@ -588,6 +603,9 @@
+             }
+ 
+             temp_v0 = spDE & ~var_s6;
++#ifdef PORT
++            if (hh_dbg_env("PW64_TERRALOG")) _uvDebugPrintf("tile %d,%d spDE %04X s6 %04X ce %d cc %d\n", sp188, sp184, spDE, var_s6, spCE, spCC);
++#endif
+ 
+             if (spDE) {
+                 temp_s0_3 = &D_802C5BC0[D_802C5FC0];
+diff -ruN pw64/src/kernel/texture.c port/src/kernel/texture.c
+--- a/src/kernel/texture.c	2026-10-31 01:47:47.796427878 +0000
++++ b/src/kernel/texture.c	2026-10-31 05:23:09.523628805 +0000
+@@ -75,6 +75,9 @@
+     while ((tag = uvFileReadBlock(sp64, &sp5C, &src, 1)) != 0) {
+         if (tag == 'TABL') {
+             for (var_a1 = 0, var_a0 = (UVBlockHeader*)src; var_a1 < sp5C; var_a1 += 8, var_a0++) {
++#ifdef PORT
++                hh_swap32n(var_a0, 2);
++#endif
+                 switch (var_a0->tag) {
+                 case 0:
+                     break;
+@@ -411,6 +414,9 @@
+ 
+     uven = (ParsedUVEN*)_uvMemAlloc(sizeof(ParsedUVEN), 4);
+     uvConsumeBytes(uven, &src, sizeof(ParsedUVEN));
++#ifdef PORT /* colours are bytes; fogMin, fogMax at 0x14 */
++    hh_swap32n(&uven->fogMin, 2);
++#endif
+     uven->modelCount = modelCount;
+     uven->callback = 0;
+     uven->modelTable = (uven->modelCount) ? modelTable : NULL;
+@@ -478,6 +484,9 @@
+     uvConsumeBytes(&sp6E, &src, sizeof(sp6E));
+     vtxTable = (Vtx*)_uvMemAlloc(vtxCount * sizeof(Vtx), 8);
+     _uvMediaCopy(vtxTable, src, vtxCount * sizeof(Vtx));
++#ifdef PORT
++    hh_swap_vtx(vtxTable, vtxCount);
++#endif
+     src += vtxCount * sizeof(Vtx);
+     lodRadius = (f32*)_uvMemAlloc(lodCount * sizeof(f32), 4);
+     lodTable = (uvModelLOD*)_uvMemAlloc(lodCount * sizeof(uvModelLOD), 4);
+@@ -526,11 +535,18 @@
+ 
+     mtxTable = (Mtx4F*)_uvMemAlloc(mtxCount * sizeof(Mtx4F), 4);
+     uvConsumeBytes(mtxTable, &src, mtxCount * sizeof(Mtx4F));
++#ifdef PORT
++    hh_swap32n(mtxTable, mtxCount * 16);
++#endif
+     if (sp7A) {
+         var_s6 = (UnkUVMD_24*)_uvMemAlloc(sp7A * sizeof(UnkUVMD_24), 4);
+ 
+         for (i = 0; i < sp7A; i++) {
+             uvConsumeBytes(&var_s6[i], &src, sizeof(var_s6[i]));
++#ifdef PORT /* u8 x3, pad, f32 x6, u16 (+ pad), pointer */
++            hh_swap32n(&var_s6[i].unk4, 6);
++            var_s6[i].unk1C = __builtin_bswap16(var_s6[i].unk1C);
++#endif
+         }
+     } else {
+         var_s6 = NULL;
+@@ -632,10 +648,16 @@
+ 
+     vtxTable = (Vtx*)_uvMemAlloc(vtxCount * sizeof(Vtx), 8);
+     _uvMediaCopy(vtxTable, src, vtxCount * sizeof(Vtx));
++#ifdef PORT
++    hh_swap_vtx(vtxTable, vtxCount);
++#endif
+     src += vtxCount * sizeof(Vtx);
+ 
+     spA4 = (void*)_uvMemAlloc(sp8A * sizeof(Unk80225FBC_0x28_UnkC), 4);
+     _uvMediaCopy((void*)spA4, src, sp8A * sizeof(Unk80225FBC_0x28_UnkC));
++#ifdef PORT
++    hh_swap16n(spA4, sp8A * 4);
++#endif
+     src += sp8A * sizeof(Gfx);
+ 
+     sp98 = (UnkSobjDraw*)_uvMemAlloc(sp86 * sizeof(UnkSobjDraw), 4);
+@@ -644,6 +666,9 @@
+         uvConsumeBytes(&sp7B, &src, sizeof(sp7B));
+         tempSp98->unk4 = (void*)_uvMemAlloc(sp7B * sizeof(Mtx), 4);
+         uvConsumeBytes(tempSp98->unk4, &src, sp7B * sizeof(Mtx));
++#ifdef PORT
++        hh_swap32n(tempSp98->unk4, sp7B * 16);
++#endif
+ 
+         uvConsumeBytes(&tempSp98->modelId, &src, sizeof(tempSp98->modelId));
+         uvConsumeBytes(&tempSp98->unk8, &src, sizeof(tempSp98->unk8));
+@@ -760,6 +785,9 @@
+     dlist = (Gfx*)_uvMemAlloc(gfxCount * sizeof(Gfx), 8);
+ 
+     uvConsumeBytes(dlist, &src, gfxCount * sizeof(Gfx));
++#ifdef PORT
++    hh_swap32n(dlist, gfxCount * 2);
++#endif
+ 
+     temp_v0 = (ParsedUVTX*)_uvMemAlloc(sizeof(ParsedUVTX), 4);
+     uvConsumeBytes(&temp_v0->width, &src, sizeof(temp_v0->width));
+@@ -804,12 +832,16 @@
+     for (i = 0; i < gfxCount; i++) {
+         gfxCmd = &dlist[i];
+ 
++#ifdef PORT /* the bit-field puts cmd in the low byte on a little-endian host */
++        temp_v0_2 = gfxCmd->words.w0 >> 24;
++#else
+         temp_v0_2 = gfxCmd->setimg.cmd;
++#endif
+         if (temp_v0_2 == G_SETTIMG) {
+             if (var_a0 == 0) {
+-                gfxCmd->setimg.dram |= (u32)OS_PHYSICAL_TO_K0(temp_t0);
++                gfxCmd->words.w1 |= (u32)OS_PHYSICAL_TO_K0(temp_t0);
+             } else {
+-                gfxCmd->setimg.dram |= (u32)OS_PHYSICAL_TO_K0(D_802B6E30[temp_v0->unk14]);
++                gfxCmd->words.w1 |= (u32)OS_PHYSICAL_TO_K0(D_802B6E30[temp_v0->unk14]);
+             }
+             var_a0++;
+         }
+@@ -853,6 +885,9 @@
+         _uvDebugPrintf("bump up NLV_E\n");
+     }
+     _uvMediaCopy(level->terraIds, src, level->terraCount * sizeof(u16));
++#ifdef PORT
++    hh_swap16n(level->terraIds, level->terraCount);
++#endif
+     src += level->terraCount * sizeof(u16);
+ 
+     uvConsumeBytes(&level->lightCount, &src, sizeof(level->lightCount));
+@@ -863,6 +898,9 @@
+         _uvDebugPrintf("bump up NLV_E\n");
+     }
+     _uvMediaCopy(level->lightIds, src, level->lightCount * sizeof(u16));
++#ifdef PORT
++    hh_swap16n(level->lightIds, level->lightCount);
++#endif
+     src += level->lightCount * sizeof(u16);
+ 
+     uvConsumeBytes(&level->environmentCount, &src, sizeof(level->environmentCount));
+@@ -873,6 +911,9 @@
+         _uvDebugPrintf("bump up NLV_E\n");
+     }
+     _uvMediaCopy(level->environmentIds, src, level->environmentCount * sizeof(u16));
++#ifdef PORT
++    hh_swap16n(level->environmentIds, level->environmentCount);
++#endif
+     src += level->environmentCount * sizeof(u16);
+ 
+     uvConsumeBytes(&level->modelCount, &src, sizeof(level->modelCount));
+@@ -883,6 +924,9 @@
+         _uvDebugPrintf("bump up NLV_E\n");
+     }
+     _uvMediaCopy(level->modelIds, src, level->modelCount * sizeof(u16));
++#ifdef PORT
++    hh_swap16n(level->modelIds, level->modelCount);
++#endif
+     src += level->modelCount * sizeof(u16);
+ 
+     uvConsumeBytes(&level->contourCount, &src, sizeof(level->contourCount));
+@@ -893,6 +937,9 @@
+         _uvDebugPrintf("bump up NLV_E\n");
+     }
+     _uvMediaCopy(level->contourIds, src, level->contourCount * sizeof(u16));
++#ifdef PORT
++    hh_swap16n(level->contourIds, level->contourCount);
++#endif
+     src += level->contourCount * sizeof(u16);
+ 
+     uvConsumeBytes(&level->textureCount, &src, sizeof(level->textureCount));
+@@ -903,6 +950,9 @@
+         _uvDebugPrintf("bump up NLV_E\n");
+     }
+     _uvMediaCopy(level->textureIds, src, level->textureCount * sizeof(u16));
++#ifdef PORT
++    hh_swap16n(level->textureIds, level->textureCount);
++#endif
+     src += level->textureCount * sizeof(u16);
+ 
+     uvConsumeBytes(&level->sequenceCount, &src, sizeof(level->sequenceCount));
+@@ -913,6 +963,9 @@
+         _uvDebugPrintf("bump up NLV_E\n");
+     }
+     _uvMediaCopy(level->sequenceIds, src, level->sequenceCount * sizeof(u16));
++#ifdef PORT
++    hh_swap16n(level->sequenceIds, level->sequenceCount);
++#endif
+     src += level->sequenceCount * sizeof(u16);
+ 
+     uvConsumeBytes(&level->animationCount, &src, sizeof(level->animationCount));
+@@ -923,6 +976,9 @@
+         _uvDebugPrintf("bump up NLV_E\n");
+     }
+     _uvMediaCopy(level->animationIds, src, level->animationCount * sizeof(u16));
++#ifdef PORT
++    hh_swap16n(level->animationIds, level->animationCount);
++#endif
+     src += level->animationCount * sizeof(u16);
+ 
+     uvConsumeBytes(&level->fontCount, &src, sizeof(level->fontCount));
+@@ -933,6 +989,9 @@
+         _uvDebugPrintf("bump up NLV_E\n");
+     }
+     _uvMediaCopy(level->fontIds, src, level->fontCount * sizeof(u16));
++#ifdef PORT
++    hh_swap16n(level->fontIds, level->fontCount);
++#endif
+     src += level->fontCount * sizeof(u16);
+ 
+     uvConsumeBytes(&level->blitCount, &src, sizeof(level->blitCount));
+@@ -943,6 +1002,9 @@
+         _uvDebugPrintf("bump up NLV_E\n");
+     }
+     _uvMediaCopy(level->blitIds, src, level->blitCount * sizeof(u16));
++#ifdef PORT
++    hh_swap16n(level->blitIds, level->blitCount);
++#endif
+     src += level->blitCount * sizeof(u16);
+ 
+     return level;
+@@ -976,6 +1038,9 @@
+ 
+     temp_v0 = (ParsedUVTR*)_uvMemAlloc(sizeof(ParsedUVTR), 4);
+     uvConsumeBytes(&temp_v0->unk0, &src, sizeof(temp_v0->unk0));
++#ifdef PORT
++    hh_swap32n(&temp_v0->unk0, 6);
++#endif
+     uvConsumeBytes(&temp_v0->unk18, &src, sizeof(temp_v0->unk18));
+     uvConsumeBytes(&temp_v0->unk19, &src, sizeof(temp_v0->unk19));
+     uvConsumeBytes(&temp_v0->unk1C, &src, sizeof(temp_v0->unk1C));
+@@ -991,6 +1056,9 @@
+             uvMemSet(ptr, 0, sizeof(uvUnkTileStruct));
+         } else {
+             uvConsumeBytes(&ptr->unk0, &src, sizeof(ptr->unk0));
++#ifdef PORT
++            hh_swap32n(&ptr->unk0, 16);
++#endif
+             uvConsumeBytes(&ptr->unk44, &src, sizeof(ptr->unk44));
+             uvConsumeBytes(&sp44, &src, sizeof(sp44));
+             ptr->unk40 = gLevelData.contours[sp44];
+@@ -1022,26 +1090,42 @@
+     remainder2 = 0;
+     remainder1 = 0;
+ 
++#ifdef PORT
++    sp80 = uvMemRead(src, 4);
++#else
+     _uvMediaCopy(&sp80, src, 4);
+     sp80 >>= 32;
++#endif
+     sp9A = (sp80 & 0xFFFF0000) >> 16;
+     sp98 = sp80;
+     src += 4;
+ 
++#ifdef PORT
++    sp80 = uvMemRead(src, 4);
++#else
+     _uvMediaCopy(&sp80, src, 4);
+     sp80 >>= 32;
++#endif
+     sp96 = (sp80 & 0xFFFF0000) >> 16;
+     sp94 = sp80;
+     src += 4;
+ 
++#ifdef PORT
++    sp80 = uvMemRead(src, 4);
++#else
+     _uvMediaCopy(&sp80, src, 4);
+     sp80 >>= 32;
++#endif
+     sp92 = (sp80 & 0xFFFF0000) >> 16;
+     sp90 = sp80;
+     src += 4;
+ 
++#ifdef PORT
++    sp80 = uvMemRead(src, 4);
++#else
+     _uvMediaCopy(&sp80, src, 4);
+     sp80 >>= 32;
++#endif
+     temp = (sp80 & 0xFFFF0000) >> 16;
+     // fake, probably used to assign sp8C here as well
+     sp8E = temp & 0xFFFF & 0xFFFF & 0xFFFF;
+@@ -1247,6 +1331,9 @@
+     void* ret;
+ 
+     idx = uvFileReadHeader(gUVBlockOffsets.UVTX[arg0]);
++#ifdef PORT
++    if (hh_dbg_env("PW64_FILELOG")) _uvDebugPrintf("UVTI %d at %08X\n", arg0, gUVBlockOffsets.UVTX[arg0]);
++#endif
+ 
+     while ((tag = uvFileReadBlock(idx, &sp34, &src, 1)) != 0) {
+         switch (tag) {
+diff -ruN pw64/src/libultra/audio/bnkf.c port/src/libultra/audio/bnkf.c
+--- a/src/libultra/audio/bnkf.c	2026-10-31 01:47:47.802319066 +0000
++++ b/src/libultra/audio/bnkf.c	2026-10-31 02:00:14.611559233 +0000
+@@ -81,6 +81,9 @@
+     }
+     
+     for (i = 0; i < bank->instCount; i++) {
++#ifdef PORT /* an empty slot (offset 0) would name the file header; its "flags" byte is bankCount's high byte here */
++        if (bank->instArray[i] == 0) continue;
++#endif
+         bank->instArray[i] = (ALInstrument *)((u8 *)bank->instArray[i] +
+                                               offset);
+         if(bank->instArray[i])
+diff -ruN pw64/src/libultra/audio/csplayer.c port/src/libultra/audio/csplayer.c
+--- a/src/libultra/audio/csplayer.c	2026-10-31 01:47:47.802319066 +0000
++++ b/src/libultra/audio/csplayer.c	2026-10-31 07:48:35.876414018 +0000
+@@ -174,7 +174,7 @@
+ 	    vs = seqp->nextEvent.msg.osc.vs;
+ 	    oscState = seqp->nextEvent.msg.osc.oscState;
+ 	    delta = (*seqp->updateOsc)(oscState,&oscValue);
+-	    vs->tremelo = (u8)oscValue;
++	    vs->tremelo = (u8)(s32)oscValue;
+ 	    alSynSetVol(seqp->drvr, &vs->voice, __vsVol(vs,(ALSeqPlayer*)seqp),
+ 			__vsDelta(vs,seqp->curTime));
+ 	    evt.type = AL_TREM_OSC_EVT;
+@@ -516,7 +516,7 @@
+                         }
+                     }
+                 }
+-                vstate->tremelo = (u8)oscValue;  /* will default if not changed by initOsc */
++                vstate->tremelo = (u8)(s32)oscValue;  /* will default if not changed by initOsc */
+                 
+                 oscValue = 1.0f; /* set this as a default */
+                 if(inst->vibType)
+diff -ruN pw64/src/libultra/audio/seqplayer.c port/src/libultra/audio/seqplayer.c
+--- a/src/libultra/audio/seqplayer.c	2026-10-31 01:47:47.802319066 +0000
++++ b/src/libultra/audio/seqplayer.c	2026-11-02 00:48:37.784303750 +0000
+@@ -174,7 +174,7 @@
+               vs = seqp->nextEvent.msg.osc.vs;
+               oscState = seqp->nextEvent.msg.osc.oscState;
+               delta = (*seqp->updateOsc)(oscState,&oscValue);
+-              vs->tremelo = (u8)oscValue;
++              vs->tremelo = (u8)(s32)oscValue;
+               alSynSetVol(seqp->drvr, &vs->voice, __vsVol(vs,seqp),
+                           __vsDelta(vs,seqp->curTime));
+               evt.type = AL_TREM_OSC_EVT;
+@@ -537,7 +537,7 @@
+                     }
+                 }
+                 /* will default if not changed by initOsc */
+-                vstate->tremelo = (u8)oscValue;
++                vstate->tremelo = (u8)(s32)oscValue;
+                 
+                 oscValue = 1.0f; /* set this as a default */
+                 if(inst->vibType)
+@@ -1137,8 +1137,18 @@
+   such as when changing banks or in response to a MIDI program change event.
+   Currently also gets called when changing sequences.
+ */
++#ifdef PORT
++/* A program change to an empty bank slot (offset 0 in the file): the N64 patched it to the bank file's header and
++ * read that as an instrument; the port keeps the slot NULL (bnkf.c), and the Mini (no page 0, unlike nothing else we
++ * test on: x86 and qemu never hit it) crashed reading NULL->priority at the title (ALPHA8 device log, vi 378). Such
++ * a channel gets a silent instrument: no sounds, default volume/pan/priority. */
++static ALInstrument sPortEmptyInst = { 127, 64, 5, 1, 0, 0, 0, 0, 0, 0, 0, 0, 200, 0, { 0 } };
++#endif
+ void __setInstChanState(ALSeqPlayer *seqp, ALInstrument *inst, s32 chan)
+ {
++#ifdef PORT
++    if (inst == NULL) { static int n; if (n++ < 4) _uvDebugPrintf("seqp: program change to an empty slot (chan %d)\n", (int)chan); inst = &sPortEmptyInst; }
++#endif
+     seqp->chanState[chan].instrument = inst;
+     seqp->chanState[chan].pan = inst->pan;
+     seqp->chanState[chan].vol = inst->volume;
+diff -ruN pw64/include/kernel/uv_dobj.h port/include/kernel/uv_dobj.h
+--- a/include/kernel/uv_dobj.h	2026-10-31 01:47:47.775326146 +0000
++++ b/include/kernel/uv_dobj.h	2026-11-02 06:25:26.659629439 +0000
+@@ -388,9 +388,20 @@
+ 
+ typedef struct {
+     u16 modelId;
++#ifdef PORT /* indexed past [0] (UBSan: dobj.c, part transforms): the whole space up to unk34, as ALPHA2's unk328; a
++             * 25-part model's 0 terminator lands on unk34 itself, as on the N64 (the union keeps that defined) */
++    union {
++        u16 unk2[(0x36 - 0x2) / 2];
++        struct {
++            u8 padU[0x34 - 0x2];
++            u8 unk34;
++        };
++    };
++#else
+     u16 unk2[1]; // unknown size, might take up everything till unk34
+     u8 pad4[0x34-0x4];
+     u8 unk34;
++#endif
+     f32 unk38;
+     s32 unk3C;
+ } Unk80263780; // size = 0x40
+diff -ruN pw64/include/kernel/uv_filesystem.h port/include/kernel/uv_filesystem.h
+--- a/include/kernel/uv_filesystem.h	2026-10-31 01:47:47.775326146 +0000
++++ b/include/kernel/uv_filesystem.h	2026-10-31 02:01:48.396789312 +0000
+@@ -7,10 +7,17 @@
+ typedef struct UnkPartStruct_Unk8 {
+     Vec4F unk0;
+     s16 unk10;
++#if defined(PORT) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
++    u16 pad12_8 : 8; /* the halfword is swapped to a host value: fields from the low bit */
++    u16 unk12_5 : 3;
++    u16 unk12_4 : 1;
++    u16 pad12_0 : 4;
++#else
+     u16 pad12_0 : 4;
+     u16 unk12_4 : 1;
+     u16 unk12_5 : 3;
+     u16 pad12_8 : 8;
++#endif
+ } UnkPartStruct_Unk8; // size = 0x14
+ 
+ typedef struct UnkPartStruct {
+diff -ruN pw64/include/kernel/uv_graphics.h port/include/kernel/uv_graphics.h
+--- a/include/kernel/uv_graphics.h	2026-10-31 01:47:47.775326146 +0000
++++ b/include/kernel/uv_graphics.h	2026-10-31 04:41:57.175244257 +0000
+@@ -497,8 +497,12 @@
+ /* 2D4 */ Vec3F unk2D4;
+ /* 2E0 */ Vec3F unk2E0[5];
+ /* 31C */ u8 unk31C[0xC];
++#ifdef PORT /* used as up to 6 points (unk370): a [1] array let GCC assume index 0 (UB) */
++/* 328 */ Vec3F unk328[6];
++#else
+ /* 328 */ Vec3F unk328[1];
+ /* 334 */ u8 pad334[0x3C];
++#endif
+ /* 370 */ u8 unk370;
+ /* 374 */ UnkStruct_80204D94_Unk374 unk374;
+ /* 38C */ u16 viewX0;
+diff -ruN pw64/include/kernel/uv_matrix.h port/include/kernel/uv_matrix.h
+--- a/include/kernel/uv_matrix.h	2026-10-31 01:47:47.775326146 +0000
++++ b/include/kernel/uv_matrix.h	2026-10-31 07:17:56.911653730 +0000
+@@ -27,7 +27,12 @@
+ } uvMtx;
+ 
+ #define MTX_TO_PART(mtx) (*(Mtx_u*)&(mtx))
++#if defined(PORT) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
++/* a Mtx word holds two s16 halves, the even column's in the high half: on a little-endian host column c is element c^1 */
++#define L2F(mtx, i1, i2) ((((s16)MTX_TO_PART(mtx).i[(i1)][(i2) ^ 1] << 0x10) | ((s16)MTX_TO_PART(mtx).f[(i1)][(i2) ^ 1] & 0xFFFF)) / 65536.0f)
++#else
+ #define L2F(mtx, i1, i2) ((((s16)MTX_TO_PART(mtx).i[(i1)][(i2)] << 0x10) | ((s16)MTX_TO_PART(mtx).f[(i1)][(i2)] & 0xFFFF)) / 65536.0f)
++#endif
+ 
+ void _uvDbMstackReset(void);
+ Mtx4F* _uvDbMstackTop(void);
+diff -ruN pw64/include/kernel/uv_memory.h port/include/kernel/uv_memory.h
+--- a/include/kernel/uv_memory.h	2026-10-31 01:47:47.775326146 +0000
++++ b/include/kernel/uv_memory.h	2026-11-02 04:48:10.779620814 +0000
+@@ -29,6 +29,10 @@
+     u16 UVSX;
+     u16 UVTP;
+     u16 unk22;
++#ifdef PORT
++    u16 unk24[2]; /* the N64's object is 0x28 (gUVBlockOffsets follows at +0x28) and uvLevelInit copies the 40-byte
++                   * UVSY COMM block into it: 4 bytes past a 0x24 struct (ASan; on the Mini they land on D_802B53C0) */
++#endif
+ } UVBlockCounts;
+ 
+ typedef struct {
+diff -ruN pw64/include/libc/stddef.h port/include/libc/stddef.h
+--- a/include/libc/stddef.h	2026-10-31 01:47:47.776433275 +0000
++++ b/include/libc/stddef.h	2026-10-31 01:54:21.355013484 +0000
+@@ -3,7 +3,11 @@
+ 
+ #include "PR/ultratypes.h"
+ 
++#ifdef PORT
++typedef __PTRDIFF_TYPE__ ptrdiff_t;
++#else
+ typedef s32 ptrdiff_t;
++#endif
+ 
+ #ifdef __GNUC__
+ #define offsetof(structure, member) __builtin_offsetof (structure, member)

@@ -1,0 +1,129 @@
+# The New Tetris (USA) -> Miyoo Mini build, from the decomp tree (chris-gilmore/tnt-splat) + decomp.patch + this hh/
+# directory.
+#
+#   make -f hh/Makefile.handheld PLAT=miyoo -j6     # Miyoo Mini (ARM, SDL 1.2)
+#   make -f hh/Makefile.handheld PLAT=pc -j6        # 32-bit x86 proxy (headless): same memory layout, fast tests
+#
+# Game code: the decomp's src/newtetris compiled natively, with libultra's OS replaced by hh/ (coroutine threads with
+# the N64's priorities, RSP tasks run by the renderer (F3DEX2) and the al* mixer, the cartridge read from the player's
+# ROM). The binary is linked at 0x80400000 and 4 MB of N64 DRAM are mapped at 0x80000000.
+
+PLAT    ?= miyoo
+HH_RELEASE ?= 1.0.0
+HH_VERSION ?= $(shell git -C hh rev-parse --short HEAD 2>/dev/null || echo dev)
+.DEFAULT_GOAL := all
+SHELL := /bin/bash
+BUILD_DIR := build/hh-$(PLAT)
+ELF       := $(BUILD_DIR)/tnt
+
+VERBOSE ?= 0
+ifeq ($(VERBOSE),0)
+  V := @
+endif
+
+ifeq ($(PLAT),miyoo)
+  MIYOO_TOOLCHAIN ?= /opt/miyoomini-toolchain
+  MM_SYSROOT := $(MIYOO_TOOLCHAIN)/usr/arm-linux-gnueabihf/sysroot
+  CC      := $(MIYOO_TOOLCHAIN)/usr/bin/arm-linux-gnueabihf-gcc
+  MARCH   := -march=armv7ve+neon-vfpv4 -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+  OPT     := -O2
+  SDL_CFLAGS := -I$(MM_SYSROOT)/usr/include -I$(MM_SYSROOT)/usr/include/SDL -D_REENTRANT
+  SDL_LIBS   := -L$(MM_SYSROOT)/usr/lib -Wl,-rpath-link,$(MM_SYSROOT)/usr/lib -lSDL -lrt
+  PLAT_DEFS  := -DTARGET_HANDHELD=1 -DHANDHELD=1 -DTARGET_MIYOO=1 -DMIYOO=1 -D_FILE_OFFSET_BITS=64
+else
+  CC      := gcc
+  MARCH   := -m32 -msse2 -mfpmath=sse -malign-data=abi
+  OPT     := -O1
+  SDL_CFLAGS :=
+  SDL_LIBS   := -lrt
+  PLAT_DEFS  := -DTARGET_HANDHELD=1 -DTARGET_PC=1 -DHH_NO_SDL=1
+endif
+
+GAME_C    := $(filter-out src/newtetris/cfb.c src/newtetris/lzobuf.c,$(sort $(wildcard src/newtetris/*.c)))
+UL := tools/ultralib/src
+# the libultra pieces the game linked that are plain C (its own audio_*.c replace synthesizer/env/synsetvol)
+ULTRA_AUDIO := heapinit heapalloc sl synaddplayer synallocvoice synstopvoice synsetpan synstartvoiceparam synsetpitch \
+               drvrnew synallocfx mainbus resample auxbus save syndelete filter reverb load copy synfreevoice \
+               synsetpriority synsetfxmix synstartvoice synremoveplayer synfreefx syngetfxref synsetfxparam
+ULTRA_GU := mtxutil sins coss translate rotaterpy lookat perspective mtxcatl normalize align lookatref ortho \
+            random mtxcatf rotate scale
+ULTRA_C   := $(foreach f,$(ULTRA_AUDIO),$(UL)/audio/$(f).c) $(foreach f,$(ULTRA_GU),$(UL)/gu/$(f).c) \
+             $(UL)/libc/ll.c $(UL)/libc/ldiv.c $(UL)/io/vitbl.c \
+             $(UL)/vimodes/vimodentsclan1.c $(UL)/vimodes/vimodepallan1.c $(UL)/vimodes/vimodempallan1.c
+HH_C      := $(sort $(wildcard hh/*.c))
+GFX_C     := hh/gfx/gfx_pc.c hh/gfx/gfx_cc.c hh/gfx/gfx_soft.c \
+             $(if $(filter miyoo,$(PLAT)),hh/gfx/gfx_sdl12.c,hh/gfx/gfx_null.c)
+AUDIO_C   := hh/audio/hh_aspclassic.c $(if $(filter miyoo,$(PLAT)),hh/audio/hh_audio_sdl.c,hh/audio/hh_audio_null.c)
+HH_SS     := hh/hh_ctx.S
+KIT_C     := $(if $(filter miyoo,$(PLAT)),hh/kit/platform/miyoo_menu.c hh/kit/platform/miyoo_worker.c \
+             hh/kit/platform/miyoo_clock.c hh/kit/platform/miyoo_sleepsave.c hh/kit/platform/miyoo_remap.c,) \
+             hh/kit/platform/savestate.c hh/kit/platform/hh_priority.c
+
+C_FILES  := $(GAME_C) $(ULTRA_C) $(HH_C) $(GFX_C) $(AUDIO_C) $(KIT_C)
+O_FILES  := $(patsubst %.c,$(BUILD_DIR)/%.o,$(C_FILES)) $(patsubst %.S,$(BUILD_DIR)/%.o,$(HH_SS))
+DEP_FILES := $(O_FILES:.o=.d)
+
+# the decomp's defines (Makefile TARGET_CFLAGS: version J, F3DEX2)
+GAME_DEFS := -DNDEBUG -DF3DEX_GBI_2 -D_MIPS_SZLONG=32 -DBUILD_VERSION=7 -D_LANGUAGE_C -DPORT=1 -DTNT=1 $(PLAT_DEFS)
+INCLUDES  := -I hh/include -I hh/kit/platform -I . -I include -I include/minilzo -I tools/ultralib/include \
+             -I tools/ultralib/include/PR -I tools/ultralib/src/audio -I tools/ultralib/src
+# IDO semantics: unsigned plain char, wrapping signed math, no strict aliasing, variables in source order.
+CFLAGS    := -std=gnu89 $(MARCH) $(OPT) -g -funsigned-char -fno-common -fwrapv -fno-strict-aliasing -fno-pie \
+             -ffp-contract=off -fno-math-errno -fno-builtin -fno-aggressive-loop-optimizations -fno-toplevel-reorder \
+             $(GAME_DEFS) $(INCLUDES) -MMD -MP -include hh/include/hh_game.h -w $(EXTRA_CFLAGS)
+GFX_CFLAGS := -std=gnu11 $(MARCH) -O2 -g -fsigned-char -fno-strict-aliasing -fwrapv -fno-common \
+              -ffp-contract=off -fno-pie -D_LANGUAGE_C -DHH_PORT_LAYER=1 -DPORT_GE_RAWCC=1 -DPORT=1 -DTNT=1 \
+              -DF3DEX_GBI_2 $(PLAT_DEFS) -I hh/include -I hh/gfx -I hh/audio -I hh/kit/platform -I . \
+              -idirafter tools/ultralib/include -idirafter tools/ultralib/include/PR $(SDL_CFLAGS) -MMD -MP -w $(EXTRA_CFLAGS)
+PORT_INCLUDES := -I hh/include -I hh/kit/platform -I hh -I . -idirafter include -idirafter tools/ultralib/include \
+             -idirafter tools/ultralib/include/PR -idirafter tools/ultralib/src -idirafter tools/ultralib/src/audio
+PORT_CFLAGS := -std=gnu11 $(MARCH) $(OPT) -g -funsigned-char -fno-common -fwrapv -fno-strict-aliasing -fno-pie \
+             -ffp-contract=off -fno-math-errno $(GAME_DEFS) -DHH_PORT_LAYER=1 -D_GNU_SOURCE $(PORT_INCLUDES) $(SDL_CFLAGS) \
+             -MMD -MP -include hh/include/hh_game.h -w $(EXTRA_CFLAGS)
+LDFLAGS   := $(MARCH) -no-pie -Wl,-Ttext-segment=0x80400000 -Wl,-Map,$(BUILD_DIR)/tnt.map
+LIBS      := $(SDL_LIBS) -lm -lpthread
+
+all: $(ELF)
+
+STAMP_C := $(BUILD_DIR)/build_stamp.c
+$(STAMP_C): $(O_FILES) FORCE
+	$(V)printf '#include <stdint.h>\nconst uint32_t port_build_stamp = 0x%s;\nconst char port_build_version[] = "%s";\nconst char port_build_release[] = "The New Tetris %s";\n' \
+	  "$$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n' | sed 's/^./8/')" "$(HH_VERSION)" "$(HH_RELEASE)" > $@
+$(STAMP_C:.c=.o): $(STAMP_C)
+	$(V)$(CC) -c $(GFX_CFLAGS) -o $@ $<
+
+$(ELF): $(O_FILES) $(STAMP_C:.c=.o)
+	@echo "LD  $@"
+	$(V)$(CC) $(LDFLAGS) -o $@ $(O_FILES) $(STAMP_C:.c=.o) $(LIBS)
+
+$(BUILD_DIR)/src/%.o: src/%.c
+	@mkdir -p $(dir $@)
+	$(V)$(CC) $(CFLAGS) -c -o $@ $<
+$(BUILD_DIR)/tools/%.o: tools/%.c
+	@mkdir -p $(dir $@)
+	$(V)$(CC) $(CFLAGS) -c -o $@ $<
+$(BUILD_DIR)/hh/gfx/%.o: hh/gfx/%.c
+	@mkdir -p $(dir $@)
+	$(V)$(CC) $(GFX_CFLAGS) -c -o $@ $<
+$(BUILD_DIR)/hh/kit/%.o: hh/kit/%.c
+	@mkdir -p $(dir $@)
+	$(V)$(CC) $(GFX_CFLAGS) -c -o $@ $<
+$(BUILD_DIR)/hh/audio/%.o: hh/audio/%.c
+	@mkdir -p $(dir $@)
+	$(V)$(CC) $(GFX_CFLAGS) -c -o $@ $<
+$(BUILD_DIR)/hh/%.o: hh/%.c
+	@mkdir -p $(dir $@)
+	$(V)$(CC) $(PORT_CFLAGS) -c -o $@ $<
+$(BUILD_DIR)/hh/%.o: hh/%.S
+	@mkdir -p $(dir $@)
+	$(V)$(CC) $(MARCH) -c -o $@ $<
+
+clean:
+	rm -rf $(BUILD_DIR)
+FORCE:
+.PHONY: all clean FORCE
+-include $(DEP_FILES)
+
+# The New Tetris's libultra (its drvrnew.o, checked in the ROM): alLoadNew installs the game's h2oLoadParam
+# (audio_load.c: raw 16/8-bit waves) where libultra has alLoadParam
+$(BUILD_DIR)/tools/ultralib/src/audio/drvrnew.o: CFLAGS += -DalLoadParam=h2oLoadParam

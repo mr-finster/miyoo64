@@ -1,0 +1,13 @@
+{
+  "id": "pw64",
+  "title": "Pilotwings 64",
+  "folder": "Pilotwings64",
+  "exe": "pw64",
+  "files": ["pw64"],
+  "icon": "icon.png",
+  "env": "PW64",
+  "data": "data",
+  "rom": {"name": "Pilotwings 64 (USA)", "sha1": "ec771aedf54ee1b214c25404fb4ec51cfd43191a", "size": 8388608},
+  "system": "PILOTWINGS",
+  "minui_tag": "PW64"
+}
