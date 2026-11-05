@@ -258,7 +258,7 @@ index 0be7b94a..2c7dd5d5 100644
  
  typedef struct cude_s{
 diff --git a/include/structs.h b/include/structs.h
-index 4e94cbb5..67edc35f 100644
+index 4e94cbb5..e4ebf961 100644
 --- a/include/structs.h
 +++ b/include/structs.h
 @@ -40,11 +40,19 @@ typedef struct bk_sprite_s{
@@ -281,6 +281,29 @@ index 4e94cbb5..67edc35f 100644
      }unkC;
      s32 offsets[];
  } BKSprite;
+@@ -467,12 +475,22 @@ typedef struct{
+ 
+ 
+ typedef struct{
++#ifdef TARGET_HANDHELD /* little-endian: the unit's fields reversed (the u16s are code_B62B0.c's collision_table, written
++                        * as the N64 reads them: aaaa bbcc cdde eeff, the first field in the high bits) */
++    u16 dropBundleNum:2;
++    u16 hitsToTrigger:3;
++    u16 damageToPlayer:2;
++    u16 unkBit7:3;
++    u16 nextState:2;
++    u16 playerInteraction:4;
++#else
+     u16 playerInteraction:4;
+     u16 nextState:2;
+     u16 unkBit7:3;
+     u16 damageToPlayer:2;
+     u16 hitsToTrigger:3; // 1 / hitsToTrigger = % of health of enemy taken away
+     u16 dropBundleNum:2;
++#endif
+ }CollisionParams;
+ 
+ typedef struct struct_5d_s{
 diff --git a/src/BGS/ch/leafboat.c b/src/BGS/ch/leafboat.c
 index 048164db..382175f6 100644
 --- a/src/BGS/ch/leafboat.c

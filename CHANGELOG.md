@@ -5,8 +5,16 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
-Rebuilt: Super Smash Bros. 1.1.8, GoldenEye 007 1.1.8, Perfect Dark 1.0.8, Majora's Mask 1.0.8 and Ocarina of
-Time 1.1.7.
+Rebuilt: Super Smash Bros. 1.1.8, GoldenEye 007 1.1.8, Perfect Dark 1.0.8, Majora's Mask 1.0.8, Ocarina of
+Time 1.1.7 and Banjo-Kazooie 1.0.1 (beta).
+
+- Banjo-Kazooie 1.0.1 beta: enemies can be beaten again ([issue #9](https://github.com/mr-finster/miyoo64/issues/9)).
+  In 1.0.0 every enemy shrugged off rolls, pecks, beak barges and claw swipes, and hurt Banjo even while he attacked.
+  The game's table of what each attack does to each enemy (dies, changes state, bounces Banjo back, hurts him) packs
+  its answers into the bits of 16-bit numbers, and the port read those bits in the opposite order, so a roll that
+  should knock out a Grublin bounced Banjo off it instead. The bits are now read as the N64 reads them: checked in an
+  emulator on Grublins in Mumbo's Mountain (a roll knocks one out, touching one costs one honeycomb). It was there
+  from the first build, on every device; saves and save states are unaffected.
 
 - Majora's Mask and Ocarina of Time: fine aim with the d-pad
   ([issue #8](https://github.com/mr-finster/miyoo64/issues/8)). In first person and while aiming (the C-up look, the
