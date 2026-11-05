@@ -5,21 +5,23 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
-- Banjo-Kazooie (RC5): Click Clock Wood's winter and most scenes faster on the Miyoo build (the pictures are
-  identical): the second core takes a fairer share of each batch of small triangles (a triangle's set-up now counts as
-  much as ~400 pixels when the two cores split a batch, where it counted as 12), which cuts the game thread's
-  rendering by about 10-20% in the seasons; winter's snow ground under a decal bias goes through the fast pixel loop;
-  each triangle's first row is solved once instead of twice.
-- Banjo-Kazooie (RC4): faster frames everywhere, Click Clock Wood's seasons included (3-8% fewer instructions a frame
-  on the Miyoo build, measured on replayed frames; the pictures are identical): the copy of each frame the game reads
-  back is made without a divide per pixel and four pixels at a time, and the renderer's clock reads lost a slow
-  64-bit divide.
+New games, betas: Banjo-Kazooie 1.0.0, Pilotwings 64 1.0.0 and The New Tetris 1.0.0.
 
-## 1.4.5 (Banjo-Kazooie beta; Paper Mario's and Mario Kart 64's numbers start over as on the N64)
-
-New game: Banjo-Kazooie 1.0.0 beta. Rebuilt: Paper Mario 1.1.6, Mario Kart 64 1.1.8, GoldenEye 007 1.1.7, Perfect
-Dark 1.0.7, Super Mario 64 1.1.6 and Super Smash Bros. 1.1.7; the other six games are the 1.4.4 zips.
-
+- Pilotwings 64 (USA ROM), version 1.0.0, a beta: hang glider, rocket belt, gyrocopter and the bonus games,
+  built from the [n64decomp/pw64](https://github.com/n64decomp/pw64)
+  decompilation. Save states, the game menu with MENU > CONTROLS, the auto save on power-off and before sleep, and the
+  Mini v4 / Flip full screen, as in the other games. The title, menus and first flights were compared against an N64
+  renderer (angrylion), every test was flown under the memory checkers and on the Miyoo build (in an emulator) with
+  save states made and loaded along the way, and the sound was checked command by command against a reference of the
+  N64's audio microcode (a fix: the sampled sounds were read 16 samples early, a buzz heard as distorted bass).
+  The first start finds the ROM anywhere on the card (any name, .z64, .v64 or .n64) and checks it.
+- The New Tetris (USA ROM), version 1.0.0, a beta: Marathon, Sprint, Ultra, vs CPU (the game's own CPU players), the
+  Wonders and their 3D scenes and the music, built from the [chris-gilmore/tnt-splat](https://github.com/chris-gilmore/tnt-splat)
+  decompilation. Save states, the game menu with MENU > CONTROLS, the auto save on power-off and before sleep, and the
+  Mini v4 / Flip full screen, as in the other games. The game draws at its own 400x300 and fills the panel. Records
+  and Wonder lines are saved to the card. Two to four human players need more pads than a Miyoo has, so they are not
+  offered. The first start finds the ROM anywhere on the card (any name, .z64, .v64 or .n64), checks it and keeps a
+  copy in `App/NewTetris/data/`.
 - Banjo-Kazooie (USA 1.0 ROM), version 1.0.0, a beta: the whole game, built from the
   [banjo.decomp/banjo-kazooie](https://gitlab.com/banjo.decomp/banjo-kazooie) decompilation on the GoldenEye 007
   port's handheld layer (Rare's engine too) and Harvest Moon 64's audio mixer. Save states, the game menu with
@@ -37,6 +39,20 @@ Dark 1.0.7, Super Mario 64 1.1.6 and Super Smash Bros. 1.1.7; the other six game
 - The first start finds the ROM anywhere on the card (any name, .z64, .v64 or .n64), checks it and keeps a 16 MB
   copy in `App/BanjoKazooie/data/`. Known issues: Click Clock Wood in winter is too slow on the original Mini, and the
   molehills' shadow is darker than on the N64 ([README](banjo-kazooie/README.md#known-issues)).
+- Banjo-Kazooie (RC5): Click Clock Wood's winter and most scenes faster on the Miyoo build (the pictures are
+  identical): the second core takes a fairer share of each batch of small triangles (a triangle's set-up now counts as
+  much as ~400 pixels when the two cores split a batch, where it counted as 12), which cuts the game thread's
+  rendering by about 10-20% in the seasons; winter's snow ground under a decal bias goes through the fast pixel loop;
+  each triangle's first row is solved once instead of twice.
+- Banjo-Kazooie (RC4): faster frames everywhere, Click Clock Wood's seasons included (3-8% fewer instructions a frame
+  on the Miyoo build, measured on replayed frames; the pictures are identical): the copy of each frame the game reads
+  back is made without a divide per pixel and four pixels at a time, and the renderer's clock reads lost a slow
+  64-bit divide.
+
+## 1.4.5 (Paper Mario's and Mario Kart 64's numbers start over as on the N64)
+
+Rebuilt: Paper Mario 1.1.6, Mario Kart 64 1.1.8, GoldenEye 007 1.1.7, Perfect
+Dark 1.0.7, Super Mario 64 1.1.6 and Super Smash Bros. 1.1.7; the other six games are the 1.4.4 zips.
 
 - Super Smash Bros.: L2 is now the N64's C-left and R2 its C-right ([issue #6](https://github.com/mr-finster/miyoo64/issues/6)).
   On the character select they give a fighter two more of its colours (X, the N64's C-up, gives the first one); in a

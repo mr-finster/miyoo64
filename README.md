@@ -1,6 +1,6 @@
 <h1 align="center">Miyoo64</h1>
 
-<p align="center"><b>Thirteen N64 games running natively on the Miyoo Mini family, built from the decompilation projects.</b></p>
+<p align="center"><b>Fifteen N64 games running natively on the Miyoo Mini family, built from the decompilation projects.</b></p>
 
 <p align="center">
   <a href="https://github.com/mr-finster/miyoo64/releases/latest"><img src="https://img.shields.io/github/v/release/mr-finster/miyoo64" alt="Latest release"></a>
@@ -23,7 +23,7 @@
 
 ## About
 
-Native ports of thirteen N64 games to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip). No emulation: each game's C code, rebuilt by its decompilation community, runs on the Mini's ARM CPU and is drawn by a software renderer that uses both of its cores. Every game has save states (9 slots and an auto save), the same in-game menu (MENU: resume, save, load, exit), and picks up where you left off after a power-off.
+Native ports of fifteen N64 games to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip). No emulation: each game's C code, rebuilt by its decompilation community, runs on the Mini's ARM CPU and is drawn by a software renderer that uses both of its cores. Every game has save states (9 slots and an auto save), the same in-game menu (MENU: resume, save, load, exit), and picks up where you left off after a power-off.
 
 Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/latest), or https://miyoo-n64.pages.dev. What changed in each release: [Changelog](CHANGELOG.md).
 
@@ -44,6 +44,8 @@ Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/l
 | Majora's Mask | 🧪 Beta (1.0.6) | New: the whole game, compared scene by scene against the N64; known issues in its [README](majoras-mask/README.md#known-issues) |
 | Harvest Moon 64 | ✅ Playable (1.0.2) | New: the whole game, the diary saves and the farm's days as on the N64; known issues in its [README](harvest-moon-64/README.md#known-issues) |
 | Banjo-Kazooie | 🧪 Beta (1.0.0) | New: the whole game, the intro compared scene by scene against the N64; known issues in its [README](banjo-kazooie/README.md#known-issues) |
+| Pilotwings 64 | 🧪 Beta (1.0.0) | New: hang glider, rocket belt, gyrocopter and the bonus games, the title music and flight sounds checked against the N64 |
+| The New Tetris | 🧪 Beta (1.0.0) | New: every single-player mode, vs CPU, the Wonders and their 3D scenes, the music |
 
 Every game has 9 save-state slots plus an auto save, and picks up where you left off after a power-off, also when the Mini sleeps and then powers itself off ([Sleep and wake](docs/SLEEP-AND-WAKE.md)). Super Smash Bros. can take a save from an emulator or a flash cart ([how](super-smash-bros/README_MIYOO.md#bringing-a-save-from-an-emulator-or-a-flash-cart)).
 
@@ -64,6 +66,8 @@ On the Mini v4 and Mini Flip (752x560 screens) every game fills the whole screen
 | The Legend of Zelda: Majora's Mask | [majoras-mask](majoras-mask/) | [zeldaret/mm](https://github.com/zeldaret/mm) |
 | Harvest Moon 64 | [harvest-moon-64](harvest-moon-64/) | [harvestwhisperer/hm64-decomp](https://github.com/harvestwhisperer/hm64-decomp) |
 | Banjo-Kazooie | [banjo-kazooie](banjo-kazooie/) | [banjo.decomp/banjo-kazooie](https://gitlab.com/banjo.decomp/banjo-kazooie) |
+| Pilotwings 64 | (not in this repository yet) | [n64decomp/pw64](https://github.com/n64decomp/pw64) |
+| The New Tetris | (not in this repository yet) | [chris-gilmore/tnt-splat](https://github.com/chris-gilmore/tnt-splat) |
 
 Each folder is one game and builds on its own.
 
@@ -102,6 +106,8 @@ Each game checks the dump and refuses any other version (the screen says which o
 | Majora's Mask | `App/MajorasMask/` | The Legend of Zelda: Majora's Mask (USA) | `d6133ace5afaa0882cf214cf88daba39e266c078` |
 | Harvest Moon 64 | `App/HarvestMoon64/` | Harvest Moon 64 (USA) | `90631460f1876a14849df0541d534012b410a34c` |
 | Banjo-Kazooie | `App/BanjoKazooie/` | Banjo-Kazooie (USA), version 1.0 (not 1.1 / Rev A) | `1fe1632098865f639e22c11b9a81ee8f29c75d7a` |
+| Pilotwings 64 | `App/Pilotwings64/` | Pilotwings 64 (USA) | `ec771aedf54ee1b214c25404fb4ec51cfd43191a` |
+| The New Tetris | `App/NewTetris/` | The New Tetris (USA) | `83fff25e82181a6993f28c91b9eeb8430396838b` |
 
 The SHA-1 is of the big-endian `.z64` byte order; `.v64` and `.n64` dumps of the same ROM are
 converted. Besides `App/<Game>/rom.z64`, each game also looks in `Roms/N64/` and anywhere on the
