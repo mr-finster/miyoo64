@@ -3465,6 +3465,7 @@ unsigned long gfx_soft_cvg_tris[3] SAVESTATE_EXCLUDE; /* triangles taken opaque,
  * row test costs more than the divides it saves there); GE_EDGESKIP=1 turns it on. */
 static int sEdgeSkip SAVESTATE_EXCLUDE = -1;
 static int sEmptyTri SAVESTATE_EXCLUDE = -1; /* GE_EMPTYTRI: see raster_tri_body */
+static int sRow0 SAVESTATE_EXCLUDE = 1;      /* GE_ROW0=0: the first row solved again (gfx_soft_init reads it) */
 static inline void edge_end_setup(int n, float d, float *p, float *m) {
     *p = (float)n * d;
     const float t = -*p * (1.0f / 1048576.0f);
@@ -3742,7 +3743,8 @@ static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *
         } else if (B < 0.0f) {                                                                          \
             continue; /* row entirely outside this edge */                                              \
         }
-#define TRI_ROW_ENDS() \
+#define TRI_ROW_ENDS() TRI_ROW_BASES TRI_ROW_SOLVE
+#define TRI_ROW_BASES \
         const float py = y + 0.5f;                                                                                     \
         /* Row bases recomputed exactly each row (no row-to-row drift). */                                             \
         const float b0 = (e0c - (py - e0y) * e0x) * inv_area;                                                          \
@@ -3750,7 +3752,8 @@ static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *
         const float b2 = (e2c - (py - e2y) * e2x) * inv_area;                                                          \
 \
         /* Solve b_i + (x - minx) * w_i_dx >= 0 for the pixel interval. */                                             \
-        int xs = minx, xe = maxx;                                                                                      \
+        int xs = minx, xe = maxx;
+#define TRI_ROW_SOLVE \
         /* Bias both bounds toward inclusion: a 1-px overlap between neighbouring triangles is                         \
          * invisible, a 1-px crack is not. The snap loop below restores exactness on the left edge.                    \
          * A near-horizontal edge (|ds| ~ 1 ulp) on a large off-screen polygon makes the quotient                      \
@@ -3814,13 +3817,18 @@ static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *
      * GE_EMPTYTRI=0: the old order. */
     if (sEmptyTri < 0) { const char *e = getenv("GE_EMPTYTRI"); sEmptyTri = !(e && e[0] == '0'); }
     int y0 = miny;
+    /* GE_ROW0 (Banjo-Kazooie RC5's, small triangles): the row loop takes the first row's ends from the scan above
+     * instead of solving them again (the same expressions on the same values: the same ends). -1: none. */
+    int pre_y = -1, pre_xs = 0, pre_xe = 0;
     if (sEmptyTri) {
         for (; y0 < maxy; y0++) {
             const int y = y0;
             TRI_ROW_ENDS()
+            pre_xs = xs; pre_xe = xe; /* the main loop's first row: these ends again (GE_ROW0) */
             break;
         }
         if (y0 >= maxy) return 0;
+        if (sRow0) pre_y = y0;
     }
 
     int tmask_u = tex ? pow2mask(tex->w) : -1, tmask_v = tex ? pow2mask(tex->h) : -1; /* per span with mips */
@@ -4093,7 +4101,9 @@ static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *
 #else
     for (int y = y0; y < maxy; y++) {
 #endif
-        TRI_ROW_ENDS()
+        TRI_ROW_BASES
+        if (y == pre_y) { xs = pre_xs; xe = pre_xe; }
+        else { TRI_ROW_SOLVE }
         if (sDefOp != DEF_OP_NONE && def_row(y, xs, xe)) continue;
         tri_px += (uint32_t)(xe - xs); /* fill/overdraw proxy (before z-reject) */
 
@@ -4522,6 +4532,8 @@ static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *
     }
 #endif
 #undef TRI_ROW_ENDS
+#undef TRI_ROW_BASES
+#undef TRI_ROW_SOLVE
 #undef EDGE_SOLVE
 #if defined(MIYOO)
 #undef sUseAlpha
@@ -4539,21 +4551,28 @@ static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *
  * in the worker's band is set up there only. raster_tri's GE_CVGALPHA choices are per thread (tlAlphaOff,
  * tlCvgMixed), its counts the game thread's, the worker's skipped spans merged after the wait, the alpha_rows
  * lookup done once beforehand (the batch has one texture: every triangle then finds that entry). GE_BATCHPX: a
- * batch's estimated work (span pixels, a triangle's setup taken as 12) below which it is drawn whole; 0: never. */
+ * batch's estimated work (span pixels plus each triangle's setup, GE_BATCHQUAL) below which it is drawn whole; 0: never. */
 #define BATCH_MAX 512
 static int sBatchPxW[BATCH_MAX] SAVESTATE_EXCLUDE, sBatchPxC[BATCH_MAX] SAVESTATE_EXCLUDE;
 static int sBatchMin SAVESTATE_EXCLUDE = -1;
+/* GE_BATCHSETUP: a triangle's set-up in span pixels where the split row is placed (was 12; Banjo-Kazooie RC5's 400). A
+ * set-up is ~2,000-5,000 instructions and a lean pixel ~25, so weighing it as 12 left most of a batch of small
+ * triangles' set-ups in the game thread's band. GE_BATCHQUAL: the set-up weight in the share-or-not test (100: with
+ * 400 there, batches of a few big triangles were shared too, and both threads set each of them up). */
+static float sBatchSetup SAVESTATE_EXCLUDE = -1.0f, sBatchQual SAVESTATE_EXCLUDE = -1.0f;
 unsigned gfx_soft_batch_splits SAVESTATE_EXCLUDE; /* batches shared (hh_gfx.c's PERF line reads and clears it) */
 /* the split row of a batch's work, or -1 for too little to share: each triangle's area spread evenly over its rows
  * plus its setup at its first row, rows [ylo, yhi) (an estimate: only the balance depends on it) */
 static int batch_split_row(const SoftVtx *v, int n, int ylo, int yhi) {
     if (sBatchMin < 0) { const char *e = getenv("GE_BATCHPX"); sBatchMin = e && e[0] ? atoi(e) : 384; }
+    if (sBatchSetup < 0.0f) { const char *e = getenv("GE_BATCHSETUP"); sBatchSetup = e && e[0] ? (float)atoi(e) : 400.0f; }
+    if (sBatchQual < 0.0f) { const char *e = getenv("GE_BATCHQUAL"); sBatchQual = e && e[0] ? (float)atoi(e) : 100.0f; }
     if (sBatchMin <= 0 || yhi - ylo < 2 || yhi > 512) return -1;
     float dens[513], pm[513], quick = 0.0f;
     for (int i = 0; i < n; i++) {
         const SoftVtx *a = &v[i * 3], *b = &v[i * 3 + 1], *c = &v[i * 3 + 2];
         const float cr = (b->x - a->x) * (c->y - a->y) - (c->x - a->x) * (b->y - a->y);
-        quick += (cr < 0.0f ? -cr : cr) * 0.5f + 12.0f;
+        quick += (cr < 0.0f ? -cr : cr) * 0.5f + sBatchQual;
     }
     if (!(quick >= (float)sBatchMin)) return -1; /* even unclipped too little (or NaN) */
     for (int y = ylo; y <= yhi; y++) { dens[y] = 0.0f; pm[y] = 0.0f; }
@@ -4568,11 +4587,11 @@ static int batch_split_row(const SoftVtx *v, int n, int ylo, int yhi) {
         const float d = (cr < 0.0f ? -cr : cr) * 0.5f / (float)(t1 - t0 > 0 ? t1 - t0 : 1);
         dens[r0] += d;
         dens[r1] -= d;
-        pm[r0] += 12.0f;
+        pm[r0] += sBatchSetup;
     }
-    float w = 0.0f, total = 0.0f;
-    for (int y = ylo; y < yhi; y++) { w += dens[y]; total += (w > 0.0f ? w : 0.0f) + pm[y]; }
-    if (!(total >= (float)sBatchMin)) return -1;
+    float w = 0.0f, total = 0.0f, pxs = 0.0f;
+    for (int y = ylo; y < yhi; y++) { w += dens[y]; pxs += w > 0.0f ? w : 0.0f; total += (w > 0.0f ? w : 0.0f) + pm[y]; }
+    if (!(pxs + (total - pxs) * (sBatchQual / sBatchSetup) >= (float)sBatchMin)) return -1;
     const float half = total * 0.5f;
     float acc = 0.0f;
     w = 0.0f;
@@ -5838,6 +5857,7 @@ static void gfx_soft_init(void) {
     unpack_lut_init();
 #if defined(HH_CM_NEON)
     { const char *e = getenv("GE_CMNEON"); if (e && e[0] == '0') sCmNeon = 0; }
+    { const char *e = getenv("GE_ROW0"); if (e && e[0] == '0') sRow0 = 0; }
 #endif
     if (!sTexArena) {
         sTexArena = aligned_alloc(16, TEXARENA_SZ);
