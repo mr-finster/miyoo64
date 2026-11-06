@@ -4,7 +4,7 @@
  * decomp's split generates from the ROM, the font, the image-effect keyframes): they live in a NOLOAD region
  * (__assets_start..__assets_end, tools/port/gen_build.py's assets_*.ld) that is filled at start
  *   1. from assets.bin, a cache in the save dir written on the first run, or
- *   2. from the player's own Paper Mario (USA) ROM (rom.z64 next to the game, else on the SD card), by executing the
+ *   2. from the player's matching-region Paper Mario ROM (rom.z64 next to the game or on the SD card), using the
  *      recipe table recipes.bin that ships in the zip (numbers only: ROM offsets, byte-swap patterns, sizes --
  *      tools/assets/derive_recipes.py, emit_recipes.py), then cached as 1.
  *
@@ -25,6 +25,7 @@
 #include "port.h"
 #include "port_assets.h"
 #include "miyoo_romfind.h"
+#include "port_rom_identity.h"
 #if defined(MIYOO)
 #include "miyoo_panel.h"
 #endif
@@ -112,8 +113,9 @@ static int rom_read(u32 off, u8* dst, u32 len) {
 
 static void rom_close(void) { if (sRom) { fclose(sRom); sRom = NULL; } }
 
-/* Open + validate: an N64 ROM in any byte order whose header says PAPER MARIO with the US game code (NMQE). The CRC
- * of the generated region is the real test. */
+/* Open + validate: the matching region's Paper Mario ROM in any supported byte order.
+ * The SHA-1 is checked by the ROM finder for newly selected files; generated assets
+ * are additionally validated against the recipe CRC. */
 static int rom_open(const char* path, char* err, u32 errlen) {
     u8 hdr[0x40];
     rom_close();
@@ -128,7 +130,11 @@ static int rom_open(const char* path, char* err, u32 errlen) {
     else { snprintf(err, errlen, "not an N64 ROM"); rom_close(); return 0; }
     if (!rom_read(0, hdr, sizeof(hdr))) { snprintf(err, errlen, "unreadable"); rom_close(); return 0; }
     if (memcmp(hdr + 0x20, "PAPER MARIO", 11) != 0) { snprintf(err, errlen, "not Paper Mario"); rom_close(); return 0; }
-    if (memcmp(hdr + 0x3B, "NMQE", 4) != 0) { snprintf(err, errlen, "not the US (NTSC) version (code %.4s)", (const char*) hdr + 0x3B); rom_close(); return 0; }
+#if defined(PM64_ROM_REGION_PAL)
+    if (memcmp(hdr + 0x3B, PM64_ROM_CODE, 4) != 0) { snprintf(err, errlen, "%s (code %.4s)", PM64_ROM_WRONG_VERSION, (const char*) hdr + 0x3B); rom_close(); return 0; }
+#else
+    if (memcmp(hdr + 0x3B, PM64_ROM_CODE, 4) != 0) { snprintf(err, errlen, "not the US (NTSC) version (code %.4s)", (const char*) hdr + 0x3B); rom_close(); return 0; }
+#endif
     return 1;
 }
 
@@ -593,7 +599,6 @@ static int try_load(const char* path, char* err, u32 errlen) {
  * folders deep), each candidate checked here: Paper Mario's header (any byte order, the US cart), then the whole
  * file's SHA-1. A file that fails either is passed over and the search goes on. `why` names the last Paper Mario
  * dump refused (another game's ROM, the game's own files, other systems' .bin files are only logged). */
-#define PM64_ROM_SHA1 "3837f44cda784b466c9a2d99df70d77c322b97a0" /* Paper Mario (USA), z64 order */
 struct RomTry { char* why; u32 whylen; };
 static void sha1_progress(void* ctx, uint64_t done, uint64_t total) {
     (void) ctx;
@@ -621,7 +626,11 @@ static int rom_try(const char* path, void* ctx) {
         port_log_always("assets: skipping %s: a Paper Mario ROM, but SHA-1 %s (want %s)\n", path, hex, PM64_ROM_SHA1);
         return 0;
     }
+#if defined(PM64_ROM_REGION_PAL)
+    port_log_always("rom: %s (%s, SHA-1 checked)\n", path, PM64_ROM_NAME);
+#else
     port_log_always("rom: %s (Paper Mario (USA), SHA-1 checked)\n", path);
+#endif
     return 1;
 }
 
@@ -839,16 +848,24 @@ static void diff_begin(void) {
 static const char* version_say(const char* why) {
     const char* c = why ? strstr(why, "(code NMQ") : NULL;
     if (c == NULL) return NULL;
+#if defined(PM64_ROM_REGION_PAL)
+    return c[9] == 'E' ? "It is the American (NTSC) version." : c[9] == 'J' ? "It is the Japanese version." : "It is not the PAL version.";
+#else
     return c[9] == 'P' ? "It is the European (PAL) version." : c[9] == 'J' ? "It is the Japanese version." : "It is not the US version.";
+#endif
 }
 void port_assets_no_rom(const char* why) {
     if (why && why[0]) {
         const char* say = version_say(why);
         port_log_always("assets: rejected: %s\n", why);
-        if (say) fail_screen("No usable Paper Mario ROM.", say, "It must be the USA cart's dump.");
-        fail_screen("No usable Paper Mario ROM.", why, "It must be the USA cart's dump.");
+        if (say) fail_screen("No usable Paper Mario ROM.", say, PM64_ROM_CART_HINT);
+        fail_screen("No usable Paper Mario ROM.", why, PM64_ROM_CART_HINT);
     }
+#if defined(PM64_ROM_REGION_PAL)
+    fail_screen("No Paper Mario ROM found.", "Put your PAL ROM (.z64/.v64/.n64)", MRF_NOT_FOUND_2);
+#else
     fail_screen("No Paper Mario ROM found.", MRF_NOT_FOUND_1, MRF_NOT_FOUND_2);
+#endif
 }
 
 static void assets_load(const char* argv0);
@@ -919,7 +936,11 @@ static void assets_load(const char* argv0) {
     if (!blob_parse(blob, blob_len)) { fail_screen("Cannot extract the game data:", "recipes.bin is corrupt.", NULL); return; }
     if (!generate(rom, screen_progress, err, sizeof(err))) {
         port_log_always("assets: %s\n", err);
+#if defined(PM64_ROM_REGION_PAL)
+        fail_screen("This isn't the expected ROM data.", PM64_ROM_CART_HINT, NULL);
+#else
         fail_screen("This isn't the expected ROM data.", "It must be the US (NTSC) cart.", NULL);
+#endif
         return;
     }
     screen_progress("Saving", 90);

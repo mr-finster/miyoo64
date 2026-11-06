@@ -1,0 +1,20 @@
+{
+  "id": "pm64palalpha",
+  "title": "Paper Mario PAL",
+  "folder": "PaperMarioPAL",
+  "exe": "pm64",
+  "files": [
+    "pm64",
+    "recipes.bin"
+  ],
+  "icon": "icon.png",
+  "env": "PM64",
+  "data": "data",
+  "rom": {
+    "name": "Paper Mario (Europe, PAL)",
+    "sha1": "2111d39265a317414d359e35a7d971c4dfa5f9e1",
+    "size": 67108864
+  },
+  "system": "PAPERMARIOPAL",
+  "minui_tag": "PM64PAL"
+}
