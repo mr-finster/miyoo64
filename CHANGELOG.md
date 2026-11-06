@@ -15,6 +15,9 @@ Time 1.1.7 and Banjo-Kazooie 1.0.1 (beta); the other nine games are the 1.4.6 zi
   should knock out a Grublin bounced Banjo off it instead. The bits are now read as the N64 reads them: checked in an
   emulator on Grublins in Mumbo's Mountain (a roll knocks one out, touching one costs one honeycomb). It was there
   from the first build, on every device; saves and save states are unaffected.
+  With enemies beatable, the pieces a beaten enemy or a broken object leaves behind are drawn for the first time, and
+  their draw wrote two numbers past the end of a one-number slot (a slip in the decompilation the N64 shrugged off);
+  that is fixed too, before it could crash a game (found by the stress test in Mumbo's Mountain's Lair room).
 
 - Majora's Mask and Ocarina of Time: fine aim with the d-pad
   ([issue #8](https://github.com/mr-finster/miyoo64/issues/8)). In first person and while aiming (the C-up look, the

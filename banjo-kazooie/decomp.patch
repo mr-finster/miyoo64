@@ -999,10 +999,31 @@ index d189e8ad..e52a0d52 100644
  
  void __chSnowman_spawnSnowball(ActorMarker *marker){
 diff --git a/src/core2/code_41460.c b/src/core2/code_41460.c
-index 70915259..44bbaabe 100644
+index 70915259..1c2b7709 100644
 --- a/src/core2/code_41460.c
 +++ b/src/core2/code_41460.c
-@@ -293,7 +293,11 @@ void func_802C8C5C(Actor *actor) {
+@@ -108,12 +108,20 @@ void func_802C83F0(Actor *actor) {
+ Actor *func_802C8484(ActorMarker *marker, Gfx **gfx, Mtx **mtx, Vtx **vtx) {
+     Struct25s *temp_s1;
+     Struct24s *phi_s0;
++#ifdef TARGET_HANDHELD /* marker_getActorAndRotation writes three floats (the N64 overwrote the stack above it) */
++    f32 rotation[3];
++#else
+     f32 rotation;
++#endif
+     Actor *this;
+     u32 phi_v1;
+     s32 phi_s4;
+ 
++#ifdef TARGET_HANDHELD
++    this = marker_getActorAndRotation(marker, rotation);
++#else
+     this = marker_getActorAndRotation(marker, &rotation);
++#endif
+     temp_s1 = (Struct25s*)this->unk40;
+     phi_s4 = FALSE;
+     for(phi_s0 = temp_s1->begin; phi_s0 < temp_s1->current; phi_s0++){
+@@ -293,7 +301,11 @@ void func_802C8C5C(Actor *actor) {
      f32 sp84[3];
      Struct25s *temp_s2 = (Struct25s*)actor->unk40;
      Struct24s *phi_s0;
