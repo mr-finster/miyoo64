@@ -3,6 +3,15 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## 1.4.8 (Banjo-Kazooie 1.0.2 beta)
+
+Rebuilt: Banjo-Kazooie 1.0.2 (beta); the other fourteen games are the 1.4.7 zips.
+
+- Banjo-Kazooie 1.0.2 beta: with enemies beatable since 1.0.1, the pieces a beaten enemy or a broken object leaves
+  behind are drawn for the first time, and their draw wrote two numbers past the end of a one-number slot (a slip in
+  the decompilation the N64 shrugged off). Fixed before it could crash a game (found by the stress test in Mumbo's
+  Mountain's Lair room). Saves carry over.
+
 ## 1.4.7 (Banjo-Kazooie's enemies, fine aim in the Zeldas, faster GoldenEye 007 and Perfect Dark)
 
 Rebuilt: Super Smash Bros. 1.1.8, GoldenEye 007 1.1.8, Perfect Dark 1.0.8, Majora's Mask 1.0.8, Ocarina of
@@ -15,9 +24,6 @@ Time 1.1.7 and Banjo-Kazooie 1.0.1 (beta); the other nine games are the 1.4.6 zi
   should knock out a Grublin bounced Banjo off it instead. The bits are now read as the N64 reads them: checked in an
   emulator on Grublins in Mumbo's Mountain (a roll knocks one out, touching one costs one honeycomb). It was there
   from the first build, on every device; saves and save states are unaffected.
-  With enemies beatable, the pieces a beaten enemy or a broken object leaves behind are drawn for the first time, and
-  their draw wrote two numbers past the end of a one-number slot (a slip in the decompilation the N64 shrugged off);
-  that is fixed too, before it could crash a game (found by the stress test in Mumbo's Mountain's Lair room).
 
 - Majora's Mask and Ocarina of Time: fine aim with the d-pad
   ([issue #8](https://github.com/mr-finster/miyoo64/issues/8)). In first person and while aiming (the C-up look, the
