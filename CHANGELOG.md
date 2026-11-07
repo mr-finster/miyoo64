@@ -7,7 +7,7 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 Rebuilt: Super Mario 64 1.1.7, Mario Kart 64 1.1.9, GoldenEye 007 1.1.9, Perfect Dark 1.0.9, Ocarina of Time
 1.1.8, Majora's Mask 1.0.9 (beta), Paper Mario 1.1.7, Star Fox 64 1.1.6, F-Zero X 1.1.6, Diddy Kong Racing 1.1.8,
-Super Smash Bros. 1.1.9, Harvest Moon 64 1.0.5, Banjo-Kazooie 1.0.3 (beta), Pilotwings 64 1.0.1 (beta) and The
+Super Smash Bros. 1.1.9, Harvest Moon 64 1.0.5, Banjo-Kazooie 1.0.3 (beta), Pilotwings 64 1.0.2 (beta) and The
 New Tetris 1.0.1 (beta).
 
 - All fifteen games: no more crackle on loud, smooth sounds ([issue #10](https://github.com/mr-finster/miyoo64/issues/10)).
@@ -23,6 +23,12 @@ New Tetris 1.0.1 (beta).
   the converted sound is exactly the conversion of the game's own (no new clicks, the same pitch), with no new
   dropouts, at about 0.1 ms more CPU a frame or less. `<GAME>_OUTFREQ=32000` (in launch.sh, or `outfreq=32000`
   in Ocarina of Time's and GoldenEye 007's debug.cfg) goes back to 32 kHz; each game's README_MIYOO lists it.
+- Pilotwings 64 1.0.2: no more crash when the title screen is left alone and the attract demo starts (about 35
+  seconds in). The demo's header in the ROM is 4 bytes longer than the decompilation's header (the 4 bytes are
+  always zero); on the N64 the copy spilled harmlessly, here it wiped the demo's recording and the game crashed.
+  The copy now stops at the header's size, and the game's other block copies (level objects, paths, the demo's
+  flight) do the same. Checked in an emulator: the demo plays, both demos loop, and every such block in the ROM
+  fits (only this header was ever cut).
 
 ## 1.4.7 (Banjo-Kazooie's enemies, fine aim in the Zeldas, faster GoldenEye 007 and Perfect Dark)
 
