@@ -109,6 +109,7 @@ the Mini:
 | `PM64_STRETCH` | 1 | `0` keeps the N64's black frame around the field and battle scenes (the bordered picture of the first Miyoo build) |
 | `PM64_LOADPIC` | 1 | `0` shows the game's boot frames before a resumed auto save loads, as before |
 | `PM64_SPLIT` | 64 | the smallest triangle (in pixels) that both cores share |
+| `PM64_OUTFREQ` | 48000 | the sound's output rate in Hz: the OS mixer's own, so the game's 32 kHz is resampled once, in the game; `32000`: as before 1.1.7 |
 
 Environment variables for testing (set them in `launch.sh`):
 - `PM64_MIYOO_MODE=640x480` forces the panel mode.
