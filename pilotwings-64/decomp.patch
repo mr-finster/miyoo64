@@ -69,7 +69,7 @@ diff -ruN pw64/src/app/credits.c port/src/app/credits.c
 diff -ruN pw64/src/app/demo.c port/src/app/demo.c
 --- a/src/app/demo.c	2026-10-31 01:47:47.781039756 +0000
 +++ b/src/app/demo.c	2026-10-31 07:48:31.323249421 +0000
-@@ -54,7 +54,7 @@
+@@ -54,7 +54,7 @@ u32 demoRecGetButtons(DemoRecordingEntry* entry) {
  }
  
  void demoPackInputs(DemoRecordingEntry* entry, f32 stickX, f32 stickY, u32 buttons) {
@@ -78,20 +78,32 @@ diff -ruN pw64/src/app/demo.c port/src/app/demo.c
  }
  
  s32 demoGetUserFileIdx(s32 pilot, s32 veh) {
-@@ -180,6 +180,9 @@
+@@ -179,14 +179,31 @@ void demoInit(void) {
+         tag = uvFileReadBlock(temp_s4, &size, &data, 1);
          switch (tag) {
          case 'RPKT': // 0x52504B54
++#ifdef TARGET_HANDHELD
++            /* clamp: a block larger than the struct would overrun the stack/bss (see RHDR below) */
++            _uvMediaCopy(&pkt, data, size < sizeof(pkt) ? size : sizeof(pkt));
++#else
              _uvMediaCopy(&pkt, data, size);
++#endif
 +#ifdef PORT
 +            hh_swap32n(&pkt, 4);
 +#endif
              sDemoRecording->entries[idx].time = pkt.time;
              entry = &sDemoRecording->entries[idx];
              demoPackInputs(entry, pkt.stickX, pkt.stickY, pkt.buttons);
-@@ -187,6 +190,9 @@
+             idx++;
              break;
          case 'RHDR': // 0x52484452
++#ifdef TARGET_HANDHELD
++            /* The ROM's RHDR block is larger than RHDR. On N64 the header was last in .bss so the overrun landed
++             * harmlessly; gcc lays it out first here, so the overrun zeroed sDemoRecording (crash at entries[0]). */
++            _uvMediaCopy(&sDemoRecHeader, data, size < sizeof(sDemoRecHeader) ? size : sizeof(sDemoRecHeader));
++#else
              _uvMediaCopy(&sDemoRecHeader, data, size);
++#endif
 +#ifdef PORT
 +            hh_swap32n(&sDemoRecHeader, 5);
 +#endif
