@@ -10,7 +10,7 @@
 # at 0x80000000, so every address the game sees is a KSEG0 one, as on the N64.
 
 PLAT    ?= miyoo
-HH_RELEASE ?= 1.0.2
+HH_RELEASE ?= 1.0.3
 HH_VERSION ?= $(shell git -C hh rev-parse --short HEAD 2>/dev/null)
 .DEFAULT_GOAL := all
 SHELL := /bin/bash

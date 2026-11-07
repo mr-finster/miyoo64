@@ -43,7 +43,7 @@ Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/l
 | Super Mario 64 | ✅ Playable | Metal Mario, coloured fog and the castle window fixed, both cores drawing |
 | Majora's Mask | 🧪 Beta (1.0.8) | New: the whole game, compared scene by scene against the N64; known issues in its [README](majoras-mask/README.md#known-issues) |
 | Harvest Moon 64 | ✅ Playable (1.0.2) | New: the whole game, the diary saves and the farm's days as on the N64; known issues in its [README](harvest-moon-64/README.md#known-issues) |
-| Banjo-Kazooie | 🧪 Beta (1.0.2) | New: the whole game, the intro compared scene by scene against the N64; known issues in its [README](banjo-kazooie/README.md#known-issues) |
+| Banjo-Kazooie | 🧪 Beta (1.0.3) | New: the whole game, the intro compared scene by scene against the N64; known issues in its [README](banjo-kazooie/README.md#known-issues) |
 | Pilotwings 64 | 🧪 Beta (1.0.0) | New: hang glider, rocket belt, gyrocopter and the bonus games, the title music and flight sounds checked against the N64 |
 | The New Tetris | 🧪 Beta (1.0.0) | New: every single-player mode, vs CPU, the Wonders and their 3D scenes, the music |
 

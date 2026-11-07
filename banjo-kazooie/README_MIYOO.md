@@ -4,7 +4,7 @@ A port to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip), built on 
 [banjo.decomp/banjo-kazooie](https://gitlab.com/banjo.decomp/banjo-kazooie) decompilation. It uses a software
 renderer and has save states. **There is no game data in it.** It reads everything from your own USA ROM.
 
-**Status:** version 1.0.2, a beta. It runs the whole game in the emulator (qemu) and its test builds started on a
+**Status:** version 1.0.3, a beta. It runs the whole game in the emulator (qemu) and its test builds started on a
 Mini Plus with Onion; this build's speed on the Mini, Mini v4 and Flip, and the other OSes, still need a first run.
 Known issues: [README.md](README.md#known-issues).
 
@@ -45,7 +45,7 @@ Everything the game writes stays in `App/BanjoKazooie/data/`:
 - the save states (`state_01.sav` ...) and the auto save (`state_quick.sav`);
 - the button layout from MENU > CONTROLS (`controls.cfg`);
 - `console.log` from the last session, `console.1.log` and `console.2.log` from the two before; its first lines name
-  the build (`SESSION banjo Banjo-Kazooie 1.0.2 version <commit> ...`);
+  the build (`SESSION banjo Banjo-Kazooie 1.0.3 version <commit> ...`);
 - `launch.log`, which records each start.
 
 To do the first start's job again (a new ROM, or a damaged copy), put a file named `rebuild` in `data/`; the next
@@ -71,6 +71,7 @@ In `App/BanjoKazooie/data/debug.cfg`, one `BK_NAME=value` per line (or in `launc
 | `BK_FLIPFILL` | 1 | `0` keeps the 2x picture with a border on a Mini v4 / Flip |
 | `BK_SLEEPSAVE` | 1 | `0`: no auto save at a POWER press or when idle; `BK_SLEEPSAVE_IDLE=<s>` sets the idle time (`0` no idle save) |
 | `BK_DITHER` | 1 | `0`: the picture's colours cut to the panel's without dithering |
+| `BK_OUTFREQ` | 48000 | the sound's output rate in Hz: the OS mixer's own, so the game's 22 kHz is resampled once, in the game; `32000`: as before 1.0.3 |
 
 ## Credits and licence
 
