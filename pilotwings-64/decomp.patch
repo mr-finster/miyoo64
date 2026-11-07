@@ -113,7 +113,7 @@ diff -ruN pw64/src/app/demo.c port/src/app/demo.c
 diff -ruN pw64/src/app/demo_attitude.c port/src/app/demo_attitude.c
 --- a/src/app/demo_attitude.c	2026-10-31 01:47:47.781039756 +0000
 +++ b/src/app/demo_attitude.c	2026-10-31 03:25:21.860797107 +0000
-@@ -61,6 +61,9 @@
+@@ -61,6 +61,9 @@ void demoAttLoadPos(void) {
          switch (tag) {
          case 'PHDR': // 0x50484452
              phdr = (PHDR*)data;
@@ -123,9 +123,15 @@ diff -ruN pw64/src/app/demo_attitude.c port/src/app/demo_attitude.c
              D_8036D320 = phdr->unk0;
              D_8036D324 = phdr->unk4;
              D_8034F970 = (Unk8034F970*)_uvMemAllocAlign8(D_8036D324 * sizeof(Unk8034F970));
-@@ -79,6 +82,9 @@
+@@ -78,7 +81,15 @@ void demoAttLoadPos(void) {
+             if (gotHdr == 0) {
                  _uvDebugPrintf("Didn't get header yet\n");
              } else if (idx < D_8036D324) {
++#ifdef TARGET_HANDHELD /* clamp to the destination (an oversized block overruns memory) */
++                if (size > sizeof(PPOS)) {
++                    size = sizeof(PPOS);
++                }
++#endif
                  _uvMediaCopy(&D_8034F970->unk4[idx], data, size);
 +#ifdef PORT
 +                hh_swap32n(&D_8034F970->unk4[idx], size / 4);
@@ -232,7 +238,7 @@ diff -ruN pw64/src/app/hud.c port/src/app/hud.c
 diff -ruN pw64/src/app/level.c port/src/app/level.c
 --- a/src/app/level.c	2026-10-31 01:47:47.784006120 +0000
 +++ b/src/app/level.c	2026-10-31 03:25:06.615714231 +0000
-@@ -292,27 +292,48 @@
+@@ -292,27 +292,78 @@ LevelObjects* levelLoadMapObjects(u8 mapIdx) {
          case 'ESND': // 0x45534E44
              for (i = 0; i < temp->countESND; i++) {
                  _uvMediaCopy(&esnd, srcPtr, sizeof(esnd));
@@ -244,36 +250,66 @@ diff -ruN pw64/src/app/level.c port/src/app/level.c
              }
              break;
          case 'WOBJ': // 0x574F424A
++#ifdef TARGET_HANDHELD /* clamp to the destination (an oversized block overruns memory) */
++            if (size > sizeof(sLevelWOBJ)) {
++                size = sizeof(sLevelWOBJ);
++            }
++#endif
              _uvMediaCopy(temp->dataWOBJ, srcPtr, size);
 +#ifdef PORT
 +            hh_swap_desc(temp->dataWOBJ, "wwwb", size);
 +#endif
              break;
          case 'LPAD': // 0x4C504144
++#ifdef TARGET_HANDHELD /* clamp to the destination (an oversized block overruns memory) */
++            if (size > sizeof(sLevelLPAD)) {
++                size = sizeof(sLevelLPAD);
++            }
++#endif
              _uvMediaCopy(temp->dataLPAD, srcPtr, size);
 +#ifdef PORT
 +            hh_swap_desc(temp->dataLPAD, "wwwwwb", size);
 +#endif
              break;
          case 'TOYS': // 0x544F5953
++#ifdef TARGET_HANDHELD /* clamp to the destination (an oversized block overruns memory) */
++            if (size > sizeof(sLevelTOYS)) {
++                size = sizeof(sLevelTOYS);
++            }
++#endif
              _uvMediaCopy(temp->dataTOYS, srcPtr, size);
 +#ifdef PORT
 +            hh_swap_desc(temp->dataTOYS, "wwwb", size);
 +#endif
              break;
          case 'TPTS': // 0x54505453
++#ifdef TARGET_HANDHELD /* clamp to the destination (an oversized block overruns memory) */
++            if (size > sizeof(sLevelTPTS)) {
++                size = sizeof(sLevelTPTS);
++            }
++#endif
              _uvMediaCopy(temp->dataTPTS, srcPtr, size);
 +#ifdef PORT
 +            hh_swap_desc(temp->dataTPTS, "bwwwwwwwwwwww", size);
 +#endif
              break;
          case 'APTS': // 0x41505453
++#ifdef TARGET_HANDHELD /* clamp to the destination (an oversized block overruns memory) */
++            if (size > sizeof(sLevelAPTS)) {
++                size = sizeof(sLevelAPTS);
++            }
++#endif
              _uvMediaCopy(temp->dataAPTS, srcPtr, size);
 +#ifdef PORT
 +            hh_swap_desc(temp->dataAPTS, "wwwwwwww", size);
 +#endif
              break;
          case 'BNUS': // 0x424E5553
++#ifdef TARGET_HANDHELD /* clamp to the destination (an oversized block overruns memory) */
++            if (size > sizeof(sLevelBNUS)) {
++                size = sizeof(sLevelBNUS);
++            }
++#endif
              _uvMediaCopy(temp->dataBNUS, srcPtr, size);
 +#ifdef PORT
 +            hh_swap_desc(temp->dataBNUS, "wwwwwww", size);
@@ -433,33 +469,59 @@ diff -ruN pw64/src/app/snap.c port/src/app/snap.c
 diff -ruN pw64/src/app/spath.c port/src/app/spath.c
 --- a/src/app/spath.c	2026-10-31 01:47:47.788006120 +0000
 +++ b/src/app/spath.c	2026-10-31 02:03:01.496445779 +0000
-@@ -71,21 +71,39 @@
+@@ -70,22 +70,65 @@ s32 spathLoadFile(s32 userFile) {
+     while ((tag = uvFileReadBlock(fileIdx, &size, &src, 1)) != 0) {
          switch (tag) {
          case 'SCPX':
++#ifdef TARGET_HANDHELD /* clamp to the destination (an oversized block overruns memory) */
++            if (size > sizeof(spath->scpx)) {
++                size = sizeof(spath->scpx);
++            }
++#endif
              _uvMediaCopy(&spath->scpx, src, size);
 +#ifdef PORT
 +            hh_swap32n(&spath->scpx, size / 4);
 +#endif
              break;
          case 'SCPY':
++#ifdef TARGET_HANDHELD /* clamp to the destination (an oversized block overruns memory) */
++            if (size > sizeof(spath->scpy)) {
++                size = sizeof(spath->scpy);
++            }
++#endif
              _uvMediaCopy(&spath->scpy, src, size);
 +#ifdef PORT
 +            hh_swap32n(&spath->scpy, size / 4);
 +#endif
              break;
          case 'SCPZ':
++#ifdef TARGET_HANDHELD /* clamp to the destination (an oversized block overruns memory) */
++            if (size > sizeof(spath->scpz)) {
++                size = sizeof(spath->scpz);
++            }
++#endif
              _uvMediaCopy(&spath->scpz, src, size);
 +#ifdef PORT
 +            hh_swap32n(&spath->scpz, size / 4);
 +#endif
              break;
          case 'SCPH':
++#ifdef TARGET_HANDHELD /* clamp to the destination (an oversized block overruns memory) */
++            if (size > sizeof(spath->scph)) {
++                size = sizeof(spath->scph);
++            }
++#endif
              _uvMediaCopy(&spath->scph, src, size);
 +#ifdef PORT
 +            hh_swap32n(&spath->scph, size / 4);
 +#endif
              break;
          case 'SCPP':
++#ifdef TARGET_HANDHELD /* clamp to the destination (an oversized block overruns memory) */
++            if (size > sizeof(spath->scpp)) {
++                size = sizeof(spath->scpp);
++            }
++#endif
              _uvMediaCopy(&spath->scpp, src, size);
 +#ifdef PORT
 +            hh_swap32n(&spath->scpp, size / 4);
