@@ -7,6 +7,7 @@
  * MK64's audio_sdl.c does. On underrun the callback plays silence, keeping the
  * stream timed; on overrun (game ahead of the device) the oldest block goes. */
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #if defined(HANDHELD)
@@ -19,7 +20,21 @@
 #include "hh_declick.h"
 
 #define OUT_BLOCK 512                   /* SDL callback granularity, frames */
+#if defined(MIYOO)
+/* SSB64_OUTFREQ (default 48000): the rate handed to /dev/dsp. Onion's audioserver mixes at 48 kHz and
+ * resamples anything else itself, audibly: loud, smooth sounds crackled (issue 10; Super Mario 64's fix,
+ * PR 11). The game's 32 kHz is resampled to 48 kHz once, in hh_audio_push (linear 16.16, as SM64's); the
+ * ring holds output frames, and what the game is told is queued (hh_audio_aim_frames) is in its own 32 kHz
+ * frames, so its pacing is as before. SSB64_OUTFREQ=32000: as before. */
+static uint32_t sOutRate = 48000;
+#define OUT_RATE sOutRate
+#define RING_FRAMES (OUT_BLOCK * 32)    /* ~341 ms at 48 kHz */
+#else
+#define OUT_RATE HH_AUDIO_RATE
 #define RING_FRAMES (OUT_BLOCK * 16)    /* ~256 ms */
+#endif
+/* output frames in the game's frames */
+static uint32_t to_game(uint32_t f) { return OUT_RATE == HH_AUDIO_RATE ? f : (uint32_t)((uint64_t)f * HH_AUDIO_RATE / OUT_RATE); }
 
 /* Shared with SDL's thread: never part of a save state (outside port/gamestate.ld's
  * include list). */
@@ -30,6 +45,9 @@ static volatile uint32_t sUnderruns;
 static int sPeak;          /* loudest sample pushed since the last PERF line */
 static volatile int sMuted; /* the handheld menu (and its EXIT GAME: silence through the exit save) */
 static int sFlushOnUnlock;  /* a state was loaded: drop the old sound still queued */
+#if defined(MIYOO)
+static FILE *sOutDump;      /* SSB64_OUTDUMP=<file> (tests): what enters the ring, s16 stereo at the out rate */
+#endif
 
 /* statefix B (kit k1.8, hh_declick.h): no click after the menu or a load. After any gap (the
  * first sound, a dry ring, a load's flush) the card waits until the ring holds DECLICK_CUSHION again (or
@@ -40,7 +58,7 @@ static int sFlushOnUnlock;  /* a state was loaded: drop the old sound still queu
  * it, so 1024 (32 ms, two buffers) comes back by the game's second tick after a gap and stays well under
  * the steady fill (the PERF line's "ring min": the least the ring held at a callback that played).
  * SSB64_DECLICK=0: as before (a hard mute, no fades, the ring dropped as the load's lock is released). */
-#define DECLICK_CUSHION 1024u
+#define DECLICK_CUSHION (1024u * OUT_RATE / HH_AUDIO_RATE) /* 32 ms in output frames */
 static HhDeclick sDk;
 static int sDeclick = 1;
 static volatile uint32_t sRingMin = UINT32_MAX; /* least frames queued at a callback that played (PERF) */
@@ -82,8 +100,15 @@ void hh_audio_init(void)
         port_log_always("SSB64: no audio (%s)\n", SDL_GetError());
         return;
     }
+#if defined(MIYOO)
+    {
+        const char *e = getenv("SSB64_OUTFREQ");
+        const int f = e && e[0] ? atoi(e) : 48000;
+        if (f >= 8000 && f <= 48000) sOutRate = (uint32_t)f;
+    }
+#endif
     memset(&want, 0, sizeof want);
-    want.freq = HH_AUDIO_RATE;
+    want.freq = OUT_RATE;
     want.format = AUDIO_S16SYS;
     want.channels = HH_AUDIO_CHANNELS;
     want.samples = OUT_BLOCK;
@@ -92,9 +117,16 @@ void hh_audio_init(void)
         port_log_always("SSB64: SDL_OpenAudio failed: %s\n", SDL_GetError());
         return;
     }
-    if (have.freq != HH_AUDIO_RATE || have.channels != HH_AUDIO_CHANNELS || have.format != AUDIO_S16SYS) {
-        port_log_always("SSB64: audio device gave %d Hz %d ch fmt %x; expected 32000/2/s16\n",
-                        have.freq, have.channels, have.format);
+#if defined(MIYOO)
+    if (have.freq != (int)OUT_RATE && have.freq >= 8000 && have.freq <= 96000 && have.channels == HH_AUDIO_CHANNELS
+        && have.format == AUDIO_S16SYS) {
+        port_log_always("SSB64: resampling to the obtained %d Hz\n", have.freq);
+        sOutRate = (uint32_t)have.freq;
+    }
+#endif
+    if (have.freq != (int)OUT_RATE || have.channels != HH_AUDIO_CHANNELS || have.format != AUDIO_S16SYS) {
+        port_log_always("SSB64: audio device gave %d Hz %d ch fmt %x; expected %d/2/s16\n",
+                        have.freq, have.channels, have.format, (int)OUT_RATE);
 #if defined(MIYOO)
         /* The Mini's dsp gives 32000/2/s16 (the other ports' device logs); any other SDL build that grants
          * something else gets SDL's own conversion (no obtained spec), so the game's 32 kHz stays in time. */
@@ -103,16 +135,18 @@ void hh_audio_init(void)
             port_log_always("SSB64: SDL_OpenAudio (converted) failed: %s\n", SDL_GetError());
             return;
         }
-        port_log_always("SSB64: audio reopened at 32000/2/s16, SDL converts\n");
+        port_log_always("SSB64: audio reopened at %d/2/s16, SDL converts\n", (int)OUT_RATE);
 #endif
     }
 #if defined(MIYOO)
     else port_log_always("SSB64: audio %d Hz, %d ch, %d-frame buffer\n", have.freq, have.channels, have.samples);
+    port_log_always("SSB64: audio out %u Hz, game %u Hz (SSB64_OUTFREQ)\n", (unsigned)OUT_RATE, (unsigned)HH_AUDIO_RATE);
+    { const char *p = getenv("SSB64_OUTDUMP"); if (p) sOutDump = fopen(p, "wb"); }
 #endif
     {
         const char *e = getenv("SSB64_DECLICK");
         sDeclick = !(e && e[0] == '0');
-        hhd_init(&sDk, HH_AUDIO_RATE, DECLICK_CUSHION);
+        hhd_init(&sDk, OUT_RATE, DECLICK_CUSHION);
     }
     sOpened = 1;
     SDL_PauseAudio(0);
@@ -133,6 +167,59 @@ static FILE *pcm_dump(void)
     return sFile;
 }
 
+static void ring_put(const int16_t *samples, int frames)
+{
+    if (sWrite - sRead + (uint32_t)frames > RING_FRAMES) {
+        /* The device fell behind (or is paused): drop the oldest audio so
+         * the game never blocks on sound. */
+        SDL_LockAudio();
+        sRead = sWrite + (uint32_t)frames - RING_FRAMES;
+        SDL_UnlockAudio();
+    }
+    for (int i = 0; i < frames; i++) {
+        uint32_t idx = (sWrite + (uint32_t)i) % RING_FRAMES;
+        sRing[idx * 2] = samples[i * 2];
+        sRing[idx * 2 + 1] = samples[i * 2 + 1];
+    }
+#if defined(MIYOO)
+    if (sOutDump) fwrite(samples, 4, (size_t)frames, sOutDump);
+#endif
+    __sync_synchronize();
+    sWrite += (uint32_t)frames;
+}
+
+#if defined(MIYOO)
+/* 32 kHz -> OUT_RATE, linear between x[i-1] and x[i] (x[-1]: the previous push's last frame), stateful
+ * across pushes (the game's audio coroutine is the only producer). sPhase: 16.16 position of the next
+ * output frame, measured from sPrev. */
+static int16_t sPrevL, sPrevR;
+static uint32_t sPhase = 0x10000;
+static void resample_push(const int16_t *s, int n)
+{
+    const uint32_t step = (uint32_t)(((uint64_t)HH_AUDIO_RATE << 16) / OUT_RATE);
+    int16_t tmp[256 * 2];
+    int k = 0;
+    for (;;) {
+        const uint32_t idx = sPhase >> 16;
+        int32_t frac, a, b;
+        if (idx >= (uint32_t)n) break;
+        frac = (int32_t)(sPhase & 0xFFFF);
+        a = idx == 0 ? sPrevL : s[(idx - 1) * 2];
+        b = s[idx * 2];
+        tmp[k * 2] = (int16_t)(a + (((b - a) * frac) >> 16));
+        a = idx == 0 ? sPrevR : s[(idx - 1) * 2 + 1];
+        b = s[idx * 2 + 1];
+        tmp[k * 2 + 1] = (int16_t)(a + (((b - a) * frac) >> 16));
+        sPhase += step;
+        if (++k == 256) { ring_put(tmp, k); k = 0; }
+    }
+    if (k) ring_put(tmp, k);
+    sPhase -= (uint32_t)n << 16;
+    sPrevL = s[(n - 1) * 2];
+    sPrevR = s[(n - 1) * 2 + 1];
+}
+#endif
+
 void hh_audio_push(const int16_t *samples, int frames)
 {
     FILE *dump;
@@ -146,25 +233,20 @@ void hh_audio_push(const int16_t *samples, int frames)
         }
         return;
     }
-    if (sWrite - sRead + (uint32_t)frames > RING_FRAMES) {
-        /* The device fell behind (or is paused): drop the oldest audio so
-         * the game never blocks on sound. */
-        SDL_LockAudio();
-        sRead = sWrite + (uint32_t)frames - RING_FRAMES;
-        SDL_UnlockAudio();
-    }
     for (int i = 0; i < frames; i++) {
-        uint32_t idx = (sWrite + (uint32_t)i) % RING_FRAMES;
         int l = samples[i * 2], r = samples[i * 2 + 1];
-        sRing[idx * 2] = (int16_t)l;
-        sRing[idx * 2 + 1] = (int16_t)r;
         if (l < 0) l = -l;
         if (r < 0) r = -r;
         if (l > sPeak) sPeak = l;
         if (r > sPeak) sPeak = r;
     }
-    __sync_synchronize();
-    sWrite += (uint32_t)frames;
+#if defined(MIYOO)
+    if (OUT_RATE != HH_AUDIO_RATE) {
+        resample_push(samples, frames);
+        return;
+    }
+#endif
+    ring_put(samples, frames);
 }
 
 uint32_t hh_audio_underruns(void)
@@ -178,7 +260,7 @@ uint32_t hh_audio_take_ring_min(void)
 {
     const uint32_t m = sRingMin;
     sRingMin = UINT32_MAX;
-    return m == UINT32_MAX ? 0 : m;
+    return m == UINT32_MAX ? 0 : to_game(m); /* in the game's frames, as before */
 }
 uint32_t hh_audio_gaps(void) { return sDk.gaps; }
 
@@ -203,7 +285,7 @@ uint32_t hh_audio_aim_frames(uint32_t *queued)
     aim_us = sGapMaxUs + sGapMaxUs / 4 + 16000;
     aim_us = aim_us < 50000 ? 50000 : aim_us > 150000 ? 150000 : aim_us;
     if (sFixedMs > 0) aim_us = (uint32_t)sFixedMs * 1000u;
-    *queued = sWrite - sRead;
+    *queued = to_game(sWrite - sRead); /* in the game's frames, as the aim */
     return (uint32_t)((uint64_t)HH_AUDIO_RATE * aim_us / 1000000u);
 }
 

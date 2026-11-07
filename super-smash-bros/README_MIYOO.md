@@ -127,6 +127,7 @@ line (every switch is in [SETTINGS.md](SETTINGS.md)). The same as an environment
 | `SSB64_FILLBORDER=0` | `4` | the N64's black border around the picture (`1`: the stretch smoothed) |
 | `SSB64_ROTATE=0` | turned | draw the picture unturned, for an SDL that turns the panel itself (the MinUI launcher sets it) |
 | `SSB64_LOADPIC=0` | on | show the boot's first pictures before RESUME GAME's load |
+| `SSB64_OUTFREQ=<Hz>` | `48000` | the sound's output rate: the OS mixer's own, so the game's 32 kHz is resampled once, in the game; `32000`: as before 1.1.9 |
 
 `console.log` shows `worker: on, 2 cores online (...)` once the first big triangle is drawn, and each
 PERF line ends in `mt on split <split>/<3D triangles> tris <share of the NEON rows' pixels drawn by both>%
