@@ -38,8 +38,20 @@ void Audio_Init(void);
 void Audio_InitSound(void);
 AudioTask* AudioThread_Update(void);
 
-#define HH_AUDIO_RATE 32000
+#define HH_AUDIO_RATE 32000 /* the game's rate (OotPspAudioBackend_SetFrequency) */
+#if defined(MIYOO)
+/* MM_OUTFREQ (launch.sh, default 48000): the rate handed to /dev/dsp. Onion's audioserver mixes at 48 kHz and
+ * resamples anything else itself, audibly: loud, smooth sounds crackled (issue 10; Super Mario 64's fix, PR 11).
+ * The game's 32 kHz is resampled to 48 kHz once, here (HhAudio_Resample, linear 16.16 as SM64's); the ring holds
+ * output frames, and every fill the game sees (osAiGetLength, the refill tests) is converted back to its own
+ * 32 kHz frames, so the update sizes and the pacing are as before. MM_OUTFREQ=32000: as before. */
+static u32 sOutRate = 48000;
+#define HH_OUT_RATE sOutRate
+#define HH_RING_FRAMES 32768 /* stereo frames (~0.7 s at 48 kHz) */
+#else
+#define HH_OUT_RATE HH_AUDIO_RATE
 #define HH_RING_FRAMES 16384 /* stereo frames (~0.5 s) */
+#endif
 
 extern u8 gAudioHeapResetState;
 static s16 sRing[HH_RING_FRAMES * 2];
@@ -91,7 +103,68 @@ static u32 sLogTasks, sLogCmds, sLogUnderrunsSeen;
 static u32 HhRing_Fill(void) {
     return sRingWrite - sRingRead;
 }
+/* output frames in the game's 32 kHz frames (what the AI would still hold) */
+static u32 HhRing_ToGame(u32 frames) {
+    return HH_OUT_RATE == HH_AUDIO_RATE ? frames : (u32)(((uint64_t)frames * HH_AUDIO_RATE) / HH_OUT_RATE);
+}
 
+static FILE* sOutDump; /* MM_AUDIO_OUTDUMP=<file> (tests): what enters the ring, s16 stereo at the out rate */
+static void HhRing_Put(const s16* in, u32 frames) {
+    u32 i;
+    pthread_mutex_lock(&sRingLock);
+    if (HhRing_Fill() + frames > HH_RING_FRAMES) {
+        frames = HH_RING_FRAMES - HhRing_Fill();
+    }
+    for (i = 0; i < frames; i++) {
+        u32 w = (sRingWrite + i) % HH_RING_FRAMES;
+
+        sRing[w * 2] = in[i * 2];
+        sRing[w * 2 + 1] = in[i * 2 + 1];
+    }
+    sRingWrite += frames;
+    pthread_mutex_unlock(&sRingLock);
+    if (sOutDump != NULL && frames > 0) {
+        fwrite(in, 4, frames, sOutDump);
+    }
+}
+#if defined(MIYOO)
+/* 32 kHz -> HH_OUT_RATE, linear between x[i-1] and x[i] (x[-1]: the previous buffer's last frame), stateful
+ * across buffers; only the audio thread queues, so no lock. sPhase: 16.16 position of the next output frame. */
+static s16 sPrevL, sPrevR;
+static u32 sPhase = 0x10000, sStep = 0x10000;
+static void HhAudio_Resample(const s16* in, u32 n) {
+    s16 tmp[256 * 2];
+    u32 k = 0;
+    if (n == 0) {
+        return;
+    }
+    for (;;) {
+        const u32 idx = sPhase >> 16;
+        s32 frac, a, b;
+        if (idx >= n) {
+            break;
+        }
+        frac = (s32)(sPhase & 0xFFFF);
+        a = idx == 0 ? sPrevL : in[(idx - 1) * 2];
+        b = in[idx * 2];
+        tmp[k * 2] = (s16)(a + (((b - a) * frac) >> 16));
+        a = idx == 0 ? sPrevR : in[(idx - 1) * 2 + 1];
+        b = in[idx * 2 + 1];
+        tmp[k * 2 + 1] = (s16)(a + (((b - a) * frac) >> 16));
+        sPhase += sStep;
+        if (++k == 256) {
+            HhRing_Put(tmp, k);
+            k = 0;
+        }
+    }
+    if (k) {
+        HhRing_Put(tmp, k);
+    }
+    sPhase -= n << 16;
+    sPrevL = in[(n - 1) * 2];
+    sPrevR = in[(n - 1) * 2 + 1];
+}
+#endif
 #if defined(MIYOO)
 static FILE* sLenLog; /* OOT_AUDIO_LENLOG=<file> (tests): each update's buffer length in frames, one a line */
 #endif
@@ -115,18 +188,13 @@ s32 OotPspAudioBackend_Queue(const void* buf, u32 size) {
             sDiagPeak = v;
         }
     }
-    pthread_mutex_lock(&sRingLock);
-    if (HhRing_Fill() + frames > HH_RING_FRAMES) {
-        frames = HH_RING_FRAMES - HhRing_Fill();
+#if defined(MIYOO)
+    if (HH_OUT_RATE != HH_AUDIO_RATE) {
+        HhAudio_Resample(in, frames);
+        return 0;
     }
-    for (i = 0; i < frames; i++) {
-        u32 w = (sRingWrite + i) % HH_RING_FRAMES;
-
-        sRing[w * 2] = in[i * 2];
-        sRing[w * 2 + 1] = in[i * 2 + 1];
-    }
-    sRingWrite += frames;
-    pthread_mutex_unlock(&sRingLock);
+#endif
+    HhRing_Put(in, frames);
     return 0;
 }
 
@@ -152,19 +220,21 @@ static int sAudioFill = 1; /* OOT_AUDIOFILL */
 u32 OotPspAudioBackend_GetLength(void) {
 #if defined(MIYOO)
     if (sAudioFill) {
-        const u32 fill = HhRing_Fill();
+        /* the reserve in the game's frames (16 ms at the device's 512): the same time at any out rate, so the
+         * game keeps the ring as full as before (at 48 kHz a callback takes 10.7 ms of it) */
+        const u32 fill = HhRing_ToGame(HhRing_Fill());
         return (fill > sCbFrames ? fill - sCbFrames : 0) * 4;
     }
 #endif
-    return HhRing_Fill() * 4;
+    return HhRing_ToGame(HhRing_Fill()) * 4;
 }
 
 s32 OotPspAudioBackend_NeedsRefillUrgently(void) {
-    return HhRing_Fill() < 1024;
+    return HhRing_ToGame(HhRing_Fill()) < 1024;
 }
 
 s32 OotPspAudioBackend_NeedsRefillDuringIo(void) {
-    return HhRing_Fill() < 2048;
+    return HhRing_ToGame(HhRing_Fill()) < 2048;
 }
 
 static void HhAudio_Callback(void* user, Uint8* stream, int len) {
@@ -285,9 +355,9 @@ static void HhAudio_RunOneUpdateLocked(void) {
         /* OOT_AUDIO_SYNC: a virtual DAC. One VI's worth of samples (32000 / 60) leaves the
          * ring per update, so the fill the game sizes its next buffer from (osAiGetLength) is
          * the same in every run, not whatever the host's audio thread drained. */
-        u32 n = (HH_AUDIO_RATE + sSyncFrac) / 60;
+        u32 n = (HH_OUT_RATE + sSyncFrac) / 60;
 
-        sSyncFrac = (HH_AUDIO_RATE + sSyncFrac) % 60;
+        sSyncFrac = (HH_OUT_RATE + sSyncFrac) % 60;
         pthread_mutex_lock(&sRingLock);
         if (n > HhRing_Fill()) {
             n = HhRing_Fill();
@@ -444,7 +514,7 @@ static void HhAudio_SimFrame(void) {
             if (sSimOut != NULL) {
                 fwrite(buf, 4, frames, sSimOut);
             }
-            sSimCbT += (uint64_t)frames * 1000000000ull / HH_AUDIO_RATE;
+            sSimCbT += (uint64_t)frames * 1000000000ull / HH_OUT_RATE;
         }
     }
     sSimNow = end;
@@ -474,18 +544,39 @@ void OotPspAudio_Init(void) {
     Audio_Init();
     Audio_InitSound();
 
+#if defined(MIYOO)
+    {
+        const char* e = getenv("MM_OUTFREQ");
+        const int f = e != NULL && e[0] ? atoi(e) : 48000;
+        if (f >= 8000 && f <= 48000) {
+            sOutRate = (u32)f;
+        }
+    }
+#endif
+    if ((dump = getenv("MM_AUDIO_OUTDUMP")) != NULL) {
+        sOutDump = fopen(dump, "wb");
+    }
     if (SDL_InitSubSystem(SDL_INIT_AUDIO) == 0) {
         memset(&want, 0, sizeof(want));
-        want.freq = HH_AUDIO_RATE;
+        want.freq = HH_OUT_RATE;
         want.format = AUDIO_S16SYS;
         want.channels = 2;
         want.samples = 512;
         want.callback = HhAudio_Callback;
         if (SDL_OpenAudio(&want, &have) == 0) {
             const char* e = getenv("OOT_DECLICK");
+#if defined(MIYOO)
+            if (have.freq != (int)sOutRate && have.freq >= 8000 && have.freq <= 96000) {
+                port_log_always("AUDIO resampling to the obtained %d Hz\n", have.freq);
+                sOutRate = (u32)have.freq;
+            }
+            sStep = (u32)(((uint64_t)HH_AUDIO_RATE << 16) / sOutRate);
+            sPhase = 0x10000;
+            port_log_always("AUDIO out %u Hz, game %u Hz (MM_OUTFREQ)\n", (unsigned)sOutRate, (unsigned)HH_AUDIO_RATE);
+#endif
 
             sDeclick = !(e != NULL && e[0] == '0');
-            hhd_init(&sDk, HH_AUDIO_RATE, (uint32_t)have.samples); /* the cushion: one callback's worth */
+            hhd_init(&sDk, HH_OUT_RATE, (uint32_t)have.samples); /* the cushion: one callback's worth */
             port_log_always("AUDIO open %d Hz fmt %04X ch %d samples %d%s\n", have.freq, (unsigned)have.format,
                             (int)have.channels, (int)have.samples, sDeclick ? "" : " (declick off)");
             sOpened = 1;
@@ -505,7 +596,7 @@ void OotPspAudio_Init(void) {
                 sSimOut = o != NULL ? fopen(o, "wb") : NULL;
                 sSimJitNs = j != NULL ? (uint64_t)(atof(j) * 1000000.0) : 0;
                 port_log_always("AUDIO OOT_AUDIO_SIMCB: a simulated %u-frame callback every %.2f ms against 60 Hz updates, "
-                                "on a virtual clock\n", (unsigned)sCbFrames, sCbFrames * 1000.0 / HH_AUDIO_RATE);
+                                "on a virtual clock\n", (unsigned)sCbFrames, sCbFrames * 1000.0 / HH_OUT_RATE);
             } else
 #endif
             SDL_PauseAudio(0);

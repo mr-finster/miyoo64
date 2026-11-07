@@ -5,7 +5,7 @@ A port to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip), built on 
 states and a first-start data builder. **There is no game data in it.** It builds everything from your
 own USA ROM the first time you run it.
 
-**Status:** version 1.0.8, a beta. It plays on the Mini (OG, 640x480) with Onion from Apps at the game's own
+**Status:** version 1.0.9, a beta. It plays on the Mini (OG, 640x480) with Onion from Apps at the game's own
 20 fps; test builds have been played on that device. The Mini Plus, Mini v4 and Flip, and Onion's Ports list,
 MinUI, Allium and spruce still need a first run. Known issues: [README.md](README.md#known-issues).
 
@@ -93,6 +93,8 @@ port has no walk or half-stick button.
 - `MM_FINEAIM=0`: no fine aim, the d-pad at full tilt when aiming too (as before 1.0.8).
   `MM_FINEAIMPCT=<5..100>` sets where it starts (default 20, percent of full tilt) and
   `MM_FINEAIMMS=<ms>` when it reaches full tilt (default 1000).
+- `MM_OUTFREQ=<Hz>`: the sound's output rate (default 48000, the OS mixer's own, so the game's 32 kHz is
+  resampled once, in the game; `32000` hands the OS 32 kHz as before 1.0.9).
 - `MM_FLIPFILL=0`: on a Mini v4 or Mini Flip, keep the 2x picture with a border instead of the full height
   (`OOT_FLIPFILL`, the test builds' name, still works).
 
