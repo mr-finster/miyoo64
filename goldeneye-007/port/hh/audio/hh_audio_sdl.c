@@ -10,7 +10,8 @@
  * holds a cushion (CUSHION_MS), and a ring that runs dry waits for the cushion again rather
  * than clicking through every gap (the user: "sound crackles", round 18). A full ring drops
  * the oldest frames. GE_AUDIOCUSHION=<ms> overrides the cushion.
- * The card is opened at OUT_FREQ (32 kHz, as DKR's port on the same hardware) and the AI's rate
+ * The card is opened at OUT_FREQ (32 kHz, as DKR's port on the same hardware; 48 kHz on the Miyoo,
+ * GE_OUTFREQ) and the AI's rate
  * resampled here, linear and stateful across buffers: SDL 1.2's own conversion of 22,047 Hz is
  * crude (round 18).
  * GE_AUDIO=0: no device (the frames are mixed and dropped). GE_WAVOUT=<file>: every frame the
@@ -27,10 +28,19 @@
 #include <SDL2/SDL.h>
 #endif
 
-#define RING_FRAMES 16384 /* 512 ms at 32 kHz: the cushion (150 ms) plus bursts after a slow frame */
-
 #define CUSHION_MS 150
+#if defined(MIYOO)
+/* GE_OUTFREQ (default 48000): the rate handed to /dev/dsp. Onion's audioserver mixes at 48 kHz and
+ * resamples any other rate itself, audibly: loud, smooth sounds crackled (issue 10; Super Mario 64's
+ * fix, PR 11). The game's AI rate is resampled to 48 kHz once, here (the linear resampler below).
+ * GE_OUTFREQ=32000: as before. The card's obtained rate wins if it differs. */
+static uint32_t sOutFreq SAVESTATE_EXCLUDE = 48000;
+#define OUT_FREQ sOutFreq
+#define RING_FRAMES 32768 /* 683 ms at 48 kHz: the cushion (150 ms) plus bursts after a slow frame */
+#else
+#define RING_FRAMES 16384 /* 512 ms at 32 kHz: the cushion (150 ms) plus bursts after a slow frame */
 #define OUT_FREQ 32000
+#endif
 
 static int16_t sRing[RING_FRAMES * 2] SAVESTATE_EXCLUDE;
 static uint32_t sCushion SAVESTATE_EXCLUDE = 3300;        /* frames: CUSHION_MS at the open rate */
@@ -162,11 +172,39 @@ static void open_device(uint32_t rate)
     want.channels = 2;
     want.samples = 512;
     want.callback = callback;
+#if defined(MIYOO)
+    {
+        const char *f = getenv("GE_OUTFREQ");
+        const int hz = f && f[0] ? atoi(f) : 48000;
+        sOutFreq = hz >= 8000 && hz <= 48000 ? (uint32_t)hz : 48000;
+        want.freq = (int)sOutFreq;
+    }
+    {
+        SDL_AudioSpec got;
+        if (SDL_OpenAudio(&want, &got) != 0) {
+            fprintf(stderr, "[audio] SDL_OpenAudio(%u Hz) failed: %s\n", (unsigned)rate, SDL_GetError());
+            sState = -1;
+            return;
+        }
+        if (got.channels != 2 || got.format != AUDIO_S16SYS) { /* let SDL convert, as before */
+            SDL_CloseAudio();
+            if (SDL_OpenAudio(&want, NULL) != 0) {
+                fprintf(stderr, "[audio] SDL_OpenAudio(%u Hz) failed: %s\n", (unsigned)rate, SDL_GetError());
+                sState = -1;
+                return;
+            }
+        } else if (got.freq != want.freq && got.freq >= 8000 && got.freq <= 96000) {
+            fprintf(stderr, "[audio] resampling to the obtained %d Hz\n", got.freq);
+            sOutFreq = (uint32_t)got.freq;
+        }
+    }
+#else
     if (SDL_OpenAudio(&want, NULL) != 0) { /* NULL: SDL converts to what the card takes */
         fprintf(stderr, "[audio] SDL_OpenAudio(%u Hz) failed: %s\n", (unsigned)rate, SDL_GetError());
         sState = -1;
         return;
     }
+#endif
     sRate = rate;
     {
         const char *c = getenv("GE_AUDIOCUSHION");
@@ -184,7 +222,11 @@ static void open_device(uint32_t rate)
     sPrimed = 0;
     sState = 1;
     SDL_PauseAudio(0);
+#if defined(MIYOO)
+    fprintf(stderr, "[audio] out %u Hz, game %u Hz (GE_OUTFREQ)\n", (unsigned)OUT_FREQ, (unsigned)rate);
+#else
     fprintf(stderr, "[audio] %u Hz in, %d Hz out\n", (unsigned)rate, OUT_FREQ);
+#endif
 }
 
 void hh_audio_push(const void *pcm, uint32_t bytes, uint32_t rate)
@@ -266,6 +308,17 @@ void hh_audio_push(const void *pcm, uint32_t bytes, uint32_t rate)
             phase += step;
             if (out >= RING_FRAMES)
                 break;
+        }
+        { /* GE_OUTDUMP=<file> (tests): the converted frames as they enter the ring, raw s16 stereo at the out rate */
+            static FILE *od SAVESTATE_EXCLUDE;
+            static int otried SAVESTATE_EXCLUDE;
+            uint32_t j;
+            if (!otried) { const char *w = getenv("GE_OUTDUMP"); otried = 1; if (w) od = fopen(w, "wb"); }
+            if (od) {
+                for (j = 0; j < out; j++)
+                    fwrite(&sRing[((sWrite + j) % RING_FRAMES) * 2], 4, 1, od);
+                fflush(od);
+            }
         }
         phase -= n << 16;
         if (n > 0) { prevL = s[(n - 1) * 2]; prevR = s[(n - 1) * 2 + 1]; }

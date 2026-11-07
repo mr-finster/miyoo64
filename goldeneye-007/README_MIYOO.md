@@ -112,6 +112,7 @@ starts a comment). The name is the setting without its `GE_`, lowercase (`hud1to
 | `fracstep` | 1 | the motion (walking, turning, the camera, guns) steps by the real time since the last frame instead of whole screen refreshes, so frames that come 1.5 or 2.4 refreshes apart move evenly; the game's speed and its frame counters are the same. `0`: whole refreshes, as before 1014b |
 | `threads` | 2 | `1`: draw on one core only (the second core shares the 3D drawing; for comparing speed) |
 | `intres` | 100 | the 3D's size in percent under the full-size HUD (85 or lower: faster, softer) |
+| `outfreq` | 48000 | the sound's output rate in Hz: the OS mixer's own, so the game's 22 kHz is resampled once, in the game; `32000`: as before 1.1.9 |
 
 The renderer's own keys:
 
