@@ -49,6 +49,7 @@ Switches for `App/PerfectDark/launch.sh`, as `export <switch>` lines before the 
 |---|---|
 | `PD_FLIPFILL=0` | Mini v4 / Mini Flip: the picture at 640x480 with a border, not full screen |
 | `PD_ROTATE=0` | the picture unturned, for an SDL that turns the panel itself |
+| `PD_OUTFREQ=<Hz>` | the sound's output rate (default 48000, the OS mixer's own, so the game's 22 kHz is resampled once, in the game; `32000`: as before 1.0.9) |
 
 ## Known issues
 

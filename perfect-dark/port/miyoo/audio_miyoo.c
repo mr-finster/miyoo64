@@ -2,9 +2,11 @@
  * SDL_QueueAudio). Replaces port/src/audio.c. The game mixes 22020 Hz stereo s16 on the CPU
  * (port/src/mixer.c). PD_NOAUDIO=1: no device (qemu).
  *
- * PD_AUDRATE (default 32000, 8000..48000): the rate the card is opened at. Asked for 22020, the
- * Mini's SDL opens it, but its mi_ao stays at 48000 ("MI_AO_SetPubAttr failed") and the driver
- * converts at a rate of its own; every released Miyoo port opens 32000 and resamples itself. The
+ * PD_OUTFREQ (default 48000, 8000..48000; PD_AUDRATE, its old name, still works): the rate the card is
+ * opened at. Asked for 22020, the Mini's SDL opens it, but its mi_ao stays at 48000 ("MI_AO_SetPubAttr
+ * failed") and the driver converts at a rate of its own. 32000 until 1.0.9; Onion's audioserver mixes at
+ * 48 kHz and resampled 32000 itself, audibly: loud, smooth sounds crackled (issue 10; Super Mario 64's fix,
+ * PR 11), so the game's 22020 Hz now goes to 48 kHz once, here. PD_OUTFREQ=32000: as before. The
  * game's frames are resampled here as they are pushed (linear, the phase and the last frame
  * carried across buffers, as GoldenEye's hh_audio_sdl.c), so the ring holds output-rate frames.
  * PD_AUDRATE=22020 with PD_AUDRATECTL=0 and PD_AUDHEADROOM=0: the step is exactly one frame and
@@ -200,9 +202,10 @@ s32 audioInit(void)
 		sysLogPrintf(LOG_ERROR, "SDL audio init error: %s", SDL_GetError());
 		return -1;
 	}
-	e = getenv("PD_AUDRATE");
-	sOutRate = e ? atoi(e) : 32000;
-	if (sOutRate < 8000 || sOutRate > 48000) sOutRate = 32000;
+	e = getenv("PD_OUTFREQ");
+	if (!(e && e[0])) e = getenv("PD_AUDRATE");
+	sOutRate = e && e[0] ? atoi(e) : 48000;
+	if (sOutRate < 8000 || sOutRate > 48000) sOutRate = 48000;
 	sRateCtl = envOn("PD_AUDRATECTL");
 	sStretch = envOn("PD_AUDSTRETCH");
 	SDL_AudioSpec want;
@@ -220,6 +223,7 @@ s32 audioInit(void)
 	}
 	sysLogPrintf(LOG_NOTE, "audio: %d Hz in, %d Hz out, rate control %d stretch %d, headroom %u game frames, gain %d%%, bass cut %d Hz",
 		GAME_RATE, sOutRate, sRateCtl, sStretch, headroom(), audioGain, audioBassCut);
+	sysLogPrintf(LOG_NOTE, "audio: out %d Hz, game %d Hz (PD_OUTFREQ)", sOutRate, GAME_RATE);
 	sOpen = 1;
 	SDL_PauseAudio(0);
 	return 0;
@@ -291,6 +295,12 @@ static void push(const s16 *s, u32 n, u32 fill)
 	}
 	sPhase -= n << 16;
 	if (n) { sPrevL = s[(n - 1) * 2]; sPrevR = s[(n - 1) * 2 + 1]; }
+	{ /* PD_AUDOUT=<file> (tests): what enters the ring, s16 stereo at the out rate (after the gain and the bass cut) */
+		static FILE *f SAVESTATE_EXCLUDE;
+		static s32 on SAVESTATE_EXCLUDE = -1;
+		if (on < 0) { const char *e = getenv("PD_AUDOUT"); on = e && e[0]; if (on) f = fopen(e, "wb"); if (!f) on = 0; }
+		for (u32 j = 0; on && j < out; j++) fwrite(&sRing[((head + j) % RING_FRAMES) * 2], 4, 1, f);
+	}
 	__sync_synchronize();
 	sHead = head + out;
 }
