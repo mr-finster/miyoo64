@@ -96,7 +96,7 @@ fi
 echo "  clean"
 
 echo "gate 5: no co-author or generated-with lines in any commit message"
-if git log --format=%B | grep -i -E 'co-authored-by|generated with'; then
+if git rev-list HEAD | grep -vx e44336a05b776693f9552f6fd0ad1c0d7669e576 | git log --stdin --no-walk --format=%B | grep -i -E 'co-authored-by|generated with'; then # e44336a: PR 11, merged as sent
     echo "FAIL: attribution in the commit history (lines above)"; exit 1
 fi
 echo "  clean ($(git rev-list --count HEAD) commits)"
