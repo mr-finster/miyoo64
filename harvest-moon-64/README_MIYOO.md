@@ -5,7 +5,7 @@ A port to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip), built on 
 renderer and has save states and a first-start data builder. **There is no game data in it.** It builds everything
 from your own USA ROM the first time you run it.
 
-**Status:** version 1.0.0. It plays on the Mini (OG, 640x480) with Onion from Apps; test builds have been played on
+**Status:** version 1.0.5. It plays on the Mini (OG, 640x480) with Onion from Apps; test builds have been played on
 that device. The Mini Plus, Mini v4 and Flip, and Onion's Ports list, MinUI, Allium and spruce still need a first run.
 Known issues: [README.md](README.md#known-issues).
 
@@ -90,6 +90,7 @@ In `App/HarvestMoon64/data/debug.cfg`, one `HM64_NAME=value` per line (or in `la
 | `HM64_SLEEPSAVE` | 1 | `0`: no auto save at a POWER press or when idle; `HM64_SLEEPSAVE_IDLE=<s>` sets the idle time (`0` no idle save) |
 | `HM64_HZ` | 20 | the game's steps a second |
 | `HM64_WATCHDOG` | 5 | seconds without a frame before the stall report in `console.log`; `0` off. MENU then quits a stuck game |
+| `HM64_OUTFREQ` | 48000 | the sound's output rate in Hz: the OS mixer's own, so the game's 32 kHz is resampled once, in the game; `32000`: as before 1.0.5 |
 
 To build the game data again (a new ROM, or a damaged card), delete `data/hm64-pack.id`; the next start rebuilds it.
 

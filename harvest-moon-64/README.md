@@ -4,7 +4,7 @@ A native port of Harvest Moon 64, built from the [harvestwhisperer/hm64-decomp](
 decompilation, with the handheld layer of this repository's Paper Mario port (the other nusys game: its nusys and
 libultra layer, renderer and Miyoo kit). It runs on the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip).
 
-**Version 1.0.0.** The whole game plays; it was compared scene by scene against two N64 renderers (angrylion and
+**Version 1.0.5.** The whole game plays; it was compared scene by scene against two N64 renderers (angrylion and
 rice) and played through four in-game days under test, with the diary saves, save states and the auto save.
 
 **No game data is included**, here or in the zip. You need your own ROM.
