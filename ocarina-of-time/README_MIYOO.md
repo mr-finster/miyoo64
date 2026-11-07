@@ -123,6 +123,8 @@ The second core and the clock, also Miyoo only (the same as `OOT_THREADS` / `OOT
 Sound, Miyoo only: `audiofill=0` (or `OOT_AUDIOFILL=0`) gives the old audio buffering. The default keeps one
 more SDL callback's worth queued (+16 ms), so a late audio update no longer leaves a gap (the `underruns +N` on
 the AUDIO lines in `console.log`).
+`outfreq=` (or `OOT_OUTFREQ`, default 48000) is the sound's output rate: the OS mixer's own, so the game's 32 kHz
+is resampled once, in the game; `outfreq=32000` hands the OS 32 kHz as before 1.1.8.
 
 The v1.0.2 switches (SETTINGS.md) are all on by default: `modifyvtx=0` (the model seams
 as before), `declick=0` (no fades around the menu and loads), `savereapply=0`, `loadsync=0`, `bootsync=0`, `loadpic=0`,
