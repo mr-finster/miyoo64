@@ -127,6 +127,8 @@ Environment variables for testing (set them in `launch.sh`):
   `DKR_LOADSYNC` / `DKR_BOOTSYNC` (the renderer's flags match its cache after a load and at boot),
   `DKR_SNDPQUEUE=150..600` (the sound queue, 600), `DKR_SNDPGUARD`, `DKR_FOGTEST`, `DKR_PSROWS`.
 - `DKR_LOADPIC=0`: show the game's boot frames before RESUME GAME's load, as before.
+- `DKR_OUTFREQ=<Hz>` is the sound's output rate (default 48000, the OS mixer's own rate, so the game's
+  22 kHz mix is resampled once, in the game; `32000` hands the OS 32 kHz as before).
 - `DKR_FASTROWS=0`: off; on the Mini it stays on, because the second core's share of a
   triangle is drawn in those rows (off: one core for the 3D).
 - `DKR_SPLIT=<px>` is the smallest triangle (in pixels of area) shared with the second core
