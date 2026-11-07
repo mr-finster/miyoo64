@@ -3,6 +3,27 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## Next
+
+Rebuilt: Super Mario 64 1.1.7, Mario Kart 64 1.1.9, GoldenEye 007 1.1.9, Perfect Dark 1.0.9, Ocarina of Time
+1.1.8, Majora's Mask 1.0.9 (beta), Paper Mario 1.1.7, Star Fox 64 1.1.6, F-Zero X 1.1.6, Diddy Kong Racing 1.1.8,
+Super Smash Bros. 1.1.9, Harvest Moon 64 1.0.5, Banjo-Kazooie 1.0.3 (beta), Pilotwings 64 1.0.1 (beta) and The
+New Tetris 1.0.1 (beta).
+
+- All fifteen games: no more crackle on loud, smooth sounds ([issue #10](https://github.com/mr-finster/miyoo64/issues/10)).
+  Found and fixed by ksielick in Super Mario 64 ([PR #11](https://github.com/mr-finster/miyoo64/pull/11)): Onion's
+  audioserver mixes at 48 kHz and converts whatever rate a game opens the sound at, and that conversion crackled on
+  loud voices such as Mario's jumps, though the same sound recorded in the game and played on a PC is clean. The
+  games opened it at 32 kHz (Perfect Dark too; Banjo-Kazooie, GoldenEye 007, Pilotwings 64 and The New Tetris took
+  their own 22-36 kHz there first). Each game now opens it at 48 kHz and converts its own rate once, itself:
+  Super Mario 64, Mario Kart 64, Diddy Kong Racing, Star Fox 64, F-Zero X, the four Banjo-kit games and Perfect
+  Dark with the converter they already had, Ocarina of Time, Majora's Mask, Paper Mario, Super Smash Bros. and
+  Harvest Moon 64 with a new one, the same kind. What each game is told is still queued counts in its own
+  samples, so the music's timing and the sound's delay are as before. Checked in an emulator on the Miyoo builds:
+  the converted sound is exactly the conversion of the game's own (no new clicks, the same pitch), with no new
+  dropouts, at about 0.1 ms more CPU a frame or less. `<GAME>_OUTFREQ=32000` (in launch.sh, or `outfreq=32000`
+  in Ocarina of Time's and GoldenEye 007's debug.cfg) goes back to 32 kHz; each game's README_MIYOO lists it.
+
 ## 1.4.7 (Banjo-Kazooie's enemies, fine aim in the Zeldas, faster GoldenEye 007 and Perfect Dark)
 
 Rebuilt: Super Smash Bros. 1.1.8, GoldenEye 007 1.1.8, Perfect Dark 1.0.8, Majora's Mask 1.0.8, Ocarina of
