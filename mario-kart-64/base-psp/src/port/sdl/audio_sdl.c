@@ -31,6 +31,9 @@ static u32 sOutFreq SAVESTATE_EXCLUDE = 32000;
 #define OUT_FREQ 32000
 #define OUT_FREQ_INIT OUT_FREQ
 #endif
+#if defined(MIYOO)
+static FILE *sOutDump SAVESTATE_EXCLUDE; /* MK64_AUDIO_OUTDUMP=<path> (tests): the converted output as it enters the ring, raw s16le stereo at the out rate */
+#endif
 /* Resampler state: playing the 26.8 kHz mix straight ran everything 19% fast
  * on PSP; same maths here. */
 static u32 sInRate = OUT_FREQ_INIT;
@@ -54,7 +57,11 @@ void port_audio_out_set_rate(u32 freq) {
 }
 
 #define OUT_BLOCK 512                 // SDL callback granularity (samples)
+#if defined(MIYOO)
+#define FIFO_SAMPLES (OUT_BLOCK * 32) /* ring capacity in stereo samples: 341 ms at 48 kHz (MK64_OUTFREQ), as SM64's */
+#else
 #define FIFO_SAMPLES (OUT_BLOCK * 16) // ring capacity in stereo samples
+#endif
 
 /* The ring is shared with the SDL callback thread -- exclude it from
  * savestates so a load never rewrites indices out from under the live
@@ -79,7 +86,7 @@ static u32 fifo_count(void) {
  * single clean gaps. The cushion is half of what port_audio_frame keeps queued (3600 session samples,
  * ~4000 here), so the game's first frame after a gap fills it; at full gain the samples pass untouched.
  * MK64_DECLICK=0: as before (tests). */
-#define DECLICK_CUSHION 2000u
+#define DECLICK_CUSHION (2000u * OUT_FREQ / 32000u) /* in output samples: the same time at any out rate */
 static HhDeclick sDk SAVESTATE_EXCLUDE;
 static int sDeclick SAVESTATE_EXCLUDE = 1;
 
@@ -162,7 +169,7 @@ void port_audio_mix_unlock(void) { if (sMixLock) SDL_mutexV(sMixLock); }
  * never falls to LOW_WATER unless the game thread has stalled for ~90 ms --
  * a load, a texture-import burst, a transition -- and then this thread keeps
  * the callback fed until it returns. */
-#define LOW_WATER_OUT 1500u
+#define LOW_WATER_OUT (1500u * OUT_FREQ / 32000u) /* ~47 ms of output at any out rate */
 static volatile u32 sThreadMixes SAVESTATE_EXCLUDE; /* PERF: how often the backstop had to mix */
 u32 port_audio_thread_mixes(void) { return sThreadMixes; }
 
@@ -210,6 +217,18 @@ void port_audio_out_init(void) {
         port_log("audio: SDL_InitSubSystem failed: %s\n", SDL_GetError());
         return;
     }
+#if defined(MIYOO)
+    /* MK64_OUTFREQ (default 48000): the rate handed to /dev/dsp. Onion's audioserver mixes at 48 kHz and
+     * resamples anything else itself, audibly: loud, smooth sounds crackled (issue 10; Super Mario 64's fix,
+     * PR 11). The game's rate is resampled to 48 kHz once, here (the linear resampler below); the queue the
+     * game sees (osAiGetLength) stays in its own samples. MK64_OUTFREQ=32000: as before. */
+    {
+        const char *e = getenv("MK64_OUTFREQ");
+        const int f = e && e[0] ? atoi(e) : 48000;
+        if (f >= 8000 && f <= 48000) sOutFreq = (u32) f;
+    }
+    { const char *p = getenv("MK64_AUDIO_OUTDUMP"); if (p) sOutDump = fopen(p, "wb"); }
+#endif
     memset(&want, 0, sizeof(want));
     want.freq = OUT_FREQ;
     want.format = AUDIO_S16SYS;
@@ -234,6 +253,9 @@ void port_audio_out_init(void) {
         sPhase = 0x10000;
         port_log("audio: resampling to the obtained %d Hz\n", got.freq);
     }
+    sStep = (u32) (((u64) sInRate << 16) / OUT_FREQ); /* the session rate over the output rate (MK64_OUTFREQ) */
+    sPhase = 0x10000;
+    port_log_always("audio: out %u Hz, game %u Hz (MK64_OUTFREQ)\n", (unsigned) OUT_FREQ, (unsigned) sInRate);
 #endif
     sObtainedSamples = got.samples ? got.samples : OUT_BLOCK;
     sFifoRead = sFifoWrite = 0;
@@ -295,6 +317,9 @@ static void fifo_push(const s16 *samples, u32 n) {
         sFifo[idx * 2] = samples[i * 2];
         sFifo[idx * 2 + 1] = samples[i * 2 + 1];
     }
+#if defined(MIYOO)
+    if (sOutDump && n) fwrite(samples, 4, n, sOutDump);
+#endif
     sFifoWrite += n;
 }
 

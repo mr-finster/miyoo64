@@ -109,6 +109,8 @@ Environment variables for testing (set them in `launch.sh`):
   turns it off). See "If it freezes" below.
 - `MK64_SPLIT=<px>` is the smallest triangle (in pixels of area) shared with the second core
   (default 64; with at least 4 rows).
+- `MK64_OUTFREQ=<Hz>` is the sound's output rate (default 48000, the OS mixer's own rate, so the game's
+  mix is resampled once, in the game; `32000` hands the OS 32 kHz as before).
 
 ## Building
 
