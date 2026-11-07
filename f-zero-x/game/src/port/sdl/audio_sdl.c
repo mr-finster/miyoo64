@@ -29,6 +29,7 @@
 #include "hh_declick.h"
 
 extern unsigned int port_time_us(void);
+extern void port_log_always(const char* fmt, ...); /* platform_sdl.c: ignores the quiet switch */
 
 #if defined(MIYOO)
 /* The Miyoo's SDL builds differ in what they grant: the obtained rate wins (port_audio_init; DKR's). */
@@ -39,9 +40,16 @@ static u32 sOutFreq = 32000;
 #define OUT_FREQ 32000
 #define OUT_FREQ_INIT OUT_FREQ
 #endif
+#if defined(MIYOO)
+static FILE *sOutDump; /* FZX_AUDIO_OUTDUMP=<path> (tests): the converted output as it enters the ring, raw s16le stereo at the out rate */
+#endif
 #define OUT_BLOCK 512                 /* SDL callback granularity (samples) */
+#if defined(MIYOO)
+#define FIFO_SAMPLES (OUT_BLOCK * 32) /* ring capacity in stereo samples: 341 ms at 48 kHz (FZX_OUTFREQ), as SM64's */
+#else
 #define FIFO_SAMPLES (OUT_BLOCK * 16) /* ring capacity, stereo samples */
-#define CUSHION (OUT_BLOCK + 256)     /* samples kept queued beyond what the game sees */
+#endif
+#define CUSHION ((OUT_BLOCK + 256) * OUT_FREQ / 32000u)     /* samples kept queued beyond what the game sees */
 
 static s16 sFifo[FIFO_SAMPLES * 2];
 static volatile u32 sFifoRead;  /* total samples read (callback thread only) */
@@ -288,6 +296,18 @@ void port_audio_init(int headless) {
         port_log("audio: SDL_InitSubSystem failed: %s\n", SDL_GetError());
         return;
     }
+#if defined(MIYOO)
+    /* FZX_OUTFREQ (default 48000): the rate handed to /dev/dsp. Onion's audioserver mixes at 48 kHz and
+     * resamples anything else itself, audibly: loud, smooth sounds crackled (issue 10; Super Mario 64's fix,
+     * PR 11). The game's rate is resampled to 48 kHz once, here (the linear resampler below); the queue the
+     * game sees (osAiGetLength) stays in its own samples. FZX_OUTFREQ=32000: as before. */
+    {
+        const char *e = getenv("FZX_OUTFREQ");
+        const int f = e && e[0] ? atoi(e) : 48000;
+        if (f >= 8000 && f <= 48000) sOutFreq = (u32) f;
+    }
+    { const char *p = getenv("FZX_AUDIO_OUTDUMP"); if (p) sOutDump = fopen(p, "wb"); }
+#endif
     memset(&want, 0, sizeof(want));
     want.freq = OUT_FREQ;
     want.format = AUDIO_S16SYS;
@@ -309,6 +329,9 @@ void port_audio_init(int headless) {
         sPhase = 0x10000;
         port_log("audio: resampling to the obtained %d Hz\n", got.freq);
     }
+    sStep = (u32) (((u64) sInRate << 16) / OUT_FREQ); /* the session rate over the output rate (FZX_OUTFREQ) */
+    sPhase = 0x10000;
+    port_log_always("audio: out %u Hz, game %u Hz (FZX_OUTFREQ)\n", (unsigned) OUT_FREQ, (unsigned) sInRate);
 #endif
     sObtainedSamples = got.samples ? got.samples : OUT_BLOCK;
     {
@@ -376,6 +399,9 @@ static void fifo_push(const s16* samples, u32 n) {
         sFifo[idx * 2] = samples[i * 2];
         sFifo[idx * 2 + 1] = samples[i * 2 + 1];
     }
+#if defined(MIYOO)
+    if (sOutDump && n) fwrite(samples, 4, n, sOutDump);
+#endif
     sFifoWrite += n;
 }
 

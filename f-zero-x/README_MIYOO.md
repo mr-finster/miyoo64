@@ -110,6 +110,8 @@ a question or closes the menu (so does MENU).
 - `FZX_THREADS=1`: one core only (the same frames).
 - `FZX_FILL=0`: the N64's picture with its black TV-safe border, as before the fill.
 - `FZX_CPUCLOCK=<MHz>` (0 = leave the clock alone).
+- `FZX_OUTFREQ=<Hz>`: the sound's output rate (default 48000, the OS mixer's own rate, so the game's 32 kHz
+  mix is resampled once, in the game; `32000` hands the OS 32 kHz as before).
 - `FZX_PACE=cadence`: cadence pacing (it picks an even 60/30 or a 52.5/50/48/45/40 cadence ahead)
   instead of showing each frame as soon as it is drawn.
 - `FZX_ROTATE=0`: the picture unturned, for an SDL that turns the panel itself (MinUI's launcher sets
