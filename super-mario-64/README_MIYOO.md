@@ -110,7 +110,9 @@ Environment variables for testing (set them in `launch.sh`): `SM64_THREADS=1|2` 
 sets it: MinUI's SDL turns the panel itself); `SM64_MIYOO_MODE=640x480` forces the panel mode;
 `SM64_PANEL_CHECK=1` checks the first 30 presented frames against a scalar reference (the log says
 how many pixels differ); `SM64_SPLIT=<px>` is the smallest triangle (in pixels of area) shared with the
-second core (default 64, with at least 4 rows); `SM64_LOG=0` keeps the output on the terminal.
+second core (default 64, with at least 4 rows); `SM64_LOG=0` keeps the output on the terminal;
+`SM64_OUTFREQ=<Hz>` is the sound's output rate (default 48000, the OS mixer's own rate, so the game's
+32 kHz mix is resampled once, in the game; `32000` hands it to the OS as before).
 
 The PERF lines in `console.log` (every 25 s) end with the second core's counts, e.g. `| mt on split
 1200/5000 tris 90% px, jobs 1500, sleeps 30, refs 0/0`: split triangles out of all, the share of the 3D

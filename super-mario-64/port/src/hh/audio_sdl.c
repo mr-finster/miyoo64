@@ -183,6 +183,18 @@ void port_audio_out_init(void) {
         port_log("audio: SDL_InitSubSystem failed: %s\n", SDL_GetError());
         return;
     }
+#if defined(MIYOO)
+    /* SM64_OUTFREQ (default 48000): the rate handed to /dev/dsp. Onion's audioserver mixes at 48 kHz and
+     * resamples anything else itself, audibly: on a Mini Plus the game's 32 kHz mix (clean when dumped with
+     * SM64_AUDIO_DUMP and played on a PC) crackled on loud voices such as Mario's jumps, smooth 2-3 kHz waves
+     * near 84 % of full scale. Resampling to 48 kHz here (the linear resampler below; the N64 mix carries
+     * nothing above ~10 kHz) removed it (2026-11-07). SM64_OUTFREQ=32000: as before. */
+    {
+        const char *e = getenv("SM64_OUTFREQ");
+        const int f = e && e[0] ? atoi(e) : 48000;
+        if (f >= 8000 && f <= 48000) sOutFreq = (u32) f;
+    }
+#endif
     memset(&want, 0, sizeof(want));
     want.freq = OUT_FREQ;
     want.format = AUDIO_S16SYS;
@@ -207,6 +219,9 @@ void port_audio_out_init(void) {
         sPhase = 0x10000;
         port_log_always("audio: resampling to the obtained %d Hz\n", got.freq);
     }
+    sStep = (u32) (((u64) sInRate << 16) / OUT_FREQ); /* the session rate over the output rate (SM64_OUTFREQ) */
+    sPhase = 0x10000;
+    port_log_always("audio: out %u Hz, game %u Hz (SM64_OUTFREQ)\n", (unsigned) OUT_FREQ, (unsigned) sInRate);
 #endif
     sObtainedSamples = got.samples ? got.samples : OUT_BLOCK;
     sFifoRead = sFifoWrite = 0;
