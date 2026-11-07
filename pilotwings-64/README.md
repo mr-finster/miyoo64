@@ -5,7 +5,7 @@ A native port of Pilotwings 64, built from the [Pilotwings 64 decompilation](htt
 priorities, the software renderer, the Miyoo kit), with the classic libultra audio mixer written for this port. It
 runs on the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip).
 
-**Version 1.0.0, a beta:** the hang glider, rocket belt, gyrocopter and the bonus games all run, and the sound was
+**Version 1.0.1, a beta:** the hang glider, rocket belt, gyrocopter and the bonus games all run, and the sound was
 checked against a real N64's output. It has had little play on real devices yet. Please report what you find.
 
 **No game data is included**, here or in the zip. You need your own ROM.

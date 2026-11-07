@@ -9,7 +9,7 @@
 # ROM). The binary is linked at 0x80400000 and 4 MB of N64 DRAM are mapped at 0x80000000.
 
 PLAT    ?= miyoo
-HH_RELEASE ?= 1.0.0
+HH_RELEASE ?= 1.0.1
 HH_VERSION ?= $(shell git -C hh rev-parse --short HEAD 2>/dev/null || echo dev)
 .DEFAULT_GOAL := all
 SHELL := /bin/bash

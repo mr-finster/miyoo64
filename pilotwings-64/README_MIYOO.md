@@ -4,7 +4,7 @@ A port to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip), built on 
 [n64decomp/pw64](https://github.com/n64decomp/pw64) decompilation. It uses a software renderer and has save states.
 **There is no game data in it.** It reads everything from your own USA ROM.
 
-**Status:** version 1.0.0, a beta. Known issues: [README.md](README.md#known-issues).
+**Status:** version 1.0.1, a beta. Known issues: [README.md](README.md#known-issues).
 
 ## How it plays
 
@@ -35,7 +35,7 @@ A port to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip), built on 
 
 Everything the game writes stays in `App/Pilotwings64/data/`: the ROM copy, the game's saves (`eeprom.bin`), the save
 states and the auto save, the button layout from MENU > CONTROLS (`controls.cfg`), `console.log` from the last
-session (its first line names the build, `SESSION pw64 Pilotwings 64 1.0.0 version <commit> ...`) and `launch.log`.
+session (its first line names the build, `SESSION pw64 Pilotwings 64 1.0.1 version <commit> ...`) and `launch.log`.
 
 **Updating:** unzip the new zip over the old one. The game's saves carry over. Save states and the auto save belong to
 the build that made them.
@@ -44,6 +44,14 @@ the build that made them.
 
 [README.md](README.md#controls). In the game menu, up and down pick an entry, and left and right change the slot. A or
 START selects; B or MENU backs out.
+
+## Settings
+
+In `App/Pilotwings64/data/debug.cfg`, one `PW64_NAME=value` per line (or in `launch.sh`):
+
+| Setting | Default | What |
+|---|---|---|
+| `PW64_OUTFREQ` | 48000 | the sound's output rate in Hz: the OS mixer's own, so the game's 22 kHz is resampled once, in the game; `32000`: as before 1.0.1 |
 
 ## Credits and licence
 
