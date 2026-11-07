@@ -3,9 +3,9 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
-## Next
+## 1.4.8 (2026-11-07: the sound at 48 kHz in all fifteen games, Pilotwings 64's demo crash)
 
-Rebuilt: Super Mario 64 1.1.7, Mario Kart 64 1.1.9, GoldenEye 007 1.1.9, Perfect Dark 1.0.9, Ocarina of Time
+All fifteen games are rebuilt: Super Mario 64 1.1.7, Mario Kart 64 1.1.9, GoldenEye 007 1.1.9, Perfect Dark 1.0.9, Ocarina of Time
 1.1.8, Majora's Mask 1.0.9 (beta), Paper Mario 1.1.7, Star Fox 64 1.1.6, F-Zero X 1.1.6, Diddy Kong Racing 1.1.8,
 Super Smash Bros. 1.1.9, Harvest Moon 64 1.0.5, Banjo-Kazooie 1.0.3 (beta), Pilotwings 64 1.0.2 (beta) and The
 New Tetris 1.0.1 (beta).
