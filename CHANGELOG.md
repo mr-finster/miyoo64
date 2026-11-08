@@ -17,6 +17,18 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   table, so a new setting is one more row ([docs/OPTIONS.md](docs/OPTIONS.md)). Checked in an emulator on the
   Miyoo builds: the file rewritten as described, the fine aim and HUD changes in effect at once, the values read
   back after a restart, and save and load state as before.
+- Ocarina of Time 1.1.9 and Majora's Mask 1.0.10 (beta): the Lens of Truth works on fake floors and walls
+  ([issue #12](https://github.com/mr-finster/miyoo64/issues/12)). In the Bottom of the Well and the Shadow Temple the
+  fake floors over holes and the fake walls stayed drawn with the lens on, though Link fell through them; hidden
+  chests and platforms showed, but on the whole screen rather than only inside the lens's circle. The game draws the
+  circle into the depth buffer: what lies inside it (or outside, for the hidden things) is then left out of the fake
+  floors and walls drawn after it. The renderer drew that circle's colour but never its depth. Now it writes the
+  depth where the N64 does, so inside the circle the holes and passages show and outside it the fake floor and
+  walls are still there; hidden things show only inside the circle. Majora's Mask, which keeps a copy of the depth
+  and puts it back after the lens, gets the same (its invisible platforms on the path to Snowhead now show only
+  inside the circle). Checked in an emulator on the Miyoo builds, before and after: the Bottom of the Well's floor
+  holes and first fake wall, a Shadow Temple fake wall, the Snowhead path's platforms, and no change anywhere the
+  lens is off. `OOT_ZRECT=0` / `MM_ZRECT=0` in `launch.sh` give the old drawing.
 
 ## 1.4.8 (2026-11-07: the sound at 48 kHz in all fifteen games, Pilotwings 64's demo crash)
 

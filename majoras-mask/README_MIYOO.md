@@ -98,6 +98,8 @@ MENU > OPTIONS changes the fine aim, the dialog text, the HUD filter and the sou
   `MM_FINEAIMMS=<ms>` when it reaches full tilt (default 1000).
 - `MM_OUTFREQ=<Hz>`: the sound's output rate (default 48000, the OS mixer's own, so the game's 32 kHz is
   resampled once, in the game; `32000` hands the OS 32 kHz as before 1.0.9).
+- `MM_ZRECT=0`: the Lens of Truth as before 1.0.10, the things it reveals drawn on the whole screen instead of
+  only inside its circle.
 - `MM_FLIPFILL=0`: on a Mini v4 or Mini Flip, keep the 2x picture with a border instead of the full height
   (`OOT_FLIPFILL`, the test builds' name, still works).
 

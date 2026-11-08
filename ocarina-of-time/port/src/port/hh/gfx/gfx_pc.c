@@ -5786,6 +5786,96 @@ static void gfx_draw_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_t lr
     }
 }
 
+/* Issue 12 (the Lens of Truth: fake floors, walls and holes): a rectangle with Z_UPD and the depth source
+ * G_ZS_PRIM writes the prim depth (gDPSetPrimDepth) into the depth buffer at every pixel the alpha compare passes,
+ * whatever the blender does with the colour. Actor_DrawLensActors (z_actor.c) draws the lens mask so: depth 0 (the
+ * nearest) inside the circle in a LENS_MODE_HIDE_ACTORS room (Bottom of the Well, the Shadow Temple), so the fake
+ * floors and walls (BgHakaMegane and the others, drawn after it) are hidden there and the holes behind them show;
+ * outside it in a LENS_MODE_SHOW_ACTORS room, so the hidden chests and platforms show only inside the circle. The
+ * 2D path never wrote depth: the fake floors stayed drawn everywhere, the hidden things showed on the whole screen.
+ * Now such a rectangle's depth is written into the 3D target through the 3D's own mapping (gfx_depth_n64_x), with
+ * the cycle-1 alpha combiner evaluated per texel and compared against the blend colour's alpha (>=, as the RDP).
+ * Its colour is drawn as before, unless the blender only passes the memory colour through (IN * 0 + MEM * 1MA,
+ * forced), as the HIDE mode's mask does: then nothing (the RDP writes the same colour back). OOT_ZRECT=0: off. */
+static uint8_t sBlendAlpha SAVESTATE_EXCLUDE;   /* gDPSetBlendColor's alpha: the alpha compare threshold */
+static uint16_t sPrimDepthZ SAVESTATE_EXCLUDE;  /* gDPSetPrimDepth's z */
+extern void gfx_soft_zrect(float x0, float y0, float x1, float y1, float au, float bu, float av, float bv,
+                           const int16_t k[4], int thr, uint16_t z, const int adr[6]);
+extern void gfx_soft_zrect_nocolor(bool on);
+extern void gfx_soft_zrect_restore(void);
+/* N64 x of a 3D-target column (continuous): the inverse of gfx_depth_read_x */
+float gfx_depth_n64_x(float bx, int w, int h) {
+    if (gfx_jpeg_room_squash || h <= 0) return bx * 320.0f / (float) w;
+    return 160.0f + gfx_jpeg_room_pan + (bx - (float) w * 0.5f) * 240.0f / (float) h;
+}
+/* An alpha combiner input as a constant (0..255), or -1 for the texel's alpha. slot: 0 A, 1 B, 2 C, 3 D. */
+static int16_t gfx_zrect_alpha_in(uint8_t mux, int slot) {
+    switch (mux) {
+        case G_ACMUX_TEXEL0: case G_ACMUX_TEXEL1: return -1;
+        case G_ACMUX_PRIMITIVE: return rdp.prim_color.a;
+        case G_ACMUX_ENVIRONMENT: return rdp.env_color.a;
+        case G_ACMUX_1: return slot == 2 ? rdp.prim_lod_frac : 255; /* 6 in C = PRIM_LOD_FRAC */
+        default: return 0; /* COMBINED / LOD_FRACTION, SHADE (a rectangle has none), 0 */
+    }
+}
+/* 0: not a depth rectangle; 1: depth and colour; 2: depth only (the blender passes the memory colour through) */
+static int gfx_zrect_mode(bool flip) {
+    static int sOn SAVESTATE_EXCLUDE = -1;
+    if (sOn < 0) { const char *e = getenv("OOT_ZRECT"); sOn = !(e && e[0] == '0'); }
+    const uint32_t l = rdp.other_mode_l, cyc = rdp.other_mode_h & (3U << G_MDSFT_CYCLETYPE);
+    if (!sOn || flip || (l & (Z_UPD | G_ZS_PRIM)) != (Z_UPD | G_ZS_PRIM) || (cyc != G_CYC_1CYCLE && cyc != G_CYC_2CYCLE)) return 0;
+    const int sh = cyc == G_CYC_2CYCLE ? 16 : 18; /* the last cycle's a / m / b muxes */
+    const bool pass = (l & FORCE_BL) && ((l >> (sh + 8)) & 3) == G_BL_0 && ((l >> (sh + 4)) & 3) == G_BL_CLR_MEM &&
+                      ((l >> sh) & 3) == G_BL_1MA;
+    return pass ? 2 : 1;
+}
+static void gfx_zrect_depth(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry, int16_t uls, int16_t ult, int16_t dsdx, int16_t dtdy) {
+    const uint32_t l = rdp.other_mode_l;
+    int16_t k[4];
+    int thr;
+    for (int i = 0; i < 4; i++) k[i] = gfx_zrect_alpha_in(rdp.cc1[4 + i], i);
+    if ((l & (3U << G_MDSFT_ALPHACOMPARE)) == G_AC_NONE || ((l & ALPHA_CVG_SEL) && !(l & CVG_X_ALPHA))) thr = 0;
+    else if ((l & (3U << G_MDSFT_ALPHACOMPARE)) == G_AC_THRESHOLD) thr = sBlendAlpha;
+    else thr = 128; /* G_AC_DITHER: a random threshold, its mean */
+    float x0 = ulx / 4.0f, y0 = uly / 4.0f, x1 = lrx / 4.0f, y1 = lry / 4.0f;
+    if (gfx_raw_sc_valid) { /* the game's scissor, N64 pixels */
+        x0 = fmaxf(x0, gfx_raw_sc[0] / 4.0f); y0 = fmaxf(y0, gfx_raw_sc[1] / 4.0f);
+        x1 = fminf(x1, gfx_raw_sc[2] / 4.0f); y1 = fminf(y1, gfx_raw_sc[3] / 4.0f);
+    }
+    /* texel (tile-relative) at N64 point x: (S(x) * shift - uls_tile * 8) / 32, S(x) = uls + (x - ulx/4) * dsdx/32 (S10.5) */
+    const float scs = gfx_tile_shift_scale(rdp.tiles[G_TX_RENDERTILE].shifts);
+    const float sct = gfx_tile_shift_scale(rdp.tiles[G_TX_RENDERTILE].shiftt);
+    const float bu = dsdx * scs / 1024.0f, bv = dtdy * sct / 1024.0f;
+    const float au = ((uls - ulx / 4.0f * dsdx / 32.0f) * scs - rdp.texture_tile.uls * 8) / 32.0f;
+    const float av = ((ult - uly / 4.0f * dtdy / 32.0f) * sct - rdp.texture_tile.ult * 8) / 32.0f;
+    const uint32_t z = sPrimDepthZ & 0x7FFF;
+    gfx_flush();
+    if (k[0] < 0 || k[1] < 0 || k[2] < 0 || k[3] < 0) { /* the texel's alpha: tile 0's texture, bound */
+        if (rdp.textures_changed[0]) {
+            import_texture(0);
+            rdp.textures_changed[0] = false;
+        }
+        if (rendering_state.textures[0] == NULL) return;
+        gfx_rapi->select_texture(0, rendering_state.textures[0]->texture_id);
+        gfx_rapi->set_sampler_parameters(0, (rdp.other_mode_h & (3U << G_MDSFT_TEXTFILT)) != G_TF_POINT,
+                                         rdp.texture_tile.cms, rdp.texture_tile.cmt);
+        rendering_state.textures[0]->linear_filter = (rdp.other_mode_h & (3U << G_MDSFT_TEXTFILT)) != G_TF_POINT;
+        rendering_state.textures[0]->cms = rdp.texture_tile.cms;
+        rendering_state.textures[0]->cmt = rdp.texture_tile.cmt;
+    }
+    /* the RDP's texel addressing on the raw tile (the import's own wrap drops a clamp wider than the mask, which
+     * would repeat the mask outside its tile): clamp to the tile's extent, then the mask and its mirror */
+    const int adr[6] = {
+        (rdp.texture_tile.cms_raw & G_TX_CLAMP) ? ((int) rdp.texture_tile.lrs - (int) rdp.texture_tile.uls + 4) / 4 : 0,
+        rdp.texture_tile.masks != 0 && rdp.texture_tile.masks < 16 ? 1 << rdp.texture_tile.masks : 0,
+        (rdp.texture_tile.cms_raw & G_TX_MIRROR) != 0,
+        (rdp.texture_tile.cmt_raw & G_TX_CLAMP) ? ((int) rdp.texture_tile.lrt - (int) rdp.texture_tile.ult + 4) / 4 : 0,
+        rdp.texture_tile.maskt != 0 && rdp.texture_tile.maskt < 16 ? 1 << rdp.texture_tile.maskt : 0,
+        (rdp.texture_tile.cmt_raw & G_TX_MIRROR) != 0,
+    };
+    gfx_soft_zrect(x0, y0, x1, y1, au, bu, av, bv, k, thr, (uint16_t) (z * 65535u / 0x7FFFu), adr);
+}
+
 static void gfx_dp_texture_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry, uint8_t tile, int16_t uls, int16_t ult, int16_t dsdx, int16_t dtdy, bool flip) {
     if (gfx_debug_frame) port_log("  texrect othermode_l %08X h %08X combine %08X\n", (unsigned) rdp.other_mode_l, (unsigned) rdp.other_mode_h, (unsigned) rdp.combine_mode);
     _UNUSED(tile);
@@ -5800,6 +5890,8 @@ static void gfx_dp_texture_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int3
 #ifndef HANDHELD
             if (cc_census_on()) sCenZimgRects++;
 #endif
+            gfx_flush();
+            gfx_soft_zrect_restore(); /* issue 12: a copy back into the depth image (gfx_soft_zrect_restore) */
             if (!sZimgRect) return;
         }
     }
@@ -5882,7 +5974,11 @@ static void gfx_dp_texture_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int3
     }
     sRectStep1 = !flip && (dsdx == 1024 || dsdx == -1024) ? (dsdx > 0 ? 1 : -1) : 0;
     sRectStep1T = !flip && (dtdy == 1024 || dtdy == -1024) ? (dtdy > 0 ? 1 : -1) : 0;
-    gfx_draw_rectangle(ulx, uly, lrx, lry);
+    const int zrect = gfx_zrect_mode(flip); /* issue 12 (above) */
+    if (zrect == 2) gfx_soft_zrect_nocolor(true);
+    gfx_draw_rectangle(ulx, uly, lrx, lry); /* binds the texture even when no colour is drawn */
+    if (zrect == 2) gfx_soft_zrect_nocolor(false);
+    if (zrect) gfx_zrect_depth(ulx, uly, lrx, lry, uls, ult, dsdx, dtdy);
     sRectStep1 = sRectStep1T = 0;
     rdp.combine_mode = saved_combine_mode;
 }
@@ -6542,6 +6638,12 @@ static void gfx_run_dl(Gfx* cmd) {
                 break;
             case G_SETFOGCOLOR:
                 gfx_dp_set_fog_color(C1(24, 8), C1(16, 8), C1(8, 8), C1(0, 8));
+                break;
+            case G_SETBLENDCOLOR: /* issue 12: the alpha compare's threshold (gfx_zrect_depth) */
+                sBlendAlpha = (uint8_t) C1(0, 8);
+                break;
+            case G_SETPRIMDEPTH:
+                sPrimDepthZ = (uint16_t) C1(16, 16);
                 break;
             case G_SETFILLCOLOR:
                 gfx_dp_set_fill_color(cmd->words.w1);

@@ -126,6 +126,10 @@ the AUDIO lines in `console.log`).
 `outfreq=` (or `OOT_OUTFREQ`, default 48000) is the sound's output rate: the OS mixer's own, so the game's 32 kHz
 is resampled once, in the game; `outfreq=32000` hands the OS 32 kHz as before 1.1.8.
 
+The Lens of Truth (since 1.1.9, [issue #12](https://github.com/mr-finster/miyoo64/issues/12)): inside its circle the
+fake floors and walls are gone and the holes under them show; outside it they are drawn, and hidden things show
+only inside it. `OOT_ZRECT=0` in `launch.sh` draws the lens as before 1.1.9 (fake floors everywhere).
+
 The v1.0.2 switches (SETTINGS.md) are all on by default: `modifyvtx=0` (the model seams
 as before), `declick=0` (no fades around the menu and loads), `savereapply=0`, `loadsync=0`, `bootsync=0`, `loadpic=0`,
 `fastrows=0`, `zskip=0`. An `fps=` line from an older test build is ignored.

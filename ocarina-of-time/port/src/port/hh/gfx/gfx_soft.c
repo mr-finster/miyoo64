@@ -3118,8 +3118,16 @@ static void cov_rect(int x0, int y0, int x1, int y1) {
     if (!sCov || x1 <= x0 || y1 <= y0 || sFB != sCovTarget || sCovSz < sW * sH) return;
     for (int y = y0; y < y1; y++) memset(sCov + y * sW + x0, 1, (size_t)(x1 - x0));
 }
+/* Issue 12 (gfx_pc.c's gfx_zrect_mode): a rectangle that writes the prim depth (the Lens of Truth's mask). Its
+ * colour is skipped while sZRectNoColor is set; gfx_soft_zrect then writes depth z into the 3D target's depth at
+ * each pixel whose N64 point (gfx_depth_n64_x) lies in [x0, x1) x [y0, y1) and whose alpha, (A - B) * C + D over
+ * k[] (-1 = the bound texture's alpha at texel (au + bu * x, av + bv * y), nearest, addressed by adr[]: zrect_addr),
+ * is at least thr. */
+static bool sZRectNoColor SAVESTATE_EXCLUDE;
+void gfx_soft_zrect_nocolor(bool on) { sZRectNoColor = on; }
 void gfx_scegu_draw_triangles_2d(float buf_vbo[], size_t buf_vbo_len, size_t num_sprites) {
     sky_settle(); /* OOT_SKYDEFER: the kept sky first (see raster_tri) */
+    if (sZRectNoColor) return; /* issue 12: a depth-only rectangle (gfx_soft_zrect) */
     (void)buf_vbo_len;
     const Vtx2D *q = (const Vtx2D *)buf_vbo;
     const SoftTex *tex = (sCurShader && (sCurShader->cc.used_textures[0] || sCurShader->cc.used_textures[1])) ? &sTex[sBoundTex[0]] : NULL;
@@ -3429,6 +3437,85 @@ static void nat_ready(void) {
 }
 /* Before writing the current target (only native is cleared lazily). */
 static void target_ready(void) { if (sFB == sNatFB) nat_ready(); }
+/* issue 12: the depth of a prim-depth rectangle (see sZRectNoColor). The first one since the frame began (or since the
+ * last restore) keeps a copy of the 3D depth as it was; gfx_soft_zrect_restore puts it back. Majora's Mask saves the
+ * depth buffer before its lens mask and copies it back after the lens actors (Actor_DrawLensActors: PreRender into
+ * and out of the depth image, which this renderer does not draw); gfx_pc restores when the game draws into the depth
+ * image. Ocarina of Time never copies it back: the mask's depth stays for the rest of the frame, as on the N64. */
+static uint16_t *sZSave SAVESTATE_EXCLUDE;
+static size_t sZSaveCap SAVESTATE_EXCLUDE;
+static int sZSaveW SAVESTATE_EXCLUDE, sZSaveH SAVESTATE_EXCLUDE;
+static bool sZSaved SAVESTATE_EXCLUDE;
+static uint16_t *zrect_target(int *w, int *h) {
+    const bool uni = sUnified || sIntZB == NULL;
+    *w = uni ? sNatW : sIntW; *h = uni ? sNatH : sIntH;
+    return uni ? sNatZB : sIntZB;
+}
+static void zrect_save(void) {
+    int w, h;
+    const uint16_t *zb = zrect_target(&w, &h);
+    if (sZSaved || zb == NULL || w <= 0 || h <= 0) return;
+    const size_t n = (size_t)w * h;
+    if (sZSaveCap < n) {
+        uint16_t *p = (uint16_t *)realloc(sZSave, n * 2);
+        if (p == NULL) return;
+        sZSave = p; sZSaveCap = n;
+    }
+    memcpy(sZSave, zb, n * 2);
+    sZSaveW = w; sZSaveH = h; sZSaved = true;
+}
+void gfx_soft_zrect_restore(void) {
+    int w, h;
+    uint16_t *zb = zrect_target(&w, &h);
+    sky_settle();
+    if (sZSaved && zb != NULL && w == sZSaveW && h == sZSaveH) memcpy(zb, sZSave, (size_t)w * h * 2);
+    sZSaved = false;
+}
+/* A texel coordinate as the RDP addresses it: clamped to the tile's extent (ext > 0), then the mask's period (with
+ * its mirror: baked into a texture twice the period wide, else folded here), then into the texture */
+static inline int zrect_addr(int c, int ext, int period, int mirror, int size) {
+    if (ext > 0) c = c < 0 ? 0 : c >= ext ? ext - 1 : c;
+    if (period > 0) {
+        if (!mirror) c &= period - 1;
+        else if (size >= 2 * period) c &= 2 * period - 1;
+        else { const int m = c & (period - 1); c = (c & period) ? period - 1 - m : m; }
+    }
+    c %= size;
+    return c < 0 ? c + size : c;
+}
+void gfx_soft_zrect(float x0, float y0, float x1, float y1, float au, float bu, float av, float bv,
+                    const int16_t k[4], int thr, uint16_t z, const int adr[6]) {
+    extern float gfx_depth_n64_x(float bx, int w, int h);
+    sky_settle();
+    int w, h;
+    uint16_t *const zb = zrect_target(&w, &h);
+    if (zb == NULL || w <= 0 || h <= 0 || x1 <= x0 || y1 <= y0) return;
+    const bool need_tex = k[0] < 0 || k[1] < 0 || k[2] < 0 || k[3] < 0;
+    const SoftTex *tex = need_tex && sBoundTex[0] < MAX_TEXTURES && sTex[sBoundTex[0]].valid ? &sTex[sBoundTex[0]] : NULL;
+    if (need_tex && tex == NULL) return; /* no texture to read (gfx_pc binds tile 0's): leave the depth alone */
+    if (w > 1024) return;
+    zrect_save();
+    const int tw = tex ? tex->w : 0, th = tex ? tex->h : 0;
+    int16_t col[1024]; /* per column: the texel column, -1 outside [x0, x1) */
+    for (int bx = 0; bx < w; bx++) {
+        const float xn = gfx_depth_n64_x((float)bx + 0.5f, w, h);
+        col[bx] = (int16_t)(xn < x0 || xn >= x1 ? -1 : tex ? zrect_addr(ifloorf(au + bu * xn), adr[0], adr[1], adr[2], tw) : 0);
+    }
+    for (int by = 0; by < h; by++) {
+        const float yn = ((float)by + 0.5f) * 240.0f / (float)h;
+        if (yn < y0 || yn >= y1) continue;
+        const int trow = tex ? zrect_addr(ifloorf(av + bv * yn), adr[3], adr[4], adr[5], th) * tw : 0;
+        uint16_t *const zr = zb + by * w;
+        for (int bx = 0; bx < w; bx++) {
+            if (col[bx] < 0) continue;
+            const int ta = tex ? (int)(texel_at(tex->px, tex->is16, trow + col[bx]) >> 24) : 0;
+            const int a = k[0] < 0 ? ta : k[0], b = k[1] < 0 ? ta : k[1], c = k[2] < 0 ? ta : k[2], d = k[3] < 0 ? ta : k[3];
+            int al = ((a - b) * c + (d << 8) + 0x80) >> 8; /* angrylion's alpha_combiner_equation */
+            al = al < 0 ? 0 : al > 255 ? 255 : al;
+            if (al >= thr) zr[bx] = z;
+        }
+    }
+}
 /* Presented image: always the native target (composited at end_frame). */
 uint32_t *gfx_soft_get_framebuffer(int *w, int *h) { sky_settle(); if (w) *w = sNatW; if (h) *h = sNatH; return sNatFB; }
 
@@ -3836,6 +3923,7 @@ void gfx_soft_set_pause_background_active(bool on) {
 
 static void gfx_soft_start_frame(void) {
     sky_settle();
+    sZSaved = false; /* issue 12: a depth copy from the last frame is stale */
     ovd_frame();
     ensure_targets();
     PROF_BEGIN();
