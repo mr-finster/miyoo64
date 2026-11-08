@@ -3121,10 +3121,24 @@ static void cov_rect(int x0, int y0, int x1, int y1) {
 /* Issue 12 (gfx_pc.c's gfx_zrect_mode): a rectangle that writes the prim depth (the Lens of Truth's mask). Its
  * colour is skipped while sZRectNoColor is set; gfx_soft_zrect then writes depth z into the 3D target's depth at
  * each pixel whose N64 point (gfx_depth_n64_x) lies in [x0, x1) x [y0, y1) and whose alpha, (A - B) * C + D over
- * k[] (-1 = the bound texture's alpha at texel (au + bu * x, av + bv * y), nearest, addressed by adr[]: zrect_addr),
+ * k[] (-1 = the bound texture's alpha at texel (au + bu * x, av + bv * y), bilinear, addressed by adr[]: zrect_addr),
  * is at least thr. */
 static bool sZRectNoColor SAVESTATE_EXCLUDE;
 void gfx_soft_zrect_nocolor(bool on) { sZRectNoColor = on; }
+/* issue 12 (gfx_pc.c's gfx_rect_eval_spec): the next sprites evaluate (A - B) * C + D per pixel from this spec */
+static int16_t sEval[16] SAVESTATE_EXCLUDE;
+static int sEvalOn SAVESTATE_EXCLUDE, sEvalThr SAVESTATE_EXCLUDE;
+void gfx_soft_rect_eval(const int16_t *spec, int thr) {
+    sEvalOn = spec != NULL;
+    if (spec) { memcpy(sEval, spec, sizeof(sEval)); sEvalThr = thr; }
+}
+static inline int eval_in(int16_t k, uint32_t t, int sh) {
+    return k == -1 ? (int)((t >> sh) & 0xff) : k == -2 ? (int)(t >> 24) : k;
+}
+static inline int eval_cc(int a, int b, int c, int d) {
+    const int v = ((a - b) * c + (d << 8) + 0x80) >> 8;
+    return v < 0 ? 0 : v > 255 ? 255 : v;
+}
 void gfx_scegu_draw_triangles_2d(float buf_vbo[], size_t buf_vbo_len, size_t num_sprites) {
     sky_settle(); /* OOT_SKYDEFER: the kept sky first (see raster_tri) */
     if (sZRectNoColor) return; /* issue 12: a depth-only rectangle (gfx_soft_zrect) */
@@ -3165,6 +3179,33 @@ void gfx_scegu_draw_triangles_2d(float buf_vbo[], size_t buf_vbo_len, size_t num
         const float dvdy = (v1 - v0) / (float)(y1 - y0);
         int cx0 = imax(imax(x0, sScX0), 0), cx1 = imin(imin(x1, sScX1), sW);
         int cy0 = imax(imax(y0, sScY0), 0), cy1 = imin(imin(y1, sScY1), sH);
+        if (sEvalOn) { /* issue 12: the combiner per pixel (gfx_soft_rect_eval) */
+            target_ready();
+            const bool ua = sUseAlpha;
+            const int tw = tex ? tex->w : 1, th = tex ? tex->h : 1, mu = pow2mask(tw), mv = pow2mask(th);
+            for (int y = cy0; y < cy1; y++) {
+                uint32_t *row = &sFB[y * sW];
+                const float v = v0 + (y - y0 + 0.5f) * dvdy;
+                for (int x = cx0; x < cx1; x++) {
+                    const float u = u0 + (x - x0 + 0.5f) * dudx;
+                    uint32_t t = 0;
+                    if (tex) t = magbil && gfx_soft_bilinear ? texel_bilin2d(tex->px, tex->is16, u, v, tw, th, tex->wrap_s, tex->wrap_t, mu, mv)
+                                                            : texel_at(tex->px, tex->is16, wrapf(ifloorf(v), th, tex->wrap_t, mv) * tw + wrapf(ifloorf(u), tw, tex->wrap_s, mu));
+                    /* texel_at: ARGB (r at 16, g at 8, b at 0) */
+                    const int fr = eval_cc(eval_in(sEval[0], t, 16), eval_in(sEval[3], t, 16), eval_in(sEval[6], t, 16), eval_in(sEval[9], t, 16));
+                    const int fg = eval_cc(eval_in(sEval[1], t, 8), eval_in(sEval[4], t, 8), eval_in(sEval[7], t, 8), eval_in(sEval[10], t, 8));
+                    const int fb = eval_cc(eval_in(sEval[2], t, 0), eval_in(sEval[5], t, 0), eval_in(sEval[8], t, 0), eval_in(sEval[11], t, 0));
+                    const int fa = eval_cc(eval_in(sEval[12], t, 24), eval_in(sEval[13], t, 24), eval_in(sEval[14], t, 24), eval_in(sEval[15], t, 24));
+                    if (fa < sEvalThr) continue;
+                    if (!ua || fa >= 255) { row[x] = argb((uint8_t)fr, (uint8_t)fg, (uint8_t)fb, 255); continue; }
+                    const uint32_t d = row[x];
+                    const int dr = (d >> 16) & 0xff, dg = (d >> 8) & 0xff, db = d & 0xff;
+                    row[x] = argb((uint8_t)((fr * fa + dr * (255 - fa)) / 255), (uint8_t)((fg * fa + dg * (255 - fa)) / 255),
+                                  (uint8_t)((fb * fa + db * (255 - fa)) / 255), 255);
+                }
+            }
+            continue;
+        }
         const int cr = b->r, cg = b->g, cb2 = b->b, ca = b->a; /* GU: colour of 2nd vertex */
         /* Per-sprite constants hoisted out of the pixel loop. amin folds the
          * texture-edge (0x55) and near-zero (8) alpha rejects. "plain" = the
@@ -3496,19 +3537,37 @@ void gfx_soft_zrect(float x0, float y0, float x1, float y1, float au, float bu, 
     if (w > 1024) return;
     zrect_save();
     const int tw = tex ? tex->w : 0, th = tex ? tex->h : 0;
-    int16_t col[1024]; /* per column: the texel column, -1 outside [x0, x1) */
+    /* bilinear, as the RDP filters the mask (G_TF_BILERP): the alpha compare sees the filtered alpha, so the cut
+     * follows the soft edge the colour pass shows; texel centres at +0.5 */
+    int16_t c0[1024], c1[1024]; uint8_t fu[1024];
     for (int bx = 0; bx < w; bx++) {
         const float xn = gfx_depth_n64_x((float)bx + 0.5f, w, h);
-        col[bx] = (int16_t)(xn < x0 || xn >= x1 ? -1 : tex ? zrect_addr(ifloorf(au + bu * xn), adr[0], adr[1], adr[2], tw) : 0);
+        if (xn < x0 || xn >= x1) { c0[bx] = -1; continue; }
+        if (!tex) { c0[bx] = c1[bx] = 0; fu[bx] = 0; continue; }
+        const float u = au + bu * xn - 0.5f; const int iu = ifloorf(u);
+        c0[bx] = (int16_t)zrect_addr(iu, adr[0], adr[1], adr[2], tw);
+        c1[bx] = (int16_t)zrect_addr(iu + 1, adr[0], adr[1], adr[2], tw);
+        fu[bx] = (uint8_t)((u - (float)iu) * 255.0f);
     }
     for (int by = 0; by < h; by++) {
         const float yn = ((float)by + 0.5f) * 240.0f / (float)h;
         if (yn < y0 || yn >= y1) continue;
-        const int trow = tex ? zrect_addr(ifloorf(av + bv * yn), adr[3], adr[4], adr[5], th) * tw : 0;
+        int r0 = 0, r1 = 0, fv = 0;
+        if (tex) {
+            const float v = av + bv * yn - 0.5f; const int iv = ifloorf(v);
+            r0 = zrect_addr(iv, adr[3], adr[4], adr[5], th) * tw; r1 = zrect_addr(iv + 1, adr[3], adr[4], adr[5], th) * tw;
+            fv = (int)((v - (float)iv) * 255.0f);
+        }
         uint16_t *const zr = zb + by * w;
         for (int bx = 0; bx < w; bx++) {
-            if (col[bx] < 0) continue;
-            const int ta = tex ? (int)(texel_at(tex->px, tex->is16, trow + col[bx]) >> 24) : 0;
+            if (c0[bx] < 0) continue;
+            int ta = 0;
+            if (tex) {
+                const int a00 = (int)(texel_at(tex->px, tex->is16, r0 + c0[bx]) >> 24), a01 = (int)(texel_at(tex->px, tex->is16, r0 + c1[bx]) >> 24);
+                const int a10 = (int)(texel_at(tex->px, tex->is16, r1 + c0[bx]) >> 24), a11 = (int)(texel_at(tex->px, tex->is16, r1 + c1[bx]) >> 24);
+                const int top = a00 * 255 + (a01 - a00) * fu[bx], bot = a10 * 255 + (a11 - a10) * fu[bx];
+                ta = (top * 255 + (bot - top) * fv + 32512) / 65025;
+            }
             const int a = k[0] < 0 ? ta : k[0], b = k[1] < 0 ? ta : k[1], c = k[2] < 0 ? ta : k[2], d = k[3] < 0 ? ta : k[3];
             int al = ((a - b) * c + (d << 8) + 0x80) >> 8; /* angrylion's alpha_combiner_equation */
             al = al < 0 ? 0 : al > 255 ? 255 : al;

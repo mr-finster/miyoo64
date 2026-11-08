@@ -28,7 +28,10 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   and puts it back after the lens, gets the same (its invisible platforms on the path to Snowhead now show only
   inside the circle). Checked in an emulator on the Miyoo builds, before and after: the Bottom of the Well's floor
   holes and first fake wall, a Shadow Temple fake wall, the Snowhead path's platforms, and no change anywhere the
-  lens is off. `OOT_ZRECT=0` / `MM_ZRECT=0` in `launch.sh` give the old drawing.
+  lens is off. Compared with an N64 emulator (angrylion) at the same places, the lens's look was fixed too: Ocarina
+  of Time's red tint stopped short of the screen's left and right edges (the circle's picture repeated there) and its
+  edge was stepped where the N64's is soft; Majora's Mask's red tint outside the circle was not drawn at all. Both
+  now look as on the N64. `OOT_ZRECT=0` / `MM_ZRECT=0` in `launch.sh` give the old drawing.
 
 ## 1.4.8 (2026-11-07: the sound at 48 kHz in all fifteen games, Pilotwings 64's demo crash)
 

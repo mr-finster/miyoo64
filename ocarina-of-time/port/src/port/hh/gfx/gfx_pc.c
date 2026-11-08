@@ -5071,8 +5071,12 @@ static void gfx_sp_tri1_2d(uint8_t vtx1_idx, uint8_t vtx2_idx, UNUSED uint8_t vt
                 ft[i] -= wt;
                 if (fs[i] < -32768 || fs[i] > 32767 || ft[i] < -32768 || ft[i] > 32767) magbil = false;
             }
-            /* texels per pixel under 1/2 on both axes (S10.5: 32 a texel) */
-            magbil = magbil && abs(fs[1] - fs[0]) * 2 < w * 32 && abs(ft[1] - ft[0]) * 2 < h * 32;
+            /* texels per pixel under 1/2 on both axes (S10.5: 32 a texel); or, for a rectangle three quarters of the
+             * screen wide or more (a full-screen effect layer, not HUD art), magnified at all (issue 12: the Lens of
+             * Truth's circle, 0.56 texels a pixel, came out in stair steps where the N64 filters a soft edge) */
+            const bool wide = w * 4 >= (int) gfx_current_dimensions.width * 3;
+            magbil = magbil && ((abs(fs[1] - fs[0]) * 2 < w * 32 && abs(ft[1] - ft[0]) * 2 < h * 32) ||
+                                (wide && abs(fs[1] - fs[0]) < w * 32 && abs(ft[1] - ft[0]) < h * 32));
         }
     }
     
@@ -5819,9 +5823,13 @@ static int16_t gfx_zrect_alpha_in(uint8_t mux, int slot) {
     }
 }
 /* 0: not a depth rectangle; 1: depth and colour; 2: depth only (the blender passes the memory colour through) */
-static int gfx_zrect_mode(bool flip) {
+static bool gfx_zrect_on(void) {
     static int sOn SAVESTATE_EXCLUDE = -1;
     if (sOn < 0) { const char *e = getenv("OOT_ZRECT"); sOn = !(e && e[0] == '0'); }
+    return sOn != 0;
+}
+static int gfx_zrect_mode(bool flip) {
+    const bool sOn = gfx_zrect_on();
     const uint32_t l = rdp.other_mode_l, cyc = rdp.other_mode_h & (3U << G_MDSFT_CYCLETYPE);
     if (!sOn || flip || (l & (Z_UPD | G_ZS_PRIM)) != (Z_UPD | G_ZS_PRIM) || (cyc != G_CYC_1CYCLE && cyc != G_CYC_2CYCLE)) return 0;
     const int sh = cyc == G_CYC_2CYCLE ? 16 : 18; /* the last cycle's a / m / b muxes */
@@ -5874,6 +5882,50 @@ static void gfx_zrect_depth(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry, 
         (rdp.texture_tile.cmt_raw & G_TX_MIRROR) != 0,
     };
     gfx_soft_zrect(x0, y0, x1, y1, au, bu, av, bv, k, thr, (uint16_t) (z * 65535u / 0x7FFFu), adr);
+}
+
+/* Issue 12: a 1-cycle rectangle whose combiner subtracts the texel ((1 - TEXEL0) * PRIM, Majora's Mask's Lens of
+ * Truth tint; (PRIM - TEXEL0) * PRIM_LOD_FRAC) has no form in the 2D path's texel-times-colour model: the tint came
+ * out wrong or not at all (MM's red lens overlay was missing). Such a rectangle is evaluated per pixel instead
+ * (gfx_soft_rect_eval): (A - B) * C + D for rgb and alpha, from the texel (as the 2D path samples it), the
+ * primitive and environment colours and the constants, then the alpha compare and the blend the 2D path would use.
+ * OOT_ZRECT=0 / MM_ZRECT=0: as before. */
+extern void gfx_soft_rect_eval(const int16_t *spec, int thr);
+static int16_t gfx_eval_rgb_in(uint8_t m, int slot, int ch) {
+    const uint8_t *prim = (const uint8_t *) &rdp.prim_color, *env = (const uint8_t *) &rdp.env_color;
+    switch (m) {
+        case G_CCMUX_TEXEL0: case G_CCMUX_TEXEL1: return -1;
+        case G_CCMUX_PRIMITIVE: return prim[ch];
+        case G_CCMUX_ENVIRONMENT: return env[ch];
+        case G_CCMUX_SHADE: case G_CCMUX_COMBINED: return 0;
+        case 6: return slot == 0 || slot == 3 ? 255 : 0; /* A, D: 1; B: CENTER, C: SCALE (0 here) */
+        default: break;
+    }
+    if (slot != 2) return 0;
+    switch (m) {
+        case G_CCMUX_TEXEL0_ALPHA: case G_CCMUX_TEXEL1_ALPHA: return -2;
+        case G_CCMUX_PRIMITIVE_ALPHA: return rdp.prim_color.a;
+        case G_CCMUX_ENV_ALPHA: return rdp.env_color.a;
+        case G_CCMUX_PRIM_LOD_FRAC: return rdp.prim_lod_frac;
+        default: return 0;
+    }
+}
+/* the spec for gfx_soft_rect_eval: [0..11] rgb a, b, c, d x r, g, b; [12..15] alpha a, b, c, d (-1 texel colour,
+ * -2 texel alpha); false when the rectangle is not such a one */
+static bool gfx_rect_eval_spec(int16_t spec[16], int *thr) {
+    if (!gfx_zrect_on() || (rdp.other_mode_h & (3U << G_MDSFT_CYCLETYPE)) != G_CYC_1CYCLE) return false;
+    const bool rgb_sub = rdp.cc1[1] == G_CCMUX_TEXEL0 || rdp.cc1[1] == G_CCMUX_TEXEL1;
+    const bool a_sub = rdp.cc1[5] == G_ACMUX_TEXEL0 || rdp.cc1[5] == G_ACMUX_TEXEL1;
+    if (!rgb_sub && !a_sub) return false;
+    for (int slot = 0; slot < 4; slot++)
+        for (int ch = 0; ch < 3; ch++) spec[slot * 3 + ch] = gfx_eval_rgb_in(rdp.cc1[slot], slot, ch);
+    for (int slot = 0; slot < 4; slot++) {
+        const int16_t v = gfx_zrect_alpha_in(rdp.cc1[4 + slot], slot);
+        spec[12 + slot] = v < 0 ? -2 : v;
+    }
+    const uint32_t l = rdp.other_mode_l;
+    *thr = (l & (3U << G_MDSFT_ALPHACOMPARE)) == G_AC_THRESHOLD ? sBlendAlpha : 0;
+    return true;
 }
 
 static void gfx_dp_texture_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry, uint8_t tile, int16_t uls, int16_t ult, int16_t dsdx, int16_t dtdy, bool flip) {
@@ -5976,7 +6028,30 @@ static void gfx_dp_texture_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int3
     sRectStep1T = !flip && (dtdy == 1024 || dtdy == -1024) ? (dtdy > 0 ? 1 : -1) : 0;
     const int zrect = gfx_zrect_mode(flip); /* issue 12 (above) */
     if (zrect == 2) gfx_soft_zrect_nocolor(true);
+    /* Issue 12: a MIRROR | CLAMP tile whose extent is the mask's mirrored period at most (the lens mask: 64 texels
+     * mirrored over a 128-texel tile) clamps at the edge of the doubled texture, as the RDP clamps at the tile's:
+     * gfx_tile_cm drops the clamp for a tile wider than the mask, and the rectangle then repeated the circle at the
+     * screen's left and right edges, untinted there. Only for this rectangle. OOT_ZRECT=0: as before. */
+    const uint8_t cms_saved = rdp.texture_tile.cms, cmt_saved = rdp.texture_tile.cmt;
+    if (gfx_zrect_on()) {
+        const int ms = rdp.texture_tile.masks, mt = rdp.texture_tile.maskt;
+        const int es = ((int) rdp.texture_tile.lrs - (int) rdp.texture_tile.uls + 4) / 4;
+        const int et = ((int) rdp.texture_tile.lrt - (int) rdp.texture_tile.ult + 4) / 4;
+        if ((rdp.texture_tile.cms_raw & (G_TX_MIRROR | G_TX_CLAMP)) == (G_TX_MIRROR | G_TX_CLAMP) && ms > 0 && ms < 15 &&
+            es <= (2 << ms))
+            rdp.texture_tile.cms = rdp.texture_tile.cms_raw;
+        if ((rdp.texture_tile.cmt_raw & (G_TX_MIRROR | G_TX_CLAMP)) == (G_TX_MIRROR | G_TX_CLAMP) && mt > 0 && mt < 15 &&
+            et <= (2 << mt))
+            rdp.texture_tile.cmt = rdp.texture_tile.cmt_raw;
+    }
+    int16_t espec[16];
+    int ethr = 0;
+    const bool eval = zrect != 2 && gfx_rect_eval_spec(espec, &ethr);
+    if (eval) gfx_soft_rect_eval(espec, ethr);
     gfx_draw_rectangle(ulx, uly, lrx, lry); /* binds the texture even when no colour is drawn */
+    if (eval) gfx_soft_rect_eval(NULL, 0);
+    rdp.texture_tile.cms = cms_saved;
+    rdp.texture_tile.cmt = cmt_saved;
     if (zrect == 2) gfx_soft_zrect_nocolor(false);
     if (zrect) gfx_zrect_depth(ulx, uly, lrx, lry, uls, ult, dsdx, dtdy);
     sRectStep1 = sRectStep1T = 0;
