@@ -3,6 +3,14 @@
 Newest first. Downloads: the [releases](https://github.com/mr-finster/miyoo64/releases). Each game's own
 fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
+## Next
+
+- Paper Mario 1.1.8: the European (PAL) version, English, German, French and Spanish, as its own build and package
+  (`App/PaperMarioPAL/`), an alpha. Contributed by SunnyBoon ([PR #7](https://github.com/mr-finster/miyoo64/pull/7)):
+  the PAL ROM's own segments, text, title, language choice and HUD. The game's sound is 32 kHz in both versions, so
+  1.1.7's 48 kHz output (the conversion, the queue counted in the game's samples) is the same for PAL. The US build
+  is unchanged in play (checked in an emulator: the converted sound exactly the game's own, 30 fps).
+
 ## 1.4.8 (2026-11-07: the sound at 48 kHz in all fifteen games, Pilotwings 64's demo crash)
 
 All fifteen games are rebuilt: Super Mario 64 1.1.7, Mario Kart 64 1.1.9, GoldenEye 007 1.1.9, Perfect Dark 1.0.9, Ocarina of Time
