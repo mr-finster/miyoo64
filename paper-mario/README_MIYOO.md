@@ -3,7 +3,7 @@
 Paper Mario for the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip): the natively compiled game, a software
 renderer and save states. **There is no game data in it.** The first time you run it, it builds what it needs from your own ROM.
 
-**Status:** version 1.1.8. built and checked under qemu with the US ROM: first start, play, menu, save states,
+**Status:** version 1.1.8. Built and checked under qemu with the US ROM: first start, play, menu, save states,
 the power-off save and RESUME, the two cores frame for frame. It hasn't run on a Mini yet.
 The European (PAL) ROM in English, German, French and Spanish has its own build and package, an alpha
 (`App/PaperMarioPAL/`, contributed by SunnyBoon in [PR #7](https://github.com/mr-finster/miyoo64/pull/7);
