@@ -5,18 +5,19 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
-- Paper Mario 1.1.8: the European (PAL) version, English, German, French and Spanish, as its own build and package
-  (`App/PaperMarioPAL/`), an alpha. Contributed by SunnyBoon ([PR #7](https://github.com/mr-finster/miyoo64/pull/7)):
-  the PAL ROM's own segments, text, title, language choice and HUD. The game's sound is 32 kHz in both versions, so
-  1.1.7's 48 kHz output (the conversion, the queue counted in the game's samples) is the same for PAL. The US build
-  is unchanged in play (checked in an emulator: the converted sound exactly the game's own, 30 fps).
-
 ## 1.4.8 (2026-11-07: the sound at 48 kHz in all fifteen games, Pilotwings 64's demo crash)
 
 All fifteen games are rebuilt: Super Mario 64 1.1.7, Mario Kart 64 1.1.9, GoldenEye 007 1.1.9, Perfect Dark 1.0.9, Ocarina of Time
 1.1.8, Majora's Mask 1.0.9 (beta), Paper Mario 1.1.7, Star Fox 64 1.1.6, F-Zero X 1.1.6, Diddy Kong Racing 1.1.8,
 Super Smash Bros. 1.1.9, Harvest Moon 64 1.0.5, Banjo-Kazooie 1.0.3 (beta), Pilotwings 64 1.0.2 (beta) and The
 New Tetris 1.0.1 (beta).
+
+Updated Nov 8: Paper Mario 1.1.8 brings the European (PAL) version's support into the code, contributed by SunnyBoon
+([PR #7](https://github.com/mr-finster/miyoo64/pull/7)): the PAL ROM's own segments, text in English, German, French
+and Spanish, the title, the language choice and the HUD, built as its own package (`App/PaperMarioPAL/`), an alpha.
+There is no PAL zip in this release; the US zip is rebuilt from the same code (its play is unchanged; the sound is
+32 kHz in both versions, so 1.1.7's 48 kHz output applies to PAL as it is). In-game saves carry over; save states from 1.1.7 may not load (kept aside as
+`.rejected`).
 
 - All fifteen games: no more crackle on loud, smooth sounds ([issue #10](https://github.com/mr-finster/miyoo64/issues/10)).
   Found and fixed by ksielick in Super Mario 64 ([PR #11](https://github.com/mr-finster/miyoo64/pull/11)): Onion's
