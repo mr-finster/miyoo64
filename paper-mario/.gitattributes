@@ -1,0 +1,2 @@
+# Unified patches require a single space on blank context lines.
+game/patches/decomp.patch whitespace=-blank-at-eol

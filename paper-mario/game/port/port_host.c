@@ -1,6 +1,6 @@
 /* The native port's main (M2). Host side: system headers only. It finds the player's ROM, boots the game's code
  * (port_main.c) and runs one game frame (two retraces) per loop.
- *   PM64_ROM=<file>      the ROM (default: "Paper Mario (USA).z64" in the working directory, then the repo root)
+ *   PM64_ROM=<file>      explicit matching-region ROM (otherwise find one on the card)
  *   PM64_FRAMES=<n>      stop after n game frames (the desktop proxy's test runs)
  *   PM64_SHOTS=<dir>     write each shown frame as a square PPM (port_gfx.c)
  *   PM64_KEYS=<script>   a pad script "<frame>:<key>+|-,..." (port_input.c) */
@@ -21,6 +21,7 @@
 #include <execinfo.h>
 #endif
 #include "port.h"
+#include "port_rom_identity.h"
 #include "savestate.h"
 #include "debug_cfg.h"
 #if defined(MIYOO)
@@ -386,7 +387,11 @@ int main(int argc, char **argv) {
         const char *env = getenv("PM64_ROM");
         if (!env && port_known_rom(rom, sizeof rom)) opened = port_rom_open(rom);
         if (!opened && port_find_rom(rom, sizeof rom, why, sizeof why)) opened = port_rom_open(rom);
+#if defined(PM64_ROM_REGION_PAL)
+        if (!opened) port_log("port: no %s ROM found%s%s (set PM64_ROM)\n", PM64_ROM_NAME, why[0] ? ": " : "", why);
+#else
         if (!opened) port_log("port: no Paper Mario (USA) ROM found%s%s (set PM64_ROM)\n", why[0] ? ": " : "", why);
+#endif
         else port_assets_rom_hint(rom); /* the region's build uses it: one scan of the card, not two */
     }
     port_assets_load(argv[0]); /* shows its own screen and exits when there is no ROM and no cache */

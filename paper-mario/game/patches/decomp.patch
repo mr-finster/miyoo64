@@ -1114,6 +1114,21 @@ index 40bdb1ab5..b09142ec0 100644
              npc = (Npc*)npcID;
          } else {
              npc = get_npc_safe(npcID);
+diff --git a/src/filemenu/filemenu_common.c b/src/filemenu/filemenu_common.c
+index 4b8b88b7b..a37e38a2b 100644
+--- a/src/filemenu/filemenu_common.c
++++ b/src/filemenu/filemenu_common.c
+@@ -1135,6 +1135,10 @@ void filemenu_cleanup(void) {
+             if ((*panelIt)->fpCleanup != nullptr) {
+                 (*panelIt)->fpCleanup(*panelIt);
+             }
++#if defined(PM64_PORT) && VERSION_PAL
++            /* Native overlays retain panel state after their HUDs are released. */
++            (*panelIt)->initialized = false;
++#endif
+         }
+     }
+ 
 diff --git a/src/filemenu/filemenu_msg.c b/src/filemenu/filemenu_msg.c
 index 018496fca..4ed8ff4e2 100644
 --- a/src/filemenu/filemenu_msg.c
@@ -1127,6 +1142,67 @@ index 018496fca..4ed8ff4e2 100644
          u8* tmp;
          filemenu_draw_char(0xF3, x, y, flag1, color, flag2);
          tmp = message;
+diff --git a/src/filemenu/filemenu_selectlanguage.c b/src/filemenu/filemenu_selectlanguage.c
+index fb2e1badd..62d7eea55 100644
+--- a/src/filemenu/filemenu_selectlanguage.c
++++ b/src/filemenu/filemenu_selectlanguage.c
+@@ -235,8 +235,14 @@ void filemenu_selectlanguage_init(MenuPanel* menu) {
+ 
+     menu->initialized = 1;
+     D_filemenu_8024F124 = 0;
++#if defined(PM64_PORT)
++    /* M14.23: one 0x800-byte PAL flags frame per buffer; never DMA the entire 40-frame segment. */
++    dma_copy(titlemenu_flags_ROM_START, titlemenu_flags_ROM_START + 0x800, D_802517E0[0]);
++    dma_copy(titlemenu_flags_ROM_START + 0x800, titlemenu_flags_ROM_START + 0x1000, D_802517E0[1]);
++#else
+     dma_copy(titlemenu_flags_ROM_START, titlemenu_flags_ROM_END, D_802517E0[0]);
+     dma_copy(titlemenu_flags_ROM_START + 0x800, titlemenu_flags_ROM_END, D_802517E0[1]);
++#endif
+     D_filemenu_8024F128 = 2;
+ }
+ 
+@@ -357,17 +363,41 @@ void filemenu_selectlanguage_update(MenuPanel* menu) {
+     D_filemenu_8024F124 ^= 1;
+ 
+     D_filemenu_8024F128 = D_filemenu_8024F128 + 1;
++#if defined(PM64_PORT)
++    /* 0x14000 / 0x800 == 40 frames: valid indices 0..39. */
++    if (D_filemenu_8024F128 >= 40) {
++        D_filemenu_8024F128 = 0;
++    }
++#else
+     if (D_filemenu_8024F128 > 40) {
+         D_filemenu_8024F128 = 0;
+     }
++#endif
+ 
++#if defined(PM64_PORT)
++    dma_copy(titlemenu_flags_ROM_START + (D_filemenu_8024F128 * 0x800),
++             titlemenu_flags_ROM_START + ((D_filemenu_8024F128 + 1) * 0x800),
++             D_802517E0[D_filemenu_8024F124]);
++#else
+     dma_copy(titlemenu_flags_ROM_START + (D_filemenu_8024F128 * 0x800), titlemenu_flags_ROM_END, D_802517E0[D_filemenu_8024F124]);
++#endif
+ }
+ 
+ void filemenu_selectlanguage_cleanup(MenuPanel* arg0) {
+     s32 i;
+ 
++#if defined(PM64_PORT)
++    /* Native overlays retain panel state between the PAL language and file menus. */
++    if (!arg0->initialized) {
++        return;
++    }
++#endif
++
+     for (i = 0; i < ARRAY_COUNT(PauseLanguageHIDs); i++) {
+         hud_element_free(PauseLanguageHIDs[i]);
+     }
++
++#if defined(PM64_PORT)
++    arg0->initialized = false;
++#endif
+ }
 diff --git a/src/heaps2.c b/src/heaps2.c
 index 4e4dbb121..b1b33d64b 100644
 --- a/src/heaps2.c
@@ -1306,7 +1382,7 @@ index a68a06b44..5f05fff6b 100644
          // The following code will use last frame's depth value, since the copy that was just written won't be executed until the current frame is drawn.
  
 diff --git a/src/msg.c b/src/msg.c
-index ba82fe8be..a49f46984 100644
+index ba82fe8be..e7fe9b520 100644
 --- a/src/msg.c
 +++ b/src/msg.c
 @@ -1,4 +1,5 @@
@@ -1315,7 +1391,25 @@ index ba82fe8be..a49f46984 100644
  #include "ld_addrs.h"
  #include "message_ids.h"
  #include "sprite.h"
-@@ -1405,9 +1406,15 @@ void dma_load_msg(u32 msgID, void* dest) {
+@@ -1390,11 +1391,17 @@ void dma_load_msg(u32 msgID, void* dest) {
+     u8* offset[2]; // start, end
+ 
+     dma_copy(addr, addr + 4, &offset[0]); // Load section offset
++#ifdef PM64_PORT
++    port_fix_words(&offset[0], 4);
++#endif
+ 
+     new_langPtr = langPtr;
+     new_langPtr = offset[0] + ((u32) new_langPtr);
+     addr = new_langPtr + ((msgID & 0xFFFF) * 4);
+     dma_copy(addr, addr + 8, &offset); // Load message start and end offsets
++#ifdef PM64_PORT
++    port_fix_words(offset, 8);
++#endif
+ 
+     // Load the msg data
+     dma_copy(&langPtr[(u32)offset[0]], &langPtr[(u32)offset[1]], dest);
+@@ -1405,9 +1412,15 @@ void dma_load_msg(u32 msgID, void* dest) {
      u8* offset[2]; // start, end
  
      dma_copy(addr, addr + 4, &offset[0]); // Load section offset
@@ -1331,7 +1425,7 @@ index ba82fe8be..a49f46984 100644
  
      // Load the msg data
      dma_copy(MSG_ROM_START + offset[0], MSG_ROM_START + offset[1], dest);
-@@ -1447,7 +1454,7 @@ MessagePrintState* _msg_get_printer_for_msg(s32 msgID, bool* donePrintingWriteba
+@@ -1447,7 +1460,7 @@ MessagePrintState* _msg_get_printer_for_msg(s32 msgID, bool* donePrintingWriteba
      }
  
      srcBuffer = (s8*) msgID;
@@ -1340,7 +1434,7 @@ index ba82fe8be..a49f46984 100644
          srcBuffer = load_message_to_buffer((s32)srcBuffer);
      }
  
-@@ -1481,7 +1488,7 @@ MessagePrintState* _msg_get_printer_for_msg(s32 msgID, bool* donePrintingWriteba
+@@ -1481,7 +1494,7 @@ MessagePrintState* _msg_get_printer_for_msg(s32 msgID, bool* donePrintingWriteba
  s32 msg_printer_load_msg(s32 msgID, MessagePrintState* printer) {
      s8* buffer;
  
@@ -1349,7 +1443,7 @@ index ba82fe8be..a49f46984 100644
          buffer = load_message_to_buffer(msgID);
      } else {
          buffer = (s8*) msgID;
-@@ -1529,7 +1536,7 @@ void set_message_text_var(s32 msgID, s32 index) {
+@@ -1529,7 +1542,7 @@ void set_message_text_var(s32 msgID, s32 index) {
      s32 i;
      u8* msgVars;
  
@@ -1358,7 +1452,7 @@ index ba82fe8be..a49f46984 100644
          mallocSpace = general_heap_malloc(0x400);
          dma_load_msg(msgID, mallocSpace);
          msgID = (s32)mallocSpace;
-@@ -1722,7 +1729,7 @@ void get_msg_properties(s32 msgID, s32* height, s32* width, s32* maxLineChars, s
+@@ -1722,7 +1735,7 @@ void get_msg_properties(s32 msgID, s32* height, s32* width, s32* maxLineChars, s
          return;
      }
  
@@ -1367,7 +1461,7 @@ index ba82fe8be..a49f46984 100644
          buffer = general_heap_malloc(0x400);
          dma_load_msg(msgID, buffer);
          message = buffer;
-@@ -2018,7 +2025,7 @@ void draw_msg(s32 msgID, s32 posX, s32 posY, s32 opacity, s32 palette, u8 style)
+@@ -2018,7 +2031,7 @@ void draw_msg(s32 msgID, s32 posX, s32 posY, s32 opacity, s32 palette, u8 style)
          printer = &stackPrinter;
          initialize_printer(printer, 1, 0);
  
@@ -1427,6 +1521,34 @@ index 106932bca..e04ae7c08 100644
  
      gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
      gDPSetCombineMode(gMainGfxPos++, PM_CC_10, PM_CC_10);
+diff --git a/src/sprite.c b/src/sprite.c
+index 5e0cae21e..596e23a6a 100644
+--- a/src/sprite.c
++++ b/src/sprite.c
+@@ -1270,7 +1270,11 @@ s32 spr_get_comp_position(s32 spriteIdx, s32 compListIdx, s32* outX, s32* outY,
+     u32* spriteData;
+ 
+     if (sprite->componentList == nullptr) {
++#if VERSION_PAL
++        return -1;
++#else
+         return; // bug: does not return a value
++#endif
+     }
+ 
+     animID = sprite->curAnimID;
+@@ -1298,7 +1302,11 @@ s32 spr_get_comp_position(s32 spriteIdx, s32 compListIdx, s32* outX, s32* outY,
+             }
+         }
+     } else {
++#if VERSION_PAL
++        return -1;
++#else
+         return; // bug: does not return a value
++#endif
+     }
+     return -1;
+ }
 diff --git a/src/state_battle.c b/src/state_battle.c
 index e3467a502..ad44bf416 100644
 --- a/src/state_battle.c
@@ -1512,7 +1634,7 @@ index 28dc6ea4e..3e03db308 100644
  }
  
 diff --git a/src/state_title_screen.c b/src/state_title_screen.c
-index 464832287..281006b1c 100644
+index 464832287..3b69f8641 100644
 --- a/src/state_title_screen.c
 +++ b/src/state_title_screen.c
 @@ -1,4 +1,5 @@
@@ -1521,7 +1643,18 @@ index 464832287..281006b1c 100644
  #include "audio.h"
  #include "audio/public.h"
  #include "nu/nusys.h"
-@@ -178,6 +179,9 @@ void state_init_title_screen(void) {
+@@ -128,6 +129,10 @@ typedef struct TitleMenuDataStruct {
+     /* 0x4 */ IMG_BIN *languages;
+ } TitleMenuDataStruct; // size = 0x8
+ 
++#if VERSION_PAL && defined(PM64_PORT)
++extern TitleMenuDataStruct TitleMenuOffsets[4];
++#endif
++
+ #if VERSION_JP
+ #define COPYRIGHT_WIDTH 128
+ #else
+@@ -178,6 +183,9 @@ void state_init_title_screen(void) {
      titleDataDst = TitleScreen_ImgList = heap_malloc(titleDataSize);
      decode_yay0(titleData, titleDataDst);
      general_heap_free(titleData);
@@ -1531,6 +1664,25 @@ index 464832287..281006b1c 100644
  
      TitleScreen_ImgList_Logo = (s32*)(TitleScreen_ImgList->logo + (s32) TitleScreen_ImgList);
      TitleScreen_ImgList_Copyright = (u8 (*)[COPYRIGHT_WIDTH]) ((s32*)(TitleScreen_ImgList->copyright + (s32) TitleScreen_ImgList));
+@@ -186,10 +194,18 @@ void state_init_title_screen(void) {
+     TitleScreen_ImgList_CopyrightPalette = (s32*)(TitleScreen_ImgList->copyrightPalette + (s32) TitleScreen_ImgList);
+ #endif
+ #if VERSION_PAL
++#ifdef PM64_PORT
++    /* Native PAL assets are already linked with real ARM pointers.
++     * Do not DMA the ROM header or add a heap base to these pointers. */
++    TitleMenu_ImgList = TitleMenuOffsets;
++    TitleMenu_ImgList_StartGame = (u8*)TitleMenuOffsets[gCurrentLanguage].startGame;
++    TitleMenu_ImgList_Languages = (u8*)TitleMenuOffsets[gCurrentLanguage].languages;
++#else
+     TitleMenu_ImgList = heap_malloc((s32)titlemenu_DATA_SIZE);
+     dma_copy(titlemenu_ROM_START, titlemenu_ROM_END, TitleMenu_ImgList);
+     TitleMenu_ImgList_StartGame = (u8*)(TitleMenu_ImgList[gCurrentLanguage].startGame + (s32) TitleMenu_ImgList);
+     TitleMenu_ImgList_Languages = (u8*)(TitleMenu_ImgList[gCurrentLanguage].languages + (s32) TitleMenu_ImgList);
++#endif
+ #endif
+ 
+     create_cameras();
 diff --git a/src/world/area_end/common/Credits.inc.c b/src/world/area_end/common/Credits.inc.c
 index a92b3ba3a..83c920126 100644
 --- a/src/world/area_end/common/Credits.inc.c

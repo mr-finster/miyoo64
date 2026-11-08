@@ -72,3 +72,8 @@ build/
 !tools/assets/recipes_miyoo.json
 # the Miyoo64 repository's docs
 !SETTINGS.md
+
+# Region-specific source/package metadata; derived PAL recipes remain in build/.
+!miyoo/game-pal.json
+!PAL_ALPHA.md
+!.gitattributes
