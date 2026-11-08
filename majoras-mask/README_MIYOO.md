@@ -91,6 +91,10 @@ MENU > OPTIONS changes the fine aim, the dialog text, the HUD filter and the sou
   sets it).
 - `MM_CPUCLOCK=<MHz>`: the CPU clock while the game runs. `0` leaves it as the OS set it.
 - `MM_THREADS=1`: draw on one core.
+- `MM_SKYRUNS=0`: the sky tested pixel by pixel where the world covers it, as before 1.0.11 (default: skipped 16
+  pixels at a time).
+- `MM_ABFRAME=1`, with `MM_SKYRUNS=ab`: that switch off and on in turn, frame by frame, and an ABF line in
+  `console.log` with each one's drawing time (for measuring; the pixels are the same either way).
 - `MM_SLEEPSAVE=0`: no auto save before sleep.
 - `MM_PACE=0`: frames go up when they are drawn rather than on the panel's refresh.
 - `MM_FINEAIM=0`: no fine aim, the d-pad at full tilt when aiming too (as before 1.0.8).

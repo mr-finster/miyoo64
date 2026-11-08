@@ -1148,6 +1148,25 @@ static inline uint16x4_t cm_div255(uint16x4_t m) {
  * besides fb and zp (OOT_SKYDEFER's marking rows: their mask pointer). Same pixels. */
 #define CM_ROW_SKIPPED(s)
 #define CM_ROW_ZSK 1 /* 0: the half-resolution layer's rows (gfx_soft_halfwater.inc.c: their own depth buffer) */
+/* MM_SKYRUNS (2026-11-08; idea from cacuracaptors' oot-miyoomini, whose deferred background draws the sky only in each
+ * row's free stretches): in the deferred sky's rows (cm_row_leans_m, OOT_SKYDEFER), a span whose every pixel the
+ * mask marks (written after the sky by an opaque draw) is stepped over whole, as OOT_ZSKIP steps over a hidden one:
+ * its float state stepped as drawn (the same sums), no texel or shade setup, no pixel loop (each marked pixel cost
+ * its mask load and six steps). Every pixel of such a span would have been skipped by the pixel loop, so the same
+ * pixels. CM_ROW_MSKIP(span): 1 = this span is all marked (0 in every other row). MM_SKYRUNS=0: off. */
+#define CM_ROW_MSKIP(span) 0
+static int sSkyRuns SAVESTATE_EXCLUDE = 1;
+static inline bool mask_all_set(const uint8_t *pm, int n) { /* every byte of pm[0..n) nonzero */
+    if (n == 16) {
+        uint64_t a, b;
+        memcpy(&a, pm, 8); memcpy(&b, pm + 8, 8);
+        const uint64_t h = 0x8080808080808080ull, l = 0x7F7F7F7F7F7F7F7Full;
+        const uint64_t na = ((a & l) + l) | a, nb = ((b & l) + l) | b; /* each byte's top bit: that byte is nonzero */
+        return (na & nb & h) == h;
+    }
+    for (int i = 0; i < n; i++) if (!pm[i]) return false;
+    return true;
+}
 #define CM_ZSKIP_HIDDEN(zq, span)                                                                       \
         ({ const int uz0_ = clamp16_sh8(zq), uz1_ = clamp16_sh8((zq) + ((span) - 1) * zdq);            \
            uint16x4_t m4_;                                                                              \
@@ -1179,6 +1198,16 @@ static inline uint16x4_t cm_div255(uint16x4_t m) {
                 continue;                                                                               \
             }                                                                                           \
             ((CmTri *)T)->zskip--;                                                                      \
+        }                                                                                               \
+        if (CM_ROW_MSKIP(span)) { /* MM_SKYRUNS */                                                      \
+            zf += zdx * fspan;                                                                          \
+            cr += crdx * fspan; cg += cgdx * fspan; cb += cbdx * fspan; ca += cadx * fspan;             \
+            uw += uwdx * fspan;                                                                         \
+            vw += vwdx * fspan;                                                                         \
+            sw = sw_b; rw = persp ? ((sw_b > 1e-12f) ? 1.0f / sw_b : 0.0f) : 0.0f;                      \
+            CM_ROW_SKIPPED(span)                                                                        \
+            fb += span; zp += span; n -= span;                                                          \
+            continue;                                                                                   \
         }                                                                                               \
         float rw_b = 0.0f, u_a, v_a, du, dv;                                                            \
         if (persp) {                                                                                    \
@@ -1976,8 +2005,18 @@ cm_row_leans_m(const CmTri *T, uint32_t *fb, uint16_t *zp, int n, float zf, floa
     const unsigned itw = sClampTap ? (unsigned)(tw - 1) : 0u, ith = (unsigned)(th - 1); /* OOT_CLAMPTAP (CM_LBILINI) */
     const uint32_t askip = 0; /* (no alpha test: CM_LBILINI's SKIP 0) */
     (void)th; (void)px; (void)zdq; (void)dacc0; (void)askip;
+    extern int gHhAbPhase;
+    const bool mskip = sSkyRuns == 2 ? gHhAbPhase != 0 : sSkyRuns != 0;
+#undef CM_ROW_MSKIP
+#define CM_ROW_MSKIP(span) (mskip && mask_all_set(pm, (span)))
+#undef CM_ROW_SKIPPED
+#define CM_ROW_SKIPPED(s) pm += (s);
     if (rr) { if (T->t16) { CM_ROW(1, 0, 0, 0, CM_LBILIN16) } else { CM_ROW(1, 0, 0, 0, CM_LBILIN_RR32(px32, mu, CM_WRAP_RRV)) } }
     else    { if (T->t16) { CM_ROW(1, 0, 0, 0, CM_LBILINI(CM_TAP16, 0)) } else { CM_ROW(1, 0, 0, 0, CM_LBILINI32(0)) } }
+#undef CM_ROW_MSKIP
+#define CM_ROW_MSKIP(span) 0
+#undef CM_ROW_SKIPPED
+#define CM_ROW_SKIPPED(s)
 }
 #undef CM_ROW_PIXELS
 #define CM_ROW_PIXELS CM_PIXELS_LEAN
@@ -3978,6 +4017,7 @@ static void gfx_soft_init(void) {
     { const char *e = getenv("OOT_EDGETINT"); if (e && e[0] == '0') sEdgeTint = 0; }
 #if defined(HH_CM_NEON)
     { const char *e = getenv("OOT_SKYDEFER"); if (e) sSkyDefer = e[0] != '0'; }
+    { const char *e = getenv("MM_SKYRUNS"); if (e) sSkyRuns = e[0] == 'a' ? 2 : e[0] != '0'; } /* "ab": MM_ABFRAME */
 #endif
     if (!sTexArena) {
         sTexArena = aligned_alloc(16, TEXARENA_SZ);

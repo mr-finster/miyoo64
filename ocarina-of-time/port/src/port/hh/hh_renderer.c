@@ -118,6 +118,7 @@ void HhPerf_BenchReport(void) {
 }
 
 int gHhRoomNum = -1; /* hh_main.c: the room being played (-1 outside play), for the SCENE lines */
+int gHhAbPhase; /* OOT_ABFRAME: 0 = A, 1 = B this frame (see HhPerf_Frame) */
 static void HhPerf_Frame(uint32_t renderUs) {
     uint32_t now = port_time_us();
     int i;
@@ -184,6 +185,34 @@ static void HhPerf_Frame(uint32_t renderUs) {
     sPerfRenderUs += renderUs;
     if (renderUs > sPerfMaxRenderUs) {
         sPerfMaxRenderUs = renderUs;
+    }
+    { /* OOT_ABFRAME=1 (2026-11-08; a speed A/B inside one run, for qemu, where two runs' times differ by a few percent):
+       * gHhAbPhase flips every frame and a switch set to "ab" (OOT_SKYRUNS) is off on the A frames and on
+       * on the B frames, so its two settings take turns on frames that are nearly the same picture and host-side jitter
+       * falls on both alike. The 3D raster and render time of each are summed from frame OOT_ABFROM (default 60) and
+       * written as an ABF line with each PERF line. OOT_ABFRAME=2 starts on B: the mean of a =1 run and a =2 run
+       * cancels any difference between even and odd frames. */
+        static int sAb = -1;
+        static uint32_t sAbFrom;
+        static uint64_t sAbR3d[2], sAbRender[2], sAbN[2];
+        if (sAb < 0) {
+            sAb = getenv("OOT_ABFRAME") != NULL;
+            sAbFrom = getenv("OOT_ABFROM") ? (uint32_t) atoi(getenv("OOT_ABFROM")) : 60u;
+            gHhAbPhase = sAb && getenv("OOT_ABFRAME")[0] == '2';
+        }
+        if (sAb) {
+            if (sPerfTotalFrames > sAbFrom) {
+                sAbR3d[gHhAbPhase] += gPortProfFrame[PROF_R3D];
+                sAbRender[gHhAbPhase] += renderUs;
+                sAbN[gHhAbPhase]++;
+            }
+            if (sPerfFrames + 1 == sPerfWin && sAbN[0] && sAbN[1]) {
+                port_log_always("ABF frames %u %u | r3d A %.3f B %.3f | render A %.3f B %.3f\n", (unsigned) sAbN[0],
+                                (unsigned) sAbN[1], sAbR3d[0] / 1000.0 / sAbN[0], sAbR3d[1] / 1000.0 / sAbN[1],
+                                sAbRender[0] / 1000.0 / sAbN[0], sAbRender[1] / 1000.0 / sAbN[1]);
+            }
+            gHhAbPhase ^= 1;
+        }
     }
     for (i = 0; i < PROF_COUNT; i++) {
         sPerfBuckets[i] += gPortProfFrame[i];
