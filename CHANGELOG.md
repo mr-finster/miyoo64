@@ -5,6 +5,16 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Ocarina of Time 1.1.10 and Majora's Mask 1.0.11 (beta): a little faster outdoors, the same picture. The sky, drawn
+  last where nothing covers it, now skips whole 16-pixel stretches the world already covers instead of testing each
+  pixel (`skyruns`), and the two cores share a big triangle's rows a few at a time from both ends instead of cutting
+  it once in the middle, so the core that is ahead draws more (`stealrows`). Under qemu the 3D drawing time drops
+  1 to 6% in Ocarina of Time (most in Hyrule Field, Lake Hylia and Zora's Domain) and 3 to 7% in Majora's Mask
+  (Termina Field, Clock Town); frames compared byte for byte with 1.1.9 in eight scenes. Both ideas come from
+  cacuracaptors' Ocarina of Time port for the Miyoo Mini (oot-miyoomini), written anew for this renderer.
+  `skyruns=0` / `stealrows=0` in `data/debug.cfg` (Majora's Mask: `MM_SKYRUNS=0` / `MM_STEALROWS=0` in `launch.sh`)
+  give the old way. Save states from 1.1.9 / 1.0.10 may not load (kept aside as `.rejected`); in-game saves carry over.
+
 ## 1.4.8 (2026-11-07: the sound at 48 kHz in all fifteen games, Pilotwings 64's demo crash)
 
 All fifteen games are rebuilt: Super Mario 64 1.1.7, Mario Kart 64 1.1.9, GoldenEye 007 1.1.9, Perfect Dark 1.0.9, Ocarina of Time
