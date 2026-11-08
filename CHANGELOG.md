@@ -5,34 +5,6 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
-- Ocarina of Time 1.1.9 and Majora's Mask 1.0.10 (beta): an OPTIONS page in the game menu (MENU > OPTIONS). It
-  lists settings that used to need a line in a file: fine aim (on/off, how gently it starts, when it reaches full
-  speed), the HUD filter, the dialog text's size and the sound's fades, and in Ocarina of Time also the prerendered
-  rooms' shape and the Deku Tree basement water's grain. Up/down picks a setting, left/right changes it, B goes
-  back. The fine aim and the HUD filter change at once; the others are marked and take effect the next time the
-  game starts. The page keeps them in `data/debug.cfg`: on the way out it rewrites only the changed lines, keeps
-  your other lines and comments, and replaces the file in one step. Saves and save states are not touched, and
-  loading a state keeps the settings. Majora's Mask now reads these keys from its own `data/debug.cfg`
-  ([SETTINGS.md](majoras-mask/SETTINGS.md)). The page is shared code, and each game lists its settings in one
-  table, so a new setting is one more row ([docs/OPTIONS.md](docs/OPTIONS.md)). Checked in an emulator on the
-  Miyoo builds: the file rewritten as described, the fine aim and HUD changes in effect at once, the values read
-  back after a restart, and save and load state as before.
-- Ocarina of Time 1.1.9 and Majora's Mask 1.0.10 (beta): the Lens of Truth works on fake floors and walls
-  ([issue #12](https://github.com/mr-finster/miyoo64/issues/12)). In the Bottom of the Well and the Shadow Temple the
-  fake floors over holes and the fake walls stayed drawn with the lens on, though Link fell through them; hidden
-  chests and platforms showed, but on the whole screen rather than only inside the lens's circle. The game draws the
-  circle into the depth buffer: what lies inside it (or outside, for the hidden things) is then left out of the fake
-  floors and walls drawn after it. The renderer drew that circle's colour but never its depth. Now it writes the
-  depth where the N64 does, so inside the circle the holes and passages show and outside it the fake floor and
-  walls are still there; hidden things show only inside the circle. Majora's Mask, which keeps a copy of the depth
-  and puts it back after the lens, gets the same (its invisible platforms on the path to Snowhead now show only
-  inside the circle). Checked in an emulator on the Miyoo builds, before and after: the Bottom of the Well's floor
-  holes and first fake wall, a Shadow Temple fake wall, the Snowhead path's platforms, and no change anywhere the
-  lens is off. Compared with an N64 emulator (angrylion) at the same places, the lens's look was fixed too: Ocarina
-  of Time's red tint stopped short of the screen's left and right edges (the circle's picture repeated there) and its
-  edge was stepped where the N64's is soft; Majora's Mask's red tint outside the circle was not drawn at all. Both
-  now look as on the N64. `OOT_ZRECT=0` / `MM_ZRECT=0` in `launch.sh` give the old drawing.
-
 ## 1.4.8 (2026-11-07: the sound at 48 kHz in all fifteen games, Pilotwings 64's demo crash)
 
 All fifteen games are rebuilt: Super Mario 64 1.1.7, Mario Kart 64 1.1.9, GoldenEye 007 1.1.9, Perfect Dark 1.0.9, Ocarina of Time
@@ -46,6 +18,24 @@ and Spanish, the title, the language choice and the HUD, built as its own packag
 There is no PAL zip in this release; the US zip is rebuilt from the same code (its play is unchanged; the sound is
 32 kHz in both versions, so 1.1.7's 48 kHz output applies to PAL as it is). In-game saves carry over; save states from 1.1.7 may not load (kept aside as
 `.rejected`).
+
+Updated Nov 8, again: Ocarina of Time 1.1.9 and Majora's Mask 1.0.10 (beta) bring two changes. The Lens of Truth
+works on fake floors and walls ([issue #12](https://github.com/mr-finster/miyoo64/issues/12)): in the Bottom of the
+Well and the Shadow Temple the fake floors over holes and the fake walls stayed drawn with the lens on, and hidden
+chests and platforms showed on the whole screen rather than only inside the lens's circle. The renderer now writes
+the circle's depth where the N64 does, so inside the circle the holes and passages show, outside it the fake floors
+and walls are still there, and hidden things show only inside it (in Majora's Mask too, such as the invisible
+platforms on the path to Snowhead). The lens's look was compared with an N64 emulator (angrylion) and fixed as well:
+Ocarina of Time's red tint now reaches the screen's edges with a soft edge, and Majora's Mask's red tint outside the
+circle is drawn. `OOT_ZRECT=0` / `MM_ZRECT=0` in `launch.sh` give the old drawing. And an OPTIONS page in the game
+menu (MENU > OPTIONS) lists settings that used to need a line in a file: fine aim (on/off, how gently it starts,
+when it reaches full speed), the HUD filter, the dialog text's size and the sound's fades, and in Ocarina of Time
+also the prerendered rooms' shape and the Deku Tree basement water's grain. The fine aim and the HUD filter change at
+once; the others take effect the next time the game starts. The page keeps them in `data/debug.cfg`, rewriting only
+the changed lines (Majora's Mask now reads these keys from its own `data/debug.cfg`,
+[SETTINGS.md](majoras-mask/SETTINGS.md); the shared page, [docs/OPTIONS.md](docs/OPTIONS.md)). Checked in an
+emulator on the Miyoo builds, and played on a Mini. In-game saves carry over; save states from 1.1.8 / 1.0.9 may not
+load (kept aside as `.rejected`).
 
 - All fifteen games: no more crackle on loud, smooth sounds ([issue #10](https://github.com/mr-finster/miyoo64/issues/10)).
   Found and fixed by ksielick in Super Mario 64 ([PR #11](https://github.com/mr-finster/miyoo64/pull/11)): Onion's
