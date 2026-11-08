@@ -111,13 +111,14 @@ The settings file is `App/OcarinaOfTime/data/debug.cfg`, one
 environment variable in `launch.sh`: `OOT_ROTATE=0` (the MinUI launcher sets it: MinUI's SDL turns
 the panel itself).
 
-The second core and the clock, also Miyoo only (the same as `OOT_THREADS` / `OOT_SPLITPX` /
+The second core and the clock, also Miyoo only (the same as `OOT_THREADS` / `OOT_SPLITPX` / `OOT_STEALROWS` /
 `OOT_CPUCLOCK` in `launch.sh`):
 
 | Key | Default | Meaning |
 |---|---|---|
 | `threads=1` | off | draw on one core only, for an A/B (the picture is the same either way) |
 | `splitpx=` | `800` | the pixels a triangle needs before both cores draw it (larger: fewer, bigger splits) |
+| `stealrows=` | `4` | a split triangle's rows are taken this many at a time from both ends, each core from its own end until they meet, so the core that is ahead draws more (the picture is the same); `0` = cut once in the middle, as before 1.1.10 |
 | `cpuclock=` | the model's | the CPU clock in MHz while the game runs: 1800 on the Mini Plus and 1500 on the Mini by default (with margin, below Onion's ceilings of 1900 / 1600); `0` leaves it as the OS set it. It goes back when the game quits. |
 
 Sound, Miyoo only: `audiofill=0` (or `OOT_AUDIOFILL=0`) gives the old audio buffering. The default keeps one

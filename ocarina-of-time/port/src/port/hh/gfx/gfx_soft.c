@@ -2057,6 +2057,37 @@ static int split_row(float e0c, float e0x, float e0y, float e1c, float e1x, floa
     const int ym = miny + k + 1;
     return ym > miny && ym < maxy ? ym : -1;
 }
+/* OOT_STEALROWS (2026-11-08; idea from cacuracaptors' oot-miyoomini, whose idle drawing thread takes half of the
+ * other's remaining lines): a split triangle's rows are not cut once at the pixel midpoint (split_row's ym) but taken
+ * in chunks of OOT_STEALROWS rows from both ends of one shared range, this thread from the top down the worker from the
+ * bottom up, until they meet; whichever core runs ahead (the worker shares its core with the present thread; a share's
+ * pixels are not all the same price: hidden spans, the deferred sky's marked spans, the sky's cheaper rows) simply
+ * draws more rows. Still disjoint rows, each drawn by one core from y alone (the rules in raster_rows' comment), so
+ * the same pixels; this thread's rows all lie above the worker's. A triangle with edge notes (their list is in row
+ * order) keeps the fixed halves. 0: the fixed halves (the old way). The range is one 32-bit word, top | bottom << 16,
+ * taken by compare-and-swap. */
+static int sStealRows SAVESTATE_EXCLUDE = -1;
+static int steal_chunk(void) {
+    if (sStealRows < 0) {
+        const char *e = getenv("OOT_STEALROWS");
+        sStealRows = !e ? 4 : e[0] == 'a' ? 1000 : atoi(e);
+        if (sStealRows < 0) sStealRows = 0;
+    }
+    if (sStealRows == 1000) { extern int gHhAbPhase; return gHhAbPhase ? 4 : 0; } /* "ab": OOT_ABFRAME, 4 against 0 */
+    return sStealRows;
+}
+static inline bool steal_take(uint32_t *range, int chunk, bool top, int *y0, int *y1) {
+    uint32_t o = __atomic_load_n(range, __ATOMIC_ACQUIRE), w;
+    int lo, hi, a, b;
+    do {
+        lo = (int)(o & 0xFFFFu); hi = (int)(o >> 16);
+        if (lo >= hi) return false;
+        if (top) { a = lo; b = lo + chunk < hi ? lo + chunk : hi; w = (uint32_t)b | ((uint32_t)hi << 16); }
+        else     { b = hi; a = hi - chunk > lo ? hi - chunk : lo; w = (uint32_t)lo | ((uint32_t)a << 16); }
+    } while (!__atomic_compare_exchange_n(range, &o, w, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE));
+    *y0 = a; *y1 = b;
+    return true;
+}
 /* A kept sky triangle's rows miny..maxy-1 (sky_flush's loop) */
 static uint32_t __attribute__((noinline)) sky_rows(const CmTri *T, const DsRows *RP, int miny, int maxy) {
     const DsRows R = *RP;
@@ -2080,10 +2111,27 @@ static uint32_t __attribute__((noinline)) sky_rows(const CmTri *T, const DsRows 
 }
 typedef struct { const CmTri *T; const DsRows *R; int y0, y1; uint32_t px; } SkyJob;
 static void sky_job(void *arg) { SkyJob *j = (SkyJob *)arg; j->px = sky_rows(j->T, j->R, j->y0, j->y1); }
+typedef struct { const CmTri *T; const DsRows *R; uint32_t range; int chunk; uint32_t px; } SkyStealJob;
+static void sky_steal_job(void *arg) { /* OOT_STEALROWS: the worker, from the bottom up */
+    SkyStealJob *j = (SkyStealJob *)arg;
+    int y0, y1;
+    while (steal_take(&j->range, j->chunk, false, &y0, &y1)) j->px += sky_rows(j->T, j->R, y0, y1);
+}
 static uint32_t sky_tri(const CmTri *T, const DsRows *R) {
     const int ym = split_row(R->e0c, R->e0x, R->e0y, R->e1c, R->e1x, R->e1y, R->e2c, R->e2x, R->e2y, R->inv_area,
                              R->w0dx, R->w1dx, R->w2dx, R->minx, R->maxx, R->miny, R->maxy);
     if (ym < 0) return sky_rows(T, R, R->miny, R->maxy);
+    const int chunk = steal_chunk();
+    if (chunk > 0) { /* OOT_STEALROWS */
+        SkyStealJob j = { T, R, (uint32_t)R->miny | ((uint32_t)R->maxy << 16), chunk, 0 };
+        uint32_t px = 0;
+        int y0, y1;
+        miyoo_worker_run(sky_steal_job, &j);
+        while (steal_take(&j.range, chunk, true, &y0, &y1)) px += sky_rows(T, R, y0, y1);
+        miyoo_worker_wait();
+        gfx_soft_split_px += px + j.px;
+        return px + j.px;
+    }
     SkyJob j = { T, R, ym, R->maxy, 0 };
     miyoo_worker_run(sky_job, &j);
     const uint32_t px = sky_rows(T, R, R->miny, ym);
@@ -2451,11 +2499,28 @@ static void row_job(void *arg) {
     j->px = raster_rows(j->rr, j->y0, j->y1);
     tEnShare = NULL;
 }
+typedef struct { const RasterRows *rr; uint32_t range; int chunk; uint32_t px; } RowStealJob;
+static void row_steal_job(void *arg) { /* OOT_STEALROWS: the worker, from the bottom up */
+    RowStealJob *j = (RowStealJob *)arg;
+    int y0, y1;
+    while (steal_take(&j->range, j->chunk, false, &y0, &y1)) j->px += raster_rows(j->rr, y0, y1);
+}
 static uint32_t rows_split(const RasterRows *R, int miny, int maxy) {
     const int ym = sUiMode ? -1
                  : split_row(R->e0c, R->e0x, R->e0y, R->e1c, R->e1x, R->e1y, R->e2c, R->e2x, R->e2y, R->inv_area,
                              R->w0dx, R->w1dx, R->w2dx, R->minx, R->maxx, miny, maxy);
     if (ym < 0) return raster_rows(R, miny, maxy);
+    const int chunk = R->enote ? 0 : steal_chunk();
+    if (chunk > 0) { /* OOT_STEALROWS */
+        RowStealJob j = { R, (uint32_t)miny | ((uint32_t)maxy << 16), chunk, 0 };
+        uint32_t px = 0;
+        int y0, y1;
+        miyoo_worker_run(row_steal_job, &j);
+        while (steal_take(&j.range, chunk, true, &y0, &y1)) px += raster_rows(R, y0, y1);
+        miyoo_worker_wait();
+        gfx_soft_split_px += px + j.px;
+        return px + j.px;
+    }
     RowJob j = { R, ym, maxy, 0 };
     miyoo_worker_run(row_job, &j);
     const uint32_t px = raster_rows(R, miny, ym);
@@ -2477,11 +2542,30 @@ static void tri_job(void *arg) {
     j->px = tri_rows(&j->R, j->y0, j->y1);
     tEnShare = NULL;
 }
+typedef struct { TriRows R; CmTri t; uint32_t range; int chunk; uint32_t px; } TriStealJob;
+static void tri_steal_job(void *arg) { /* OOT_STEALROWS: the worker, from the bottom up, on its own CmTri copy */
+    TriStealJob *j = (TriStealJob *)arg;
+    int y0, y1;
+    j->R.t = &j->t;
+    while (steal_take(&j->range, j->chunk, false, &y0, &y1)) j->px += tri_rows(&j->R, y0, y1);
+}
 static uint32_t tri_rows_split(const TriRows *R, int miny, int maxy) {
     const int ym = sUiMode ? -1
                  : split_row(R->e0c, R->e0x, R->e0y, R->e1c, R->e1x, R->e1y, R->e2c, R->e2x, R->e2y, R->inv_area,
                              R->w0dx, R->w1dx, R->w2dx, R->minx, R->maxx, miny, maxy);
     if (ym < 0) return tri_rows(R, miny, maxy);
+    const int chunk = R->t->enote ? 0 : steal_chunk();
+    if (chunk > 0) { /* OOT_STEALROWS */
+        TriStealJob j;
+        uint32_t px = 0;
+        int y0, y1;
+        j.R = *R; j.t = *R->t; j.range = (uint32_t)miny | ((uint32_t)maxy << 16); j.chunk = chunk; j.px = 0;
+        miyoo_worker_run(tri_steal_job, &j);
+        while (steal_take(&j.range, chunk, true, &y0, &y1)) px += tri_rows(R, y0, y1);
+        miyoo_worker_wait();
+        gfx_soft_split_px += px + j.px;
+        return px + j.px;
+    }
     TriJob j;
     j.R = *R; j.t = *R->t; j.y0 = ym; j.y1 = maxy; j.px = 0;
     miyoo_worker_run(tri_job, &j);

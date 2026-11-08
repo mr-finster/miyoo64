@@ -68,6 +68,6 @@
 | `fineaimms` | `1000` | With fineaim: when the d-pad reaches full tilt, in ms |
 | `mixprof` | off | `mixprof=1` writes the audio mixer's time per command to `console.log` (MIXPROF lines) |
 | `prof` | off | `prof=1` writes a speed profile to `prof.txt` next to `debug.cfg` |
-| `abframe` | off | `abframe=1` with a speed switch set to `ab` (`skyruns=ab`): the switch off and on in turn, frame by frame, and an ABF line in `console.log` with each one's 3D drawing time (for measuring; the two ways give the same pixels) |
+| `abframe` | off | `abframe=1` with a speed switch set to `ab` (`skyruns=ab`, `stealrows=ab`): the switch off and on in turn, frame by frame, and an ABF line in `console.log` with each one's 3D drawing time (for measuring; the two ways give the same pixels) |
 
 A game log is written to `console.log` in the same folder. The Miyoo-only keys (`rotate`, `threads`, `splitpx`, `cpuclock`, `audiofill`, `outfreq`) are in README_MIYOO.md.
