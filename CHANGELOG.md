@@ -5,6 +5,19 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Ocarina of Time 1.1.9 and Majora's Mask 1.0.10 (beta): an OPTIONS page in the game menu (MENU > OPTIONS). It
+  lists settings that used to need a line in a file: fine aim (on/off, how gently it starts, when it reaches full
+  speed), the HUD filter, the dialog text's size and the sound's fades, and in Ocarina of Time also the prerendered
+  rooms' shape and the Deku Tree basement water's grain. Up/down picks a setting, left/right changes it, B goes
+  back. The fine aim and the HUD filter change at once; the others are marked and take effect the next time the
+  game starts. The page keeps them in `data/debug.cfg`: on the way out it rewrites only the changed lines, keeps
+  your other lines and comments, and replaces the file in one step. Saves and save states are not touched, and
+  loading a state keeps the settings. Majora's Mask now reads these keys from its own `data/debug.cfg`
+  ([SETTINGS.md](majoras-mask/SETTINGS.md)). The page is shared code, and each game lists its settings in one
+  table, so a new setting is one more row ([docs/OPTIONS.md](docs/OPTIONS.md)). Checked in an emulator on the
+  Miyoo builds: the file rewritten as described, the fine aim and HUD changes in effect at once, the values read
+  back after a restart, and save and load state as before.
+
 ## 1.4.8 (2026-11-07: the sound at 48 kHz in all fifteen games, Pilotwings 64's demo crash)
 
 All fifteen games are rebuilt: Super Mario 64 1.1.7, Mario Kart 64 1.1.9, GoldenEye 007 1.1.9, Perfect Dark 1.0.9, Ocarina of Time

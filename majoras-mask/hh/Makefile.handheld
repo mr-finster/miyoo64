@@ -45,7 +45,7 @@ OPT_FLAGS = -O2 -g -fno-math-errno -ffp-contract=off $(EXTRA_CFLAGS)
 SDL_CFLAGS := -I$(MM_SYSROOT)/usr/include -I$(MM_SYSROOT)/usr/include/SDL -D_REENTRANT -D_FILE_OFFSET_BITS=64
 SDL_LIBS   := -L$(MM_SYSROOT)/usr/lib -Wl,-rpath-link,$(MM_SYSROOT)/usr/lib -lSDL -lrt
 HH_VERSION ?= dev
-HH_RELEASE ?= 1.0.9
+HH_RELEASE ?= 1.0.10
 # the two objects that print HH_VERSION / HH_RELEASE are rebuilt by every make (a changed release number alone does not
 # touch their sources: 1.0.6 shipped printing 1.0.4)
 VERSION_O := $(BUILD_DIR)/$(HH)/src/hh_mm.o $(BUILD_DIR)/$(HH)/src/hh_port.o
@@ -66,7 +66,7 @@ HH_GAME_SOURCES += $(HH)/libultra/mtxutil.c $(HH)/libultra/scale.c $(HH)/libultr
 
 HH_PORT_SOURCES := $(sort $(wildcard $(HH)/src/*.c)) \
                    $(HH)/src/gfx/gfx_pc.c $(HH)/src/gfx/gfx_cc.c $(HH)/src/gfx/gfx_soft.c $(HH)/src/gfx/gfx_sdl12.c
-HH_KIT_SOURCES  := $(HH)/kit/platform/savestate.c $(HH)/kit/platform/hh_priority.c $(HH)/kit/platform/miyoo_menu.c $(HH)/kit/platform/miyoo_remap.c \
+HH_KIT_SOURCES  := $(HH)/kit/platform/savestate.c $(HH)/kit/platform/hh_priority.c $(HH)/kit/platform/miyoo_menu.c $(HH)/kit/platform/miyoo_remap.c $(HH)/kit/platform/miyoo_options.c \
                    $(HH)/kit/platform/miyoo_worker.c $(HH)/kit/platform/miyoo_clock.c $(HH)/kit/platform/miyoo_sleepsave.c
 HH_PORT_SOURCES += $(HH_KIT_SOURCES)
 

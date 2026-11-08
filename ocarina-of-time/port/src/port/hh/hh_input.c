@@ -64,6 +64,11 @@ static void HhInput_FineAimInit(void) {
     sFineHoldUs = sFineFullUs < HH_AIM_HOLD_US ? sFineFullUs : HH_AIM_HOLD_US;
 }
 
+/* MENU > OPTIONS (hh_options.c): the fine aim's variables are read again at the next d-pad read. */
+void HhInput_FineAimReload(void) {
+    sFineAim = -1;
+}
+
 static int HhInput_AimTilt(uint64_t now, uint64_t* since, bool held) {
     uint64_t dt;
 

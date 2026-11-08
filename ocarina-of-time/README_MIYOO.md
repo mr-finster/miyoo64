@@ -89,7 +89,7 @@ The zip comes from `miyoo/tools/miyoo_pack.py` (shared by all the ports, from th
 | START + R1, or START + up | C-up |
 | START + left / down / right | C-left / C-down / C-right |
 | START + L1 | L (minimap on/off) |
-| MENU | the game menu (resume, save/load state, exit) |
+| MENU | the game menu (resume, save/load state, controls, options, exit) |
 
 While you play the ocarina, the d-pad is the four C notes and A is A; B puts the ocarina away.
 
@@ -168,6 +168,8 @@ Unzip `OcarinaOfTime-miyoo-PERSONAL.zip` onto the card's root. It contains your 
 
 - `port/kit/platform/miyoo_menu.c`, `miyoo_font.h`: the menu, the resume prompt and the notices,
   GoldenEye's, so every Miyoo port has the same menu (`handheld_menu.h`: the menu API the game calls).
+- `port/kit/platform/miyoo_options.c/.h` (`kit-options/`), `port/src/port/hh/hh_options.c`: MENU > OPTIONS, the
+  settings page, its rows and `debug.cfg` (docs/OPTIONS.md).
 - `port/kit/platform/miyoo_worker.c/.h` (the shared Miyoo kit, 5eab41f): the second core's worker thread.
 - `port/kit/platform/miyoo_clock.c/.h` (the shared Miyoo kit, 30024bc): the CPU clock (set at start from hh_convert.c, put back at exit).
 - `MIYOO` blocks in the existing files handle the rest:

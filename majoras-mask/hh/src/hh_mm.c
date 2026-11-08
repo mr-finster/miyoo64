@@ -913,6 +913,12 @@ void HhMm_LogAlignment(const char* when) {
 char** gHhMmArgv; /* hh_mm_convert.c: the first start starts the game again in a fresh process */
 int main(int argc, char** argv) {
     gHhMmArgv = argv;
+#if defined(MIYOO)
+    {   /* data/debug.cfg: the MENU > OPTIONS rows' keys (hh_options.c), each as its variable, before anything reads one */
+        extern int miyoo_options_load(void);
+        miyoo_options_load();
+    }
+#endif
     {   /* kit k1.6: nice -10 before any thread exists (all inherit it): the OS's helpers fit in the frame gaps */
         extern void hh_game_priority(void);
         hh_game_priority();

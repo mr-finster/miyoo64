@@ -10,12 +10,13 @@ instead of one per port. Each port keeps a copy of it beside its sources, so eac
 |---|---|
 | `platform/savestate.c/.h` | Save states and the auto save (EXIT GAME, and the OS shutting the game down). Two memory layouts: the MK64 "hole" and DKR's include list. |
 | `platform/handheld_menu.h` | The menu API the game calls (notices, the resume prompt); the Miyoo build implements it in `miyoo_menu.c`. |
-| `platform/miyoo_menu.c`, `miyoo_font.h` | The Miyoo menu (RESUME, SAVE STATE, LOAD STATE, EXIT GAME), the resume prompt and the notices, in a built-in 8x8 font. |
+| `platform/miyoo_menu.c`, `miyoo_font.h` | The Miyoo menu (RESUME, SAVE STATE, LOAD STATE, CONTROLS, OPTIONS, EXIT GAME), the resume prompt and the notices, in a built-in 8x8 font. |
+| `platform/miyoo_options.c/.h` | MENU > OPTIONS: the game's settings from its `hh_options.c` table, written back to `debug.cfg` (canonical copy in `kit-options/`, docs/OPTIONS.md). |
 | `platform/miyoo_worker.c/.h` | The second core's worker thread. |
 | `platform/miyoo_clock.c/.h` | The CPU clock: raised while the game runs, put back at exit. |
 | `platform/hh_priority.c`, `hh_declick.h` | The game's process priority; the short fades around the menu and loads. |
 | `ports/<game>/hh_game.h` | The per-game settings each port keeps beside its sources: name, environment prefix, save-state magic and layout. |
-| `tests/run.sh` | Save-state tests (both layouts) and an ARM + desktop compile of every file against every port's settings, in a port's build image. |
+| `tests/run.sh` | Save-state tests (both layouts), the OPTIONS page's debug.cfg writer, and an ARM + desktop compile of every file against every port's settings, in a port's build image. |
 
 ## Testing the kit
 

@@ -4,7 +4,8 @@
  * The Mini's OS already owns volume and brightness, so the menu has none. It needs nothing from the card: an 8x8
  * bitmap font (miyoo_font.h) scaled up, drawn over a dimmed snapshot of the last game frame.
  *
- * Items: RESUME, SAVE STATE, LOAD STATE, EXIT GAME.
+ * Items: RESUME, SAVE STATE, LOAD STATE, CONTROLS (miyoo_remap.c), OPTIONS (miyoo_options.c: the game's settings,
+ * its hh_options.c table), EXIT GAME.
  * Keys (the Mini's SDL): up/down choose, left/right change the slot, A (Space) activates
  * (twice where it asks "Are you sure?"), B (Left Ctrl) backs out of a question or resumes,
  * MENU (Escape) resumes.
@@ -23,6 +24,7 @@
 #include "savestate.h"
 #include "miyoo_font.h"
 #include "miyoo_remap.h"
+#include "miyoo_options.h"
 #if defined(MIYOO)
 #include "miyoo_sleepsave.h"
 #endif
@@ -46,8 +48,8 @@ extern uint32_t *gfx_soft_get_framebuffer(int *w, int *h);
 extern void controller_handheld_key(int sym, int down) __attribute__((weak));
 extern int gfx_miyoo_term_pending(void); /* gfx_sdl12.c: the OS has sent SIGTERM (not yet handled) */
 
-enum { I_RESUME, I_SAVE, I_LOAD, I_CONTROLS, I_EXIT, I_COUNT };
-static const char *ITEM[I_COUNT] = { "RESUME", "SAVE STATE", "LOAD STATE", "CONTROLS", "EXIT GAME" };
+enum { I_RESUME, I_SAVE, I_LOAD, I_CONTROLS, I_OPTIONS, I_EXIT, I_COUNT };
+static const char *ITEM[I_COUNT] = { "RESUME", "SAVE STATE", "LOAD STATE", "CONTROLS", "OPTIONS", "EXIT GAME" };
 #define SLOT_MIN 1
 #define SLOT_MAX 9
 
@@ -158,7 +160,7 @@ static void slot_label(char *buf, size_t n, int item) {
 
 static void compose_menu(int cur, int confirm) {
     SDL_BlitSurface(sBackup, NULL, sDraw, NULL);
-    const int pw = 420, ph = 374, px = (sDraw->w - pw) / 2, py = (sDraw->h - ph) / 2; /* centred (640x480 or the panel) */
+    const int pw = 420, ph = 418, px = (sDraw->w - pw) / 2, py = (sDraw->h - ph) / 2; /* centred (640x480 or the panel) */
     panel(sDraw, px, py, pw, ph);
     text_centered(sDraw, py + 34, 3, HH_GAME_TITLE, C_TEXT);
     fill(sDraw, px + 30, py + 62, pw - 60, 2, C_EDGE);
@@ -184,8 +186,21 @@ static void compose_menu(int cur, int confirm) {
 
 extern int gfx_miyoo_rotate(void); /* gfx_sdl12.c: the panel wants the picture turned 180 degrees */
 
+static void dump_ppm(SDL_Surface *s, const char *path);
+/* <GAME>_MENU_SHOT=<dir> (tests): every picture the menu shows (CONTROLS and OPTIONS too) to <dir>/shot_NNNN.ppm */
+static void shot(void) {
+    static const char *dir SAVESTATE_EXCLUDE;
+    static int n SAVESTATE_EXCLUDE = -1;
+    char path[512];
+    if (n < 0) { dir = getenv(HH_ENV("MENU_SHOT")); n = 0; }
+    if (!dir || !dir[0]) return;
+    snprintf(path, sizeof(path), "%s/shot_%04d.ppm", dir, n++);
+    dump_ppm(sDraw, path);
+}
+
 static void show(SDL_Surface *screen) {
     if (!screen) return;
+    shot();
     if (gfx_miyoo_rotate() && screen->format->BitsPerPixel == 32 && screen->w == SCREEN_W && screen->h == SCREEN_H) {
         if (SDL_MUSTLOCK(screen)) SDL_LockSurface(screen);
         for (int y = 0; y < SCREEN_H; y++) {
@@ -240,9 +255,53 @@ void handheld_menu_notify_wait(const char *msg) {
     SDL_Delay(1500);
 }
 
+/* <GAME>_MENU_KEYS="<frame>:<key> <key>...;<frame>:..." (tests): at that presented frame, the keys pushed as the
+ * Mini's buttons are (menu up down left right a b x y start select), each a press and a release, so a headless run
+ * can open the menu, walk its pages and leave. Counted on the present thread (miyoo_menu_overlay). */
+static void key_script(void) {
+    static const char *sScript SAVESTATE_EXCLUDE;
+    static int sInit SAVESTATE_EXCLUDE, sFrame SAVESTATE_EXCLUDE;
+    static const struct { const char *name; int sym; } kKeys[] = {
+        { "menu", SDLK_ESCAPE }, { "up", SDLK_UP }, { "down", SDLK_DOWN }, { "left", SDLK_LEFT }, { "right", SDLK_RIGHT },
+        { "a", SDLK_SPACE }, { "b", SDLK_LCTRL }, { "x", SDLK_LSHIFT }, { "y", SDLK_LALT }, { "start", SDLK_RETURN },
+        { "select", SDLK_RCTRL },
+    };
+    if (!sInit) { sInit = 1; sScript = getenv(HH_ENV("MENU_KEYS")); }
+    if (!sScript || !sScript[0]) return;
+    sFrame++;
+    for (const char *p = sScript; *p;) {
+        const int at = atoi(p);
+        const char *colon = strchr(p, ':'), *end = strchr(p, ';');
+        if (!end) end = p + strlen(p);
+        if (colon && colon < end && at == sFrame) {
+            fprintf(stderr, "menu keys: frame %d: %.*s\n", sFrame, (int)(end - colon - 1), colon + 1);
+            for (const char *k = colon + 1; k < end;) {
+                while (k < end && *k == ' ') k++;
+                const char *e = k;
+                while (e < end && *e != ' ') e++;
+                for (unsigned i = 0; i < sizeof(kKeys) / sizeof(kKeys[0]); i++) {
+                    if ((size_t)(e - k) != strlen(kKeys[i].name) || strncmp(k, kKeys[i].name, (size_t)(e - k)) != 0) continue;
+                    SDL_Event ev;
+                    memset(&ev, 0, sizeof(ev));
+                    ev.type = SDL_KEYDOWN;
+                    ev.key.state = SDL_PRESSED;
+                    ev.key.keysym.sym = (SDLKey)kKeys[i].sym;
+                    SDL_PushEvent(&ev);
+                    ev.type = SDL_KEYUP;
+                    ev.key.state = SDL_RELEASED;
+                    SDL_PushEvent(&ev);
+                }
+                k = e;
+            }
+        }
+        p = *end ? end + 1 : end;
+    }
+}
+
 /* gfx_sdl12.c's present thread, on the frame before it is doubled and turned: the current
  * notification, if any. */
 void miyoo_menu_overlay(SDL_Surface *screen) {
+    key_script();
     const uint32_t until = sNoticeUntil;
     if (!until || !screen) return;
     if ((int32_t)(SDL_GetTicks() - until) >= 0) { sNoticeUntil = 0; return; }
@@ -280,6 +339,8 @@ static SDL_Surface *sRemapScreen SAVESTATE_EXCLUDE;
 static void remap_show(void) { show(sRemapScreen); }
 static void remap_key(int sym, int down) { if (controller_handheld_key) controller_handheld_key(sym, down); }
 static int remap_close(void) { return miyoo_sleepsave_menu_should_close(); }
+/* MENU > OPTIONS (miyoo_options.c): the same surfaces; SIGTERM ends it too (the menu then returns to the game loop) */
+static int options_close(void) { return miyoo_sleepsave_menu_should_close() || gfx_miyoo_term_pending(); }
 
 void handheld_menu_run(struct SDL_Surface *screen_) {
     SDL_Surface *screen = (SDL_Surface *)screen_;
@@ -332,6 +393,7 @@ void handheld_menu_run(struct SDL_Surface *screen_) {
             case SDLK_RETURN: /* START */
                 if (cur == I_RESUME) running = 0;
                 else if (cur == I_CONTROLS) { sRemapScreen = screen; miyoo_remap_screen(sDraw, sBackup, remap_show, remap_key, remap_close); confirm = 0; dirty = 1; }
+                else if (cur == I_OPTIONS) { sRemapScreen = screen; miyoo_options_screen(sDraw, sBackup, remap_show, remap_key, options_close); confirm = 0; dirty = 1; }
                 else if (cur == I_SAVE) {
                     if (confirm || !savestate_slot_valid(sSlot)) { savestate_request_save(sSlot); running = 0; }
                     else { confirm = 1; dirty = 1; }
@@ -348,6 +410,8 @@ void handheld_menu_run(struct SDL_Surface *screen_) {
             default:
                 break;
             }
+            /* one picture a key (a scripted test, <GAME>_MENU_KEYS, pushes several at once and looks at each) */
+            if (dirty && running) { compose_menu(cur, confirm); show(screen); dirty = 0; }
         }
         if (dirty && running) { compose_menu(cur, confirm); show(screen); dirty = 0; }
         const uint32_t dt = SDL_GetTicks() - t0;
@@ -432,6 +496,7 @@ void handheld_menu_test_dump(const char *dir) {
         for (int x = 0; x < SCREEN_W; x++) row[x] = 0xFF1A2640u;
     }
     miyoo_remap_test_dump(sDraw, sBackup, dir); /* MENU > CONTROLS */
+    miyoo_options_test_dump(sDraw, sBackup, dir); /* MENU > OPTIONS */
     for (int i = 0; i < I_COUNT; i++) {
         compose_menu(i, 0);
         snprintf(path, sizeof(path), "%s/menu_%02d.ppm", dir, i);

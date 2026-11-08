@@ -2,7 +2,8 @@
 # The kit's checks, run in a port's build image (default sm64hh:build):
 #  1. save-state tests on x86 -- the hole layout with and without a backstop swap,
 #     and the include list -- built with HANDHELD so the player-facing paths run;
-#  2. every platform file compiled for the device (the Miyoo toolchain's gcc, HANDHELD)
+#  2. MENU > OPTIONS' debug.cfg writer and loader (tests/options_test.c, no SDL);
+#  3. every platform file compiled for the device (the Miyoo toolchain's gcc, HANDHELD)
 #     and for the desktop, once per port config in ports/, with -Wall -Wextra.
 # The kit is mounted read-only; output goes to a temp dir in the container.
 set -euo pipefail
@@ -50,6 +51,13 @@ else
 fi
 arm-linux-gnueabihf-gcc $W -O2 -Iplatform -c tests/declick_test.c -o "$out/declick.arm.o" 2> "$out/declick.arm.log" \
     && [ ! -s "$out/declick.arm.log" ] || { echo "declick: device build failed or warned"; cat "$out/declick.arm.log"; fail=1; }
+
+# MENU > OPTIONS: debug.cfg rewritten with only the changed keys, the atomic write, the start-up loader
+if gcc $W -DMIYOO_OPTIONS_TEST -Iplatform tests/options_test.c platform/miyoo_options.c -o "$out/options" 2> "$out/options.log" && [ ! -s "$out/options.log" ]; then
+    "$out/options" || fail=1
+else
+    echo "options: build failed or warned"; cat "$out/options.log"; fail=1
+fi
 
 for p in ports/*/; do
     p=${p%/}; id=${p#ports/}

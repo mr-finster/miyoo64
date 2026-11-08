@@ -5,7 +5,7 @@ A port to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip), built on 
 states and a first-start data builder. **There is no game data in it.** It builds everything from your
 own USA ROM the first time you run it.
 
-**Status:** version 1.0.9, a beta. It plays on the Mini (OG, 640x480) with Onion from Apps at the game's own
+**Status:** version 1.0.10, a beta. It plays on the Mini (OG, 640x480) with Onion from Apps at the game's own
 20 fps; test builds have been played on that device. The Mini Plus, Mini v4 and Flip, and Onion's Ports list,
 MinUI, Allium and spruce still need a first run. Known issues: [README.md](README.md#known-issues).
 
@@ -72,7 +72,7 @@ records which data it is), so keep the ROM on the card.
 | START + R1, or START + up | C-up |
 | START + left / down / right | C-left / C-down / C-right |
 | START + L1 | L (the minimap on/off) |
-| MENU | the game menu (resume, save/load state, exit) |
+| MENU | the game menu (resume, save/load state, controls, options, exit) |
 
 While you play an instrument, the d-pad is the four C notes and A is A. B puts it away.
 
@@ -83,6 +83,9 @@ before); holding turns as fast as before. Walking, menus and every other view ar
 port has no walk or half-stick button.
 
 ## Settings (in `launch.sh`)
+
+MENU > OPTIONS changes the fine aim, the dialog text, the HUD filter and the sound's fades, and keeps them in
+`data/debug.cfg` ([SETTINGS.md](SETTINGS.md)). The variables below go in `launch.sh`.
 
 - `MM_ROTATE=0`: draw the picture unturned, for an SDL that turns the panel itself (the MinUI launcher
   sets it).

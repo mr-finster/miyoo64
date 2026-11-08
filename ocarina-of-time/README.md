@@ -26,7 +26,7 @@ Download `OcarinaOfTime-miyoo.zip` from https://miyoo-n64.pages.dev, and install
 | R2 | C-right |
 | START | Pause |
 | START + L1 | N64 L (minimap) |
-| MENU | Game menu: save, load, exit |
+| MENU | Game menu: save, load, controls, options, exit |
 
 While you play the ocarina, the d-pad is the four C notes and A is A; B puts it away.
 

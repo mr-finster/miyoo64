@@ -2,6 +2,9 @@
 
 - Optional. Put it at `App/OcarinaOfTime/data/debug.cfg`, one `key=value` per line.
 - A missing key keeps its default.
+- The in-game menu's OPTIONS page changes some of these keys (`fineaim`, `fineaimpct`, `fineaimms`, `crop3d`,
+  `msgbox1to1`, `hudfilter`, `watergrain`, `declick`) and writes them to this file, keeping your other lines.
+  Adding a key to the page: [docs/OPTIONS.md](../docs/OPTIONS.md).
 
 | Key | Default | What it does |
 |---|---|---|
