@@ -23,6 +23,17 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   power-off simulated ([Sleep and wake](docs/SLEEP-AND-WAKE.md#the-seal-149)). In-game saves carry over; save
   states from before may not load (kept aside as `.rejected`).
 
+- GoldenEye 007 1.1.10 and Perfect Dark 1.0.10: faster with both cores, the same picture. The two cores used to cut
+  the rows they share once, at an estimate (a big triangle's in the middle, a batch of triangles where half the work
+  was expected), and whichever finished first waited for the other. Now they take the rows from both ends, a few
+  at a time, until they meet, so the core that is ahead draws more (`stealrows`); in these two games nearly all the
+  shared rows come from batches, so batches share this way too. Under qemu with both cores the 3D drawing time drops
+  6 to 11% in GoldenEye 007 (the Frigate's engine room, the Jungle, the Facility's tank hall, the Dam; 1% at the
+  Statue park) and 6 to 14% in Perfect Dark (Carrington Villa, a Combat Simulator arena, dataDyne Central); frames
+  compared byte for byte with the old way in five and three scenes. The idea comes from cacuracaptors' Ocarina of
+  Time port for the Miyoo Mini (oot-miyoomini), as in Ocarina of Time 1.1.10, written anew for this renderer.
+  `stealrows=0` in GoldenEye 007's `data/debug.cfg` (Perfect Dark: `PD_STEALROWS=0` in `launch.sh`) gives the old way.
+
 - Ocarina of Time 1.1.10 and Majora's Mask 1.0.11 (beta): a little faster outdoors, the same picture. The sky, drawn
   last where nothing covers it, now skips whole 16-pixel stretches the world already covers instead of testing each
   pixel (`skyruns`), and the two cores share a big triangle's rows a few at a time from both ends instead of cutting
