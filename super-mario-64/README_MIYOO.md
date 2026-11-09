@@ -104,12 +104,15 @@ does MENU).
 |---|---|---|
 | `threads=` | `2` | `1` draws on one core only (for an A/B on the device) |
 | `cpuclock=` | (the model's) | the CPU clock in MHz: 1500 on the Mini and 1800 on the Mini Plus by default; `0` leaves it as the OS set it |
+| `hwblit=` | `0` | experimental: `1` the Mini's 2D engine (MI_GFX) doubles and turns each frame onto the panel instead of the CPU, the same picture (only where a check at start finds its output identical to the CPU's, pixel for pixel); `2` its smooth scaler (a softer picture; also fills a Mini v4 / Flip panel). Anything the engine can't do leaves the CPU drawing, with one `hwblit:` line in `console.log` saying why |
 
 Environment variables for testing (set them in `launch.sh`): `SM64_THREADS=1|2` and
 `SM64_CPUCLOCK=<MHz>` override the file; `SM64_ROTATE=0` draws the picture unturned (the MinUI launcher
 sets it: MinUI's SDL turns the panel itself); `SM64_MIYOO_MODE=640x480` forces the panel mode;
 `SM64_PANEL_CHECK=1` checks the first 30 presented frames against a scalar reference (the log says
-how many pixels differ); `SM64_SPLIT=<px>` is the smallest triangle (in pixels of area) shared with the
+how many pixels differ); `SM64_HWBLIT=0|1|2` (or `MIYOO_HWBLIT`, the same for every game that has it)
+overrides `hwblit=`; `SM64_PANEL_TIME=1` logs the present's average time every 300 frames (`CPU`, or
+`2D engine`: the time to hand the frame over, the engine finishing on its own before the flip); `SM64_SPLIT=<px>` is the smallest triangle (in pixels of area) shared with the
 second core (default 64, with at least 4 rows); `SM64_LOG=0` keeps the output on the terminal;
 `SM64_OUTFREQ=<Hz>` is the sound's output rate (default 48000, the OS mixer's own rate, so the game's
 32 kHz mix is resampled once, in the game; `32000` hands it to the OS as before).

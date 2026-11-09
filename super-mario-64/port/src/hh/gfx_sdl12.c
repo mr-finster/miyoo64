@@ -81,6 +81,8 @@ int gfx_miyoo_cfg(const char *key, int def) {
     fclose(f);
     return v;
 }
+/* the kit's settings hook (miyoo_panel.c: hwblit=), answered from sm64_display.cfg */
+int miyoo_port_cfg(const char *key, int def) { return gfx_miyoo_cfg(key, def); }
 #endif
 static int present_thread(void *arg);
 static uint16_t sStage[SCREEN_W * SCREEN_H] SAVESTATE_EXCLUDE;

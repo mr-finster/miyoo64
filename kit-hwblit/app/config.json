@@ -1,0 +1,5 @@
+{
+  "label": "Hwblit Test",
+  "launch": "launch.sh",
+  "description": "Checks the 2D engine for the N64 ports (writes result.txt)"
+}

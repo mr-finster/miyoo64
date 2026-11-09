@@ -581,8 +581,9 @@ ifeq ($(TARGET_HANDHELD),1)
     # 64-bit file offsets: 32-bit glibc's readdir/stat otherwise fail (EOVERFLOW) on a card with
     # 64-bit inodes, and the ROM search saw an empty folder (the MK64 Miyoo port).
     HH_SDL_CFLAGS := -I$(MIYOO_SYSROOT)/usr/include/SDL -D_GNU_SOURCE=1 -D_REENTRANT -D_FILE_OFFSET_BITS=64
-    # SDL only: the Miyoo menu and first-start screen draw with the kit's bitmap font
-    HH_SDL_LIBS   := -L$(MIYOO_SYSROOT)/usr/lib -lSDL
+    # SDL only: the Miyoo menu and first-start screen draw with the kit's bitmap font; libdl for the 2D engine's
+    # libraries, opened at run time (kit/platform/miyoo_hwblit.c)
+    HH_SDL_LIBS   := -L$(MIYOO_SYSROOT)/usr/lib -lSDL -ldl
     HH_DEFINES    := -DTARGET_HANDHELD -DHANDHELD -DMIYOO -DTARGET_MIYOO
     HH_OPT ?= -O3 -fomit-frame-pointer
     HH_LDDEVICE := -Wl,--gc-sections

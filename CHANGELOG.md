@@ -5,6 +5,18 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Super Mario 64 1.1.8, experimental and off unless asked for: the Mini's 2D engine (SigmaStar MI_GFX) can draw
+  each frame onto the panel, doubled and turned, in place of the CPU (`hwblit=1` in `data/sm64_display.cfg`, or
+  `SM64_HWBLIT=1` / `MIYOO_HWBLIT=1` in `launch.sh`). The CPU then only copies the 320x240 frame for the engine
+  instead of writing the whole 640x480 panel. The engine's picture is used only where a check at start finds it
+  identical to the CPU's, pixel for pixel (a scaled blit, rows by stride, or two quarter turns, the first that
+  matches); `hwblit=2` uses its smooth scaler instead (a softer picture, which also fills a Mini v4 / Flip panel).
+  The engine's libraries are opened at run time: a firmware without them, a panel buffer the engine can't reach, or
+  any blit that fails leaves the CPU drawing as before, with one `hwblit:` line in `console.log`. Not yet run on a
+  device: `kit-hwblit/hwblit_test` (an Apps entry) checks and times the engine there. Under qemu, with the switch off
+  or on (no engine there: the CPU draws), the frames are byte for byte those of before; against a software stand-in
+  for the engine (`kit-hwblit/qemu_check.sh`) the whole path gives the same frames too.
+
 - All fifteen games: the auto save made as the Mini goes to sleep now survives a flat battery or a power cut while
   asleep. Super Mario 64 1.1.8, Mario Kart 64 1.1.10, GoldenEye 007 1.1.10, Perfect Dark 1.0.10, Ocarina of Time
   1.1.10, Majora's Mask 1.0.11 (beta), Paper Mario 1.1.9, Star Fox 64 1.1.7, F-Zero X 1.1.7, Diddy Kong Racing 1.1.9,

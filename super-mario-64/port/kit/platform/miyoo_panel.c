@@ -12,12 +12,14 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <linux/fb.h>
 #include <SDL/SDL.h>
 #include "hh_game.h"
 #include "savestate.h"
 #include "handheld_menu.h"
 #include "miyoo_panel.h"
+#include "miyoo_hwblit.h"
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
 #include <arm_neon.h>
 #endif
@@ -104,9 +106,12 @@ static void row_x2_rot(uint32_t *d0, uint32_t *d1, const uint32_t *src, int n, u
 
 /* <GAME>_PANEL_CHECK=1: the first 30 frames compared pixel by pixel with a scalar reference of the
  * same scale and turn (a qemu check of the NEON rows; the result goes to the log). */
-static void check_frame(const uint32_t *src, int w, int h, int k, int ox, int oy) {
+static int check_wanted(void) {
     if (sCheck < 0) { const char *e = getenv(HH_ENV("PANEL_CHECK")); sCheck = e && e[0] == '1'; }
-    if (!sCheck || sChecked >= 30) return;
+    return sCheck && sChecked < 30;
+}
+static void check_frame(const uint32_t *src, int w, int h, int k, int ox, int oy) {
+    if (!check_wanted()) return;
     const int dw = sPanel->w, dh = sPanel->h;
     const uint32_t a = sPanel->format->Amask;
     for (int y = 0; y < h * k; y++)
@@ -170,8 +175,28 @@ void miyoo_panel_area(int w, int h, int *ox, int *oy, int *pw, int *ph) {
     *ox = (dw - *pw) / 2; *oy = (dh - *ph) / 2;
 }
 
+/* <GAME>_HWBLIT / MIYOO_HWBLIT / hwblit= in the port's settings (miyoo_hwblit.h, experimental): 0 off (the default),
+ * 1 the 2D engine draws the 2x (nearest, only where it matches the CPU's exactly), 2 its smooth scaler. Game frames
+ * only (miyoo_panel_present32); the menus stay the CPU's. */
+extern int miyoo_port_cfg(const char *key, int def) __attribute__((weak));
+static int sHwMode SAVESTATE_EXCLUDE = -1, sHwFrame SAVESTATE_EXCLUDE;
+static int hw_mode(void) {
+    if (sHwMode < 0) {
+        sHwMode = miyoo_hwblit_mode(HH_ENV("HWBLIT"), miyoo_port_cfg ? miyoo_port_cfg("hwblit=", -1) : -1);
+        if (sHwMode) fprintf(stderr, "miyoo: hwblit=%d asked (%s)\n", sHwMode, sHwMode == 1 ? "nearest" : "smooth");
+    }
+    return sHwMode;
+}
+static int hw_frame(const uint32_t *src, int w, int h, int ox, int oy, int pw, int ph, int rot, uint32_t a) {
+    MiyooHwPanel p;
+    if (!sHwFrame || !hw_mode()) return 0;
+    p.pixels = sPanel->pixels; p.phys_hint = sPanel->unused1; p.pitch = sPanel->pitch; p.w = sPanel->w; p.h = sPanel->h;
+    return miyoo_hwblit_frame(sHwMode, &p, src, w, h, ox, oy, pw, ph, rot, a);
+}
+
 static void present(uint32_t *src, int w, int h) {
     if (!sPanel || !src || w <= 0 || h <= 0) return;
+    miyoo_hwblit_sync(); /* the CPU writes the panel only after the 2D engine is done with it (nothing to wait for when off) */
     const int dw = sPanel->w, dh = sPanel->h, dp = sPanel->pitch, rot = miyoo_panel_rotated();
     int k = dw / w < dh / h ? dw / w : dh / h;
     if (k < 1) k = 1;
@@ -182,8 +207,12 @@ static void present(uint32_t *src, int w, int h) {
     if (SDL_MUSTLOCK(sPanel)) SDL_LockSurface(sPanel);
     const int xrgb = f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0;
     if (xrgb && k >= 2 && h * k != dh && fill_on()) {
-        present_fill(base, dw, dh, dp, rot, a, src, w, h);
+        int fx, fy, fw, fh;
+        miyoo_panel_area(w, h, &fx, &fy, &fw, &fh);
+        if (!hw_frame(src, w, h, fx, fy, fw, fh, rot, a)) present_fill(base, dw, dh, dp, rot, a, src, w, h);
     } else if (xrgb && k == 2 && w <= dw / 2 && h <= dh / 2) {
+        const int hw = hw_frame(src, w, h, ox, oy, w * 2, h * 2, rot, a);
+        if (!hw)
         for (int y = 0; y < h; y++) {
             const uint32_t *s = src + y * w;
             const int py = oy + y * 2;
@@ -192,7 +221,8 @@ static void present(uint32_t *src, int w, int h) {
             else
                 row_x2((uint32_t *)(base + py * dp) + ox, (uint32_t *)(base + (py + 1) * dp) + ox, s, w, a);
         }
-        check_frame(src, w, h, k, ox, oy);
+        if (!hw) check_frame(src, w, h, k, ox, oy);
+        else if (sHwMode == 1 && check_wanted()) { miyoo_hwblit_sync(); check_frame(src, w, h, k, ox, oy); } /* (smooth is not the 2x) */
     } else if (xrgb && k == 1) {
         if (w < dw || h < dh) /* the menus' 640x480 on a bigger panel: the filled game frame around it cleared */
             for (int y = 0; y < dh; y++) {
@@ -235,6 +265,11 @@ static void present(uint32_t *src, int w, int h) {
 static const uint32_t *sLastSrc SAVESTATE_EXCLUDE;
 static int sLastW SAVESTATE_EXCLUDE, sLastH SAVESTATE_EXCLUDE;
 
+/* <GAME>_PANEL_TIME=1: the average time of a game frame's present (notice, scale, turn) every 300 frames in the log */
+static int sTime SAVESTATE_EXCLUDE = -1, sTimeN SAVESTATE_EXCLUDE;
+static double sTimeSum SAVESTATE_EXCLUDE;
+static double panel_ms(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return ts.tv_sec * 1000.0 + ts.tv_nsec / 1e6; }
+
 void miyoo_panel_present32(uint32_t *src, int w, int h) {
     static SDL_Surface *sWrap SAVESTATE_EXCLUDE; /* src as a surface, for the notice */
     if (!src || w <= 0 || h <= 0) return;
@@ -244,7 +279,19 @@ void miyoo_panel_present32(uint32_t *src, int w, int h) {
         sWrap = SDL_CreateRGBSurfaceFrom(src, w, h, 32, w * 4, 0x00FF0000, 0x0000FF00, 0x000000FF, 0);
     }
     if (sWrap) miyoo_menu_overlay(sWrap);
+    if (sTime < 0) { const char *e = getenv(HH_ENV("PANEL_TIME")); sTime = e && e[0] == '1'; }
+    const double t0 = sTime ? panel_ms() : 0;
+    sHwFrame = 1;
     present(src, w, h);
+    sHwFrame = 0;
+    if (sTime) {
+        sTimeSum += panel_ms() - t0;
+        if (++sTimeN == 300) {
+            fprintf(stderr, "miyoo: present %.3f ms a frame (300 frames, %s)\n", sTimeSum / sTimeN,
+                    miyoo_hwblit_active() ? "2D engine" : "CPU");
+            sTimeN = 0; sTimeSum = 0;
+        }
+    }
 }
 
 /* The menus' backdrop on a filled Mini v4 / Flip panel (miyoo_menu.c): the last game frame exactly as present() filled
@@ -298,7 +345,7 @@ static void panel_dump(void) {
     fclose(f);
 }
 
-void miyoo_panel_flip(void) { if (sPanel) { panel_dump(); SDL_Flip(sPanel); } }
+void miyoo_panel_flip(void) { if (sPanel) { miyoo_hwblit_sync(); panel_dump(); SDL_Flip(sPanel); } }
 
 void miyoo_panel_show_full(SDL_Surface *s) {
     if (!sPanel || !s || s->format->BitsPerPixel != 32) return;
