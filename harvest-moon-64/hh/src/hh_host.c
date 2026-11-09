@@ -40,6 +40,7 @@
 #include "../game/hh_port.h"
 #if defined(MIYOO)
 #include "miyoo_panel.h"
+#include "miyoo_sleepsave.h" /* miyoo_sleepsave_write_file: the SRAM file, safely */
 #endif
 
 #define N64_RAM_BASE 0x80000000u
@@ -229,6 +230,7 @@ static int sSramLoaded;
 static void sram_load(void) {
     if (sSramLoaded) return;
     sSramLoaded = 1;
+    miyoo_sleepsave_tmp_fallback(port_save_path("hm64.sram"), SRAM_SIZE); /* a rename the power-off cut in two */
     FILE *f = fopen(port_save_path("hm64.sram"), "rb");
     if (!f) return;
     (void) !fread(sSram, 1, SRAM_SIZE, f);
@@ -245,15 +247,13 @@ void hh_sram_write(unsigned int dev_addr, const void *src, unsigned int size) {
     sram_load();
     if (off + size > SRAM_SIZE) size = SRAM_SIZE - off;
     memcpy(sSram + off, src, size);
-    char tmp[700];
-    snprintf(tmp, sizeof tmp, "%s.tmp", port_save_path("hm64.sram"));
-    FILE *f = fopen(tmp, "wb");
-    if (!f) return;
-    fwrite(sSram, 1, SRAM_SIZE, f);
-    fflush(f);
-    fsync(fileno(f));
-    fclose(f);
-    rename(tmp, port_save_path("hm64.sram"));
+    /* 1.0.6: the whole image to hm64.sram.tmp, fsync, rename, then the renamed file and the folder synced; a write
+     * that fails (a full card) keeps the old file. Until now a short write was renamed over the save all the same,
+     * and the rename reached the card only at the kernel's writeback (~30 s), so a power cut in that time could
+     * leave hm64.sram pointing at the previous save's freed clusters. */
+    char why[96];
+    if (!miyoo_sleepsave_write_file(port_save_path("hm64.sram"), sSram, SRAM_SIZE, why, sizeof why))
+        port_log_always("hm64.sram not written (%s); the previous save is kept\n", why);
 }
 
 /* ---------------------------------------------------------------- the retrace */

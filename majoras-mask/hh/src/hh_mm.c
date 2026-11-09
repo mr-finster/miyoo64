@@ -26,6 +26,7 @@
 #include "libc64/malloc.h"
 #include "hh_game.h"
 #include "savestate.h"
+#include "miyoo_sleepsave.h" /* miyoo_sleepsave_write_file: the flash save, safely */
 
 #include <errno.h>
 #include <fcntl.h>
@@ -579,6 +580,7 @@ static void HhFlash_Load(void) {
     }
     sFlashLoaded = 1;
     memset(sFlash, 0xFF, sizeof(sFlash));
+    miyoo_sleepsave_tmp_fallback(port_save_path("mm-flash.bin"), HH_FLASH_SIZE); /* a rename cut in two */
     f = fopen(port_save_path("mm-flash.bin"), "rb");
     if (f != NULL) {
         size_t n = fread(sFlash, 1, sizeof(sFlash), f);
@@ -589,28 +591,17 @@ static void HhFlash_Load(void) {
     }
 }
 
+/* mm-flash.bin.tmp, fsync, rename, then the renamed file and the folder synced (the kit's miyoo_sleepsave_write_file,
+ * 1.0.11): on the card's vfat a rename over a file reaches the card only at that file's fsync or the kernel's
+ * writeback (~30 s), so a power cut in that time could leave mm-flash.bin pointing at the previous save's freed
+ * clusters. A failed write keeps the old file. */
 static int HhFlash_Write(const u8* data) {
-    char tmp[512];
-    const char* path = port_save_path("mm-flash.bin");
-    FILE* f;
-    int ok;
+    char why[96];
 
-    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
-    f = fopen(tmp, "wb");
-    if (f == NULL) {
-        port_log_always("mm: flash save failed: %s\n", strerror(errno));
+    if (!miyoo_sleepsave_write_file(port_save_path("mm-flash.bin"), data, HH_FLASH_SIZE, why, sizeof(why))) {
+        port_log_always("mm: flash save failed (%s); the old file is kept\n", why);
         return 0;
     }
-    ok = fwrite(data, 1, HH_FLASH_SIZE, f) == HH_FLASH_SIZE;
-    ok = fflush(f) == 0 && ok;
-    ok = fsync(fileno(f)) == 0 && ok;
-    ok = fclose(f) == 0 && ok;
-    if (!ok) {
-        port_log_always("mm: flash save failed writing %s: %s (the old file is kept)\n", tmp, strerror(errno));
-        remove(tmp);
-        return 0;
-    }
-    rename(tmp, path);
     return 1;
 }
 
