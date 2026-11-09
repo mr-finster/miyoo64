@@ -27,8 +27,16 @@
 #if defined(HANDHELD) && defined(MIYOO)
 #include "miyoo_sleepsave.h" /* the resume state at a POWER press and when idle */
 #define SS_SLEEP_JOIN() miyoo_sleepsave_join()
+/* 1.4.9: each save's .tmp is sealed once whole, so one cut off before its rename (Onion's SIGSTOP as POWER is
+ * released, then a flat battery or a power cut; Onion's SIGKILL in the exit save's fsync) is kept at the next start */
+#define SS_SEAL(tmp) miyoo_sleepsave_seal(tmp)
+#define SS_UNSEAL(tmp) miyoo_sleepsave_unseal(tmp)
+#define SS_RECOVER(dir) ((void) miyoo_sleepsave_recover(dir))
 #else
 #define SS_SLEEP_JOIN() ((void) 0)
+#define SS_SEAL(tmp) ((void) 0)
+#define SS_UNSEAL(tmp) ((void) 0)
+#define SS_RECOVER(dir) ((void) 0)
 #endif
 
 #ifndef HH_BOOT_LOAD_FRAME
@@ -417,6 +425,7 @@ static int save_finish(int slot, SaveJob *j) {
     fprintf(stderr, "savestate: slot %d written %ld bytes in %.0f ms, syncing: %s\n", slot, j->written,
             j->t_write - j->t0, mi);
     fflush(stderr);
+    if (ok) SS_SEAL(j->tmp); /* all its bytes are in the file (save_begin flushed it): its size and CRC-32 beside it */
     if (j->f) {
         if (fflush(j->f) != 0 || fsync(fileno(j->f)) != 0) { if (ok) snprintf(j->why, sizeof(j->why), "fsync: %s", strerror(errno)); ok = 0; }
         t_sync = ss_ms();
@@ -446,6 +455,7 @@ static int save_finish(int slot, SaveJob *j) {
     fprintf(stderr, "savestate: slot %d %s (%zu bytes, %zu skipped; file %ld) ms: write %.0f fsync %.0f close %.0f rename %.0f\n", slot,
             ok ? "saved" : "FAILED, previous state kept", j->bytes, j->skipped, j->written,
             j->t_write - j->t0, t_sync - j->t_write, t_close - t_sync, t_end - t_close);
+    SS_UNSEAL(j->tmp); /* renamed, or removed: the seal has done its job */
     return ok;
 }
 
@@ -691,6 +701,7 @@ static void clean_state_tmp(void) {
  * build is kept as state_quick.sav.rejected; one that can't be read is left alone. The desktop build has
  * no prompt and never deletes: only an explicit --loadStateFile. */
 void savestate_boot_prompt(void) {
+    SS_RECOVER(port_save_dir()); /* a sealed .tmp, whole on the card, replaces the state it was saved over */
     clean_state_tmp();
 #if !defined(HANDHELD)
     if (sBootPath[0] && state_file_check(sBootPath) != STATE_OK) {

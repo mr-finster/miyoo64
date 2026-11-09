@@ -1,5 +1,6 @@
-/* miyoo_sleepsave: the resume state written as the Miyoo goes to sleep (the shared miyoo/kit; the same file in
- * all ten games).
+/* miyoo_sleepsave: the resume state written as the Miyoo goes to sleep, and the seal that keeps a save the
+ * power-off cut short (the shared kit: kit-sleepsave/ holds the canonical copy, kit-sleepsave/sync.sh copies it
+ * into all fifteen games).
  *
  * Onion's sleep (keymon) freezes the game with SIGSTOP when POWER is released, and turns the screen off. If the
  * Mini then powers off while asleep (Onion's timer, not charging), the game gets SIGCONT, then SIGTERM, and is
@@ -17,6 +18,11 @@
  *    and writes the state: the game pauses only while the state goes into the kernel's page cache; the fsync
  *    and the rename run on a helper thread (miyoo_sleepsave_async) while the game goes on. A SIGSTOP in the
  *    middle is fine: the old state is kept until the new one is whole, and the save goes on at SIGCONT.
+ *  - The seal (1.4.9): Onion's SIGSTOP comes as POWER is released, usually before that fsync and rename are done,
+ *    and if no SIGCONT follows (the battery runs out while asleep, the power is cut) the new state stays a .tmp.
+ *    Every save (the sleep save, EXIT GAME, the power-off save, a menu SAVE) therefore seals its .tmp once all its
+ *    bytes are written (miyoo_sleepsave_seal: <tmp>.seal, its size and CRC-32), and the next start renames a
+ *    .tmp that matches its seal into place (miyoo_sleepsave_recover) instead of deleting it.
  *  - The MENU overlay asks miyoo_sleepsave_menu_should_close() each pass: on a POWER press it steps aside (as
  *    it does for SIGTERM), the boundary saves, and the overlay is opened again (an SDL MENU key event).
  *
@@ -24,9 +30,11 @@
  * (tests): read the button events from there (a FIFO of struct input_event). One log line per save:
  *     sleepsave: power press, resume state written (N ms)
  *     sleepsave: idle 50 s, resume state written (N ms)
- * Built only with -DMIYOO; elsewhere the calls are no-ops. */
+ * The button calls are built only with -DMIYOO (elsewhere no-ops); the seal and the file calls everywhere. */
 #ifndef MIYOO_SLEEPSAVE_H
 #define MIYOO_SLEEPSAVE_H
+
+#include <stddef.h>
 
 enum { MIYOO_SLEEPSAVE_NONE = 0, MIYOO_SLEEPSAVE_POWER = 1, MIYOO_SLEEPSAVE_IDLE = 2 };
 
@@ -49,5 +57,20 @@ void miyoo_sleepsave_join(void);
 int miyoo_sleepsave_busy(void);
 /* CLOCK_MONOTONIC ms. */
 double miyoo_sleepsave_ms(void);
+
+/* A save's .tmp, all its bytes written (flushed to the kernel), before its fsync: write <tmp>.seal (its size and
+ * CRC-32, read back from the page cache). Not synced here: it reaches the card with the state. */
+void miyoo_sleepsave_seal(const char *tmp);
+/* After the save's rename, or its failure: remove <tmp>.seal. */
+void miyoo_sleepsave_unseal(const char *tmp);
+/* At launch, before the .tmp files are cleaned: each <name>.tmp in dir whose seal matches it (size and CRC-32) is
+ * renamed to <name> and synced (one log line); every seal is removed. Returns how many were kept. */
+int miyoo_sleepsave_recover(const char *dir);
+/* A whole file, safely: <path>.tmp, fsync, rename over path, fsync of the renamed file and of its folder. 1 = on
+ * the card; 0 = the old file is kept, why (if given) says the stage and the error. */
+int miyoo_sleepsave_write_file(const char *path, const void *data, size_t size, char *why, size_t why_cap);
+/* At launch, for such a file: if path is missing and <path>.tmp is exactly size bytes (a rename the power-off cut
+ * in two), rename it into place. 1 = done. */
+int miyoo_sleepsave_tmp_fallback(const char *path, long size);
 
 #endif

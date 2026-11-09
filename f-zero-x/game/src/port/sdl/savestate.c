@@ -37,8 +37,16 @@
 #if defined(MIYOO)
 #include "miyoo_sleepsave.h" /* the resume state at a POWER press and when idle (src/port/miyoo) */
 #define SS_SLEEP_JOIN() miyoo_sleepsave_join()
+/* 1.4.9: each save's .tmp is sealed once whole, so one cut off before its rename (Onion's SIGSTOP as POWER is
+ * released, then a flat battery or a power cut; Onion's SIGKILL in the exit save's fsync) is kept at the next start */
+#define SS_SEAL(tmp) miyoo_sleepsave_seal(tmp)
+#define SS_UNSEAL(tmp) miyoo_sleepsave_unseal(tmp)
+#define SS_RECOVER(dir) ((void) miyoo_sleepsave_recover(dir))
 #else
 #define SS_SLEEP_JOIN() ((void) 0)
+#define SS_SEAL(tmp) ((void) 0)
+#define SS_UNSEAL(tmp) ((void) 0)
+#define SS_RECOVER(dir) ((void) 0)
 #endif
 
 extern char __ss_game_start[], __ss_game_end[], __ss_ram_start[], __ss_ram_end[];
@@ -380,6 +388,7 @@ static int save_finish(int slot, SaveJob* j) {
     char mi[64];
     struct stat st;
     int ok = j->ok;
+    if (ok) SS_SEAL(j->tmp); /* all its bytes are in the file (gzclose): its size and CRC-32 beside it */
     if (j->keep >= 0 || ok) {
         if (j->keep < 0 || fsync(j->keep) != 0) {
             if (j->keep >= 0) SS_FAIL("fsync");
@@ -422,6 +431,7 @@ static int save_finish(int slot, SaveJob* j) {
     if (ok) {
         port_audio_wav_mark("save");
     }
+    SS_UNSEAL(j->tmp); /* renamed, or removed: the seal has done its job */
     return ok;
 }
 #undef SS_FAIL
@@ -738,6 +748,7 @@ static void clean_state_tmp(void) {
  * is kept as state_quick.sav.rejected; one that can't be read is left alone. The desktop build has no prompt and
  * never deletes: only an explicit --loadStateFile. */
 void savestate_boot_prompt(void) {
+    SS_RECOVER(port_data_path("")); /* a sealed .tmp, whole on the card, replaces the state it was saved over */
     clean_state_tmp();
 #if !defined(HANDHELD_DEVICE)
     if (sBootPath[0] && state_file_check(sBootPath, 1) != STATE_OK) {
