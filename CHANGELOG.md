@@ -36,16 +36,20 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 - Ocarina of Time 1.1.10 and Majora's Mask 1.0.11 (beta): faster with both cores, the same picture. The second core
   used to help only with big triangles; the many small ones, most of what is drawn outside the sky, were drawn on the
-  first core alone. Now every 3D triangle is set up as before and its rows wait; then both cores draw the waiting
-  triangles together, a band of rows each from both ends until they meet, each band in the game's order, when the
-  picture is next needed (before the sky, the menus and text, a depth read, the end of the frame) (`batchband`). Under
-  qemu with both cores a frame's render time drops 5 to 22% in Ocarina of Time (most in Zora's Domain, the Deku Tree,
-  Kokiri Forest; least on Death Mountain Trail and at Lake Hylia) and 11 to 18% in Majora's Mask (South Clock Town,
-  Mountain Village, the Southern Swamp, Termina Field, North Clock Town, Great Bay Coast); frames compared byte for
-  byte with the old way in eleven Ocarina of Time scenes (the Bottom of the Well with the Lens of Truth among them)
-  and seven Majora's Mask scenes (the Lens of Truth on the Snowhead path among them). The idea of handing the second
-  core whole batches comes from GoldenEye 007 and Perfect Dark.
-  `batchband=0` in `data/debug.cfg` (Majora's Mask: `MM_BATCHBAND=0` in `launch.sh`) gives the old way.
+  first core alone, and all of it waited while the first core read the game's display lists. Now every 3D triangle
+  is set up as before and its rows wait in a queue: the second core draws the queue in order while the first goes
+  on with the display list (`streamdraw`), and when the picture is next needed (before the sky, the menus and text,
+  a depth read, the end of the frame) both cores finish what is left together, a band of rows each from both ends
+  until they meet, each band in the game's order (`batchband`). Under qemu with both cores a frame's render time
+  drops 8 to 33% in Ocarina of Time (about 30% in Hyrule Field, Kokiri Forest, Zora's Domain and the Deku Tree, 26%
+  in Kakariko, 24% in the Market, 19% at Lake Hylia, 8% on Death Mountain Trail) and 23 to 31% in Majora's Mask
+  (South Clock Town, the Southern Swamp, North Clock Town, Termina Field, Great Bay Coast, Mountain Village); frames
+  compared byte for byte with the old way in thirteen Ocarina of Time scenes (the Bottom of the Well with the Lens of
+  Truth among them) plus the pause menu and a cutscene, and in seven Majora's Mask scenes (the Lens of Truth on the
+  Snowhead path among them) plus the pause menu. The second core drawing a queue of set-up triangles is cacuracaptors' idea in
+  their Ocarina of Time port for the Miyoo Mini (oot-miyoomini), written anew for this renderer; handing it batches of
+  triangles comes from GoldenEye 007 and Perfect Dark. `streamdraw=0` / `batchband=0` in `data/debug.cfg` (Majora's
+  Mask: `MM_STREAMDRAW=0` / `MM_BATCHBAND=0` in `launch.sh`) give the old ways.
 
 - Ocarina of Time 1.1.10 and Majora's Mask 1.0.11 (beta): a little faster outdoors, the same picture. The sky, drawn
   last where nothing covers it, now skips whole 16-pixel stretches the world already covers instead of testing each

@@ -187,8 +187,8 @@ static void HhPerf_Frame(uint32_t renderUs) {
         sPerfMaxRenderUs = renderUs;
     }
     { /* MM_ABFRAME=1 (2026-11-08; a speed A/B inside one run, for qemu, where two runs' times differ by a few percent):
-       * gHhAbPhase flips every frame and a switch set to "ab" (MM_SKYRUNS, MM_STEALROWS, MM_BATCHBAND, MM_BANDCARRY) is off on the A frames and on
-       * on the B frames, so its two settings take turns on frames that are nearly the same picture and host-side jitter
+       * gHhAbPhase flips every frame and a switch set to "ab" (MM_SKYRUNS, MM_STEALROWS, MM_BATCHBAND, MM_BANDCARRY,
+       * MM_STREAMDRAW) is off on the A frames and on on the B frames, so its two settings take turns on frames that are nearly the same picture and host-side jitter
        * falls on both alike. The 3D raster and render time of each are summed from frame MM_ABFROM (default 60) and
        * written as an ABF line with each PERF line. MM_ABFRAME=2 starts on B: the mean of a =1 run and a =2 run
        * cancels any difference between even and odd frames. */

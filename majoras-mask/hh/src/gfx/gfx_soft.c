@@ -78,8 +78,9 @@ static void __attribute__((noinline)) edge_note(const uint32_t *pf, int fa, int 
 #if defined(MIYOO)
 static int sPendN SAVESTATE_EXCLUDE;   /* MM_BATCHBAND: triangles set up and waiting for their rows (see pend_drain) */
 static bool sPendOn SAVESTATE_EXCLUDE; /* gfx_soft_draw_triangles: this batch's triangles wait (pend_tri) */
+static bool sStrLive SAVESTATE_EXCLUDE; /* MM_STREAMDRAW: a stream job was handed to the worker and not yet waited for */
 static void pend_drain(void);
-#define PEND_DRAIN() do { if (sPendN) pend_drain(); } while (0)
+#define PEND_DRAIN() do { if (sPendN || sStrLive) pend_drain(); } while (0)
 #else
 #define PEND_DRAIN() ((void)0)
 #endif
@@ -2636,8 +2637,8 @@ static uint32_t tri_rows_split(const TriRows *R, int miny, int maxy) {
  * batch's end without MM_BANDCARRY, else where the deferred sky settles (sky_settle: the 2D draws, the depth
  * rectangles, a target switch or read, the frame's end, texman_clear), before a texture is rewritten in place
  * (sky_texels_change), a depth read (hh_read_depth), the deferred sky's keep and flush, the half-resolution water's
- * layer and composite, an edge-noted triangle (its notes are an ordered list: drawn at once, after what waits) and
- * when PEND_MAX wait. The same pixels: a pixel's row is drawn by one core, its triangles in order; every row is
+ * layer and composite, and when PEND_MAX wait. A triangle with edge notes (OOT_EDGETINT: an ordered list) waits too
+ * but is drawn whole by one core, in its place in the order (pend_drain's runs). The same pixels: a pixel's row is drawn by one core, its triangles in order; every row is
  * drawn from y alone (TRI_ROW_SETUP, tri_rows: no row-to-row drift), so a band starting mid-triangle draws what the
  * whole triangle would; the rows read only their copied inputs (raster_rows' render state too: sUseAlpha, sUiMode,
  * sDetail and the detail texture's entry), texels that stay until a sync point, and the deferred sky's mask flags,
@@ -2651,6 +2652,7 @@ static uint32_t tri_rows_split(const TriRows *R, int miny, int maxy) {
 typedef struct {
     int kind;   /* 1: tri_rows (R, t), 2: raster_rows (rr) */
     bool p3d;   /* drawn in the 3D phase (the span-pixel statistic) */
+    bool en;    /* its rows write edge notes (OOT_EDGETINT): drawn whole by one core, in order (pend_drain) */
     union { struct { TriRows R; CmTri t; } f; RasterRows rr; } u;
 } PendTri;
 static PendTri sPendT[PEND_MAX] SAVESTATE_EXCLUDE;
@@ -2692,49 +2694,144 @@ static uint32_t pend_rows(int i, int a, int b) {
         px = raster_rows(&p->u.rr, a, b); /* (copies its CmTri itself) */
     return p->p3d ? px : 0;
 }
-static uint32_t band_draw(int n, int a, int b) {
+static uint32_t band_draw(int k, int n, int a, int b) {
     uint32_t px = 0;
-    for (int i = 0; i < n; i++)
+    for (int i = k; i < n; i++)
         if (sPendY[i][0] < b && sPendY[i][1] > a) px += pend_rows(i, a, b);
     return px;
 }
-typedef struct { int n; uint32_t range; int chunk; uint32_t px; } BandJob;
+typedef struct { int k, n; uint32_t range; int chunk; uint32_t px; } BandJob;
 static void band_job(void *arg) { /* the worker, from the bottom up */
     BandJob *j = (BandJob *)arg;
     int a, b;
-    while (steal_take(&j->range, j->chunk, false, &a, &b)) j->px += band_draw(j->n, a, b);
+    while (steal_take(&j->range, j->chunk, false, &a, &b)) j->px += band_draw(j->k, j->n, a, b);
 }
+/* MM_STREAMDRAW (2026-11-09; the idea from cacuracaptors' oot-miyoomini, whose second thread draws a queue of set-up
+ * triangles while the first goes on with the display list; our own implementation, on MM_BATCHBAND's waiting
+ * triangles): the worker does not wait for a drain to draw what waits. While this thread interprets the display list
+ * and sets triangles up, a stream job on the worker draws the waiting triangles whole, one after another in the
+ * order they came (pend_publish hands it each one: index, then count stored with release), and the drain finds
+ * fewer left. A drain stops the stream first (sStrStop; the worker ends the triangle it is drawing, then returns)
+ * and waits for it, so nothing reads or writes the pixels while the worker draws, exactly as before: every place
+ * that needs the picture still drains first (MM_BATCHBAND's list); then both cores draw the rest in bands. The stream
+ * draws a triangle STREAM_ROWS rows at a time and stops between them (sStrPart: the drain draws the rows left). Each
+ * triangle is drawn by one core in either case, after every triangle before it on the rows it shares with them: the
+ * stream draws in order, and the bands start after the stream's last. So the pixels are those of MM_STREAMDRAW=0.
+ * The stream job spins (yield) while the queue is empty and ends after STREAM_IDLE_US without work; the next
+ * triangle starts it again. MM_STREAMDRAW=0: off; "ab": off and on in turn, frame by frame (MM_ABFRAME). */
+#define STREAM_IDLE_US 1000u
+static int sStream SAVESTATE_EXCLUDE = -1;
+static bool sStrOn SAVESTATE_EXCLUDE;  /* this batch: stream (stream_on) */
+static int sStrStop __attribute__((aligned(64))) SAVESTATE_EXCLUDE; /* this thread asks the stream job to end */
+static uint32_t sStrDone __attribute__((aligned(64))) SAVESTATE_EXCLUDE; /* the stream job: triangles drawn, from 0 */
+static int sStrRun SAVESTATE_EXCLUDE;  /* the stream job runs (it clears this as it ends) */
+static uint32_t sStrPx SAVESTATE_EXCLUDE; /* its span pixels, read after the wait */
+static int sStrPart SAVESTATE_EXCLUDE = -1; /* stopped inside triangle sStrDone: its rows from here are left */
+#define STREAM_ROWS 16 /* the stream draws a triangle this many rows at a time, looking for a stop between */
+static bool stream_on(void) {
+    extern int gHhAbPhase;
+    if (sStream < 0) {
+        const char *e = getenv("MM_STREAMDRAW");
+        sStream = !e || !e[0] ? 1 : e[0] == 'a' ? 2 : atoi(e) != 0;
+    }
+    return sStream == 2 ? gHhAbPhase != 0 : sStream != 0;
+}
+static void stream_job(void *arg) {
+    (void)arg;
+    uint32_t d = __atomic_load_n(&sStrDone, __ATOMIC_RELAXED), px = 0, t0 = 0;
+    unsigned spins = 0;
+    for (;;) {
+        if (__atomic_load_n(&sStrStop, __ATOMIC_ACQUIRE)) break;
+        if (d < (uint32_t)__atomic_load_n(&sPendN, __ATOMIC_ACQUIRE)) {
+            int y = sPendY[d][0];
+            const int y1 = sPendY[d][1];
+            while (y < y1 && !__atomic_load_n(&sStrStop, __ATOMIC_ACQUIRE)) { /* a few rows at a time: a stop is not
+                                                                                  * kept waiting for a big triangle */
+                const int b = y + STREAM_ROWS < y1 ? y + STREAM_ROWS : y1;
+                px += pend_rows((int)d, y, b);
+                y = b;
+            }
+            if (y < y1) { sStrPart = y; break; } /* stopped inside it: the drain draws its rows from y */
+            __atomic_store_n(&sStrDone, ++d, __ATOMIC_RELEASE);
+            t0 = 0; spins = 0;
+            continue;
+        }
+        if ((++spins & 63u) == 0) {
+            const uint32_t now = port_time_us();
+            if (!t0) t0 = now;
+            else if (now - t0 >= STREAM_IDLE_US) break;
+        }
+        __asm__ __volatile__("yield" ::: "memory");
+    }
+    sStrPx += px;
+    __atomic_store_n(&sStrRun, 0, __ATOMIC_RELEASE);
+}
+static uint32_t pend_run(int k, int n);
 static void pend_drain(void) {
+    int k = 0;
+    if (sStrLive) { /* MM_STREAMDRAW: the stream ends after the triangle it draws; the rest from there */
+        __atomic_store_n(&sStrStop, 1, __ATOMIC_RELEASE);
+        miyoo_worker_wait();
+        __atomic_store_n(&sStrStop, 0, __ATOMIC_RELAXED);
+        sStrLive = false;
+        k = (int)sStrDone;
+        if (sStrPart >= 0) { sPendY[k][0] = (int16_t)sStrPart; sStrPart = -1; } /* its rows above are drawn */
+        gfx_soft_span_px += sStrPx;
+        gfx_soft_split_px += sStrPx;
+        sStrPx = 0;
+    }
     const int n = sPendN;
-    if (!n) return;
-    int lo = sPendY[0][0], hi = sPendY[0][1];
-    for (int i = 1; i < n; i++) {
+    uint32_t px = 0;
+    /* runs of triangles without edge notes in bands; one with notes whole on this core (the worker is idle by now),
+     * so the notes keep their order: the stream's, then this thread's, each triangle's in row order */
+    for (int i = k; i < n;) {
+        int e = i;
+        while (e < n && !sPendT[e].en) e++;
+        if (e > i) px += pend_run(i, e);
+        if (e < n) { px += pend_rows(e, sPendY[e][0], sPendY[e][1]); e++; }
+        i = e;
+    }
+    sPendN = 0; sStrDone = 0; sPendEst = 0.0f;
+    gfx_soft_span_px += px;
+}
+/* triangles k..n-1 (none with edge notes): in bands on both cores, or here in order when too few rows */
+static uint32_t pend_run(int k, int n) {
+    int lo = sPendY[k][0], hi = sPendY[k][1];
+    for (int i = k + 1; i < n; i++) {
         if (sPendY[i][0] < lo) lo = sPendY[i][0];
         if (sPendY[i][1] > hi) hi = sPendY[i][1];
     }
     const int chunk = sBandRows == 1000 ? 8 : sBandRows; /* (what waits is drawn shared even if "ab" turned it off since) */
     uint32_t px = 0;
     if (chunk > 0 && hi - lo >= sSplitRows && sPendEst >= (float)sBandPx && miyoo_worker_ready()) {
-        BandJob j = { n, (uint32_t)lo | ((uint32_t)hi << 16), chunk, 0 };
+        BandJob j = { k, n, (uint32_t)lo | ((uint32_t)hi << 16), chunk, 0 };
         int a, b;
         miyoo_worker_run(band_job, &j);
-        while (steal_take(&j.range, chunk, true, &a, &b)) px += band_draw(n, a, b);
+        while (steal_take(&j.range, chunk, true, &a, &b)) px += band_draw(k, n, a, b);
         miyoo_worker_wait();
         px += j.px;
         gfx_soft_split_px += px;
     } else {
-        for (int i = 0; i < n; i++) px += pend_rows(i, sPendY[i][0], sPendY[i][1]);
+        for (int i = k; i < n; i++) px += pend_rows(i, sPendY[i][0], sPendY[i][1]);
     }
-    sPendN = 0; sPendEst = 0.0f;
-    gfx_soft_span_px += px;
+    return px;
 }
-static inline PendTri *pend_slot(int kind, float area, int minx, int maxx, int miny, int maxy, bool p3d) {
+static inline PendTri *pend_slot(int kind, float area, int minx, int maxx, int miny, int maxy, bool p3d, bool en) {
     if (sPendN == PEND_MAX) pend_drain();
-    const int i = sPendN++;
+    const int i = sPendN; /* (counted by pend_publish, once filled) */
     sPendY[i][0] = (int16_t)miny; sPendY[i][1] = (int16_t)maxy;
     sPendEst += pend_est(area, minx, maxx, miny, maxy);
-    sPendT[i].kind = kind; sPendT[i].p3d = p3d;
+    sPendT[i].kind = kind; sPendT[i].p3d = p3d; sPendT[i].en = en;
     return &sPendT[i];
+}
+static inline void pend_publish(void) { /* the slot pend_slot gave is filled: it waits from now (the stream may draw it) */
+    __atomic_store_n(&sPendN, sPendN + 1, __ATOMIC_RELEASE);
+    if (sStrOn && !__atomic_load_n(&sStrRun, __ATOMIC_ACQUIRE)) { /* MM_STREAMDRAW: (re)start the stream */
+        miyoo_worker_wait(); /* (the last stream job, ended idle) */
+        __atomic_store_n(&sStrRun, 1, __ATOMIC_RELAXED);
+        sStrLive = true;
+        miyoo_worker_run(stream_job, NULL);
+    }
 }
 #endif /* MIYOO */
 static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, bool use_z) {
@@ -3166,9 +3263,10 @@ static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, b
         R.fn = cmt.lean ? cm_row_lean : cmt.lean2 == 1 ? cm_row_leana : cmt.lean2 == 2 ? cm_row_leans
              : cmt.lean2 == 3 ? cm_row_leanl : cmt.lean2 == 4 ? cm_row_leanz : cm_row_neon; /* as the loop below */
 #if defined(MIYOO)
-        if (sPendOn && !cmt.enote) { /* MM_BATCHBAND: its rows wait for the batch's end (pend_drain) */
-            PendTri *p = pend_slot(1, area, minx, maxx, miny, maxy, sPhase3D);
+        if (sPendOn) { /* MM_BATCHBAND: its rows wait (pend_drain) */
+            PendTri *p = pend_slot(1, area, minx, maxx, miny, maxy, sPhase3D, cmt.enote);
             p->u.f.R = R; p->u.f.t = cmt;
+            pend_publish();
             return 0;
         }
         PEND_DRAIN();
@@ -3182,9 +3280,10 @@ static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, b
 #endif
 #if defined(MIYOO)
     { /* the same loop in raster_rows, in two shares on the two cores when the triangle is big (rows_split) */
-        if (sPendOn && !enote) { /* MM_BATCHBAND */
-            PendTri *p = pend_slot(2, area, minx, maxx, miny, maxy, sPhase3D);
+        if (sPendOn) { /* MM_BATCHBAND */
+            PendTri *p = pend_slot(2, area, minx, maxx, miny, maxy, sPhase3D, enote);
             RASTER_ROWS_PACK(p->u.rr);
+            pend_publish();
             return 0;
         }
         PEND_DRAIN();
@@ -3262,6 +3361,7 @@ static void gfx_soft_draw_triangles(float buf_vbo[], size_t buf_vbo_len, size_t 
 #if defined(MIYOO)
     if (sSplitPx < 0) split_init();
     sPendOn = sPickX < 0 && !sUiMode && band_chunk() > 0 && miyoo_worker_ready(); /* MM_BATCHBAND */
+    sStrOn = sPendOn && stream_on(); /* MM_STREAMDRAW */
     if (!sPendOn) PEND_DRAIN();
 #endif
     for (size_t i = 0; i < num_tris; i++) {
@@ -3774,6 +3874,7 @@ static void build_maps(void) {
 }
 static void nat_ready(void) {
     if (sNatStale && sNatFB) {
+        PEND_DRAIN(); /* (MM_BATCHBAND: nothing waits on a stale target; kept for certainty) */
         if (sNatFill == 0) memset(sNatFB, 0, (size_t)sNatW * sNatH * 4);
         else fill32(sNatFB, sNatFill, sNatW * sNatH);
         sNatStale = false;
