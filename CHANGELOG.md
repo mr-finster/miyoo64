@@ -5,6 +5,24 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- All fifteen games: the auto save made as the Mini goes to sleep now survives a flat battery or a power cut while
+  asleep. Super Mario 64 1.1.8, Mario Kart 64 1.1.10, GoldenEye 007 1.1.10, Perfect Dark 1.0.10, Ocarina of Time
+  1.1.10, Majora's Mask 1.0.11 (beta), Paper Mario 1.1.9, Star Fox 64 1.1.7, F-Zero X 1.1.7, Diddy Kong Racing 1.1.9,
+  Super Smash Bros. 1.1.10, Harvest Moon 64 1.0.6, Banjo-Kazooie 1.0.4 (beta), Pilotwings 64 1.0.3 (beta) and The
+  New Tetris 1.0.2 (beta). A POWER press writes the auto save that RESUME GAME offers, but Onion freezes the game
+  as the button is released, usually before that save has finished on the card (it takes 0.2 to 1 s; Onion's
+  freeze comes sooner). If the Mini then woke, or Onion powered it off on its own timer, the save finished. If the
+  battery ran out while asleep, or the power was cut, it never did: the new state was left as
+  `state_quick.sav.tmp`, the next start deleted it, and RESUME GAME offered an older state or nothing. Each save
+  now writes a small `.seal` beside its file with the file's size and checksum, and the next start keeps a cut-off
+  save that matches its seal byte for byte (the log says `... is whole on the card: kept as state_quick.sav`); one
+  that does not match is not used and the previous state stays. This also keeps the exit save when Onion's
+  power-off cuts it short on a slow card. Harvest Moon 64 and Majora's Mask now write their own save file (`hm64.sram`,
+  `mm-flash.bin`) as the other games do, with the renamed file and its folder synced, and Harvest Moon 64 no
+  longer replaces its save with a short write on a full card. Checked in an emulator with Onion's sleep and
+  power-off simulated ([Sleep and wake](docs/SLEEP-AND-WAKE.md#the-seal-149)). In-game saves carry over; save
+  states from before may not load (kept aside as `.rejected`).
+
 - Ocarina of Time 1.1.10 and Majora's Mask 1.0.11 (beta): a little faster outdoors, the same picture. The sky, drawn
   last where nothing covers it, now skips whole 16-pixel stretches the world already covers instead of testing each
   pixel (`skyruns`), and the two cores share a big triangle's rows a few at a time from both ends instead of cutting

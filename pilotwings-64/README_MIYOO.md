@@ -4,7 +4,7 @@ A port to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip), built on 
 [n64decomp/pw64](https://github.com/n64decomp/pw64) decompilation. It uses a software renderer and has save states.
 **There is no game data in it.** It reads everything from your own USA ROM.
 
-**Status:** version 1.0.2, a beta. Known issues: [README.md](README.md#known-issues).
+**Status:** version 1.0.3, a beta. Known issues: [README.md](README.md#known-issues).
 
 ## How it plays
 
@@ -35,7 +35,7 @@ A port to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip), built on 
 
 Everything the game writes stays in `App/Pilotwings64/data/`: the ROM copy, the game's saves (`eeprom.bin`), the save
 states and the auto save, the button layout from MENU > CONTROLS (`controls.cfg`), `console.log` from the last
-session (its first line names the build, `SESSION pw64 Pilotwings 64 1.0.2 version <commit> ...`) and `launch.log`.
+session (its first line names the build, `SESSION pw64 Pilotwings 64 1.0.3 version <commit> ...`) and `launch.log`.
 
 **Updating:** unzip the new zip over the old one. The game's saves carry over. Save states and the auto save belong to
 the build that made them.

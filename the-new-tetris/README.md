@@ -5,7 +5,7 @@ A native port of The New Tetris, built from the [tnt-splat decompilation](https:
 on top of this repository's Banjo-Kazooie port (its libultra on coroutine threads with the N64's priorities, the
 software renderer, the Miyoo kit). It runs on the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip).
 
-**Version 1.0.1, a beta:** Marathon, Sprint, Ultra, the Wonders and their 3D scenes, and the original music all run.
+**Version 1.0.2, a beta:** Marathon, Sprint, Ultra, the Wonders and their 3D scenes, and the original music all run.
 It has had little play on real devices yet. Please report what you find.
 
 **No game data is included**, here or in the zip. You need your own ROM.

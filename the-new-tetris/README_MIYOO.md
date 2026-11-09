@@ -4,7 +4,7 @@ A port to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip), built on 
 [chris-gilmore/tnt-splat](https://github.com/chris-gilmore/tnt-splat) decompilation. It uses a software renderer and has save states.
 **There is no game data in it.** It reads everything from your own USA ROM.
 
-**Status:** version 1.0.1, a beta. Known issues: [README.md](README.md#known-issues).
+**Status:** version 1.0.2, a beta. Known issues: [README.md](README.md#known-issues).
 
 ## How it plays
 
@@ -35,7 +35,7 @@ A port to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip), built on 
 
 Everything the game writes stays in `App/NewTetris/data/`: the ROM copy, the game's saves (`sram.bin`), the save
 states and the auto save, the button layout from MENU > CONTROLS (`controls.cfg`), `console.log` from the last
-session (its first line names the build, `SESSION tnt The New Tetris 1.0.1 version <commit> ...`) and `launch.log`.
+session (its first line names the build, `SESSION tnt The New Tetris 1.0.2 version <commit> ...`) and `launch.log`.
 
 **Updating:** unzip the new zip over the old one. The game's saves carry over. Save states and the auto save belong to
 the build that made them.

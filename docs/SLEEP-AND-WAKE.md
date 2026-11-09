@@ -103,8 +103,37 @@ N runs from the press to the state on the card, including any time the game spen
 
 What this changes for you: after a sleep, if the Mini powers itself off, RESUME GAME is offered at the next
 start and puts you back where you were when you pressed POWER (or stopped pressing buttons). That also holds
-when the power-off is too quick for the exit save, when POWER is held while asleep, and when the battery runs
-out while asleep, as long as the save had finished: on a Mini that takes well under a second after the press.
+when the power-off is too quick for the exit save and when POWER is held while asleep. Until 1.4.9 it did not
+hold when the battery ran out (or the power was cut) while asleep; see the seal below.
+
+## The seal (1.4.9)
+
+Onion freezes the game (SIGSTOP) as POWER is released, a tenth of a second to half a second after the press. The
+sleep save takes longer than that to reach the card: the state goes into memory at once, but its fsync and the
+rename over the previous `state_quick.sav` take 0.2 to 1 s (Majora's Mask on a Mini logged 670 and 976 ms from
+the press). So the rename usually waits, frozen, until the game runs again. When the Mini wakes, or Onion powers
+it off on its sleep timer (it lets the game run first), the save finishes. When the battery runs out while
+asleep, or the power is cut, the game never runs again: the card held the new state as `state_quick.sav.tmp`
+beside the old one, and the next start deleted the `.tmp`. RESUME GAME then offered the state from before the
+sleep (an older EXIT GAME or sleep save), or nothing.
+
+Now every save (the sleep save, EXIT GAME, the power-off save, a menu SAVE) writes `<file>.tmp.seal` once all its
+bytes are in the `.tmp`, before the fsync: the file's size and CRC-32, read back from memory. The seal is not
+synced on its own; it reaches the card with the state (Onion runs `sync` just before it freezes the game, the
+kernel writes everything out within about 30 s while asleep, and Onion's shutdown syncs). At the next start, a
+`.tmp` that matches its seal byte for byte replaces the state (a `.tmp` is always newer than the file beside it:
+every save writes the `.tmp` first). One that does not match, because the power went before all of it reached
+the card, is not used and the previous state stays. The log says which:
+
+    sleepsave: state_quick.sav.tmp was cut off before its rename (a power-off) but is whole on the card: kept as state_quick.sav
+    sleepsave: state_quick.sav.tmp was cut off by a power-off and is not whole (its CRC-32 does not match): not used, the previous file is kept
+
+Each save also logs `sleepsave: sealed state_quick.sav.tmp (N bytes, crc ..., N ms)`. The module's canonical copy
+is `kit-sleepsave/miyoo_sleepsave.c`; `kit-sleepsave/sync.sh` copies it into the fifteen games.
+
+The games' own save files (EEPROM, SRAM, flash) were already written at the moment the game saves, to a `.tmp`,
+synced and renamed; Harvest Moon 64 and Majora's Mask now also sync the renamed file and its folder, as the other
+games do.
 
 Two more fixes in 1.1.2 for the same situation:
 - GoldenEye 007 and Perfect Dark ignored Onion's SIGTERM while the MENU overlay or the RESUME GAME prompt was
