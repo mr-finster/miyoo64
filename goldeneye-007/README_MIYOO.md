@@ -111,6 +111,7 @@ starts a comment). The name is the setting without its `GE_`, lowercase (`hud1to
 | `minstep` | 1 | in the missions a frame may follow the last one at the next screen refresh (up to 60 fps; with `fracstep=1` the motion stays even). `2`: frames held to 30 a second, as before 1014b |
 | `fracstep` | 1 | the motion (walking, turning, the camera, guns) steps by the real time since the last frame instead of whole screen refreshes, so frames that come 1.5 or 2.4 refreshes apart move evenly; the game's speed and its frame counters are the same. `0`: whole refreshes, as before 1014b |
 | `threads` | 2 | `1`: draw on one core only (the second core shares the 3D drawing; for comparing speed) |
+| `stealrows` | 4 | the two cores take the rows they share (a big triangle's, a batch's) from both ends until they meet, so the core that is ahead draws more (the picture is the same); `0`: the rows cut once at an estimate, as before 1.1.10. `ab` with `abframe=1`: off and on in turn, frame by frame, with an ABF line in the log giving each one's 3D time (for measuring) |
 | `intres` | 100 | the 3D's size in percent under the full-size HUD (85 or lower: faster, softer) |
 | `outfreq` | 48000 | the sound's output rate in Hz: the OS mixer's own, so the game's 22 kHz is resampled once, in the game; `32000`: as before 1.1.9 |
 

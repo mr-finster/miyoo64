@@ -49,6 +49,7 @@ Switches for `App/PerfectDark/launch.sh`, as `export <switch>` lines before the 
 |---|---|
 | `PD_FLIPFILL=0` | Mini v4 / Mini Flip: the picture at 640x480 with a border, not full screen |
 | `PD_ROTATE=0` | the picture unturned, for an SDL that turns the panel itself |
+| `PD_STEALROWS=0` | the two cores share the 3D rows cut once at an estimate, as before 1.0.10 (default `4`: they take the rows from both ends until they meet, so the core that is ahead draws more; the picture is the same). `PD_STEALROWS=ab PD_ABFRAME=1`: off and on in turn, frame by frame, with an ABF line in the log giving each one's 3D time (for measuring) |
 | `PD_OUTFREQ=<Hz>` | the sound's output rate (default 48000, the OS mixer's own, so the game's 22 kHz is resampled once, in the game; `32000`: as before 1.0.9) |
 
 ## Known issues

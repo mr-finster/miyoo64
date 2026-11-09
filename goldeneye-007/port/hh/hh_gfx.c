@@ -278,6 +278,7 @@ static void hh_stall_frame(uint32_t now, uint32_t menu, uint32_t render_us)
 }
 
 static uint32_t sPerfWin SAVESTATE_EXCLUDE; /* frames per PERF line: 60 (Bench, GE_LOGVERBOSE) or 300 */
+int gHhAbPhase SAVESTATE_EXCLUDE; /* GE_ABFRAME: 0 = A, 1 = B this frame (see hh_perf_frame) */
 
 static void hh_perf_frame(uint32_t render_us)
 {
@@ -322,6 +323,34 @@ static void hh_perf_frame(uint32_t render_us)
     sPerfRenderUs += render_us;
     if (render_us > sPerfMaxRenderUs)
         sPerfMaxRenderUs = render_us;
+    if (sPerfWin == 0) sPerfWin = (sBench || getenv("GE_LOGVERBOSE") != NULL) ? 60 : 300;
+    { /* GE_ABFRAME=1 (2026-11-09, as Ocarina of Time's OOT_ABFRAME; a speed A/B inside one run, for qemu, where two
+       * runs' times differ by a few percent): gHhAbPhase flips every frame and a switch set to "ab" (GE_STEALROWS) is
+       * off on the A frames and on on the B frames, so its two settings take turns on frames that are nearly the same
+       * picture and host-side jitter falls on both alike. The 3D raster and render time of each are summed from frame
+       * GE_ABFROM (default 60) and written as an ABF line with each PERF line. GE_ABFRAME=2 starts on B: the mean of a
+       * =1 run and a =2 run cancels any difference between even and odd frames. */
+        static int sAb SAVESTATE_EXCLUDE = -1;
+        static uint32_t sAbFrom SAVESTATE_EXCLUDE, sAbFrames SAVESTATE_EXCLUDE;
+        static uint64_t sAbR3d[2] SAVESTATE_EXCLUDE, sAbRender[2] SAVESTATE_EXCLUDE, sAbN[2] SAVESTATE_EXCLUDE;
+        if (sAb < 0) {
+            sAb = getenv("GE_ABFRAME") != NULL;
+            sAbFrom = getenv("GE_ABFROM") ? (uint32_t)atoi(getenv("GE_ABFROM")) : 60u;
+            gHhAbPhase = sAb && getenv("GE_ABFRAME")[0] == '2';
+        }
+        if (sAb) {
+            if (++sAbFrames > sAbFrom) {
+                sAbR3d[gHhAbPhase] += gPortProfFrame[PROF_R3D];
+                sAbRender[gHhAbPhase] += render_us;
+                sAbN[gHhAbPhase]++;
+            }
+            if (sPerfFrames + 1 == sPerfWin && sAbN[0] && sAbN[1])
+                port_log_always("ABF frames %u %u | r3d A %.3f B %.3f | render A %.3f B %.3f\n", (unsigned)sAbN[0],
+                                (unsigned)sAbN[1], sAbR3d[0] / 1000.0 / sAbN[0], sAbR3d[1] / 1000.0 / sAbN[1],
+                                sAbRender[0] / 1000.0 / sAbN[0], sAbRender[1] / 1000.0 / sAbN[1]);
+            gHhAbPhase ^= 1;
+        }
+    }
     for (i = 0; i < PROF_COUNT; i++) {
         sPerfBuckets[i] += gPortProfFrame[i];
         gPortProfLast[i] = gPortProfFrame[i];

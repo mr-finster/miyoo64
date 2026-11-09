@@ -1026,6 +1026,9 @@ typedef struct {
     const SoftVtx *bv;            /* a batch share (batch_split): bn triangles from bv, results into bpx */
     int bn, *bpx;
     bool alpha_off, cvg_mixed;    /* a triangle share: the game thread's raster_tri choices for it */
+    uint32_t range;               /* PD_STEALROWS: the rows both threads take from, top | bottom << 16 */
+    int chunk;                    /* its rows a take (0: the fixed shares, ylo down for the worker) */
+    int bfirst;                   /* a batch share's: the worker's first take, in rows */
 } SplitJob;
 static __thread SplitJob *tlSplit; /* the worker's job while it draws a share; NULL on the game thread */
 /* The rows this thread draws (a y scissor, raster_tri_body's box): the whole target, or a batch share's band. */
@@ -3528,12 +3531,72 @@ unsigned gfx_soft_split_tris SAVESTATE_EXCLUDE; /* triangles split (hh_gfx.c's P
 uint32_t gfx_soft_split_wpx SAVESTATE_EXCLUDE;  /* the span pixels the worker's shares drew */
 static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, bool use_z);
 static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, bool use_z);
+/* PD_STEALROWS (2026-11-09; Ocarina of Time's stealrows, an idea from cacuracaptors' oot-miyoomini, whose idle drawing
+ * thread takes half of the other's remaining lines): the two threads' shares are no longer cut once at an estimate
+ * (split_row's ym for a triangle, batch_split_row's for a batch) but taken from both ends of one shared range of rows,
+ * the game thread from the top down, the worker from the bottom up, until they meet; whichever core runs ahead (the
+ * worker shares its core with the present thread; pixels are not all the same price: spans behind the depth buffer,
+ * alpha-skipped spans, a triangle's set-up against its rows) simply draws more rows. Still disjoint rows, each drawn
+ * by one thread from its own y (the rules in SplitJob's comment), each band seeing a batch's triangles in order, so
+ * the same pixels.
+ *   A split triangle: PD_STEALROWS rows a take (default 4). The worker sets up from the game thread's first row
+ *   (its scan finds the same one, GE_ROW0's ends with it).
+ *   A batch share (where nearly all the worker's rows come from: ~130 shares a frame against ~2 split triangles at
+ *   GoldenEye's Dam): each thread first takes 75% of its estimated band, then max(8 rows, half of what is left) a take, so a
+ *   triangle's set-up is repeated in only a few more bands. Under qemu GoldenEye's game thread waited 13-16 ms a frame for
+ *   the worker's batch bands at the Dam. PD_STEALBATCH=<first %>,<min rows>,<divisor> (default 75,8,2), for tuning.
+ *   A triangle crossing several of the game thread's bands is counted once per band in the untextured-draw and
+ *   GE_CVGALPHA counts (log lines and statistics only).
+ * PD_STEALROWS=0: the fixed shares (the old way); "ab": off and on in turn, frame by frame (PD_ABFRAME). The range is
+ * one 32-bit word, top | bottom << 16, taken by compare-and-swap. */
+static int sStealRows SAVESTATE_EXCLUDE = -1;
+static int sStealFirst SAVESTATE_EXCLUDE = 75, sStealMin SAVESTATE_EXCLUDE = 8, sStealDiv SAVESTATE_EXCLUDE = 2;
+static int steal_chunk(void) {
+    if (sStealRows < 0) {
+        const char *k = getenv("PD_STEALBATCH");
+        if (k) sscanf(k, "%d,%d,%d", &sStealFirst, &sStealMin, &sStealDiv);
+        if (sStealFirst < 0) sStealFirst = 0;
+        if (sStealFirst > 100) sStealFirst = 100;
+        if (sStealMin < 1) sStealMin = 1;
+        if (sStealDiv < 1) sStealDiv = 1;
+        const char *e = getenv("PD_STEALROWS");
+        sStealRows = !e || !e[0] ? 4 : e[0] == 'a' ? 1000 : atoi(e);
+        if (sStealRows < 0) sStealRows = 0;
+    }
+    if (sStealRows == 1000) { extern int gHhAbPhase; return gHhAbPhase ? 4 : 0; } /* "ab": 4 against 0 */
+    return sStealRows;
+}
+static inline bool steal_take(uint32_t *range, int chunk, bool top, int *y0, int *y1) {
+    uint32_t o = __atomic_load_n(range, __ATOMIC_ACQUIRE), w;
+    int lo, hi, a, b;
+    do {
+        lo = (int)(o & 0xFFFFu); hi = (int)(o >> 16);
+        if (lo >= hi) return false;
+        if (chunk < 0) { const int q = (hi - lo) / sStealDiv; chunk = q > -chunk ? q : -chunk; } /* a batch's: a share of what is left */
+        if (top) { a = lo; b = lo + chunk < hi ? lo + chunk : hi; w = (uint32_t)b | ((uint32_t)hi << 16); }
+        else     { b = hi; a = hi - chunk > lo ? hi - chunk : lo; w = (uint32_t)lo | ((uint32_t)a << 16); }
+    } while (!__atomic_compare_exchange_n(range, &o, w, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE));
+    *y0 = a; *y1 = b;
+    return true;
+}
 static void split_job(void *arg) {
     SplitJob *const j = (SplitJob *)arg;
     j->skip_spans = j->skip_px = 0;
     tlSplit = j;
     tlRowLo = j->ylo;
-    if (j->bv != NULL) { /* a batch share: every triangle of the batch through raster_tri, the band's rows */
+    if (j->bv != NULL && j->chunk != 0) { /* PD_STEALROWS: a batch's rows a band at a time, from the bottom up */
+        int a, b, take = j->bfirst;
+        for (int i = 0; i < j->bn; i++) j->bpx[i] = -1;
+        while (steal_take(&j->range, take, false, &a, &b)) {
+            take = j->chunk;
+            tlRowLo = a; tlRowHi = b;
+            for (int i = 0; i < j->bn; i++) {
+                const int px = raster_tri(&j->bv[i * 3], &j->bv[i * 3 + 1], &j->bv[i * 3 + 2], j->use_z);
+                if (px >= 0) j->bpx[i] = (j->bpx[i] > 0 ? j->bpx[i] : 0) + px;
+            }
+        }
+        tlRowHi = 0x7fffffff;
+    } else if (j->bv != NULL) { /* a batch share: every triangle of the batch through raster_tri, the band's rows */
         for (int i = 0; i < j->bn; i++)
             j->bpx[i] = raster_tri(&j->bv[i * 3], &j->bv[i * 3 + 1], &j->bv[i * 3 + 2], j->use_z);
     } else {
@@ -4090,14 +4153,21 @@ static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *
         if (ym > y0 && ym < maxy) {
             /* a switch the rows read and set on first use, set here first so the two threads never race on it */
             if (sCmNoZ < 0) sCmNoZ = !(getenv("GE_CMNOZ") && getenv("GE_CMNOZ")[0] == '0');
-            job.v0 = v0; job.v1 = v1; job.v2 = v2; job.use_z = use_z; job.ylo = ym; job.arows = arows;
+            job.chunk = steal_chunk(); /* PD_STEALROWS: the worker sets up from y0 and takes rows from the bottom */
+            job.range = (uint32_t)y0 | ((uint32_t)maxy << 16);
+            job.v0 = v0; job.v1 = v1; job.v2 = v2; job.use_z = use_z; job.ylo = job.chunk > 0 ? y0 : ym; job.arows = arows;
             job.bv = NULL; job.alpha_off = tlAlphaOff; job.cvg_mixed = tlCvgMixed;
             split_post(&job);
             yend = ym;
             split = true;
         }
     }
-    for (int y = y0; y < yend; y++) {
+    /* PD_STEALROWS: this thread's rows a chunk at a time, from the top (the game thread) or the bottom (the worker) */
+    const int schunk = tlSplit ? tlSplit->chunk : split ? job.chunk : 0;
+    uint32_t *const srange = tlSplit ? &tlSplit->range : &job.range;
+    for (int sy0 = y0, sy1 = yend;;) {
+    if (schunk > 0 && !steal_take(srange, schunk, !tlSplit, &sy0, &sy1)) break;
+    for (int y = sy0; y < sy1; y++) {
 #else
     for (int y = y0; y < maxy; y++) {
 #endif
@@ -4524,6 +4594,8 @@ static int raster_tri_body(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *
         }
     }
 #if defined(MIYOO)
+    if (schunk <= 0) break;
+    } /* PD_STEALROWS's chunks */
     if (split) {
         split_wait();
         if (job.px > 0) { tri_px += (uint32_t)job.px; gfx_soft_split_wpx += (uint32_t)job.px; }
@@ -4620,7 +4692,30 @@ static int batch_raster(const SoftVtx *v, int n, int *res, uint32_t *pollwork, u
     memset(&job, 0, sizeof(job));
     job.use_z = true; job.ylo = ym; job.arows = tex ? alpha_rows(sBoundTex[0], tex) : NULL;
     job.bv = v; job.bn = n; job.bpx = sBatchPxW;
+    const int steal = steal_chunk() > 0; /* PD_STEALROWS: the rows a band at a time from both ends (see steal_chunk) */
+    if (steal) {
+        job.chunk = -sStealMin; job.range = (uint32_t)lo | ((uint32_t)hi << 16);
+        job.bfirst = (hi - ym) * sStealFirst / 100; if (job.bfirst < 1) job.bfirst = 1;
+    }
     split_post(&job);
+    if (steal) {
+        int a, b, take = (ym - lo) * sStealFirst / 100;
+        if (take < 1) take = 1;
+        for (int i = 0; i < n; i++) sBatchPxC[i] = -1;
+        while (steal_take(&job.range, take, true, &a, &b)) {
+            take = job.chunk;
+            tlRowLo = a; tlRowHi = b;
+            for (int i = 0; i < n; i++) {
+                const int px = raster_tri(&v[i * 3], &v[i * 3 + 1], &v[i * 3 + 2], true);
+                if (px >= 0) sBatchPxC[i] = (sBatchPxC[i] > 0 ? sBatchPxC[i] : 0) + px;
+                if (pollwork && (*pollwork += (uint32_t)(px > 0 ? px : 0) + 64u) >= 8192u && sBatchPoll != NULL) {
+                    *pollwork = 0;
+                    *away += sBatchPoll();
+                }
+            }
+        }
+        tlRowLo = 0;
+    } else {
     tlRowHi = ym;
     for (int i = 0; i < n; i++) {
         const int px = raster_tri(&v[i * 3], &v[i * 3 + 1], &v[i * 3 + 2], true);
@@ -4629,6 +4724,7 @@ static int batch_raster(const SoftVtx *v, int n, int *res, uint32_t *pollwork, u
             *pollwork = 0;
             *away += sBatchPoll();
         }
+    }
     }
     tlRowHi = 0x7fffffff;
     split_wait();

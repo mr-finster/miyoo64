@@ -20,6 +20,7 @@
 #include "gfx/gfx_pc.h"
 #include "gfx/gfx_rendering_api.h"
 #include "gfx/gfx_window_manager_api.h"
+#include "gfx/port.h" /* gPortProfFrame: PD_ABFRAME's 3D time */
 
 extern struct GfxRenderingAPI gfx_soft_api;
 extern struct GfxWindowManagerAPI gfx_sdl;
@@ -40,6 +41,7 @@ static u64 perfT0, perfRenderUs, perfMaxRenderUs, perfLastStart, perfIntervalUs,
 static u32 perfN;
 static u64 frameRenderUs, submitT0;
 extern s32 g_StageNum;
+s32 gHhAbPhase; /* PD_ABFRAME: 0 = A, 1 = B this frame (see videoEndFrame) */
 u64 g_PerfAudioUs, g_PerfSleepUs; /* pdsched.c schedAudioFrame, pdmain.c's pacer sleeps */
 
 /* VmRSS / VmHWM / VmSwap from /proc/self/status, for the PERF line (the Mini has ~64 MB for Linux). */
@@ -135,6 +137,40 @@ void videoEndFrame(void)
 	}
 	perfRenderUs += frameRenderUs;
 	if (frameRenderUs > perfMaxRenderUs) perfMaxRenderUs = frameRenderUs;
+	{
+		/* PD_ABFRAME=1 (2026-11-09, as Ocarina of Time's OOT_ABFRAME; a speed A/B inside one run, for qemu, where two
+		 * runs' times differ by a few percent): gHhAbPhase flips every frame and a switch set to "ab" (PD_STEALROWS)
+		 * is off on the A frames and on on the B frames, so its two settings take turns on frames that are nearly the
+		 * same picture and host-side jitter falls on both alike. The 3D raster time (the renderer's PROF_R3D, a running
+		 * sum here) and the render time of each are summed from frame PD_ABFROM (default 60) and written as an ABF line
+		 * with each PERF line. PD_ABFRAME=2 starts on B: the mean of a =1 run and a =2 run cancels any difference
+		 * between even and odd frames. */
+		static s32 ab = -1;
+		static u32 abFrom, abR3dLast;
+		static u64 abR3d[2], abRender[2], abN[2];
+		const u32 r3dNow = gPortProfFrame[PROF_R3D];
+		if (ab < 0) {
+			const char *e = getenv("PD_ABFRAME");
+			ab = e != NULL;
+			abFrom = getenv("PD_ABFROM") ? (u32)atoi(getenv("PD_ABFROM")) : 60u;
+			gHhAbPhase = ab && e[0] == '2';
+			abR3dLast = r3dNow;
+		}
+		if (ab) {
+			if (frames >= abFrom) {
+				abR3d[gHhAbPhase] += (u32)(r3dNow - abR3dLast);
+				abRender[gHhAbPhase] += frameRenderUs;
+				abN[gHhAbPhase]++;
+			}
+			if (perfN + 1 == 60 && abN[0] && abN[1]) {
+				sysLogPrintf(LOG_NOTE, "ABF frames %u %u | r3d A %.3f B %.3f | render A %.3f B %.3f", (u32)abN[0],
+					(u32)abN[1], abR3d[0] / 1000.0 / abN[0], abR3d[1] / 1000.0 / abN[1],
+					abRender[0] / 1000.0 / abN[0], abRender[1] / 1000.0 / abN[1]);
+			}
+			gHhAbPhase ^= 1;
+		}
+		abR3dLast = r3dNow;
+	}
 	if (++perfN == 60) {
 		static s32 on = -1;
 		if (on < 0) { const char *e = getenv("PD_PERF"); on = !(e && e[0] == '0'); }
