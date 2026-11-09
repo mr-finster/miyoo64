@@ -581,6 +581,14 @@ void gfx_soft_pm_generic(bool on, uint32_t w0, uint32_t w1, bool two_cycle, cons
     gen_build_ops();
     gen_classify_fast();
 }
+/* Rect UVs were rebased in tile 0 space. Restore that offset only for TEXEL1,
+ * before its relative shift; ds/dt also feed the TEXEL1-only and 2D fast paths.
+ * pm_gen_setup resets these fields for each draw. */
+void gfx_soft_pm_rect_rebase(int s, int t) {
+    sGen.ds += s; sGen.dt += t;
+    sGen.t1a[0] = (int32_t)((uint32_t)sGen.t1a[0] + (uint32_t)s * 65536u);
+    sGen.t1a[1] = (int32_t)((uint32_t)sGen.t1a[1] + (uint32_t)t * 65536u);
+}
 static inline int gm_clamp(int v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
 /* The RDP's combiner works in 9 bits (angrylion's color/alpha_combiner_equation): A, B and D are read through
  * special_9bit_exttable (0x180..0x1FF are negative), C is a signed 9-bit value, each cycle keeps
