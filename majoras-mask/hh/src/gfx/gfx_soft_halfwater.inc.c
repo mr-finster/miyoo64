@@ -256,6 +256,7 @@ static HFX_COLD void hfx_composite(void) {
 }
 
 static HFX_COLD void hfx_flush(void) {
+    PEND_DRAIN(); /* MM_BATCHBAND: the composite reads and writes the colour under the layer */
     if (!sHfxOpen) return;
     sHfxOpen = false;
     if (sDsN) sky_flush(); /* the deferred sky first: the composite reads the colour under the layer */
@@ -524,6 +525,7 @@ static HFX_COLD int hfx_tri_rows(const HfxTri *hx, const DsRows *Rp, bool water)
                 ztest && sUseAlpha && !dmask && zbias == 0 && !tex_edge && tex && !rgb_texa && !fastw && !texlerpv && \
                 (!dtex || (dbilin && !t16 && !dtex->is16 && ws == WRAP_REPEAT && wt == WRAP_REPEAT &&    \
                            tmask_u >= 0 && tmask_v >= 0))) {                                            \
+                PEND_DRAIN(); /* MM_BATCHBAND: the layer tests the depth of what waits */             \
                 const int hx_r = hfx_draw(v0, v1, v2, use_z, minx, miny, maxx, maxy);                   \
                 if (hx_r != -2) return hx_r;                                                            \
             }                                                                                           \

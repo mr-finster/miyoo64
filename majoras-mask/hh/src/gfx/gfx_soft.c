@@ -75,6 +75,15 @@ static void __attribute__((noinline)) edge_note(const uint32_t *pf, int fa, int 
 #endif
     if (sEnN < EN_MAX) { sEnIdx[sEnN] = (int32_t)(pf - sEnFB); sEnZ[sEnN] = (uint16_t)z; sEnA[sEnN++] = (uint8_t)fa; }
 }
+#if defined(MIYOO)
+static int sPendN SAVESTATE_EXCLUDE;   /* MM_BATCHBAND: triangles set up and waiting for their rows (see pend_drain) */
+static bool sPendOn SAVESTATE_EXCLUDE; /* gfx_soft_draw_triangles: this batch's triangles wait (pend_tri) */
+static void pend_drain(void);
+#define PEND_DRAIN() do { if (sPendN) pend_drain(); } while (0)
+#else
+#define PEND_DRAIN() ((void)0)
+#endif
+static bool sPhase3D SAVESTATE_EXCLUDE, sIntDirty SAVESTATE_EXCLUDE, sNatDirty SAVESTATE_EXCLUDE; /* see the frame section */
 static void sky_settle(void); /* OOT_SKYDEFER: the kept sky drawn now, if any (see raster_tri's rows) */
 static void sky_texels_change(const void *px); /* the same, if a kept sky triangle reads the texels at px */
 static uint32_t sNatFill SAVESTATE_EXCLUDE; /* the frame's clear colour (see the lazy native clear) */
@@ -2171,6 +2180,7 @@ static uint32_t sky_tri(const CmTri *T, const DsRows *R) {
 }
 #endif /* MIYOO */
 static void sky_flush(void) {
+    PEND_DRAIN(); /* MM_BATCHBAND: the world under the sky first (the mask is theirs) */
     const int n = sDsN;
     sDsN = 0; sDsMarking = false; sDsMarked = false;
     for (int k = 0; k < n; k++) {
@@ -2202,8 +2212,9 @@ static void sky_flush(void) {
 #undef CM_ROW_ZSK
 #define CM_ROW_ZSK 0 /* the half-resolution layer's rows: no OOT_ZSKIP (their own depth buffer) */
 #include "gfx_soft_halfwater.inc.c" /* OOT_HALFWATER (2026-10-02, a look trade; default on since 2026-10-03) */
-static void sky_settle(void) { if (sDsN) sky_flush(); hfx_settle(); }
+static void sky_settle(void) { PEND_DRAIN(); if (sDsN) sky_flush(); hfx_settle(); } /* (MM_BATCHBAND: what waits first) */
 static void sky_texels_change(const void *px) {
+    PEND_DRAIN(); /* MM_BATCHBAND: a waiting triangle may read them too */
     for (int k = 0; k < sDsN; k++) if (sDsTri[k].cmt.px == px) { sky_flush(); return; }
 }
 #undef CM_PIXELS_LEANSM
@@ -2461,6 +2472,10 @@ typedef struct {
     CmTri cmt;
 #endif
     OwnTri oe;
+    /* the render state the rows read (MM_BATCHBAND: a waiting triangle's, whatever the state is by then) */
+    bool use_alpha, ui_mode;
+    SoftDetail det;
+    SoftTex dtexc; /* *dtex, copied (MM_BATCHBAND: its slot may be uploaded again) */
 } RasterRows;
 static uint32_t __attribute__((noinline)) raster_rows(const RasterRows *RR, int miny, int maxy) {
     const float a0 = RR->a0, a1 = RR->a1, a2 = RR->a2, bl0 = RR->bl0, bl1 = RR->bl1, bl2 = RR->bl2, r0 = RR->r0,
@@ -2491,6 +2506,8 @@ static uint32_t __attribute__((noinline)) raster_rows(const RasterRows *RR, int 
     CmTri cmt = RR->cmt; /* not const: OOT_ZSKIP's miss counter (speed only) counts in each share's copy */
 #endif
     const OwnTri oe = RR->oe;
+    const bool sUseAlpha = RR->use_alpha, sUiMode = RR->ui_mode; /* (the globals' names: the loop's text reads them) */
+    const SoftDetail sDetail = RR->det;
     uint32_t tri_px = 0;
 #include "gfx_soft_rows.inc.c"
     return tri_px;
@@ -2515,6 +2532,8 @@ static uint32_t __attribute__((noinline)) raster_rows(const RasterRows *RR, int 
         (RR).rgb_texa = rgb_texa; (RR).t16 = t16; (RR).texadd = texadd; (RR).texlerp = texlerp; \
         (RR).texlerpv = texlerpv; (RR).use_bilin = use_bilin; (RR).ztest = ztest; (RR).tex = tex; \
         (RR).dtex = dtex; (RR).texpx = texpx; (RR).fbuf = fbuf; (RR).zb = zb; (RR).cov = cov; (RR).oe = oe; \
+        (RR).use_alpha = sUseAlpha; (RR).ui_mode = sUiMode; (RR).det = sDetail; \
+        if (dtex) { (RR).dtexc = *dtex; (RR).dtex = &(RR).dtexc; } \
         RASTER_ROWS_PACK_CMT(RR) \
     } while (0)
 #if defined(HH_CM_NEON)
@@ -2607,6 +2626,116 @@ static uint32_t tri_rows_split(const TriRows *R, int miny, int maxy) {
     return px + j.px;
 }
 #endif
+/* MM_BATCHBAND (2026-11-09; GoldenEye 007's and Perfect Dark's batch shares, our own renderer's version): every 3D
+ * triangle is set up as before, but its rows wait (pend_slot: the row function's inputs, copied, with the render state
+ * they read) and are drawn later by both cores together, in bands of rows taken from both ends of the waiting
+ * triangles' rows until they meet (steal_take), this thread from the top, the worker from the bottom, each band
+ * drawing every waiting triangle's rows inside it in the display list's order. Before, only a big triangle's rows
+ * were shared and the many small ones (most of a frame's pixels outside the sky) were drawn on this core alone.
+ * What waits is drawn (PEND_DRAIN) before anything else touches the pixels or what the rows read: at the next
+ * batch's end without MM_BANDCARRY, else where the deferred sky settles (sky_settle: the 2D draws, the depth
+ * rectangles, a target switch or read, the frame's end, texman_clear), before a texture is rewritten in place
+ * (sky_texels_change), a depth read (hh_read_depth), the deferred sky's keep and flush, the half-resolution water's
+ * layer and composite, an edge-noted triangle (its notes are an ordered list: drawn at once, after what waits) and
+ * when PEND_MAX wait. The same pixels: a pixel's row is drawn by one core, its triangles in order; every row is
+ * drawn from y alone (TRI_ROW_SETUP, tri_rows: no row-to-row drift), so a band starting mid-triangle draws what the
+ * whole triangle would; the rows read only their copied inputs (raster_rows' render state too: sUseAlpha, sUiMode,
+ * sDetail and the detail texture's entry), texels that stay until a sync point, and the deferred sky's mask flags,
+ * changed only after a drain. Each core draws on its own copy of a triangle's CmTri (OOT_ZSKIP's miss counter).
+ * Waiting rows under OOT_SPLITROWS (8) are drawn on this core, in order; MM_BANDPX: also those under that many pixels
+ * (each triangle's area, at most its box; default 0). The rows drawn after a batch's end land in the frame's render
+ * time, not its 3D time (PROF_R3D): compare render times. MM_BATCHBAND=N: rows a take (default 8); 0: off (each
+ * triangle drawn when set up, a big one split as before); "ab": off and on in turn, frame by frame (MM_ABFRAME).
+ * MM_BANDCARRY=0: what waits is drawn at each batch's end ("ab": in turn). */
+#define PEND_MAX 256
+typedef struct {
+    int kind;   /* 1: tri_rows (R, t), 2: raster_rows (rr) */
+    bool p3d;   /* drawn in the 3D phase (the span-pixel statistic) */
+    union { struct { TriRows R; CmTri t; } f; RasterRows rr; } u;
+} PendTri;
+static PendTri sPendT[PEND_MAX] SAVESTATE_EXCLUDE;
+static int16_t sPendY[PEND_MAX][2] SAVESTATE_EXCLUDE; /* each one's rows [y0, y1), apart: the bands test them */
+static float sPendEst SAVESTATE_EXCLUDE;  /* the waiting pixels, about (each triangle's area, at most its box) */
+static int sBandRows SAVESTATE_EXCLUDE = -1, sBandPx SAVESTATE_EXCLUDE = 0, sBandCarry SAVESTATE_EXCLUDE = 1;
+static int band_chunk(void) {
+    if (sBandRows < 0) {
+        const char *k = getenv("MM_BANDPX");
+        if (k) sBandPx = atoi(k);
+        k = getenv("MM_BANDCARRY");
+        if (k) sBandCarry = k[0] == 'a' ? 2 : atoi(k) != 0;
+        const char *e = getenv("MM_BATCHBAND");
+        sBandRows = !e || !e[0] ? 8 : e[0] == 'a' ? 1000 : atoi(e);
+        if (sBandRows < 0) sBandRows = 0;
+    }
+    if (sBandRows == 1000) { extern int gHhAbPhase; return gHhAbPhase ? 8 : 0; } /* "ab": 8 against 0 */
+    return sBandRows;
+}
+static bool band_carry(void) { extern int gHhAbPhase; return sBandCarry == 2 ? gHhAbPhase != 0 : sBandCarry != 0; }
+static inline float pend_est(float area, int minx, int maxx, int miny, int maxy) {
+    const float a = (area < 0.0f ? -area : area) * 0.5f, box = (float)(maxx - minx) * (float)(maxy - miny);
+    return a < box ? a : box;
+}
+static uint32_t pend_rows(int i, int a, int b) {
+    const PendTri *p = &sPendT[i];
+    if (a < sPendY[i][0]) a = sPendY[i][0];
+    if (b > sPendY[i][1]) b = sPendY[i][1];
+    if (a >= b) return 0;
+    uint32_t px;
+#if defined(HH_CM_NEON)
+    if (p->kind == 1) {
+        CmTri t = p->u.f.t; /* this core's own copy (OOT_ZSKIP's counter) */
+        TriRows R = p->u.f.R;
+        R.t = &t;
+        px = tri_rows(&R, a, b);
+    } else
+#endif
+        px = raster_rows(&p->u.rr, a, b); /* (copies its CmTri itself) */
+    return p->p3d ? px : 0;
+}
+static uint32_t band_draw(int n, int a, int b) {
+    uint32_t px = 0;
+    for (int i = 0; i < n; i++)
+        if (sPendY[i][0] < b && sPendY[i][1] > a) px += pend_rows(i, a, b);
+    return px;
+}
+typedef struct { int n; uint32_t range; int chunk; uint32_t px; } BandJob;
+static void band_job(void *arg) { /* the worker, from the bottom up */
+    BandJob *j = (BandJob *)arg;
+    int a, b;
+    while (steal_take(&j->range, j->chunk, false, &a, &b)) j->px += band_draw(j->n, a, b);
+}
+static void pend_drain(void) {
+    const int n = sPendN;
+    if (!n) return;
+    int lo = sPendY[0][0], hi = sPendY[0][1];
+    for (int i = 1; i < n; i++) {
+        if (sPendY[i][0] < lo) lo = sPendY[i][0];
+        if (sPendY[i][1] > hi) hi = sPendY[i][1];
+    }
+    const int chunk = sBandRows == 1000 ? 8 : sBandRows; /* (what waits is drawn shared even if "ab" turned it off since) */
+    uint32_t px = 0;
+    if (chunk > 0 && hi - lo >= sSplitRows && sPendEst >= (float)sBandPx && miyoo_worker_ready()) {
+        BandJob j = { n, (uint32_t)lo | ((uint32_t)hi << 16), chunk, 0 };
+        int a, b;
+        miyoo_worker_run(band_job, &j);
+        while (steal_take(&j.range, chunk, true, &a, &b)) px += band_draw(n, a, b);
+        miyoo_worker_wait();
+        px += j.px;
+        gfx_soft_split_px += px;
+    } else {
+        for (int i = 0; i < n; i++) px += pend_rows(i, sPendY[i][0], sPendY[i][1]);
+    }
+    sPendN = 0; sPendEst = 0.0f;
+    gfx_soft_span_px += px;
+}
+static inline PendTri *pend_slot(int kind, float area, int minx, int maxx, int miny, int maxy, bool p3d) {
+    if (sPendN == PEND_MAX) pend_drain();
+    const int i = sPendN++;
+    sPendY[i][0] = (int16_t)miny; sPendY[i][1] = (int16_t)maxy;
+    sPendEst += pend_est(area, minx, maxx, miny, maxy);
+    sPendT[i].kind = kind; sPendT[i].p3d = p3d;
+    return &sPendT[i];
+}
 #endif /* MIYOO */
 static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, bool use_z) {
     float area = edge(v0, v1, v2->x, v2->y);
@@ -2993,6 +3122,7 @@ static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, b
     { /* OOT_SKYDEFER: keep the sky's rows; anything but a marking row draws the kept sky first */
         const bool marking = cm_rows && cmt.lean && !cmt.alpha && sLeanZ && zbias == 0 && dmask && fbuf == sDsFB;
         const bool keep = sSkyDefer && sDsTag && cm_rows && cmt.lean2 == 2 && !sSkyPass && sDsAllow;
+        if ((sDsN && !marking) || keep) PEND_DRAIN(); /* MM_BATCHBAND: the flush draws, the keep changes the mask */
         if (sDsN && !marking && !keep) sky_flush();
         if (sDsN && marking) sDsMarked = true;
         if (keep) {
@@ -3036,6 +3166,12 @@ static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, b
         R.fn = cmt.lean ? cm_row_lean : cmt.lean2 == 1 ? cm_row_leana : cmt.lean2 == 2 ? cm_row_leans
              : cmt.lean2 == 3 ? cm_row_leanl : cmt.lean2 == 4 ? cm_row_leanz : cm_row_neon; /* as the loop below */
 #if defined(MIYOO)
+        if (sPendOn && !cmt.enote) { /* MM_BATCHBAND: its rows wait for the batch's end (pend_drain) */
+            PendTri *p = pend_slot(1, area, minx, maxx, miny, maxy, sPhase3D);
+            p->u.f.R = R; p->u.f.t = cmt;
+            return 0;
+        }
+        PEND_DRAIN();
         tri_px = tri_rows_split(&R, miny, maxy); /* on both cores when the triangle is big */
 #else
         tri_px = tri_rows(&R, miny, maxy);
@@ -3046,6 +3182,12 @@ static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, b
 #endif
 #if defined(MIYOO)
     { /* the same loop in raster_rows, in two shares on the two cores when the triangle is big (rows_split) */
+        if (sPendOn && !enote) { /* MM_BATCHBAND */
+            PendTri *p = pend_slot(2, area, minx, maxx, miny, maxy, sPhase3D);
+            RASTER_ROWS_PACK(p->u.rr);
+            return 0;
+        }
+        PEND_DRAIN();
         RasterRows RR;
         RASTER_ROWS_PACK(RR);
         tri_px = rows_split(&RR, miny, maxy);
@@ -3057,7 +3199,6 @@ static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, b
     return (int)tri_px;
 }
 
-static bool sPhase3D SAVESTATE_EXCLUDE, sIntDirty SAVESTATE_EXCLUDE, sNatDirty SAVESTATE_EXCLUDE; /* see the frame section */
 static bool sHad3D SAVESTATE_EXCLUDE;         /* any 3D batch this frame */
 static int sCrackFill SAVESTATE_EXCLUDE = 1;  /* OOT_CRACKFILL, see crack_fill */
 static bool sCrackDirty SAVESTATE_EXCLUDE;    /* a depth-writing 3D draw since the last crack fill */
@@ -3118,6 +3259,11 @@ static void gfx_soft_draw_triangles(float buf_vbo[], size_t buf_vbo_len, size_t 
     sDsAllow = sPickX < 0; sDsP3D = sPhase3D; /* OOT_SKYDEFER: PICK reads the colour around each triangle */
     if (!sDsAllow) sky_settle();
 #endif
+#if defined(MIYOO)
+    if (sSplitPx < 0) split_init();
+    sPendOn = sPickX < 0 && !sUiMode && band_chunk() > 0 && miyoo_worker_ready(); /* MM_BATCHBAND */
+    if (!sPendOn) PEND_DRAIN();
+#endif
     for (size_t i = 0; i < num_tris; i++) {
         SoftVtx h[3];
         if (sSkyPass) { /* screen coordinates to the half-resolution sky target */
@@ -3148,6 +3294,10 @@ static void gfx_soft_draw_triangles(float buf_vbo[], size_t buf_vbo_len, size_t 
          * pixels here understated the GFX3D line's ns/px (round 13). */
         if (sPhase3D && px >= 0) { gfx_soft_tris++; gfx_soft_span_px += (uint32_t)px; }
     }
+#if defined(MIYOO)
+    if (!band_carry()) PEND_DRAIN(); /* MM_BATCHBAND: the batch's rows, on both cores; or later, with the next */
+    sPendOn = false;
+#endif
     PROF_END(sPhase3D ? PROF_R3D : PROF_R2D);
 }
 /* gfx_pc tells us when a batch is real perspective geometry (the sky quads
@@ -4600,6 +4750,7 @@ void gfx_scegu_set_sky_pass(bool on) {
  * rendered 3D frame (the game asks during its update, before this frame is
  * drawn, as on the N64). Returns false off-buffer. */
 static bool hh_read_depth(int32_t x, int32_t y, uint16_t *depth) {
+    PEND_DRAIN(); /* MM_BATCHBAND: the depth of what waits */
     const bool uni = sUnified || sIntZB == NULL;
     const uint16_t *zb = uni ? sNatZB : sIntZB;
     const int w = uni ? sNatW : sIntW, h = uni ? sNatH : sIntH;

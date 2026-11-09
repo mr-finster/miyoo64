@@ -34,6 +34,19 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   Time port for the Miyoo Mini (oot-miyoomini), as in Ocarina of Time 1.1.10, written anew for this renderer.
   `stealrows=0` in GoldenEye 007's `data/debug.cfg` (Perfect Dark: `PD_STEALROWS=0` in `launch.sh`) gives the old way.
 
+- Ocarina of Time 1.1.10 and Majora's Mask 1.0.11 (beta): faster with both cores, the same picture. The second core
+  used to help only with big triangles; the many small ones, most of what is drawn outside the sky, were drawn on the
+  first core alone. Now every 3D triangle is set up as before and its rows wait; then both cores draw the waiting
+  triangles together, a band of rows each from both ends until they meet, each band in the game's order, when the
+  picture is next needed (before the sky, the menus and text, a depth read, the end of the frame) (`batchband`). Under
+  qemu with both cores a frame's render time drops 5 to 22% in Ocarina of Time (most in Zora's Domain, the Deku Tree,
+  Kokiri Forest; least on Death Mountain Trail and at Lake Hylia) and 11 to 18% in Majora's Mask (South Clock Town,
+  Mountain Village, the Southern Swamp, Termina Field, North Clock Town, Great Bay Coast); frames compared byte for
+  byte with the old way in eleven Ocarina of Time scenes (the Bottom of the Well with the Lens of Truth among them)
+  and seven Majora's Mask scenes (the Lens of Truth on the Snowhead path among them). The idea of handing the second
+  core whole batches comes from GoldenEye 007 and Perfect Dark.
+  `batchband=0` in `data/debug.cfg` (Majora's Mask: `MM_BATCHBAND=0` in `launch.sh`) gives the old way.
+
 - Ocarina of Time 1.1.10 and Majora's Mask 1.0.11 (beta): a little faster outdoors, the same picture. The sky, drawn
   last where nothing covers it, now skips whole 16-pixel stretches the world already covers instead of testing each
   pixel (`skyruns`), and the two cores share a big triangle's rows a few at a time from both ends instead of cutting
