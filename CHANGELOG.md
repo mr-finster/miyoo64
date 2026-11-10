@@ -145,7 +145,7 @@ each Jinjo's colour palette itself at run time; on the Mini those colours were s
 the renderer reads palettes in the N64's, so every colour came out byte-swapped: wrong colours, and the see-through
 bit taken from the wrong place, which tore holes into the heads. Now stored as the N64 does. Checked under the ARM
 emulator in Mumbo's Mountain with all five Jinjos rescued: blue, green, orange, pink and yellow heads, as on the N64;
-the other pause-menu icons were already right. Not yet run on a device. Saves and save states from 1.0.4 load
+the other pause-menu icons were already right. Not yet run on a device. A save made by 1.0.4 loads
 unchanged. Only the Banjo-Kazooie zip and the All Game Pack were replaced.
 
 - All fifteen games: no more crackle on loud, smooth sounds ([issue #10](https://github.com/mr-finster/miyoo64/issues/10)).
