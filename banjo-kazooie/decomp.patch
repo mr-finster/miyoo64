@@ -2181,6 +2181,24 @@ index 0c341142..e054947e 100644
      }
      else if (file->mode == FILE_MODE_3_FROM_MEMORY) {
          bk_memcpy(dst, file->current_ptr, len);
+diff --git a/src/core2/fx/jinjoscore.c b/src/core2/fx/jinjoscore.c
+index 5130cb97..34125776 100644
+--- a/src/core2/fx/jinjoscore.c
++++ b/src/core2/fx/jinjoscore.c
+@@ -111,7 +111,13 @@ struct7s *fxjinjoscore_new(enum item_e arg0){
+                     }
+ 
+                 }
++#ifdef TARGET_HANDHELD /* the RDP reads this TLUT from memory as the N64 stores it (big-endian, as the ROM's palettes are);
++                       * stored in the host's order, each colour's bytes came out swapped: wrong colours and the alpha bit
++                       * taken from green, so the pause menu's and the HUD's Jinjo heads were speckled and torn */
++                D_80381620[i][jinjo_id][j] = HH_BE16((((red << 0xB) | (green << 6)) | (blue << 1)) | alpha);
++#else
+                 D_80381620[i][jinjo_id][j] = (((red << 0xB) | (green << 6)) | (blue << 1)) | alpha;
++#endif
+             }
+ 
+         }
 diff --git a/src/core2/gc/dialog.c b/src/core2/gc/dialog.c
 index 8250e57e..0825c092 100644
 --- a/src/core2/gc/dialog.c

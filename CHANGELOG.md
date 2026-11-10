@@ -5,6 +5,14 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Banjo-Kazooie 1.0.5: the Jinjo heads in the pause menu and on the HUD have their right colours and shapes again
+  (issue #15: "their face sprites are distorted"). The game makes each Jinjo's colour palette itself at run time;
+  on the Mini those colours were stored in the CPU's byte order while the renderer reads palettes in the N64's, so
+  every colour came out byte-swapped: wrong colours, and the see-through bit taken from the wrong place, which tore
+  holes into the heads. Now stored as the N64 does. Checked under the ARM emulator in Mumbo's Mountain with all five
+  Jinjos rescued: blue, green, orange, pink and yellow heads, as on the N64; the other pause-menu icons were already
+  right.
+
 - Super Mario 64 1.1.8, experimental and off unless asked for: the Mini's 2D engine (SigmaStar MI_GFX) can draw
   each frame onto the panel, doubled and turned, in place of the CPU (`hwblit=1` in `data/sm64_display.cfg`, or
   `SM64_HWBLIT=1` / `MIYOO_HWBLIT=1` in `launch.sh`). The CPU then only copies the 320x240 frame for the engine

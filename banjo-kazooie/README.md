@@ -5,7 +5,7 @@ A native port of Banjo-Kazooie, built from the [banjo-kazooie decompilation](htt
 threads with the N64's priorities, the software renderer, the Miyoo kit) and Harvest Moon 64's audio mixer. It runs on
 the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip).
 
-**Version 1.0.4, a beta:** the whole game runs. The intro and the title were compared against an N64 renderer
+**Version 1.0.5, a beta:** the whole game runs. The intro and the title were compared against an N64 renderer
 (angrylion) scene by scene, and every world was entered and checked, but it has had little play on real devices yet.
 Please report what you find.
 
