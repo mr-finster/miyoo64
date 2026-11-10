@@ -104,6 +104,45 @@ static int sPresentTick SAVESTATE_EXCLUDE = -1;
 /* On-screen spacing for the PERF line (gfx_flip_stats): the longest gap between flips and the
  * gaps over 60 ms, since the last read. */
 static uint32_t sLastFlipUs SAVESTATE_EXCLUDE, sFlipMaxUs SAVESTATE_EXCLUDE, sFlipLate SAVESTATE_EXCLUDE;
+/* 30 fps (OOT_FPS30, hh_sched.c): each picture carries how many vsyncs it stays on screen at least (its hold: 2 for
+ * the 30 fps pictures, the game's VI count for the others), and the next flip waits for that many vsyncs after it
+ * went up. SDL_Flip waits for the next vsync (the PERF line's on-screen gaps are whole 16.75 ms vsyncs on the Mini
+ * Plus), so a flip issued after the (hold - 1)th vsync lands on the hold-th; the vsyncs in between are waited for
+ * with a pan to the page already shown (the panel's driver returns at the vsync, the picture unchanged). The
+ * vsync's length is measured from those waits (59.7 Hz on the Mini Plus, not 60), so the game follows the panel's
+ * real rate: 3 vsyncs a game update. A pan that doesn't wait (another driver) turns this off: gfx_sdl12_hold_ok()
+ * then answers 0 and the scheduler keeps its own 60 Hz pacing. hold 0: a picture of the old way (no wait). */
+static volatile int sNextHold SAVESTATE_EXCLUDE, sStageHold SAVESTATE_EXCLUDE;
+static int sShownHold SAVESTATE_EXCLUDE, sHoldBroken SAVESTATE_EXCLUDE, sHoldFast SAVESTATE_EXCLUDE, sHoldLogged SAVESTATE_EXCLUDE;
+static float sVsyncUs SAVESTATE_EXCLUDE = 16750.0f;
+void gfx_sdl12_next_hold(int vsyncs) { sNextHold = vsyncs; }
+int gfx_sdl12_hold_ok(void) { return !sHoldBroken; }
+static uint32_t sPresentWaitUs SAVESTATE_EXCLUDE; /* the last present's wait for the staging buffer */
+uint32_t gfx_sdl12_present_wait_us(void) { return sPresentWaitUs; }
+float gfx_sdl12_vsync_hz(void) { return 1000000.0f / sVsyncUs; }
+static int fb_vsync_wait(void) {
+    static int sFd SAVESTATE_EXCLUDE = -2;
+    struct fb_var_screeninfo v;
+    if (sFd == -2) sFd = open("/dev/fb0", O_RDWR);
+    if (sFd < 0 || ioctl(sFd, FBIOGET_VSCREENINFO, &v) != 0 || ioctl(sFd, FBIOPAN_DISPLAY, &v) != 0) return -1;
+    return 0;
+}
+/* Present thread, before the flip of a picture with a hold: the vsyncs the shown one still has to stay */
+static void hold_wait(void) {
+    if (sShownHold <= 1 || sLastFlipUs == 0 || sHoldBroken) return;
+    const int passed = (int) ((float) (port_time_us() - sLastFlipUs) / sVsyncUs);
+    for (int k = passed; k < sShownHold - 1; k++) {
+        const uint32_t a = port_time_us();
+        if (fb_vsync_wait() != 0) { sHoldBroken = 1; fprintf(stderr, "fps30: the panel's vsync can't be waited for: off\n"); return; }
+        const uint32_t d = port_time_us() - a;
+        if (d < 2000) {
+            if (++sHoldFast >= 8) { sHoldBroken = 1; fprintf(stderr, "fps30: the pan doesn't wait for the vsync: off\n"); return; }
+        } else if (k > passed && d > 14000 && d < 20000) {
+            sVsyncUs = sVsyncUs * 0.95f + (float) d * 0.05f; /* a whole vsync between two waits */
+        }
+    }
+    if (!sHoldLogged && ++sHoldLogged) fprintf(stderr, "fps30: pictures held by vsyncs (panel ~%.2f Hz)\n", 1000000.0 / sVsyncUs);
+}
 void gfx_flip_stats(uint32_t *max_us, uint32_t *late) {
     *max_us = __atomic_exchange_n(&sFlipMaxUs, 0u, __ATOMIC_RELAXED);
     *late = __atomic_exchange_n(&sFlipLate, 0u, __ATOMIC_RELAXED);
@@ -733,9 +772,12 @@ static int present_thread(void *arg) {
         sPresentPending = 0;
         if (!sPresentDirect) blit_stage_to_screen(); /* direct: the game thread wrote the surface */
         sPresentDirect = 0;
+        const int hold = sStageHold;
         SDL_mutexV(sPresentLock);          /* the flip may block: never hold the lock */
+        if (hold > 0) hold_wait();         /* OOT_FPS30: the shown picture's vsyncs first */
         const uint32_t t0 = port_time_us();
         SDL_Flip(sScreen);
+        sShownHold = hold;
         {
             const uint32_t t1 = port_time_us();
             gPortProfFlipUs += t1 - t0;
@@ -768,8 +810,10 @@ static void present(void) {
         if (rh > BASE_H) rh = BASE_H;
         SDL_mutexP(sPresentLock);
         while (sPresentPending) SDL_CondWait(sPresentCond, sPresentLock);
+        sPresentWaitUs = port_time_us() - t0; /* OOT_FPS30: the draw's own time leaves this out */
         for (int y = 0; y < rh; y++) memcpy(sStage32 + y * rw, fb + y * fw, (size_t)rw * 4);
         sStageW = rw; sStageH = rh;
+        sStageHold = sNextHold;
         sPresentDirect = 0;
         sPresentPending = 1;
         SDL_CondBroadcast(sPresentCond);

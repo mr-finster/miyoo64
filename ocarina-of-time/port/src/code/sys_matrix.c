@@ -39,11 +39,13 @@ void Matrix_Init(GameState* gameState) {
 }
 
 void Matrix_Push(void) {
+    Port_FiPush(); /* port */
     Matrix_MtxFCopy(sCurrentMatrix + 1, sCurrentMatrix);
     sCurrentMatrix++;
 }
 
 void Matrix_Pop(void) {
+    Port_FiPop(); /* port */
     sCurrentMatrix--;
     ASSERT(sCurrentMatrix >= sMatrixStack, "Matrix_now >= Matrix_stack", "../sys_matrix.c", 176);
 }
@@ -71,6 +73,7 @@ void Matrix_Mult(MtxF* mf, u8 mode) {
 }
 
 void Matrix_Translate(f32 x, f32 y, f32 z, u8 mode) {
+    Port_FiMode(mode); /* port */
     MtxF* cmf = sCurrentMatrix;
     f32 tx;
     f32 ty;
@@ -98,6 +101,7 @@ void Matrix_Translate(f32 x, f32 y, f32 z, u8 mode) {
 }
 
 void Matrix_Scale(f32 x, f32 y, f32 z, u8 mode) {
+    Port_FiMode(mode); /* port */
     MtxF* cmf = sCurrentMatrix;
 
     if (mode == MTXMODE_APPLY) {
@@ -123,6 +127,7 @@ void Matrix_Scale(f32 x, f32 y, f32 z, u8 mode) {
 }
 
 void Matrix_RotateX(f32 x, u8 mode) {
+    Port_FiMode(mode); /* port */
     MtxF* cmf;
     f32 sin;
     f32 cos;
@@ -199,6 +204,7 @@ void Matrix_RotateX(f32 x, u8 mode) {
 }
 
 void Matrix_RotateY(f32 y, u8 mode) {
+    Port_FiMode(mode); /* port */
     MtxF* cmf;
     f32 sin;
     f32 cos;
@@ -275,6 +281,7 @@ void Matrix_RotateY(f32 y, u8 mode) {
 }
 
 void Matrix_RotateZ(f32 z, u8 mode) {
+    Port_FiMode(mode); /* port */
     MtxF* cmf;
     f32 sin;
     f32 cos;
@@ -357,6 +364,7 @@ void Matrix_RotateZ(f32 z, u8 mode) {
  * Original Name: Matrix_RotateXYZ, changed to reflect rotation order.
  */
 void Matrix_RotateZYX(s16 x, s16 y, s16 z, u8 mode) {
+    Port_FiMode(mode); /* port */
     MtxF* cmf = sCurrentMatrix;
     f32 temp1;
     f32 temp2;
@@ -613,9 +621,11 @@ void Matrix_SetTranslateRotateYXZ(f32 translateX, f32 translateY, f32 translateZ
     } else {
         cmf->yx = 0.0f;
     }
+    Port_FiSetTRYXZ(translateX, translateY, translateZ, &rot->x, &cmf->mf[0][0]); /* port */
 }
 
 Mtx* Matrix_MtxFToMtx(MtxF* src, Mtx* dest) {
+    Port_FiMtxF(&src->mf[0][0], dest); /* port */
 #if PLATFORM_PSP
     guMtxF2L(src->mf, dest);
     return dest;
@@ -704,7 +714,13 @@ Mtx* Matrix_Finalize(GraphicsContext* gfxCtx, const char* file, int line) {
 #else
 
 Mtx* Matrix_ToMtx(Mtx* dest) {
-    return Matrix_MtxFToMtx(sCurrentMatrix, dest);
+    Mtx* portRet;
+
+    Port_FiToMtx(&sCurrentMatrix->mf[0][0], dest); /* port: the actor-relative form */
+    Port_FiSkip(1);
+    portRet = Matrix_MtxFToMtx(sCurrentMatrix, dest);
+    Port_FiSkip(-1);
+    return portRet;
 }
 
 Mtx* Matrix_Finalize(GraphicsContext* gfxCtx) {
@@ -985,6 +1001,7 @@ void Matrix_MtxFToZYXRotS(MtxF* mf, Vec3s* rotDest, s32 flag) {
  * NB: `axis` is assumed to be a unit vector.
  */
 void Matrix_RotateAxis(f32 angle, Vec3f* axis, u8 mode) {
+    Port_FiMode(mode); /* port */
     MtxF* cmf;
     f32 sin;
     f32 cos;

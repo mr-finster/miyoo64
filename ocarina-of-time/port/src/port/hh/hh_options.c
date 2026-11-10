@@ -25,6 +25,12 @@ static void FineAimApply(const char* value) {
     HhInput_FineAimReload();
 }
 
+static void Fps30Apply(const char* value) {
+    extern int port_fi_enabled; /* hh_interp.c; hh_sched.c's 30 fps ticks follow it from the next frame */
+
+    port_fi_enabled = value[0] == '1';
+}
+
 static void HudFilterApply(const char* value) {
     gfx_soft_hud_box = value[0] != '0';
 }
@@ -42,6 +48,8 @@ const struct miyoo_option miyoo_options[] = {
       .def = "1000", .when = MIYOO_OPT_NOW, .apply = FineAimApply,
       .help = "FINE AIM: WHEN A HELD D-PAD REACHES FULL SPEED" },
     { .label = "PICTURE" },
+    { .label = "30 FPS", .key = "fps30", MIYOO_OPT_ONOFF, .def = "0", .when = MIYOO_OPT_NOW, .apply = Fps30Apply,
+      .help = "IN-BETWEEN FRAMES: SMOOTHER MOTION, THE SAME GAME SPEED" },
     { .label = "PRERENDERED ROOMS", .key = "crop3d",
       MIYOO_OPT_VALUES({ "2", "FOLLOW LINK" }, { "1", "CENTRED" }, { "0", "SQUEEZED" }), .def = "2",
       .help = "TRUE SHAPE, THE VIEW FOLLOWING LINK OR CENTRED; OR SQUEEZED TO FIT" },

@@ -120,13 +120,34 @@ void Graph_CloseDisps(Gfx** dispRefs, GraphicsContext* gfxCtx, const char* file,
 
 #else
 
+/* port: frame interpolation (src/port/hh/hh_interp.c) */
+void Port_FiOpenChild(const void* a, int b);
+void Port_FiCloseChild(void);
+void Port_FiStartRecord(void);
+void Port_FiStopRecord(const void* tag);
+void Port_FiRate(int rate);
+void Port_FiActorPosRot(void);
+void Port_FiPush(void);
+void Port_FiPop(void);
+void Port_FiMode(int mode);
+void Port_FiSetTRYXZ(float x, float y, float z, const short* rot, const float* cur);
+void Port_FiToMtx(const float* cur, void* dest);
+void Port_FiMtxF(const float* src, void* dest);
+void Port_FiSkip(int d);
+int Port_FiCameraEpoch(void);
+void Port_FiCameraCheck(const float* eye, const float* at, const float* up, int pauseMode);
+void Port_FiDontInterpolateChild(const void* key);
+void Port_FiDontInterpolateFrame(void);
+void Port_FiSkinVtx(const void* key, const void* buf, int count);
+void Port_FiTexScroll(const void* cmd);
+void Port_FiCmd(const void* cmd, int kind);
 #define OPEN_DISPS(gfxCtx, file, line)      \
     {                                       \
         GraphicsContext* __gfxCtx = gfxCtx; \
-        s32 __dispPad
+        s32 __dispPad = (Port_FiOpenChild(file, line), 0)
 
 #define CLOSE_DISPS(gfxCtx, file, line) \
-        do {} while (0);                \
+        do { Port_FiCloseChild(); } while (0); \
     }                                   \
     (void)0
 

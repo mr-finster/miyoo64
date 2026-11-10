@@ -396,11 +396,13 @@ void Lights_DrawGlow(PlayState* play) {
             if (params->drawGlow) {
                 f32 scale = SQ(params->radius) * 0.0000026f;
 
+                Port_FiOpenChild(node->info, 0); /* port: this halo, wherever it is in the list */
                 gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, params->color[0], params->color[1], params->color[2], 50);
                 Matrix_Translate(params->x, params->y, params->z, MTXMODE_NEW);
                 Matrix_Scale(scale, scale, scale, MTXMODE_APPLY);
                 MATRIX_FINALIZE_AND_LOAD(POLY_XLU_DISP++, play->state.gfxCtx, "../z_lights.c", 918);
                 gSPDisplayList(POLY_XLU_DISP++, gGlowCircleDL);
+                Port_FiCloseChild(); /* port */
             }
         }
 

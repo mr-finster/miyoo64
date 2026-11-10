@@ -2630,6 +2630,7 @@ void Actor_Draw(PlayState* play, Actor* actor) {
 
     Fault_AddClient(&faultClient, Actor_FaultPrint, actor, "Actor_draw");
 
+    Port_FiOpenChild(actor, 0); /* port */
     OPEN_DISPS(play->state.gfxCtx, "../z_actor.c", 6035);
 
     lights = LightContext_NewLights(&play->lightCtx, play->state.gfxCtx);
@@ -2638,6 +2639,7 @@ void Actor_Draw(PlayState* play, Actor* actor) {
                    (actor->flags & ACTOR_FLAG_IGNORE_POINT_LIGHTS) ? NULL : &actor->world.pos);
     Lights_Draw(lights, play->state.gfxCtx);
 
+    Port_FiActorPosRot(); /* port */
     if (actor->flags & ACTOR_FLAG_IGNORE_QUAKE) {
         Matrix_SetTranslateRotateYXZ(actor->world.pos.x + play->mainCamera.quakeOffset.x,
                                      actor->world.pos.y +
@@ -2694,6 +2696,7 @@ void Actor_Draw(PlayState* play, Actor* actor) {
     }
 
     CLOSE_DISPS(play->state.gfxCtx, "../z_actor.c", 6119);
+    Port_FiCloseChild(); /* port */
 
     Fault_RemoveClient(&faultClient);
 }
@@ -3403,6 +3406,7 @@ Actor* Actor_Spawn(ActorContext* actorCtx, PlayState* play, s16 actorId, f32 pos
 #endif
     OotPsp_ActorSpawnLog("before_init", actorId, params, objectSlot, actor, profile);
     Actor_Init(actor, play);
+    Port_FiDontInterpolateChild(actor); /* port */
     OotPsp_ActorSpawnLog("done", actorId, params, objectSlot, actor, profile);
     gSegments[6] = temp;
 

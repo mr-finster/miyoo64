@@ -1647,7 +1647,10 @@ void Play_Main(GameState* thisx) {
 
     PLAY_LOG(4583);
 
+    Port_FiRate(R_UPDATE_RATE); /* port: the pause menu runs at 30 updates a second: nothing to interpolate */
+    Port_FiStartRecord();
     Play_Draw(this);
+    Port_FiStopRecord(this->state.gfxCtx->workBuffer); /* port */
 
     PLAY_LOG(4587);
 }
