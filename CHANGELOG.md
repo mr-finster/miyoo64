@@ -17,29 +17,6 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   or on (no engine there: the CPU draws), the frames are byte for byte those of before; against a software stand-in
   for the engine (`kit-hwblit/qemu_check.sh`) the whole path gives the same frames too.
 
-- Banjo-Kazooie 1.0.4 (beta): Jinjos count again, the fifth one's Jiggy appears, and VIEW TOTALS no longer crashes
-  ([issue #15](https://github.com/mr-finster/miyoo64/issues/15)).
-  - Jinjos. A rescued Jinjo flew off but was never counted: its head stayed dim on the HUD, and the fifth one of a
-    world brought no Jiggy. The game marks a Jinjo with `1 << (marker id + 6)`, a shift by 96 to 100. The N64's CPU
-    shifts by the low five bits of that (0 to 4, one bit a colour); the Mini's ARM CPU gives 0 for any shift of 32
-    or more, so nothing was added. The port now takes the low five bits there, as the N64 does, and in the map
-    flags, whose numbers also come from level data. Nothing was lost in your save: Jinjos are counted per visit
-    and come back when you enter the world again, so rescue the five once more and the Jiggy appears.
-  - VIEW TOTALS in the pause menu crashed the game ("fatal error 139"). The totals pages write their numbers into
-    the four rows' placeholder texts (`cc999 / 999cc`). On the N64 those are ordinary writable data; here they
-    were read-only strings, and three of the four were one shared string. Each row has its own buffer now. Every
-    world's page and GAME TOTAL open, with the notes, Jiggies, honeycombs and times as saved.
-  - Checked in the emulator on the Mini's own binary: before the fix the five Jinjos of Mumbo's Mountain leave
-    the count at 0 and no Jiggy; after it the count goes 1, 2, 3, 4, 5 and the Jiggy appears; honeycombs, Mumbo
-    tokens, extra lives and Jiggies are counted and saved as before. A save made by 1.0.3 loads unchanged (the save
-    format did not change).
-  - Not in Onion's Ports list? The zip does carry the Ports shortcut, the same way as the other fourteen games
-    (`Roms/PORTS/Shortcuts/Banjo-Kazooie.port` and its picture). README_MIYOO.md now says what to check on the
-    card when it does not show.
-  - For builders: the PC "sanitizer" build (`SAN=`) never compiled the game with the sanitizer (its flags were added
-    after the compile flags had been set); it does now, as `SAN=undefined,float-cast-overflow`, and reports without
-    stopping. A sweep of the game's maps with it found no other shift of this kind.
-
 - All fifteen games: the auto save made as the Mini goes to sleep now survives a flat battery or a power cut while
   asleep. Super Mario 64 1.1.8, Mario Kart 64 1.1.10, GoldenEye 007 1.1.10, Perfect Dark 1.0.10, Ocarina of Time
   1.1.10, Majora's Mask 1.0.11 (beta), Paper Mario 1.1.9, Star Fox 64 1.1.7, F-Zero X 1.1.7, Diddy Kong Racing 1.1.9,
@@ -56,7 +33,8 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   `mm-flash.bin`) as the other games do, with the renamed file and its folder synced, and Harvest Moon 64 no
   longer replaces its save with a short write on a full card. Checked in an emulator with Onion's sleep and
   power-off simulated ([Sleep and wake](docs/SLEEP-AND-WAKE.md#the-seal-149)). In-game saves carry over; save
-  states from before may not load (kept aside as `.rejected`).
+  states from before may not load (kept aside as `.rejected`). Banjo-Kazooie's part is out: its 1.0.4 came
+  on Nov 10 as an update to 1.4.8, below. The other fourteen are not released yet.
 
 - GoldenEye 007 1.1.10 and Perfect Dark 1.0.10: faster with both cores, the same picture. The two cores used to cut
   the rows they share once, at an estimate (a big triangle's in the middle, a batch of triangles where half the work
@@ -127,6 +105,31 @@ the changed lines (Majora's Mask now reads these keys from its own `data/debug.c
 [SETTINGS.md](majoras-mask/SETTINGS.md); the shared page, [docs/OPTIONS.md](docs/OPTIONS.md)). Checked in an
 emulator on the Miyoo builds, and played on a Mini. In-game saves carry over; save states from 1.1.8 / 1.0.9 may not
 load (kept aside as `.rejected`).
+
+Updated Nov 10: Banjo-Kazooie 1.0.4 (beta) fixes the Jinjos and the VIEW TOTALS crash
+([issue #15](https://github.com/mr-finster/miyoo64/issues/15)). A rescued Jinjo flew off but was never counted: its
+head stayed dim on the HUD, and the fifth one of a world brought no Jiggy. The game marks a Jinjo with
+`1 << (marker id + 6)`, a shift by 96 to 100. The N64's CPU shifts by the low five bits of that (0 to 4, one bit a
+colour); the Mini's ARM CPU gives 0 for any shift of 32 or more, so nothing was added. The port now takes the low
+five bits there, as the N64 does, and in the map flags, whose numbers also come from level data. Nothing was lost in
+your save: Jinjos are counted per visit and come back when you enter the world again, so rescue the five once more
+and the Jiggy appears. VIEW TOTALS in the pause menu crashed the game ("fatal error 139"): the totals pages write
+their numbers into the four rows' placeholder texts (`cc999 / 999cc`), ordinary writable data on the N64 but
+read-only strings here, three of the four one shared string. Each row has its own buffer now, and every world's page
+and GAME TOTAL open with the notes, Jiggies, honeycombs and times as saved. This version also brings Banjo-Kazooie
+the sleep save's seal: the auto save made as the Mini goes to sleep now survives a flat battery or a power cut while
+asleep. Onion freezes the game as POWER is released, usually before that save has finished on the card, and a save
+cut off there was deleted at the next start. Each save now writes a small `.seal` beside its file with the file's
+size and checksum, and the next start keeps a cut-off save that matches its seal byte for byte
+([Sleep and wake](docs/SLEEP-AND-WAKE.md#the-seal-149)). Not in Onion's Ports list? The zip does carry the Ports
+shortcut, the same way as the other fourteen games, and [README_MIYOO.md](banjo-kazooie/README_MIYOO.md) now says
+what to check on the card when it does not show. For builders: the PC "sanitizer" build (`SAN=`) never compiled the
+game with the sanitizer; it does now, as `SAN=undefined,float-cast-overflow`, and a sweep of the game's maps with it
+found no other shift of this kind. Checked in an emulator on the Mini's own binary: before the fix the five Jinjos of
+Mumbo's Mountain leave the count at 0 and no Jiggy; after it the count goes 1, 2, 3, 4, 5 and the Jiggy appears;
+honeycombs, Mumbo tokens, extra lives and Jiggies are counted and saved as before. Not yet run on a device. A save
+made by 1.0.3 loads unchanged (the save format did not change); save states from 1.0.3 may not load (kept aside as
+`.rejected`). Only the Banjo-Kazooie zip and the All Game Pack were replaced.
 
 - All fifteen games: no more crackle on loud, smooth sounds ([issue #10](https://github.com/mr-finster/miyoo64/issues/10)).
   Found and fixed by ksielick in Super Mario 64 ([PR #11](https://github.com/mr-finster/miyoo64/pull/11)): Onion's

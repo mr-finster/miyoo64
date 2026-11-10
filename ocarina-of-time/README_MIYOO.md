@@ -4,7 +4,7 @@ A port to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip), with a so
 save states and a first-start data builder. **There is no game data in it.** It builds everything
 from your own USA 1.0 ROM the first time you run it.
 
-**Status:** version 1.1.10. It plays on a Mini Plus with Onion from Apps at the game's own 20 fps, with both cores drawing
+**Status:** version 1.1.10 (this source; the released zip is 1.1.9). It plays on a Mini Plus with Onion from Apps at the game's own 20 fps, with both cores drawing
 (2026-10-10). This build adds the CPU clock (1800 MHz on the Mini Plus, `cpuclock=` below), not yet
 run on a device. Onion's Ports list, MinUI, Allium and spruce still need a first run.
 

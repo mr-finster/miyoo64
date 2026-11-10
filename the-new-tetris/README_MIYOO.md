@@ -4,7 +4,7 @@ A port to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip), built on 
 [chris-gilmore/tnt-splat](https://github.com/chris-gilmore/tnt-splat) decompilation. It uses a software renderer and has save states.
 **There is no game data in it.** It reads everything from your own USA ROM.
 
-**Status:** version 1.0.2, a beta. Known issues: [README.md](README.md#known-issues).
+**Status:** version 1.0.2, a beta (this source; the released zip is 1.0.1). Known issues: [README.md](README.md#known-issues).
 
 ## How it plays
 
