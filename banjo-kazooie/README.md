@@ -79,7 +79,8 @@ render modes, sound and collision tables, no art); no host paths or authoring me
 `miyoo/game.json` lists (no ROM).
 
 `make -f hh/Makefile.handheld PLAT=pc` builds a headless 32-bit x86 copy for tests (frame dumps, `BK_PADSCRIPT`,
-`BK_WARP=<map>:<exit>`), and `SAN=address,undefined` its sanitizer build.
+`BK_WARP=<map>:<exit>`, `BK_TOUCH=<frames>` to pick up the map's Jinjos, honeycombs, tokens and Jiggies), and
+`SAN=undefined,float-cast-overflow` its sanitizer build (reports go to `console.log`).
 
 ## Credits
 

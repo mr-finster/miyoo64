@@ -23,5 +23,9 @@
 /* a 16-bit value as the N64 stores it (frame buffers and textures stay in its byte order) */
 #define HH_BE16(x) ((unsigned short)__builtin_bswap16((unsigned short)(x)))
 
+/* a shift amount as the N64 takes it: MIPS shifts by the low five bits of the amount (x86 too); on ARM a shift by 32 or
+ * more gives 0. For game code whose amount can pass 31 (chJinjo's 1 << (marker id + 6)). */
+#define HH_SHAMT(n) ((n) & 0x1F)
+
 /* a test switch read once (hh_bk.c): game code's debug logs check it in hot paths */
 int hh_dbg_env(const char *name);

@@ -39,6 +39,17 @@ Known issues: [README.md](README.md#known-issues).
 | MinUI, MyMinUI | the home screen | `Roms/Banjo-Kazooie (BK)/`, `Emus/miyoomini/BK.pak/` |
 | Allium | Apps | `Apps/Banjo-Kazooie.pak/` |
 
+**Not in Onion's Ports list?** The Ports list needs Onion's Ports Collection (from Onion's Package Manager); without
+it the game is in Apps only. With it, check on the card:
+- `Roms/PORTS/Shortcuts/Banjo-Kazooie.port` is there. If it is not, unzip the game's zip onto the card's root again
+  and let it merge (copying only `App/BanjoKazooie` gives the Apps entry alone). If there is a
+  `Banjo-Kazooie.notfound` instead, Onion's "~Import ports" hid it at a time the game's folder was missing: start
+  "~Import ports" in the Ports list once more, or rename it back to `.port`.
+- Then refresh Onion's lists (in the Games tab, MENU, "Refresh all roms"), or delete
+  `Roms/PORTS/Shortcuts/Shortcuts_cache6.db`: Onion keeps the list it found the first time in that file.
+- If the card has a `Roms/PORTS/miyoogamelist.xml` (some ready-made cards and scrapers add one), Onion lists only
+  the games named in it: add Banjo-Kazooie there, or remove the file and refresh.
+
 Everything the game writes stays in `App/BanjoKazooie/data/`:
 - the ROM copy (`banjo.z64`) and where the ROM was found (`rom_path.txt`);
 - the game's saves (`eeprom.bin`);

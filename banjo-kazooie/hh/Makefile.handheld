@@ -14,9 +14,17 @@ HH_RELEASE ?= 1.0.4
 HH_VERSION ?= $(shell git -C hh rev-parse --short HEAD 2>/dev/null)
 .DEFAULT_GOAL := all
 SHELL := /bin/bash
-# SAN=address,undefined (PLAT=pc): the sanitizer build for the crash sweep, in build/hh-pc-san (globals unpadded, so
-# the layout stays the N64's)
+# SAN=undefined,float-cast-overflow (PLAT=pc): the sanitizer build for the crash sweeps, in build/hh-pc-san. Its
+# reports ("runtime error") go to console.log and the game goes on: the decomp's own idioms (indexing past an array
+# into its neighbour, the bank loader's offsets) report at boot, so the sweeps list each new place instead of stopping
+# (SAN_RECOVER=-fno-sanitize-recover=all stops at the first). What it is for: shifts by 32 and over and float-to-int
+# casts out of range, which MIPS, x86 and ARM each answer differently (issue 15's Jinjos). AddressSanitizer does not
+# work here: its build ends past the 16 MB window (0x81000000), and with calls for its checks
+# (--param asan-instrumentation-with-call-threshold=0) it stops in hh_os_run's change of stack.
+# Until 1.0.4 these flags were added after CFLAGS had been set (:=), so "the sanitizer build" was only linked with the
+# sanitizer: its sweeps caught crashes and what libasan's own memset/memcpy saw, nothing else.
 SAN ?=
+SAN_RECOVER ?=
 BUILD_DIR := build/hh-$(PLAT)$(if $(SAN),-san)
 ELF       := $(BUILD_DIR)/banjo
 
@@ -80,6 +88,11 @@ GAME_DEFS := -D_FINALROM -DF3DEX_GBI -DVERSION=0 -DNDEBUG -DBUILD_VERSION=VERSIO
 INCLUDES  := -I hh/include -I hh/kit/platform -I . -I include -idirafter lib/ultralib/include \
              -idirafter lib/ultralib/include/PR -idirafter lib/ultralib/include/PRinternal \
              -I include/n_audio/PR -idirafter lib/ultralib/src/audio
+# before the CFLAGS below take EXTRA_CFLAGS (they are := variables; set after them, the sanitizer only got linked in)
+ifneq ($(SAN),)
+  override EXTRA_CFLAGS += -fsanitize=$(SAN) -fno-omit-frame-pointer $(SAN_RECOVER) -g \
+                  $(if $(findstring address,$(SAN)),--param asan-globals=0)
+endif
 # IDO semantics: unsigned plain char, wrapping signed math, no strict aliasing, variables in source order.
 CFLAGS    := -std=gnu89 $(MARCH) $(OPT) -g -funsigned-char -fplan9-extensions \
              -fno-common -fno-toplevel-reorder -fwrapv -fno-strict-aliasing -fno-pie -ffp-contract=off \
@@ -100,8 +113,6 @@ LDFLAGS   := $(MARCH) -no-pie -Wl,-Ttext-segment=0x80400000 -Wl,-Map,$(BUILD_DIR
              -T hh/banjo.ld
 LIBS      := $(SDL_LIBS) -lm -lpthread
 ifneq ($(SAN),)
-  EXTRA_CFLAGS += -fsanitize=$(SAN) -fno-omit-frame-pointer -fno-sanitize-recover=all -g \
-                  $(if $(findstring address,$(SAN)),--param asan-globals=0)
   LDFLAGS += -fsanitize=$(SAN)
 endif
 
