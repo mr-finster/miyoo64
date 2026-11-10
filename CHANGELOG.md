@@ -5,14 +5,6 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
-- Banjo-Kazooie 1.0.5: the Jinjo heads in the pause menu and on the HUD have their right colours and shapes again
-  (issue #15: "their face sprites are distorted"). The game makes each Jinjo's colour palette itself at run time;
-  on the Mini those colours were stored in the CPU's byte order while the renderer reads palettes in the N64's, so
-  every colour came out byte-swapped: wrong colours, and the see-through bit taken from the wrong place, which tore
-  holes into the heads. Now stored as the N64 does. Checked under the ARM emulator in Mumbo's Mountain with all five
-  Jinjos rescued: blue, green, orange, pink and yellow heads, as on the N64; the other pause-menu icons were already
-  right.
-
 - Super Mario 64 1.1.8, experimental and off unless asked for: the Mini's 2D engine (SigmaStar MI_GFX) can draw
   each frame onto the panel, doubled and turned, in place of the CPU (`hwblit=1` in `data/sm64_display.cfg`, or
   `SM64_HWBLIT=1` / `MIYOO_HWBLIT=1` in `launch.sh`). The CPU then only copies the 320x240 frame for the engine
@@ -146,6 +138,15 @@ Mumbo's Mountain leave the count at 0 and no Jiggy; after it the count goes 1, 2
 honeycombs, Mumbo tokens, extra lives and Jiggies are counted and saved as before. Not yet run on a device. A save
 made by 1.0.3 loads unchanged (the save format did not change); save states from 1.0.3 may not load (kept aside as
 `.rejected`). Only the Banjo-Kazooie zip and the All Game Pack were replaced.
+
+Updated Nov 10, again: Banjo-Kazooie 1.0.5 (beta) draws the Jinjo heads in the pause menu and on the HUD right
+([issue #15](https://github.com/mr-finster/miyoo64/issues/15): "their face sprites are distorted"). The game makes
+each Jinjo's colour palette itself at run time; on the Mini those colours were stored in the CPU's byte order while
+the renderer reads palettes in the N64's, so every colour came out byte-swapped: wrong colours, and the see-through
+bit taken from the wrong place, which tore holes into the heads. Now stored as the N64 does. Checked under the ARM
+emulator in Mumbo's Mountain with all five Jinjos rescued: blue, green, orange, pink and yellow heads, as on the N64;
+the other pause-menu icons were already right. Not yet run on a device. Saves and save states from 1.0.4 load
+unchanged. Only the Banjo-Kazooie zip and the All Game Pack were replaced.
 
 - All fifteen games: no more crackle on loud, smooth sounds ([issue #10](https://github.com/mr-finster/miyoo64/issues/10)).
   Found and fixed by ksielick in Super Mario 64 ([PR #11](https://github.com/mr-finster/miyoo64/pull/11)): Onion's
