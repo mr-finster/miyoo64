@@ -171,13 +171,17 @@ static HFX_COLD void hfx_comp_px(uint32_t *d, const uint16_t *dz, int x, const u
     O = vorr_u16(O, vcreate_u16(0x00FF000000000000ull));
     d[x] = vget_lane_u32(vreinterpret_u32_u8(vmovn_u16(vcombine_u16(O, O))), 0);
 }
-static HFX_COLD void hfx_composite(void) {
+/* The composite of the drawn tiles in tile rows ty0..ty1-1 (full-res rows ty0 * 16 .. ty1 * 16 - 1); returns the pixels
+ * counted. It reads the layer (colour and nearest depth, rows j - 1 .. j + 1 of each half row j: also the next tile row's
+ * first and the last tile row's last) and the target's depth, and writes only the target's colour rows of its own tile
+ * rows: two calls with disjoint tile rows write disjoint pixels, each from the same inputs (OOT_HFXSPLIT). */
+static HFX_COLD uint64_t hfx_comp_rows(int ty0, int ty1) {
     const int W = sHfxDW, H = sHfxDH, hw = sHfxW, hh = sHfxH, tol = HFX_ZTOL;
     const uint16x8_t v255q = vdupq_n_u16(255), a255q = vreinterpretq_u16_u64(vdupq_n_u64(0x00FF000000000000ull));
     const uint16x8_t tolq = vdupq_n_u16((uint16_t)(tol < 0 ? 0 : tol > 65535 ? 65535 : tol));
     const uint8x8_t k3 = vdup_n_u8(3);
     uint64_t npx = 0;
-    for (int ty = sHfxTy0; ty < sHfxTy1; ty++) {
+    for (int ty = ty0; ty < ty1; ty++) {
         for (int tx = sHfxTx0; tx < sHfxTx1; tx++) {
             if (!sHfxTile[ty * sHfxTW + tx]) continue;
             const int x0 = tx * 2 * HFX_T, x1 = imin(x0 + 2 * HFX_T, W), y0 = ty * 2 * HFX_T, y1 = imin(y0 + 2 * HFX_T, H);
@@ -239,6 +243,42 @@ static HFX_COLD void hfx_composite(void) {
             }
         }
     }
+    return npx;
+}
+#if defined(MIYOO)
+/* OOT_HFXSPLIT (default 1; 0 = this thread alone, as before): the composite's tile rows taken from both ends of one
+ * shared range, one tile row at a time, this thread from the top and the worker from the bottom, until they meet
+ * (steal_take, as OOT_STEALROWS). The worker is idle here: hfx_flush drains what waits (PEND_DRAIN: the stream job
+ * stopped and waited for) before it calls the composite. Nothing either share writes is read by the other (each writes
+ * only its own tile rows of the target's colour; the layer and the depths are only read), and the layer is cleared
+ * below only after both have finished, so the pixels are the same as one thread's. On the device the composite was
+ * 9% of the CPU at Lake Hylia and 19% at Zora's Domain (prof=1, 2026-11-10), on the first core alone. */
+typedef struct { uint32_t range; uint64_t px; } HfxJob;
+static void hfx_comp_job(void *arg) {
+    HfxJob *j = (HfxJob *)arg;
+    int t0, t1;
+    while (steal_take(&j->range, 1, false, &t0, &t1)) j->px += hfx_comp_rows(t0, t1);
+}
+static int hfx_split_on(void) {
+    static int sOn = -1;
+    if (sOn < 0) { const char *e = getenv("OOT_HFXSPLIT"); sOn = !(e != NULL && e[0] == '0'); }
+    return sOn;
+}
+#endif
+static HFX_COLD void hfx_composite(void) {
+    const int hw = sHfxW, hh = sHfxH;
+    uint64_t npx = 0;
+#if defined(MIYOO)
+    if (sHfxTy1 - sHfxTy0 >= 2 && hfx_split_on() && miyoo_worker_ready()) {
+        HfxJob j = { (uint32_t)sHfxTy0 | ((uint32_t)sHfxTy1 << 16), 0 };
+        int t0, t1;
+        miyoo_worker_run(hfx_comp_job, &j);
+        while (steal_take(&j.range, 1, true, &t0, &t1)) npx += hfx_comp_rows(t0, t1);
+        miyoo_worker_wait();
+        npx += j.px;
+    } else
+#endif
+        npx = hfx_comp_rows(sHfxTy0, sHfxTy1);
     for (int ty = sHfxTy0; ty < sHfxTy1; ty++) {
         for (int tx = sHfxTx0; tx < sHfxTx1; tx++) {
             uint8_t *const t = &sHfxTile[ty * sHfxTW + tx];
