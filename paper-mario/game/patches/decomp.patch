@@ -1034,6 +1034,74 @@ index 0be512c20..fca05d4d4 100644
      if (swizzlePointers) {
          entity_swizzle_anim_pointers(entityData, animBaseAddr, entity->gfxBaseAddr);
      }
+diff --git a/src/entity/ShatteringBlock_common.c b/src/entity/ShatteringBlock_common.c
+index 5ec4f646f..3dc296013 100644
+--- a/src/entity/ShatteringBlock_common.c
++++ b/src/entity/ShatteringBlock_common.c
+@@ -136,8 +136,10 @@ void entity_shattering_idle(Entity* entity) {
+             data->fragmentFallSpeed[i] = reboundSpeed;
+         }
+ 
+-        data->fragmentRotX[i] += rotSpeed;
+-        data->fragmentRotY[i] -= rotSpeed;
++        /* The port: through a signed int, so a turn below 0 wraps as on the N64 (ARM's float to unsigned gives 0:
++         * the fragment stopped turning on that axis). */
++        data->fragmentRotX[i] = (s32)(data->fragmentRotX[i] + rotSpeed);
++        data->fragmentRotY[i] = (s32)(data->fragmentRotY[i] - rotSpeed);
+     }
+ 
+     data->fadeOutCounter++;
+diff --git a/src/entity/WoodenCrate.c b/src/entity/WoodenCrate.c
+index 3cdffb77e..431895988 100644
+--- a/src/entity/WoodenCrate.c
++++ b/src/entity/WoodenCrate.c
+@@ -160,8 +160,10 @@ void entity_WoodenCrate_update_fragments(Entity* entity) {
+                 }
+             }
+ 
+-            data->fragmentRotX[i] += rotSpeed;
+-            data->fragmentRotY[i] -= rotSpeed;
++            /* The port: through a signed int, so a turn below 0 wraps as on the N64 (ARM's float to unsigned gives 0:
++             * the fragment stopped turning on that axis). */
++            data->fragmentRotX[i] = (s32)(data->fragmentRotX[i] + rotSpeed);
++            data->fragmentRotY[i] = (s32)(data->fragmentRotY[i] - rotSpeed);
+         }
+     }
+ 
+diff --git a/src/entity/default/BoardedFloor.c b/src/entity/default/BoardedFloor.c
+index 00583c0ec..9e3f9dfe6 100644
+--- a/src/entity/default/BoardedFloor.c
++++ b/src/entity/default/BoardedFloor.c
+@@ -147,8 +147,10 @@ void Entity_BoardedFloor_update_fragments(Entity* entity) {
+                 }
+             }
+ 
+-            data->fragmentRotX[i] += rotSpeed;
+-            data->fragmentRotY[i] -= rotSpeed;
++            /* The port: through a signed int, so a turn below 0 wraps as on the N64 (ARM's float to unsigned gives 0:
++             * the fragment stopped turning on that axis). */
++            data->fragmentRotX[i] = (s32)(data->fragmentRotX[i] + rotSpeed);
++            data->fragmentRotY[i] = (s32)(data->fragmentRotY[i] - rotSpeed);
+         }
+     }
+ 
+diff --git a/src/entity/default/BombableRock.c b/src/entity/default/BombableRock.c
+index 9c3051c61..b562a8595 100644
+--- a/src/entity/default/BombableRock.c
++++ b/src/entity/default/BombableRock.c
+@@ -172,8 +172,10 @@ void entity_BombableRock_update_fragments(Entity* entity) {
+                 }
+             }
+ 
+-            data->fragmentRotX[i] += rotSpeed;
+-            data->fragmentRotY[i] -= rotSpeed;
++            /* The port: through a signed int, so a turn below 0 wraps as on the N64 (ARM's float to unsigned gives 0:
++             * the fragment stopped turning on that axis). */
++            data->fragmentRotX[i] = (s32)(data->fragmentRotX[i] + rotSpeed);
++            data->fragmentRotY[i] = (s32)(data->fragmentRotY[i] - rotSpeed);
+         }
+     }
+ 
 diff --git a/src/evt/demo_api.c b/src/evt/demo_api.c
 index c9861224a..c76d4048c 100644
 --- a/src/evt/demo_api.c

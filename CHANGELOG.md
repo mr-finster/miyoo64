@@ -17,6 +17,14 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   or on (no engine there: the CPU draws), the frames are byte for byte those of before; against a software stand-in
   for the engine (`kit-hwblit/qemu_check.sh`) the whole path gives the same frames too.
 
+- Paper Mario 1.1.9: the pieces of a broken brick block, wooden crate, boarded floor or bombed rock tumble on both
+  axes again. Each piece's two turn angles are small unsigned numbers stepped by a float; one of the two steps goes
+  below zero from the first frame, which wraps round on the N64 but became 0 on the Mini's ARM CPU (float to
+  unsigned saturates there), so every piece turned about one axis only. The step now goes through a signed number
+  and wraps as on the N64. Found by listing every float-to-unsigned conversion in the Mini's binary; checked by
+  compiling the four files (no such conversion left in them) and with the same lines under the ARM emulator, not
+  yet seen in the game.
+
 - All fifteen games: the auto save made as the Mini goes to sleep now survives a flat battery or a power cut while
   asleep. Super Mario 64 1.1.8, Mario Kart 64 1.1.10, GoldenEye 007 1.1.10, Perfect Dark 1.0.10, Ocarina of Time
   1.1.10, Majora's Mask 1.0.11 (beta), Paper Mario 1.1.9, Star Fox 64 1.1.7, F-Zero X 1.1.7, Diddy Kong Racing 1.1.9,
