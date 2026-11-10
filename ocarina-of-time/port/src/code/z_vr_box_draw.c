@@ -16,6 +16,7 @@ Mtx* Skybox_UpdateMatrix(SkyboxContext* skyboxCtx, f32 x, f32 y, f32 z) {
 
 void Skybox_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyboxId, s16 blend, f32 x, f32 y, f32 z) {
     OPEN_DISPS(gfxCtx, "../z_vr_box_draw.c", 52);
+    Port_FiOpenChild(NULL, Port_FiCameraEpoch()); /* port */
 
 #if defined(TARGET_HANDHELD)
     gDPNoOpTag(POLY_OPA_DISP++, HH_TAG_SKY_BEGIN); /* drawn at half resolution (gfx_soft) */
@@ -108,6 +109,7 @@ void Skybox_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyboxId
     gDPNoOpTag(POLY_OPA_DISP++, HH_TAG_SKY_END);
 #endif
 
+    Port_FiCloseChild(); /* port */
     CLOSE_DISPS(gfxCtx, "../z_vr_box_draw.c", 125);
 }
 

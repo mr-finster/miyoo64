@@ -3,7 +3,7 @@
 - Optional. Put it at `App/OcarinaOfTime/data/debug.cfg`, one `key=value` per line.
 - A missing key keeps its default.
 - The in-game menu's OPTIONS page changes some of these keys (`fineaim`, `fineaimpct`, `fineaimms`, `crop3d`,
-  `msgbox1to1`, `hudfilter`, `watergrain`, `declick`) and writes them to this file, keeping your other lines.
+  `msgbox1to1`, `hudfilter`, `watergrain`, `declick`, `fps30`) and writes them to this file, keeping your other lines.
   Adding a key to the page: [docs/OPTIONS.md](../docs/OPTIONS.md).
 
 | Key | Default | What it does |
@@ -53,6 +53,7 @@
 | `magflame` | `1` | The title screen's logo flames as the N64 draws them (a yellow-green glow as the logo fades in, then the orange flames around the shield, sword and ZELDA); `0` = the old flat version (a grey speckled ghost, then a faint grey haze) |
 | `rect2t` | `1` | Full-screen and 2D effects made of two textures drawn with both, in the N64's colours (the Haunted Wasteland's sandstorm orange over the whole view, the title logo's flames); `0` = the first texture only (the sandstorm pale cream with clear sand along the bottom) |
 | `modifyvtx` | `1` | Model joints the N64 re-maps (gSPModifyVertex) drawn with the right texture there, as on the N64: Barinade's ceiling tentacles, the Bazaar shopkeeper's shoulders, adult Ruto's arm fins (also child Ruto, the roof man, Volvagia, the Like Like, Dead Hand, the Shell Blade, Jabu-Jabu's muscle blocks, the fish); `0` = the old look (the previous joint's texture stretched across the seam); `ab` = off and on in turn every 100 frames, for an A/B |
+| `fps30` | `0` | 30 frames a second: the in-between frames drawn with everything that moves blended between the game's 20 updates a second (actors, the camera, effects, Epona, scrolling textures, the dialog box), the game's speed unchanged; falls back to 20 where a frame takes over 30 ms to draw. Each picture is held by the panel's vsyncs. `0` = 20 fps, as the N64 |
 | `halfwater` | `1` | The Deku Tree basement water (and other see-through surfaces of one colour strength) drawn at half resolution: faster there, softer, the grain mostly lost; `0` = full resolution |
 | `hfxsplit` | `1` | With halfwater: the water layer's composite drawn by both cores, the same picture; `0` = the first core alone, the older, slower way |
 | `fullsky` | `1` | The sky at full resolution; `0` = drawn at half resolution and scaled up (faster outdoors, slightly softer clouds) |

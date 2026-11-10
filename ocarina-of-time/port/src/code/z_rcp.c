@@ -1411,6 +1411,7 @@ Gfx* Gfx_BranchTexScroll(Gfx** gfxP, u32 x, u32 y, s32 width, s32 height) {
     gDPTileSync(displayList);
     gDPSetTileSize(displayList + 1, G_TX_RENDERTILE, x, y, x + ((width - 1) << 2), y + ((height - 1) << 2));
     gSPEndDisplayList(displayList + 2);
+    Port_FiTexScroll(displayList + 1); /* port */
 
     return displayList;
 }
@@ -1432,6 +1433,7 @@ Gfx* Gfx_TexScroll(GraphicsContext* gfxCtx, u32 x, u32 y, s32 width, s32 height)
     gDPTileSync(displayList);
     gDPSetTileSize(displayList + 1, G_TX_RENDERTILE, x, y, x + ((width - 1) << 2), y + ((height - 1) << 2));
     gSPEndDisplayList(displayList + 2);
+    Port_FiTexScroll(displayList + 1); /* port */
 
     return displayList;
 }
@@ -1450,6 +1452,8 @@ Gfx* Gfx_TwoTexScroll(GraphicsContext* gfxCtx, s32 tile1, u32 x1, u32 y1, s32 wi
     gDPTileSync(displayList + 2);
     gDPSetTileSize(displayList + 3, tile2, x2, y2, x2 + ((width2 - 1) << 2), y2 + ((height2 - 1) << 2));
     gSPEndDisplayList(displayList + 4);
+    Port_FiTexScroll(displayList + 1); /* port */
+    Port_FiTexScroll(displayList + 3); /* port */
 
     return displayList;
 }
@@ -1469,6 +1473,8 @@ Gfx* Gfx_TwoTexScrollEnvColor(GraphicsContext* gfxCtx, s32 tile1, u32 x1, u32 y1
     gDPSetTileSize(displayList + 3, tile2, x2, y2, x2 + ((width2 - 1) << 2), y2 + ((height2 - 1) << 2));
     gDPSetEnvColor(displayList + 4, r, g, b, a);
     gSPEndDisplayList(displayList + 5);
+    Port_FiTexScroll(displayList + 1); /* port */
+    Port_FiTexScroll(displayList + 3); /* port */
 
     return displayList;
 }
@@ -1572,6 +1578,7 @@ void Gfx_SetupFrame(GraphicsContext* gfxCtx, u8 r, u8 g, u8 b) {
         gDPSetRenderMode(POLY_OPA_DISP++, G_RM_NOOP, G_RM_NOOP2);
         gDPSetFillColor(POLY_OPA_DISP++, (GPACK_ZDZ(G_MAXFBZ, 0) << 16) | GPACK_ZDZ(G_MAXFBZ, 0));
         gDPFillRectangle(POLY_OPA_DISP++, 0, letterboxSize, gScreenWidth - 1, gScreenHeight - letterboxSize - 1);
+        Port_FiCmd(POLY_OPA_DISP - 1, 2); /* port */
         gDPPipeSync(POLY_OPA_DISP++);
 
         // Fill the whole screen with the base color
@@ -1581,6 +1588,7 @@ void Gfx_SetupFrame(GraphicsContext* gfxCtx, u8 r, u8 g, u8 b) {
         gDPSetRenderMode(POLY_OPA_DISP++, G_RM_NOOP, G_RM_NOOP2);
         gDPSetFillColor(POLY_OPA_DISP++, (GPACK_RGBA5551(r, g, b, 1) << 16) | GPACK_RGBA5551(r, g, b, 1));
         gDPFillRectangle(POLY_OPA_DISP++, 0, letterboxSize, gScreenWidth - 1, gScreenHeight - letterboxSize - 1);
+        Port_FiCmd(POLY_OPA_DISP - 1, 2); /* port */
         gDPPipeSync(POLY_OPA_DISP++);
 
         // Draw the letterbox if applicable (uses the same color as the screen base)
@@ -1589,8 +1597,12 @@ void Gfx_SetupFrame(GraphicsContext* gfxCtx, u8 r, u8 g, u8 b) {
             gDPSetCycleType(OVERLAY_DISP++, G_CYC_FILL);
             gDPSetRenderMode(OVERLAY_DISP++, G_RM_NOOP, G_RM_NOOP2);
             gDPSetFillColor(OVERLAY_DISP++, (GPACK_RGBA5551(r, g, b, 1) << 16) | GPACK_RGBA5551(r, g, b, 1));
+            { static char sPortLetterboxKey; Port_FiOpenChild(&sPortLetterboxKey, 1); } /* port */
             gDPFillRectangle(OVERLAY_DISP++, 0, 0, gScreenWidth - 1, letterboxSize - 1);
+            Port_FiCmd(OVERLAY_DISP - 1, 2); /* port */
             gDPFillRectangle(OVERLAY_DISP++, 0, gScreenHeight - letterboxSize, gScreenWidth - 1, gScreenHeight - 1);
+            Port_FiCmd(OVERLAY_DISP - 1, 2); /* port */
+            Port_FiCloseChild(); /* port */
             gDPPipeSync(OVERLAY_DISP++);
         }
     }

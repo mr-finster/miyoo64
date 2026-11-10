@@ -2304,7 +2304,7 @@ void KaleidoScope_UpdatePageSwitch(PlayState* play, Input* input) {
 
         if (pauseCtx->pageSwitchTimer == (4 * PAGE_SWITCH_NSTEPS)) {
             pauseCtx->pageSwitchTimer = 0;
-            pauseCtx->pageIndex = sPageSwitchNextPageIndex[pauseCtx->nextPageMode];
+            { void Port_FiDontInterpolateFrame(void); Port_FiDontInterpolateFrame(); } /* port */ pauseCtx->pageIndex = sPageSwitchNextPageIndex[pauseCtx->nextPageMode];
             pauseCtx->mainState = PAUSE_MAIN_STATE_IDLE;
         }
     }
@@ -3578,7 +3578,7 @@ void KaleidoScope_UpdateOpening(PlayState* play) {
         gSaveContext.buttonStatus[3] = gPageSwitchNextButtonStatus[pauseCtx->pageIndex + PAGE_SWITCH_PT_LEFT][3];
         gSaveContext.buttonStatus[4] = gPageSwitchNextButtonStatus[pauseCtx->pageIndex + PAGE_SWITCH_PT_LEFT][4];
 
-        pauseCtx->pageIndex = sPageSwitchNextPageIndex[pauseCtx->nextPageMode];
+        { void Port_FiDontInterpolateFrame(void); Port_FiDontInterpolateFrame(); } /* port */ pauseCtx->pageIndex = sPageSwitchNextPageIndex[pauseCtx->nextPageMode];
 
         pauseCtx->mainState = PAUSE_MAIN_STATE_IDLE;
         pauseCtx->state++; // PAUSE_STATE_MAIN
@@ -3587,7 +3587,7 @@ void KaleidoScope_UpdateOpening(PlayState* play) {
         Interface_LoadActionLabelB(play, DO_ACTION_SAVE);
     } else if (pauseCtx->pageSwitchTimer == (4 * PAGE_SWITCH_NSTEPS * 1)) {
         // `ZREG(47)` is always 1 so this normally never happens
-        pauseCtx->pageIndex = sPageSwitchNextPageIndex[pauseCtx->nextPageMode];
+        { void Port_FiDontInterpolateFrame(void); Port_FiDontInterpolateFrame(); } /* port */ pauseCtx->pageIndex = sPageSwitchNextPageIndex[pauseCtx->nextPageMode];
         pauseCtx->nextPageMode = (u16)(pauseCtx->pageIndex << 1) + 1;
     }
 }

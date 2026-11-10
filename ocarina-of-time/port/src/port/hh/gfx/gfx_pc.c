@@ -39,6 +39,7 @@
 #include "port.h"
 #ifdef TARGET_HANDHELD
 #include "savestate.h" /* SAVESTATE_EXCLUDE for the tuning knobs below */
+#include "hh_interp.h" /* the 30 fps in-between frames' swaps (gHhFiRepl) */
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
 #include <arm_neon.h>
 #endif
@@ -6249,6 +6250,23 @@ extern char D_01000000[] __attribute__((weak));
  * frame, 600 with the cull off). Weak, as D_01000000. OOT_IDMTX=0: as before. */
 extern Mtx gIdentityMtx __attribute__((weak));
 #define GFX_ASSET_SYMBOL_GIDENTITYMTX 0x0E000001u
+/* An in-between frame (hh_interp.c, OOT_FPS30): the game's Mtx at this address is swapped for the blended one,
+ * encoded as a Mtx the way the game's own guMtxF2L does it (each value * 65536 truncated, its high halves in the
+ * first 8 words, its low halves in the last 8), read back by gfx_sp_matrix as usual. */
+static Mtx sFiMtx SAVESTATE_EXCLUDE;
+static const void *gfx_fi_mtx(const void *a) {
+    const float *m = port_fi_lookup(gHhFiRepl, a);
+    if (m == NULL) return a;
+    int32_t *w = (int32_t *) &sFiMtx;
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j += 2) {
+            const int32_t a0 = (int32_t) (m[i * 4 + j] * 65536.0f), a1 = (int32_t) (m[i * 4 + j + 1] * 65536.0f);
+            w[i * 2 + j / 2] = (int32_t) (((uint32_t) a0 & 0xFFFF0000u) | ((uint32_t) a1 >> 16));
+            w[8 + i * 2 + j / 2] = (int32_t) (((uint32_t) a0 << 16) | ((uint32_t) a1 & 0xFFFFu));
+        }
+    }
+    return &sFiMtx;
+}
 static void *gfx_mtx_addr(uintptr_t w1) {
     static int sOn = -1;
     if (w1 == GFX_ASSET_SYMBOL_GIDENTITYMTX && &gIdentityMtx != NULL) {
@@ -6260,6 +6278,7 @@ static void *gfx_mtx_addr(uintptr_t w1) {
         if (sOn < 0) { const char *e = getenv("OOT_BILLBOARD"); sOn = !(e != NULL && e[0] == '0'); }
         if (sOn) return seg_addr(0x01000000u);
     }
+    if (gHhFiRepl != NULL) return (void *) gfx_fi_mtx(seg_addr(w1));
     return seg_addr(w1);
 }
 
@@ -6407,9 +6426,37 @@ static int gfx_dl_call_ok(uintptr_t w1) {
     return 0;
 }
 
+/* an in-between frame: a skinned model's vertices (n of them at src) blended with the last frame's (hh_interp.c) */
+static void *gfx_fi_vtx(void *src, unsigned n) {
+    if (gHhFiRepl != NULL) {
+        const void *v = port_fi_vtx_lookup(gHhFiRepl, src, n * 16u);
+        if (v != NULL) return (void *) v;
+    }
+    return src;
+}
 static void gfx_run_dl(Gfx* cmd) {
     for (;;) {
         uint32_t opcode = cmd->words.w0 >> 24;
+        Gfx *fiOrig = NULL, fiCopy[3];
+        if (gHhFiRepl != NULL) {
+            /* an in-between frame (hh_interp.c): a scrolling texture's tile size, the dialog box's colour and
+             * rectangle, the letterbox bars and their scissor, read from a copy holding the blended words; cmd is
+             * put back after the command (a texture rectangle takes 3 words) */
+            uint32_t w0, w1;
+            if (opcode == (uint8_t) G_SETTILESIZE && port_fi_tile_lookup(gHhFiRepl, cmd, &w0, &w1)) {
+                fiCopy[0].words.w0 = w0; fiCopy[0].words.w1 = w1;
+                fiOrig = cmd; cmd = fiCopy;
+            } else if (opcode == (uint8_t) G_SETPRIMCOLOR || opcode == (uint8_t) G_TEXRECT ||
+                       opcode == (uint8_t) G_FILLRECT || opcode == (uint8_t) G_SETSCISSOR) {
+                const uint32_t *cw = port_fi_cmd_lookup(gHhFiRepl, cmd);
+                if (cw != NULL) {
+                    memcpy(fiCopy, cmd, (opcode == (uint8_t) G_TEXRECT ? 3 : 1) * sizeof(Gfx));
+                    fiCopy[0].words.w0 = cw[0]; fiCopy[0].words.w1 = cw[1];
+                    if (opcode == (uint8_t) G_TEXRECT) { fiCopy[1].words.w1 = cw[2]; fiCopy[2].words.w1 = cw[3]; }
+                    fiOrig = cmd; cmd = fiCopy;
+                }
+            }
+        }
         if (gfx_trace_frames > 0 && gfx_cmd_budget < 4000) {
             port_log("dl %p: %08X %08X\n", cmd, (unsigned) cmd->words.w0, (unsigned) cmd->words.w1);
         }
@@ -6517,11 +6564,11 @@ static void gfx_run_dl(Gfx* cmd) {
 #ifdef F3DEX_GBI_2
 #if !defined(TARGET_PSP) && !defined(PORT_GE_CULL) && !defined(PORT_GE_TL)
                 if (gfx_vtxfast_on() && C0(12, 8) <= MAX_VERTICES) {
-                    gfx_sp_vertex_v2(C0(12, 8), C0(1, 7) - C0(12, 8), seg_addr(cmd->words.w1));
+                    gfx_sp_vertex_v2(C0(12, 8), C0(1, 7) - C0(12, 8), gfx_fi_vtx(seg_addr(cmd->words.w1), C0(12, 8)));
                     break;
                 }
 #endif
-                gfx_sp_vertex(C0(12, 8), C0(1, 7) - C0(12, 8), seg_addr(cmd->words.w1));
+                gfx_sp_vertex(C0(12, 8), C0(1, 7) - C0(12, 8), gfx_fi_vtx(seg_addr(cmd->words.w1), C0(12, 8)));
 #elif defined(F3DEX_GBI) || defined(F3DLP_GBI)
                 gfx_sp_vertex(C0(10, 6), C0(16, 8) / 2, seg_addr(cmd->words.w1));
 #else
@@ -6842,6 +6889,7 @@ static void gfx_run_dl(Gfx* cmd) {
 #ifdef PORT_PROFILE_DL
         if (prof_slot) port_profile_add(prof_slot, port_time_us() - prof_t0);
 #endif
+        if (fiOrig != NULL) cmd = fiOrig + (cmd - fiCopy);
         ++cmd;
     }
 }
@@ -7019,6 +7067,7 @@ void gfx_overlay_state_dirty(void) {
  * the next frame (same coordinated flush the arena-full path uses each frame).
  * Then forget cached GE state so the whole pipeline is re-sent. */
 void gfx_savestate_fixup(void) {
+    Port_FiDontInterpolateFrame(); /* hh_interp.c */
     gfx_texture_cache_reset(false);
     gfx_overlay_state_dirty();
 }

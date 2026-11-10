@@ -554,6 +554,7 @@ void SkinMatrix_Vec3sToVec3f(Vec3s* src, Vec3f* dest) {
 }
 
 void SkinMatrix_MtxFToMtx(MtxF* src, Mtx* dest) {
+    Port_FiMtxF(&src->mf[0][0], dest); /* port */
 #if PLATFORM_PSP
     guMtxF2L(src->mf, dest);
 #else

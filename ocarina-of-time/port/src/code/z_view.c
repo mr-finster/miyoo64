@@ -194,8 +194,10 @@ void View_ApplyLetterbox(View* view) {
 
     gDPPipeSync(POLY_OPA_DISP++);
     gDPSetScissor(POLY_OPA_DISP++, G_SC_NON_INTERLACE, ulx, uly, lrx, lry);
+    Port_FiCmd(POLY_OPA_DISP - 1, 2); /* port */
     gDPPipeSync(POLY_XLU_DISP++);
     gDPSetScissor(POLY_XLU_DISP++, G_SC_NON_INTERLACE, ulx, uly, lrx, lry);
+    Port_FiCmd(POLY_XLU_DISP - 1, 2); /* port */
 
     CLOSE_DISPS(gfxCtx, "../z_view.c", 472);
 }
@@ -383,6 +385,16 @@ s32 View_ApplyPerspective(View* view) {
 
     guLookAt(viewing, view->eye.x, view->eye.y, view->eye.z, view->at.x, view->at.y, view->at.z, view->up.x, view->up.y,
              view->up.z);
+    { /* port: frame interpolation */
+        MtxF portMf;
+
+        Port_FiCameraCheck(&view->eye.x, &view->at.x, &view->up.x, 0);
+        Port_FiOpenChild(NULL, Port_FiCameraEpoch());
+        guLookAtF(portMf.mf, view->eye.x, view->eye.y, view->eye.z, view->at.x, view->at.y, view->at.z, view->up.x,
+                  view->up.y, view->up.z);
+        Port_FiMtxF(&portMf.mf[0][0], viewing);
+        Port_FiCloseChild();
+    }
 
     view->viewing = *viewing;
 
@@ -557,6 +569,15 @@ s32 View_UpdateViewingMatrix(View* view) {
 
     guLookAt(view->viewingPtr, view->eye.x, view->eye.y, view->eye.z, view->at.x, view->at.y, view->at.z, view->up.x,
              view->up.y, view->up.z);
+    { /* port: frame interpolation */
+        MtxF portMf;
+
+        Port_FiOpenChild(NULL, Port_FiCameraEpoch());
+        guLookAtF(portMf.mf, view->eye.x, view->eye.y, view->eye.z, view->at.x, view->at.y, view->at.z, view->up.x,
+                  view->up.y, view->up.z);
+        Port_FiMtxF(&portMf.mf[0][0], view->viewingPtr);
+        Port_FiCloseChild();
+    }
 
     CLOSE_DISPS(view->gfxCtx, "../z_view.c", 886);
 

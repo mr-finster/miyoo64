@@ -132,6 +132,7 @@ void Skin_ApplyLimbModifications(GraphicsContext* gfxCtx, Skin* skin, s32 limbIn
                             vtxBuf, &vtxPoint);
     }
 
+    Port_FiSkinVtx(vtxEntry, vtxEntry->buf[vtxEntry->index], data->totalVtxCount); /* port */
     gSPSegment(POLY_OPA_DISP++, 0x08, vtxEntry->buf[vtxEntry->index]);
 
     vtxEntry->index = (vtxEntry->index == 0) ? 1 : 0;

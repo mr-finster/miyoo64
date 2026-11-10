@@ -4,6 +4,9 @@
 #include "sfx.h"
 #include "terminal.h"
 #include "translation.h"
+void Port_FiOpenChild(const void* a, int b); /* port: frame interpolation (hh_interp.c) */
+void Port_FiCloseChild(void);
+void Port_FiDontInterpolateChild(const void* key);
 #include "zelda_arena.h"
 #include "frame_advance.h"
 #include "effect.h"
@@ -183,6 +186,7 @@ void EffectSs_Insert(PlayState* play, EffectSs* effectSs) {
         if (EffectSs_FindSlot(effectSs->priority, &index) == 0) {
             sEffectSsInfo.searchStartIndex = index + 1;
             sEffectSsInfo.table[index] = *effectSs;
+            Port_FiDontInterpolateChild(&sEffectSsInfo.table[index]); /* port */
         }
     }
 }
@@ -272,6 +276,7 @@ void EffectSs_Spawn(PlayState* play, s32 type, s32 priority, void* initParams) {
 
     // Delete the previous effect in the slot, in case the slot wasn't free
     EffectSs_Delete(&sEffectSsInfo.table[index]);
+    Port_FiDontInterpolateChild(&sEffectSsInfo.table[index]); /* port */
 
     sEffectSsInfo.table[index].type = type;
     sEffectSsInfo.table[index].priority = priority;
@@ -327,7 +332,9 @@ void EffectSs_Draw(PlayState* play, s32 index) {
     EffectSs* effectSs = &sEffectSsInfo.table[index];
 
     if (effectSs->draw != NULL) {
+        Port_FiOpenChild(effectSs, 0); /* port */
         effectSs->draw(play, index, effectSs);
+        Port_FiCloseChild();
     }
 }
 
