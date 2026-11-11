@@ -282,16 +282,23 @@ int HhSched_FrameDeadline(uint32_t* usec) {
  * by vsyncs on the present thread (gfx_sdl12.c), which also paces the game: 3 vsyncs an update at the panel's
  * real rate (59.7 Hz on the Mini Plus) instead of the 60 Hz clock below. The game thread is at most two pictures
  * ahead of the screen.
- * When the pictures don't fit (the average draw over 30 ms), both ticks show only the update (20 fps, 3 vsyncs
- * each) until it fits again (under 27 ms, or the last one under 24). Outside the game (title, file select) and in
- * the pause menu (30 updates a second already) every frame is the game's own, held its VI count.
+ * Frame rate steps between 30 and 20 (OOT_FPS30STEPS, default 1; 0 = straight to 20): when three pictures don't
+ * fit in two updates, a tick A is followed by n ticks B instead of one: n + 2 pictures in n + 1 updates, about
+ * 60 * (n + 2) / (3 * (n + 1)) fps (n = 2: 26.7, 3: 25, 4: 24, 5: 23.3; only ticks B: 20). Each picture still goes
+ * up on the vsync of the moment it shows (1/3 of an update at its tick's vsync 0, the update at 2, the 2/3 point
+ * at 1), so the motion stays even with pictures of 2 and 3 vsyncs; a tick B's picture is held 3 vsyncs when another
+ * B follows. n comes from the average draw: n + 2 draws (and n + 1 updates of ~1 ms) must fit in n + 1 ticks of
+ * 50 ms. It rises at once, and falls with 2 ms to spare (or when the last draw is already 6 ms under). For the
+ * devices clocked at 1600 MHz (Mini, Mini v4, Mini Flip) the heavy places step down a little instead of to 20.
+ * Outside the game (title, file select) and in the pause menu (30 updates a second already) every frame is the
+ * game's own, held its VI count.
  * Written for the Miyoo Mini port (cacuracaptors/oot-miyoomini, MIT) after Ship of Harkinian's approach.
  */
 extern int port_fi_enabled; /* hh_interp.c */
 extern void gfx_sdl12_next_hold(int vsyncs);
 extern int gfx_sdl12_hold_ok(void);
 static FiRepl* sFiRepl;
-static int sFiTickA = 1, sFiFall;
+static int sFiNextA = 1, sFiStepN = 1, sFiStepB = 1, sFiSteps = -1;
 static float sFiDrawMs = 15.0f, sFiLastMs = 15.0f;
 
 static void SchedPsp_FiDraw(OSScTask* task, const FiRepl* repl, int hold) {
@@ -335,29 +342,46 @@ static int SchedPsp_FiTask(OSScTask* task) {
         }
     }
     if (!port_fi_pair(task->list.t.data_ptr, &cs, &ps)) {
-        /* not a recorded game frame: the frame itself, its VI count */
-        sFiTickA = 1;
+        /* not a recorded game frame: the frame itself, its VI count; the next recorded one starts with a tick A */
+        sFiNextA = 1;
         SchedPsp_FiDraw(task, NULL, (int)SchedPsp_GetUpdateRate(task));
     } else {
-        if (sFiTickA) {
-            /* the decision holds for the pair A + B */
-            if (!sFiFall && sFiDrawMs > 30.0f) {
-                sFiFall = 1;
-            } else if (sFiFall && (sFiDrawMs < 27.0f || sFiLastMs < 24.0f)) {
-                sFiFall = 0;
-            }
+        /* the steps' limits: n + 2 draws in n + 1 ticks, less the updates, the copies to the screen and a margin */
+        static const float lim[5] = { 30.0f, 34.0f, 36.5f, 38.0f, 39.0f }; /* n = 1..5 */
+        const float P = sFiDrawMs;
+        int n = 1;
+
+        if (sFiSteps < 0) {
+            const char* e = getenv("OOT_FPS30STEPS");
+
+            sFiSteps = !(e != NULL && e[0] == '0');
         }
-        if (sFiFall) {
-            SchedPsp_FiDraw(task, NULL, 3);
-        } else if (sFiTickA) {
+        while (n <= 5 && P > lim[n - 1]) {
+            n++;
+        }
+        if (!sFiSteps && n > 1) {
+            n = 6; /* no steps: 30 or 20 */
+        }
+        if (n > sFiStepN) {
+            sFiStepN = n;
+        } else if (n < sFiStepN && (P < lim[n - 1] - 2.0f || sFiLastMs < lim[n - 1] - 6.0f)) {
+            sFiStepN = n;
+        }
+        if (sFiNextA && sFiStepN <= 5) {
+            /* tick A: the 1/3 point (vsync 0 of the tick) and the update (vsync 2); a tick B always follows */
             port_fi_build(cs, ps, 1.0f / 3.0f, sFiRepl);
             SchedPsp_FiDraw(task, sFiRepl, 2);
             SchedPsp_FiDraw(task, NULL, 2);
+            sFiStepB = 0;
+            sFiNextA = 0;
         } else {
+            /* tick B: the 2/3 point (vsync 1), held until the next picture: a tick A's first (vsync 0 of the next
+             * tick: 2 vsyncs) or another tick B's (vsync 1 of the next: 3) */
+            sFiStepB++;
+            sFiNextA = sFiStepN <= 5 && sFiStepB >= sFiStepN;
             port_fi_build(cs, ps, 2.0f / 3.0f, sFiRepl);
-            SchedPsp_FiDraw(task, sFiRepl, 2);
+            SchedPsp_FiDraw(task, sFiRepl, sFiNextA ? 2 : 3);
         }
-        sFiTickA ^= 1;
     }
     osViSwapBuffer(task->framebuffer->swapBuffer);
     {
