@@ -1419,7 +1419,15 @@ static uint8_t gfx_mirror_flags(uint32_t width, uint32_t height) {
     if (rdp.texture_tile.cms & G_TX_MIRROR) m |= 1;
     if (rdp.texture_tile.cmt & G_TX_MIRROR) m |= 2;
     if (m != 0 && (width << (m & 1)) * (height << ((m >> 1) & 1)) > GFX_MAX_MIRROR_TEXELS) {
-        m = 0;
+        /* Mirrored both ways and too big doubled both ways: keep the one axis that fits (S first) rather than
+         * none. The Great Fairy Fountains' triforce (64x128 IA4, mirrored in S and T, drawn over s 0..128 and
+         * t 0..128) lost its S mirror with both: its right half repeated the left, pieces of the right
+         * triangle missing and its edge dotted (issue 19). OOT_MIRRORFIT=0: none, as before. */
+        static int sFit SAVESTATE_EXCLUDE = -1;
+        if (sFit < 0) { const char *e = getenv("OOT_MIRRORFIT"); sFit = !(e && e[0] == '0'); }
+        if (sFit && m == 3 && (width << 1) * height <= GFX_MAX_MIRROR_TEXELS) m = 1;
+        else if (sFit && m == 3 && width * (height << 1) <= GFX_MAX_MIRROR_TEXELS) m = 2;
+        else m = 0;
     }
     return m;
 }

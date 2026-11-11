@@ -5,6 +5,12 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Ocarina of Time 1.1.10: the Triforce engraved in the floor of every Great Fairy Fountain is whole again (issue
+  19). Its texture is mirrored both ways, and doubled both ways it was too big for the renderer, which then dropped
+  the mirroring altogether, so the right half repeated the left. Pieces of the right triangle went missing and its
+  edge was dotted. Now the renderer keeps the one mirror that fits (the one this texture needs). Found and checked
+  under the ARM emulator with the game's own frame dumps, the fountain whole and symmetric again.
+
 - Super Mario 64 1.1.8, experimental and off unless asked for: the Mini's 2D engine (SigmaStar MI_GFX) can draw
   each frame onto the panel, doubled and turned, in place of the CPU (`hwblit=1` in `data/sm64_display.cfg`, or
   `SM64_HWBLIT=1` / `MIYOO_HWBLIT=1` in `launch.sh`). The CPU then only copies the 320x240 frame for the engine
