@@ -6240,8 +6240,22 @@ static void *seg_addr(uintptr_t w1) {
  * (gfx_fast3d.c); this maps it to segment 1 the same way, and keeps the identity while segment 1 is
  * unset. Weak: the host test harnesses have no hh_game.c. OOT_BILLBOARD=0: the identity, as before. */
 extern char D_01000000[] __attribute__((weak));
+/* The identity matrix the scene lists name. The asset build stores &gIdentityMtx (a code symbol, not scene data)
+ * inside the room display lists as 0x0E000001, which the PSP renderer maps back (gfx_fast3d.c,
+ * PSP_ASSET_SYMBOL_GIDENTITYMTX); here it fell through to segment 0x0E (the z-buffer) plus one byte, so a room
+ * list's closing gSPMatrix(&gIdentityMtx, LOAD) loaded garbage. The next list's cull box (gSPCullDisplayList,
+ * loaded before its own matrix) then landed far off screen and the whole list was skipped: Jabu-Jabu's Belly lost
+ * its walls behind the pulsing floor (issue 19, MajoraGuy's save state: about 20000 pixels of clear colour per
+ * frame, 600 with the cull off). Weak, as D_01000000. OOT_IDMTX=0: as before. */
+extern Mtx gIdentityMtx __attribute__((weak));
+#define GFX_ASSET_SYMBOL_GIDENTITYMTX 0x0E000001u
 static void *gfx_mtx_addr(uintptr_t w1) {
     static int sOn = -1;
+    if (w1 == GFX_ASSET_SYMBOL_GIDENTITYMTX && &gIdentityMtx != NULL) {
+        static int sId = -1;
+        if (sId < 0) { const char *e = getenv("OOT_IDMTX"); sId = !(e != NULL && e[0] == '0'); }
+        if (sId) return &gIdentityMtx;
+    }
     if (w1 != 0 && w1 == (uintptr_t) D_01000000 && rsp_segments[1] != 0) {
         if (sOn < 0) { const char *e = getenv("OOT_BILLBOARD"); sOn = !(e != NULL && e[0] == '0'); }
         if (sOn) return seg_addr(0x01000000u);

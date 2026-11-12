@@ -5,6 +5,13 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Ocarina of Time 1.1.10: the walls of Jabu-Jabu's Belly no longer vanish while walking or Z-targeting (issue 19).
+  The room lists reset their matrix to the identity matrix, which the asset build stores as a special address, and
+  the Mini's renderer read it as a few bytes of the depth buffer instead. The next wall's visibility check then
+  thought it was far off screen and skipped it. Found by loading MajoraGuy's own save state in the 1.1.9 build
+  under the ARM emulator, where the walls were missing in every frame; with the fix they are all there, and every
+  other place tried draws exactly as before.
+
 - Ocarina of Time 1.1.10: the Triforce engraved in the floor of every Great Fairy Fountain is whole again (issue
   19). Its texture is mirrored both ways, and doubled both ways it was too big for the renderer, which then dropped
   the mirroring altogether, so the right half repeated the left. Pieces of the right triangle went missing and its
