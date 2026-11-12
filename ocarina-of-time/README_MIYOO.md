@@ -90,6 +90,7 @@ The zip comes from `miyoo/tools/miyoo_pack.py` (shared by all the ports, from th
 | START + left / down / right | C-left / C-down / C-right |
 | START + L1 | L (minimap on/off) |
 | MENU | the game menu (resume, save/load state, controls, options, exit) |
+| SELECT | with MENU > OPTIONS > CONTROLS > STYLE: MODERN (below), C-left, as X jumps |
 
 While you play the ocarina, the d-pad is the four C notes and A is A; B puts the ocarina away.
 
@@ -99,6 +100,11 @@ then eases up to full tilt at one second (until 1.1.6: a third, full tilt at 0.4
 about 0.4 degrees (7.9 at full tilt); holding turns as fast as before. Walking, menus and every other view are
 unchanged (full tilt). The port has no walk or half-stick button. `fineaim=0` in `debug.cfg` turns it off;
 `fineaimpct=` (default 20) and `fineaimms=` (default 1000) tune it (SETTINGS.md).
+
+MENU > OPTIONS > CONTROLS > STYLE (`controls=` in `debug.cfg`, ORIGINAL by default): MODERN gives Link a jump on
+X (C-left moves to SELECT, and stays on START + left) and turns off the automatic jump and ledge grab at edges; A held after a roll
+runs faster, and a roll or a landing goes straight into the run; A again near a roll's end rolls again, and the
+d-pad steers rolls and, a little, jumps. Each part has its own key too (SETTINGS.md), to try them one at a time.
 
 In the menu: up and down pick an entry, left and right change the slot, A or START selects, and
 B backs out of a confirmation or closes the menu (so does MENU).

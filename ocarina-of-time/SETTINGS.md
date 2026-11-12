@@ -2,7 +2,7 @@
 
 - Optional. Put it at `App/OcarinaOfTime/data/debug.cfg`, one `key=value` per line.
 - A missing key keeps its default.
-- The in-game menu's OPTIONS page changes some of these keys (`fineaim`, `fineaimpct`, `fineaimms`, `crop3d`,
+- The in-game menu's OPTIONS page changes some of these keys (`controls`, `fineaim`, `fineaimpct`, `fineaimms`, `crop3d`,
   `msgbox1to1`, `hudfilter`, `watergrain`, `declick`, `fps30`) and writes them to this file, keeping your other lines.
   Adding a key to the page: [docs/OPTIONS.md](../docs/OPTIONS.md).
 
@@ -69,6 +69,14 @@
 | `fineaim` | `1` | Fine aim: in first person and aiming the d-pad starts at a small push of the stick and eases up to full tilt; `0` = full tilt at once (`aimramp=0`, the 1.1.6 name, works too) |
 | `fineaimpct` | `20` | With fineaim: where the d-pad starts, in percent of full tilt (5 to 100), for the first 250 ms |
 | `fineaimms` | `1000` | With fineaim: when the d-pad reaches full tilt, in ms |
+| `controls` | `0` | Controls: `0` = ORIGINAL, the N64's; `1` = MODERN: X jumps and C-left moves to SELECT (and stays on START + left) with the automatic jump and ledge grab at edges off, A held after a roll runs faster and the roll or a landing goes straight into the run, rolls chained and steered, a little steering in the air. Each part also has its own key below, which wins over this one |
+| `jumpbutton` | as `controls` | `1` = X jumps and SELECT gives C-left (on the ground: the game's own jump off an edge, long when running) |
+| `autojump` | as `controls` | `0` = running off an edge doesn't jump by itself (only with `jumpbutton=1`) |
+| `ledgegrab` | as `controls` | `0` = walking off an edge, Link falls instead of hanging on to it (vines, ladders and grabbing a ledge in mid-air stay) |
+| `sprint` | `100`, `150` with MODERN | The run's speed in % after a roll with A still held (100 to 200; `100` = off); with it, a roll or a landing with A held goes straight into the run |
+| `betterroll` | as `controls` | `1` = A again near a roll's end rolls again, and the d-pad steers a roll |
+| `airsteer` | as `controls` | `1` = the d-pad steers a little in the air (at most 45 degrees either side) |
+| `jumpstrength` | `70` | With jumpbutton: the jump's least speed x10 (standing, the game's edge jump barely leaves the ground) |
 | `mixprof` | off | `mixprof=1` writes the audio mixer's time per command to `console.log` (MIXPROF lines) |
 | `prof` | off | `prof=1` writes a speed profile to `prof.txt` next to `debug.cfg` |
 | `abframe` | off | `abframe=1` with a speed switch set to `ab` (`skyruns=ab`, `stealrows=ab`, `batchband=ab`, `bandcarry=ab`, `streamdraw=ab`): the switch off and on in turn, frame by frame, and an ABF line in `console.log` with each one's 3D drawing and render time (for measuring; the two ways give the same pixels; with `batchband` compare the render times, as the rows drawn later land outside the 3D time) |

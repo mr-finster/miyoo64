@@ -98,6 +98,7 @@ typedef enum {
 } HhKey;
 
 static volatile bool sKeys[HH_KEY_COUNT];
+static volatile bool sSelectDown; /* SELECT: C-left with CONTROLS MODERN */
 static int sAutoFrame;
 
 /* OOT_INPUT="<reads>:<keys>,<reads>:<keys>,..." (debug, headless tests): hold
@@ -308,7 +309,26 @@ void HhInput_Read(SceCtrlData* pad) {
             if (sKeys[HH_KEY_START]) btn |= BTN_START;
         }
     }
-    if (sKeys[HH_KEY_X]) btn |= BTN_CLEFT;
+    {
+        /* CONTROLS MODERN (hh_controls.c OOT_JUMPBUTTON): X jumps where Link can jump (z_player.c says so through
+         * gHhCtlJumpOk), and SELECT gives C-left in its place. Elsewhere (the pause menu, the ocarina, talking,
+         * swimming, climbing) X is still C-left. What a press of X does is settled when it goes down, until it is
+         * let go: a jump never turns into an item in mid-air. */
+        extern int gHhCtlJumpButton, gHhCtlJumpHeld, gHhCtlJumpOk;
+        static int sXRole; /* 0: X up; 1: jumping; 2: C-left */
+
+        if (!sKeys[HH_KEY_X]) {
+            sXRole = 0;
+        } else if (sXRole == 0) {
+            sXRole = (gHhCtlJumpButton && gHhCtlJumpOk > 0) ? 1 : 2;
+        }
+        if (gHhCtlJumpOk > 0) {
+            gHhCtlJumpOk--; /* z_player.c sets it again each frame Link can jump */
+        }
+        gHhCtlJumpHeld = sXRole == 1;
+        if (sXRole == 2) btn |= BTN_CLEFT;
+        if (gHhCtlJumpButton && sSelectDown) btn |= BTN_CLEFT;
+    }
     if (sKeys[HH_KEY_Y]) btn |= BTN_CDOWN;
     if (sKeys[HH_KEY_CUP]) btn |= BTN_CUP;
     if (sKeys[HH_KEY_CLEFT]) btn |= BTN_CLEFT;
@@ -360,7 +380,7 @@ const struct miyoo_remap_row miyoo_remap_rows[] = {
     { MR_START, MB_START, 0, 0, "PAUSE (ON RELEASE)" },
     { MR_CUP, MB_L2, 0, 0, "FIRST PERSON, NAVI" },
     { MR_CDOWN, MB_Y, 0, 0, "ITEM" },
-    { MR_CLEFT, MB_X, 0, 0, "ITEM" },
+    { MR_CLEFT, MB_X, 0, 0, "ITEM (MODERN: JUMP)" },
     { MR_CRIGHT, MB_R2, 0, 0, "ITEM" },
     { MR_L, MB_L1, 0, MB_START, "MAP" },
     { MR_STICK, MB_DPAD, 0, 0, "MOVE" },
@@ -390,6 +410,9 @@ void controller_handheld_key(int sym, int down) {
         case 8: key = HH_KEY_CRIGHT; break;  /* SDLK_BACKSPACE: R2 = C-right */
         case 9: key = HH_KEY_CUP; break;     /* SDLK_TAB: L2 = C-up */
         case 13: key = HH_KEY_START; break;  /* SDLK_RETURN: START */
+        case 305: /* SDLK_RCTRL: SELECT, C-left with CONTROLS MODERN (hh_controls.c), where X jumps */
+            sSelectDown = down != 0;
+            return;
 #endif
         default: break;
     }
