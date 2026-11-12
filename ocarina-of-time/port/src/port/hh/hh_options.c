@@ -25,12 +25,21 @@ static void FineAimApply(const char* value) {
     HhInput_FineAimReload();
 }
 
+static void ControlsApply(const char* value) {
+    extern void HhCtl_Reload(void); /* hh_controls.c reads OOT_CONTROLS, which the page has just set */
+    (void)value;
+    HhCtl_Reload();
+}
+
 static void HudFilterApply(const char* value) {
     gfx_soft_hud_box = value[0] != '0';
 }
 
 const struct miyoo_option miyoo_options[] = {
     { .label = "CONTROLS" },
+    { .label = "STYLE", .key = "controls", MIYOO_OPT_VALUES({ "0", "ORIGINAL" }, { "1", "MODERN" }), .def = "0",
+      .when = MIYOO_OPT_NOW, .apply = ControlsApply,
+      .help = "MODERN: X JUMPS (C-LEFT ON SELECT), RUN AFTER A ROLL, STEER ROLLS" },
     { .label = "FINE AIM", .key = "fineaim", MIYOO_OPT_ONOFF, .def = "1", .when = MIYOO_OPT_NOW, .apply = FineAimApply,
       .help = "AIMING AND FIRST PERSON: THE D-PAD STARTS GENTLY, THEN SPEEDS UP" },
     { .label = "FINE AIM START", .key = "fineaimpct",

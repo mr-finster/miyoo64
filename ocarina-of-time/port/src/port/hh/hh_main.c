@@ -801,6 +801,10 @@ int main(int argc, char** argv) {
 
     HhLoadDebugCfg();
     {
+        extern void HhCtl_Reload(void); /* hh_controls.c: CONTROLS ORIGINAL / MODERN */
+        HhCtl_Reload();
+    }
+    {
         extern void HhProf_Init(void);
         HhProf_Init();
     }
