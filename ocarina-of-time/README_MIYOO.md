@@ -123,6 +123,12 @@ The second core and the clock, also Miyoo only (the same as `OOT_THREADS` / `OOT
 | `streamdraw=` | `1` | with batchband: the second core draws the waiting triangles one after another while the first goes on reading the game's display lists, and both finish what is left together when the picture is needed (the picture is the same); `0` = the waiting triangles are drawn only then |
 | `cpuclock=` | the model's | the CPU clock in MHz while the game runs: 1800 on the Mini Plus and 1500 on the Mini by default (with margin, below Onion's ceilings of 1900 / 1600); `0` leaves it as the OS set it. It goes back when the game quits. |
 
+30 fps (`fps30=1`, or MENU > OPTIONS > PICTURE > 30 FPS; off by default): the game still updates 20 times a second,
+so its speed is the same, and the frames in between are drawn with everything that moves blended between two updates.
+Each picture is held by the panel's vsyncs, so it follows the panel's real rate (59.7 Hz on the Mini Plus). Where
+three pictures don't fit in two updates, it steps down gradually (26.7, 25, 24, 23.3 fps) and only then to 20;
+`fps30steps=0` goes straight from 30 to 20.
+
 Sound, Miyoo only: `audiofill=0` (or `OOT_AUDIOFILL=0`) gives the old audio buffering. The default keeps one
 more SDL callback's worth queued (+16 ms), so a late audio update no longer leaves a gap (the `underruns +N` on
 the AUDIO lines in `console.log`).
