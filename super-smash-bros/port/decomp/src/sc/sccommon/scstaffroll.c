@@ -711,6 +711,19 @@ void func_ovl59_80131F34(GObj *arg0)
 	GObj *ugobj = arg0->user_data.p;
 	SCStaffrollMatrix *credits = ugobj->user_data.p;
 
+#ifdef PORT
+	/* PORT (issue 17): the highlight that follows a name you aimed at reads that name every frame, and is meant to
+	 * go one step before it (the + roll speed above). When the name was removed first, its DObj is gone
+	 * (DObjGetStruct(ugobj) NULL) and the copy below read address 0x1C: SIGSEGV in the credits after Master Hand,
+	 * every time (the reporter's log, pc in this function, addr 0x1c). The name is gone, so do what its end does. */
+	if (ugobj->obj_kind != nGCCommonAppendDObj || DObjGetStruct(ugobj) == NULL) /* removed: kind is the eject sentinel */
+	{
+		gcEjectGObj(NULL);
+		gcEjectGObj(sSCStaffrollStaffRoleTextGObj);
+		gcEjectGObj(sSCStaffrollCompanyTextGObj);
+		return;
+	}
+#endif
 	if ((credits->unk_gmcreditsmtx_0x14 + sSCStaffrollRollSpeed) >= 1.0F)
 	{
 		gcEjectGObj(NULL);

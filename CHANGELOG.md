@@ -5,6 +5,11 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Super Smash Bros. 1.1.10: no more crash in the credits after beating Master Hand (issue 17). The highlight that
+  follows a name you aim at kept reading that name after it had already been removed, and the game crashed. Now the
+  highlight goes away with its name. Found from the reporter's log (the crash address names this spot in the 1.1.8
+  build, rebuilt byte for byte); built, not yet run through the credits under the emulator.
+
 - Super Mario 64 1.1.8, experimental and off unless asked for: the Mini's 2D engine (SigmaStar MI_GFX) can draw
   each frame onto the panel, doubled and turned, in place of the CPU (`hwblit=1` in `data/sm64_display.cfg`, or
   `SM64_HWBLIT=1` / `MIYOO_HWBLIT=1` in `launch.sh`). The CPU then only copies the 320x240 frame for the engine
