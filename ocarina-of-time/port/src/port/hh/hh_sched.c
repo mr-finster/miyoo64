@@ -284,7 +284,8 @@ int HhSched_FrameDeadline(uint32_t* usec) {
  * ahead of the screen.
  * Frame rate steps between 30 and 20 (OOT_FPS30STEPS, default 1; 0 = straight to 20): when three pictures don't
  * fit in two updates, a tick A is followed by n ticks B instead of one: n + 2 pictures in n + 1 updates, about
- * 60 * (n + 2) / (3 * (n + 1)) fps (n = 2: 26.7, 3: 25, 4: 24, 5: 23.3; only ticks B: 20). Each picture still goes
+ * 60 * (n + 2) / (3 * (n + 1)) fps (n = 2: 26.7, 3: 25, 4: 24, 5: 23.3). Below that, 20: each update shows the
+ * update itself, 3 vsyncs, the same pictures as with OOT_FPS30 off. Each picture still goes
  * up on the vsync of the moment it shows (1/3 of an update at its tick's vsync 0, the update at 2, the 2/3 point
  * at 1), so the motion stays even with pictures of 2 and 3 vsyncs; a tick B's picture is held 3 vsyncs when another
  * B follows. n comes from the average draw: n + 2 draws (and n + 1 updates of ~1 ms) must fit in n + 1 ticks of
@@ -374,6 +375,10 @@ static int SchedPsp_FiTask(OSScTask* task) {
             SchedPsp_FiDraw(task, NULL, 2);
             sFiStepB = 0;
             sFiNextA = 0;
+        } else if (sFiStepN > 5) {
+            /* 20 fps: the update itself, 3 vsyncs (as with OOT_FPS30 off); a tick A when the steps come back */
+            sFiNextA = 1;
+            SchedPsp_FiDraw(task, NULL, 3);
         } else {
             /* tick B: the 2/3 point (vsync 1), held until the next picture: a tick A's first (vsync 0 of the next
              * tick: 2 vsyncs) or another tick B's (vsync 1 of the next: 3) */
