@@ -4,7 +4,7 @@ A port to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip), with a so
 save states and a first-start data builder. **There is no game data in it.** It builds everything
 from your own USA 1.0 ROM the first time you run it.
 
-**Status:** version 1.1.10 (this source; the released zip is 1.1.9). It plays on a Mini Plus with Onion from Apps at the game's own 20 fps, with both cores drawing
+**Status:** version 1.1.11 (this source; the released zip is 1.1.10). It plays on a Mini Plus with Onion from Apps at the game's own 20 fps, with both cores drawing
 (2026-10-10). This build adds the CPU clock (1800 MHz on the Mini Plus, `cpuclock=` below), not yet
 run on a device. Onion's Ports list, MinUI, Allium and spruce still need a first run.
 
@@ -118,8 +118,8 @@ The second core and the clock, also Miyoo only (the same as `OOT_THREADS` / `OOT
 |---|---|---|
 | `threads=1` | off | draw on one core only, for an A/B (the picture is the same either way) |
 | `splitpx=` | `800` | the pixels a triangle needs before both cores draw it (larger: fewer, bigger splits) |
-| `stealrows=` | `4` | a split triangle's rows are taken this many at a time from both ends, each core from its own end until they meet, so the core that is ahead draws more (the picture is the same); `0` = cut once in the middle, as before 1.1.10 |
-| `batchband=` | `8` | every 3D triangle's rows, not only a big one's, are drawn by both cores: the triangles set up wait, then both cores draw them together in bands of this many rows from both ends until they meet, each band in the game's order (the picture is the same); `0` = only big triangles shared, as before 1.1.10. `bandcarry=0`: what waits is drawn at the end of each batch of triangles (one render state) rather than when something next needs the picture |
+| `stealrows=` | `4` | a split triangle's rows are taken this many at a time from both ends, each core from its own end until they meet, so the core that is ahead draws more (the picture is the same); `0` = cut once in the middle, as before 1.1.11 |
+| `batchband=` | `8` | every 3D triangle's rows, not only a big one's, are drawn by both cores: the triangles set up wait, then both cores draw them together in bands of this many rows from both ends until they meet, each band in the game's order (the picture is the same); `0` = only big triangles shared, as before 1.1.11. `bandcarry=0`: what waits is drawn at the end of each batch of triangles (one render state) rather than when something next needs the picture |
 | `streamdraw=` | `1` | with batchband: the second core draws the waiting triangles one after another while the first goes on reading the game's display lists, and both finish what is left together when the picture is needed (the picture is the same); `0` = the waiting triangles are drawn only then |
 | `cpuclock=` | the model's | the CPU clock in MHz while the game runs: 1800 on the Mini Plus and 1500 on the Mini by default (with margin, below Onion's ceilings of 1900 / 1600); `0` leaves it as the OS set it. It goes back when the game quits. |
 

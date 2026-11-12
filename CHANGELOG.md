@@ -5,19 +5,6 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
-- Ocarina of Time 1.1.10: the walls of Jabu-Jabu's Belly no longer vanish while walking or Z-targeting (issue 19).
-  The room lists reset their matrix to the identity matrix, which the asset build stores as a special address, and
-  the Mini's renderer read it as a few bytes of the depth buffer instead. The next wall's visibility check then
-  thought it was far off screen and skipped it. Found by loading MajoraGuy's own save state in the 1.1.9 build
-  under the ARM emulator, where the walls were missing in every frame; with the fix they are all there, and every
-  other place tried draws exactly as before.
-
-- Ocarina of Time 1.1.10: the Triforce engraved in the floor of every Great Fairy Fountain is whole again (issue
-  19). Its texture is mirrored both ways, and doubled both ways it was too big for the renderer, which then dropped
-  the mirroring altogether, so the right half repeated the left. Pieces of the right triangle went missing and its
-  edge was dotted. Now the renderer keeps the one mirror that fits (the one this texture needs). Found and checked
-  under the ARM emulator with the game's own frame dumps, the fountain whole and symmetric again.
-
 - Super Mario 64 1.1.8, experimental and off unless asked for: the Mini's 2D engine (SigmaStar MI_GFX) can draw
   each frame onto the panel, doubled and turned, in place of the CPU (`hwblit=1` in `data/sm64_display.cfg`, or
   `SM64_HWBLIT=1` / `MIYOO_HWBLIT=1` in `launch.sh`). The CPU then only copies the 320x240 frame for the engine
@@ -40,7 +27,7 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 - All fifteen games: the auto save made as the Mini goes to sleep now survives a flat battery or a power cut while
   asleep. Super Mario 64 1.1.8, Mario Kart 64 1.1.10, GoldenEye 007 1.1.10, Perfect Dark 1.0.10, Ocarina of Time
-  1.1.10, Majora's Mask 1.0.11 (beta), Paper Mario 1.1.9, Star Fox 64 1.1.7, F-Zero X 1.1.7, Diddy Kong Racing 1.1.9,
+  1.1.11, Majora's Mask 1.0.11 (beta), Paper Mario 1.1.9, Star Fox 64 1.1.7, F-Zero X 1.1.7, Diddy Kong Racing 1.1.9,
   Super Smash Bros. 1.1.10, Harvest Moon 64 1.0.6, Banjo-Kazooie 1.0.4 (beta), Pilotwings 64 1.0.3 (beta) and The
   New Tetris 1.0.2 (beta). A POWER press writes the auto save that RESUME GAME offers, but Onion freezes the game
   as the button is released, usually before that save has finished on the card (it takes 0.2 to 1 s; Onion's
@@ -65,10 +52,10 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   6 to 11% in GoldenEye 007 (the Frigate's engine room, the Jungle, the Facility's tank hall, the Dam; 1% at the
   Statue park) and 6 to 14% in Perfect Dark (Carrington Villa, a Combat Simulator arena, dataDyne Central); frames
   compared byte for byte with the old way in five and three scenes. The idea comes from cacuracaptors' Ocarina of
-  Time port for the Miyoo Mini (oot-miyoomini), as in Ocarina of Time 1.1.10, written anew for this renderer.
+  Time port for the Miyoo Mini (oot-miyoomini), as in Ocarina of Time 1.1.11, written anew for this renderer.
   `stealrows=0` in GoldenEye 007's `data/debug.cfg` (Perfect Dark: `PD_STEALROWS=0` in `launch.sh`) gives the old way.
 
-- Ocarina of Time 1.1.10 and Majora's Mask 1.0.11 (beta): faster with both cores, the same picture. The second core
+- Ocarina of Time 1.1.11 and Majora's Mask 1.0.11 (beta): faster with both cores, the same picture. The second core
   used to help only with big triangles; the many small ones, most of what is drawn outside the sky, were drawn on the
   first core alone, and all of it waited while the first core read the game's display lists. Now every 3D triangle
   is set up as before and its rows wait in a queue: the second core draws the queue in order while the first goes
@@ -85,7 +72,7 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   triangles comes from GoldenEye 007 and Perfect Dark. `streamdraw=0` / `batchband=0` in `data/debug.cfg` (Majora's
   Mask: `MM_STREAMDRAW=0` / `MM_BATCHBAND=0` in `launch.sh`) give the old ways.
 
-- Ocarina of Time 1.1.10 and Majora's Mask 1.0.11 (beta): a little faster outdoors, the same picture. The sky, drawn
+- Ocarina of Time 1.1.11 and Majora's Mask 1.0.11 (beta): a little faster outdoors, the same picture. The sky, drawn
   last where nothing covers it, now skips whole 16-pixel stretches the world already covers instead of testing each
   pixel (`skyruns`), and the two cores share a big triangle's rows a few at a time from both ends instead of cutting
   it once in the middle, so the core that is ahead draws more (`stealrows`). Under qemu the 3D drawing time drops
@@ -160,6 +147,19 @@ bit taken from the wrong place, which tore holes into the heads. Now stored as t
 emulator in Mumbo's Mountain with all five Jinjos rescued: blue, green, orange, pink and yellow heads, as on the N64;
 the other pause-menu icons were already right. Not yet run on a device. A save made by 1.0.4 loads
 unchanged. Only the Banjo-Kazooie zip and the All Game Pack were replaced.
+
+Updated Nov 12: Ocarina of Time 1.1.10 fixes two drawing bugs, both from
+[issue #19](https://github.com/mr-finster/miyoo64/issues/19). The walls of Jabu-Jabu's Belly no longer vanish while
+walking or Z-targeting. The room's drawing lists reset their position to the identity matrix, which the asset build
+stores as a special address, and the Mini's renderer read a few bytes of the depth buffer there instead, so the next
+wall's visibility check thought it was far off screen and skipped it. Found by loading MajoraGuy's own save state in
+the 1.1.9 build under the ARM emulator, where the walls were missing in every frame; with the fix they are all there.
+And the Triforce engraved in the floor of every Great Fairy Fountain is whole again. Its texture is mirrored both
+ways, and doubled both ways it was too big for the renderer, which then dropped the mirroring altogether, so the right
+half repeated the left. Now the renderer keeps the one mirror that fits. Nothing else changed: with both fixes
+switched off (`idmtx=0`, `mirrorfit=0` in `data/debug.cfg`) every place tried draws exactly as 1.1.9. Not yet run on
+a device. In-game saves carry over; save states from 1.1.9 may not load (kept aside as `.rejected`). Only the
+Ocarina of Time zip and the All Game Pack were replaced.
 
 - All fifteen games: no more crackle on loud, smooth sounds ([issue #10](https://github.com/mr-finster/miyoo64/issues/10)).
   Found and fixed by ksielick in Super Mario 64 ([PR #11](https://github.com/mr-finster/miyoo64/pull/11)): Onion's
