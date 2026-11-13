@@ -217,7 +217,9 @@ Built on the work of the decompilation communities:
   (CC0), with Golden Balloon's ([akratch/goldenballoon](https://github.com/akratch/goldenballoon))
   asset byte-order layer (MIT)
 - Ocarina of Time: [zeldaret/oot](https://github.com/zeldaret/oot), with
-  [z2442/oot-PSP](https://github.com/z2442/oot-PSP)
+  [z2442/oot-PSP](https://github.com/z2442/oot-PSP), and 30 fps frame interpolation, the two-core water composite
+  and the Modern controls by [cacuracaptors](https://github.com/cacuracaptors) from
+  [cacuracaptors/oot-miyoomini](https://github.com/cacuracaptors/oot-miyoomini) (MIT, notice kept in each file)
 - GoldenEye 007: [n64decomp/007](https://github.com/n64decomp/007)
 - F-Zero X: [inspectredc/fzerox](https://github.com/inspectredc/fzerox) (CC0)
 - Star Fox 64: [sonicdcer/sf64](https://github.com/sonicdcer/sf64) (CC0)

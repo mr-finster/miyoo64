@@ -5,6 +5,24 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Ocarina of Time 1.1.11, contributed by cacuracaptors from their own Miyoo Mini port of the game (oot-miyoomini, MIT),
+  all of it off by default or giving the same picture:
+  - 30 frames a second (MENU > OPTIONS > PICTURE > 30 FPS, `fps30=1`, off by default,
+    [PR #20](https://github.com/mr-finster/miyoo64/pull/20)). The game still updates 20 times a second; the in-between
+    pictures blend everything that moves (actors, the camera, effects, Epona, scrolling textures, the dialog box), so
+    the game's speed is unchanged. Where three pictures don't fit, it steps down to 26.7, 25, 24 or 23.3 fps before 20
+    (`fps30steps=0` goes straight to 20), and at 20 it shows the game's own frames, as with 30 fps off.
+  - Modern controls (MENU > OPTIONS > CONTROLS > STYLE, `controls=1`, Original by default,
+    [PR #22](https://github.com/mr-finster/miyoo64/pull/22)). X jumps where Link can jump and SELECT gives C-left
+    (START + left still does too); no automatic jump or ledge grab off an edge; running straight on from a roll,
+    rolls chained and steered, a little steering in the air. Each part also has its own `debug.cfg` key
+    ([SETTINGS.md](ocarina-of-time/SETTINGS.md)). With Original the game plays exactly as before.
+  - The half-resolution water composite drawn by both cores (`hfxsplit`, on, the same picture,
+    [PR #18](https://github.com/mr-finster/miyoo64/pull/18)), faster where the water is (Zora's Domain, Lake Hylia).
+
+  Checked under the ARM emulator: with the defaults (30 fps off, Original controls) every place tried draws byte for
+  byte as before, and with 30 fps and Modern on the game runs cleanly. Not yet run on a Mini here.
+
 - Super Smash Bros. 1.1.10: no more crash in the credits after beating Master Hand (issue 17). The highlight that
   follows a name you aim at kept reading that name after it had already been removed, and the game crashed. Now the
   highlight goes away with its name. Found from the reporter's log (the crash address names this spot in the 1.1.8
