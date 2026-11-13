@@ -5,6 +5,13 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Ocarina of Time 1.1.11: drawing the bow on horseback switches to the aiming view again, on Epona and in the Gerudo
+  horseback archery (issue 23). Each camera setting lists the views it allows in a packed word written for the
+  N64's byte order; the Mini read that list two bits off, so every setting allowed the wrong views and the horse's
+  refused the bow's. Now read as the N64 does. Pushing blocks and following the boomerang get their own camera back
+  too, as on the N64. `cammodes=0` in `data/debug.cfg` gives the old behaviour. Checked under the ARM emulator riding
+  Epona in Hyrule Field; with Link standing still every place tried draws exactly as before.
+
 - Ocarina of Time 1.1.11, contributed by cacuracaptors from their own Miyoo Mini port of the game (oot-miyoomini, MIT),
   all of it off by default or giving the same picture:
   - 30 frames a second (MENU > OPTIONS > PICTURE > 30 FPS, `fps30=1`, off by default,

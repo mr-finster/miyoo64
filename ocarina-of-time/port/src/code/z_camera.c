@@ -8523,7 +8523,28 @@ s32 Camera_CheckValidMode(Camera* camera, s16 mode) {
     if (QREG(89) != 0) {
         PRINTF("+=+=+=+ recive asking -> %s (%s)\n", sCameraModeNames[mode], sCameraSettingNames[camera->setting]);
     }
-    if (!(sCameraSettings[camera->setting].validModes & (1 << mode))) {
+    u32 validModes = sCameraSettings[camera->setting].validModes;
+
+#if defined(TARGET_HANDHELD) && defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+    {
+        /* The setting word is { unk_bit0:1, unk_bit1:1, validModes:30 }: on the N64 (big-endian bitfields) the two
+         * flags are bits 31 and 30 and the modes the low 30 bits, as the tables are written (0x8500018F: horse modes
+         * 0x18F). Little-endian GCC lays the fields out from bit 0, so validModes read as the word >> 2 and every
+         * setting allowed the wrong modes. On horseback the bow's aim (CAM_MODE_AIM_ADULT, bit 7) was refused, so
+         * drawing the bow never went to the aiming view (issue 23). The low 30 bits, as the N64.
+         * OOT_CAMMODES=0: as before. */
+        static s32 sFix = -1;
+        if (sFix < 0) {
+            extern char* getenv(const char*);
+            const char* e = getenv("OOT_CAMMODES");
+            sFix = !(e != NULL && e[0] == '0');
+        }
+        if (sFix) {
+            validModes = sCameraSettings[camera->setting].unk_00 & 0x3FFFFFFF;
+        }
+    }
+#endif
+    if (!(validModes & (1 << mode))) {
         return 0;
     } else if (mode == camera->mode) {
         return -1;
