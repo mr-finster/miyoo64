@@ -5,7 +5,7 @@ A port to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip), built on 
 states and a first-start data builder. **There is no game data in it.** It builds everything from your
 own USA ROM the first time you run it.
 
-**Status:** version 1.0.11, a beta (this source; the released zip is 1.0.10). It plays on the Mini (OG, 640x480) with Onion from Apps at the game's own
+**Status:** version 1.0.12, a beta (this source; the released zip is 1.0.11). It plays on the Mini (OG, 640x480) with Onion from Apps at the game's own
 20 fps; test builds have been played on that device. The Mini Plus, Mini v4 and Flip, and Onion's Ports list,
 MinUI, Allium and spruce still need a first run. Known issues: [README.md](README.md#known-issues).
 
@@ -91,15 +91,15 @@ MENU > OPTIONS changes the fine aim, the dialog text, the HUD filter and the sou
   sets it).
 - `MM_CPUCLOCK=<MHz>`: the CPU clock while the game runs. `0` leaves it as the OS set it.
 - `MM_THREADS=1`: draw on one core.
-- `MM_STEALROWS=0`: a big triangle is cut once in the middle for the two cores, as before 1.0.11 (default `4`: its
+- `MM_STEALROWS=0`: a big triangle is cut once in the middle for the two cores, as before 1.0.12 (default `4`: its
   rows are taken four at a time from both ends, each core from its own end, so the core that is ahead draws more).
-- `MM_BATCHBAND=0`: only a big triangle's rows are shared by the two cores, as before 1.0.11 (default `8`: every 3D
+- `MM_BATCHBAND=0`: only a big triangle's rows are shared by the two cores, as before 1.0.12 (default `8`: every 3D
   triangle's rows wait after its set-up and both cores draw them together in bands of 8 rows from both ends, each band
   in the game's order; the picture is the same). `MM_BANDCARRY=0`: what waits is drawn at the end of each batch of
   triangles rather than when something next needs the picture. `MM_STREAMDRAW=0`: those triangles are drawn only
   when the picture is needed (default `1`: the second core draws them one after another while the first goes on
   reading the game's display lists; the picture is the same).
-- `MM_SKYRUNS=0`: the sky tested pixel by pixel where the world covers it, as before 1.0.11 (default: skipped 16
+- `MM_SKYRUNS=0`: the sky tested pixel by pixel where the world covers it, as before 1.0.12 (default: skipped 16
   pixels at a time).
 - `MM_ABFRAME=1`, with `MM_SKYRUNS=ab`, `MM_STEALROWS=ab`, `MM_BATCHBAND=ab`, `MM_BANDCARRY=ab` or `MM_STREAMDRAW=ab`: that switch off and on in turn, frame by frame, and an ABF line in
   `console.log` with each one's drawing time (for measuring; the pixels are the same either way).

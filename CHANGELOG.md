@@ -5,21 +5,7 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
-- Majora's Mask 1.0.11 (beta): the Astral Observatory's telescope shows Termina Field again instead of a black
-  screen (issue 24). The telescope's view is masked by a full-screen rectangle whose see-through part comes from a
-  texture too big for the renderer to keep; since 1.0.10 that rectangle's colour is worked out texel by texel (for
-  the Lens of Truth), and with no texture every texel read as solid, so the whole view was painted black, slowly.
-  Now such a rectangle is drawn as before 1.0.10. Ocarina of Time 1.1.11 gets the same guard. Checked under the ARM
-  emulator in the telescope, also at the Mini Flip's 752x560; everywhere else tried draws exactly as before.
-
-- Ocarina of Time 1.1.11: drawing the bow on horseback switches to the aiming view again, on Epona and in the Gerudo
-  horseback archery (issue 23). Each camera setting lists the views it allows in a packed word written for the
-  N64's byte order; the Mini read that list two bits off, so every setting allowed the wrong views and the horse's
-  refused the bow's. Now read as the N64 does. Pushing blocks and following the boomerang get their own camera back
-  too, as on the N64. `cammodes=0` in `data/debug.cfg` gives the old behaviour. Checked under the ARM emulator riding
-  Epona in Hyrule Field; with Link standing still every place tried draws exactly as before.
-
-- Ocarina of Time 1.1.11, contributed by cacuracaptors from their own Miyoo Mini port of the game (oot-miyoomini, MIT),
+- Ocarina of Time 1.1.12, contributed by cacuracaptors from their own Miyoo Mini port of the game (oot-miyoomini, MIT),
   all of it off by default or giving the same picture:
   - 30 frames a second (MENU > OPTIONS > PICTURE > 30 FPS, `fps30=1`, off by default,
     [PR #20](https://github.com/mr-finster/miyoo64/pull/20)). The game still updates 20 times a second; the in-between
@@ -64,7 +50,7 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 - All fifteen games: the auto save made as the Mini goes to sleep now survives a flat battery or a power cut while
   asleep. Super Mario 64 1.1.8, Mario Kart 64 1.1.10, GoldenEye 007 1.1.10, Perfect Dark 1.0.10, Ocarina of Time
-  1.1.11, Majora's Mask 1.0.11 (beta), Paper Mario 1.1.9, Star Fox 64 1.1.7, F-Zero X 1.1.7, Diddy Kong Racing 1.1.9,
+  1.1.12, Majora's Mask 1.0.12 (beta), Paper Mario 1.1.9, Star Fox 64 1.1.7, F-Zero X 1.1.7, Diddy Kong Racing 1.1.9,
   Super Smash Bros. 1.1.10, Harvest Moon 64 1.0.6, Banjo-Kazooie 1.0.4 (beta), Pilotwings 64 1.0.3 (beta) and The
   New Tetris 1.0.2 (beta). A POWER press writes the auto save that RESUME GAME offers, but Onion freezes the game
   as the button is released, usually before that save has finished on the card (it takes 0.2 to 1 s; Onion's
@@ -89,10 +75,10 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   6 to 11% in GoldenEye 007 (the Frigate's engine room, the Jungle, the Facility's tank hall, the Dam; 1% at the
   Statue park) and 6 to 14% in Perfect Dark (Carrington Villa, a Combat Simulator arena, dataDyne Central); frames
   compared byte for byte with the old way in five and three scenes. The idea comes from cacuracaptors' Ocarina of
-  Time port for the Miyoo Mini (oot-miyoomini), as in Ocarina of Time 1.1.11, written anew for this renderer.
+  Time port for the Miyoo Mini (oot-miyoomini), as in Ocarina of Time 1.1.12, written anew for this renderer.
   `stealrows=0` in GoldenEye 007's `data/debug.cfg` (Perfect Dark: `PD_STEALROWS=0` in `launch.sh`) gives the old way.
 
-- Ocarina of Time 1.1.11 and Majora's Mask 1.0.11 (beta): faster with both cores, the same picture. The second core
+- Ocarina of Time 1.1.12 and Majora's Mask 1.0.12 (beta): faster with both cores, the same picture. The second core
   used to help only with big triangles; the many small ones, most of what is drawn outside the sky, were drawn on the
   first core alone, and all of it waited while the first core read the game's display lists. Now every 3D triangle
   is set up as before and its rows wait in a queue: the second core draws the queue in order while the first goes
@@ -109,7 +95,7 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   triangles comes from GoldenEye 007 and Perfect Dark. `streamdraw=0` / `batchband=0` in `data/debug.cfg` (Majora's
   Mask: `MM_STREAMDRAW=0` / `MM_BATCHBAND=0` in `launch.sh`) give the old ways.
 
-- Ocarina of Time 1.1.11 and Majora's Mask 1.0.11 (beta): a little faster outdoors, the same picture. The sky, drawn
+- Ocarina of Time 1.1.12 and Majora's Mask 1.0.12 (beta): a little faster outdoors, the same picture. The sky, drawn
   last where nothing covers it, now skips whole 16-pixel stretches the world already covers instead of testing each
   pixel (`skyruns`), and the two cores share a big triangle's rows a few at a time from both ends instead of cutting
   it once in the middle, so the core that is ahead draws more (`stealrows`). Under qemu the 3D drawing time drops
@@ -197,6 +183,21 @@ half repeated the left. Now the renderer keeps the one mirror that fits. Nothing
 switched off (`idmtx=0`, `mirrorfit=0` in `data/debug.cfg`) every place tried draws exactly as 1.1.9. Not yet run on
 a device. In-game saves carry over; save states from 1.1.9 may not load (kept aside as `.rejected`). Only the
 Ocarina of Time zip and the All Game Pack were replaced.
+
+Updated Nov 13: Ocarina of Time 1.1.11 and Majora's Mask 1.0.11 (beta) fix two bugs. In Ocarina of Time, drawing the
+bow on horseback switches to the aiming view again, on Epona and in the Gerudo horseback archery
+([issue #23](https://github.com/mr-finster/miyoo64/issues/23)). Each camera setting lists the views it allows in a
+packed word written for the N64's byte order, and the Mini read that list two bits off, so every setting allowed the
+wrong views and the horse's refused the bow's. Now it is read as the N64 does, which also gives pushing blocks and
+following the boomerang their own camera back (`cammodes=0` in `data/debug.cfg` gives the old behaviour). In
+Majora's Mask, the Astral Observatory's telescope shows Termina Field again instead of a black screen that took
+seconds a frame ([issue #24](https://github.com/mr-finster/miyoo64/issues/24)). The telescope's view sits behind a
+full-screen mask whose texture is too big for the renderer to keep, and since 1.0.10 that mask was worked out pixel by
+pixel, so with no texture every pixel came out black. Now such a mask is drawn as before 1.0.10 (without its round
+edge for now); Ocarina of Time gets the same guard. Nothing else changed in either game: every other place tried under
+the ARM emulator draws exactly as 1.1.10 / 1.0.10. Not yet run on a device. In-game saves carry over; save states from
+1.1.10 / 1.0.10 may not load (kept aside as `.rejected`). Only the Ocarina of Time and Majora's Mask zips and the All
+Game Pack were replaced.
 
 - All fifteen games: no more crackle on loud, smooth sounds ([issue #10](https://github.com/mr-finster/miyoo64/issues/10)).
   Found and fixed by ksielick in Super Mario 64 ([PR #11](https://github.com/mr-finster/miyoo64/pull/11)): Onion's
