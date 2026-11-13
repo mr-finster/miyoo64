@@ -57,7 +57,7 @@ static void rt_zclear(void);
 
 
 /* -------------------------------------------------------------- textures --- */
-enum { WRAP_REPEAT = 0, WRAP_CLAMP = 1, WRAP_MIRROR = 2 };
+enum { WRAP_REPEAT = 0, WRAP_CLAMP = 1, WRAP_MIRROR = 2, WRAP_MIRROR_CLAMP = 3 };
 #define MAX_TEXTURES 4096
 #ifdef PM64
 #define TEXARENA_SZ  (16 * 1024 * 1024) /* 5551 is stored unpacked (4 bytes a texel); m1 scenes peak at 10.4 MB */
@@ -111,6 +111,13 @@ static inline uint32_t texel_at(const void *px, bool is16, int idx) {
  * corrupting textures" because those were the long sessions. */
 static uint32_t sNextTexId SAVESTATE_EXCLUDE = 1; /* 0 = none */
 static uint32_t sBoundTex[2] SAVESTATE_EXCLUDE;   /* per tile */
+#ifdef PM64
+static struct { uint32_t id; int s, t; bool valid; } sUnitSampler[2] SAVESTATE_EXCLUDE;
+static inline int soft_unit_wrap(int tile, const SoftTex *tex, bool t) {
+    return sUnitSampler[tile].valid && sUnitSampler[tile].id == sBoundTex[tile]
+        ? (t ? sUnitSampler[tile].t : sUnitSampler[tile].s) : (t ? tex->wrap_t : tex->wrap_s);
+}
+#endif
 static int sTexUploadTile SAVESTATE_EXCLUDE;      /* tile targeted by the next upload (select_texture) */
 
 /* A textured draw whose bound texture is not valid comes out as a flat block of the combiner's colour (OoT's
@@ -209,10 +216,18 @@ static void gfx_soft_set_sampler_parameters(int tile, bool linear, uint32_t cms,
     if (tile < 0 || tile > 1) return;
     uint32_t id = sBoundTex[tile];
     if (id && id < MAX_TEXTURES) {
-        /* Same mapping as gfx_scegu's gfx_cm_to_opengl: CLAMP -> clamp, everything
-         * else (incl. G_TX_MIRROR — the mirror copy is baked in doubled) -> repeat. */
+        /* PM64 passes unbaked mirror bits and, for mirror+clamp, the tile extent.
+         * Other targets keep the original clamp/repeat mapping. */
+#ifdef PM64
+        sTex[id].wrap_s = (cms & G_TX_MIRROR ? WRAP_MIRROR : 0) | (cms & G_TX_CLAMP ? WRAP_CLAMP : 0) | ((cms & 0x80000000u) ? (4 | ((cms >> 8 & 0xfff) << 3)) : 0);
+        sTex[id].wrap_t = (cmt & G_TX_MIRROR ? WRAP_MIRROR : 0) | (cmt & G_TX_CLAMP ? WRAP_CLAMP : 0) | ((cmt & 0x80000000u) ? (4 | ((cmt >> 8 & 0xfff) << 3)) : 0);
+        sUnitSampler[tile].id = id;
+        sUnitSampler[tile].s = sTex[id].wrap_s; sUnitSampler[tile].t = sTex[id].wrap_t;
+        sUnitSampler[tile].valid = true;
+#else
         sTex[id].wrap_s = (cms & G_TX_CLAMP) ? WRAP_CLAMP : WRAP_REPEAT;
         sTex[id].wrap_t = (cmt & G_TX_CLAMP) ? WRAP_CLAMP : WRAP_REPEAT;
+#endif
     }
 }
 
@@ -225,7 +240,27 @@ static inline int wrapf(int c, int size, int mode, int mask) {
         if (mask >= 0) return c & mask;
         c %= size; if (c < 0) c += size; return c;
     }
-    return c < 0 ? 0 : (c >= size ? size - 1 : c); /* WRAP_CLAMP (MIRROR unreachable) */
+#ifdef PM64
+    if (mode & 4) {
+        const int extent = mode >> 3;
+        c = c < 0 ? 0 : (c >= extent ? extent - 1 : c);
+        if (!(mode & WRAP_MIRROR)) {
+            if (mask >= 0) return c & mask;
+            return c % size;
+        }
+        const int period = size * 2;
+        c = mask >= 0 ? c & (mask * 2 + 1) : c % period;
+        return c < size ? c : period - 1 - c;
+    }
+    if (mode & WRAP_MIRROR) {
+        const int period = size * 2;
+        if (mode & WRAP_CLAMP) c = c < 0 ? 0 : (c >= size ? size - 1 : c);
+        else if (mask >= 0) c &= (mask * 2 + 1);
+        else { c %= period; if (c < 0) c += period; }
+        return c < size ? c : period - 1 - c;
+    }
+#endif
+    return c < 0 ? 0 : (c >= size ? size - 1 : c);
 }
 static inline int pow2mask(int size) { return (size > 0 && (size & (size - 1)) == 0) ? size - 1 : -1; }
 /* float -> int32 as the device's VFP converts (vcvt saturates, NaN gives 0), so the x86 proxy agrees with it where
@@ -1570,7 +1605,7 @@ static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, b
     const SoftTex *gtex1 = gen && sGen.t1 ? &sTex[sBoundTex[1]] : NULL;
     if (gtex1 && !gtex1->valid) { untex_note("tri t1", sBoundTex[1]); gtex1 = NULL; }
     const void *g1px = gtex1 ? gtex1->px : NULL; const bool g1_16 = gtex1 && gtex1->is16;
-    const int g1w = gtex1 ? gtex1->w : 1, g1h = gtex1 ? gtex1->h : 1, g1ws = gtex1 ? gtex1->wrap_s : 0, g1wt = gtex1 ? gtex1->wrap_t : 0;
+    const int g1w = gtex1 ? gtex1->w : 1, g1h = gtex1 ? gtex1->h : 1, g1ws = gtex1 ? soft_unit_wrap(1,gtex1,false) : 0, g1wt = gtex1 ? soft_unit_wrap(1,gtex1,true) : 0;
     const int g1mu = gtex1 ? pow2mask(g1w) : -1, g1mv = gtex1 ? pow2mask(g1h) : -1;
     const bool gt0 = gen && sGen.t0;
 #else
@@ -1687,7 +1722,12 @@ static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, b
     const int zbias = sZDecal ? 4 : 0; const bool dmask = sDepthMask, texmix = sTexAdd || rgb_decal; /* the rare combines share one test */
     const bool cm_mod = rgb_tex && rgb_in && !texmix && !rgb_texa; /* plain texture x shade: see SPAN_LOOP_CM */
     const int tw = tex ? tex->w : 0, th = tex ? tex->h : 0;
+#ifdef PM64
+    const int texunit = gen && !sGen.t0 ? 1 : 0;
+    const int ws = tex ? soft_unit_wrap(texunit,tex,false) : 0, wt = tex ? soft_unit_wrap(texunit,tex,true) : 0;
+#else
     const int ws = tex ? tex->wrap_s : 0, wt = tex ? tex->wrap_t : 0;
+#endif
 #if defined(HH_CM_NEON)
     /* The NEON rows (cm_row_neon, ocarina-of-time c935b73): z-tested texture x shade, not the PM64
      * generic combiner (its own loop). */
@@ -2361,7 +2401,12 @@ static void draw_2d_impl(float buf_vbo[], size_t buf_vbo_len, size_t num_sprites
             plain = true;
         const int tw = tex ? tex->w : 0, th = tex ? tex->h : 0;
         const int mu = tex ? pow2mask(tw) : -1, mv = tex ? pow2mask(th) : -1;
+#ifdef PM64
+        const int texunit = gen && !sGen.t0 ? 1 : 0;
+        const int ws2 = tex ? soft_unit_wrap(texunit,tex,false) : 0, wt2 = tex ? soft_unit_wrap(texunit,tex,true) : 0;
+#else
         const int ws2 = tex ? tex->wrap_s : 0, wt2 = tex ? tex->wrap_t : 0; /* pinned: the row[] stores are an aliasing barrier */
+#endif
         const int32_t duf = tex ? to_fix16(dudx) : 0;
         for (int y = cy0; y < cy1; y++) {
             uint32_t *row = &sFB[y * sW];
@@ -2384,7 +2429,7 @@ static void draw_2d_impl(float buf_vbo[], size_t buf_vbo_len, size_t num_sprites
                     const void *const p1 = gtex1 ? gtex1->px : NULL;
                     const bool p1_16 = gtex1 && gtex1->is16;
                     const int w1 = gtex1 ? gtex1->w : 0, h1 = gtex1 ? gtex1->h : 0;
-                    const int ws1 = gtex1 ? gtex1->wrap_s : 0, wt1 = gtex1 ? gtex1->wrap_t : 0;
+                    const int ws1 = gtex1 ? soft_unit_wrap(1,gtex1,false) : 0, wt1 = gtex1 ? soft_unit_wrap(1,gtex1,true) : 0;
                     const int mu1 = gtex1 ? pow2mask(w1) : -1, mv1 = gtex1 ? pow2mask(h1) : -1;
                     const int row1 = gtex1 ? wrapf(ifloorf(gv) + sGen.dt, h1, wt1, mv1) * w1 : 0, ds1 = sGen.ds;
                     const int ka = sGen.k1[3];
@@ -2426,8 +2471,8 @@ static void draw_2d_impl(float buf_vbo[], size_t buf_vbo_len, size_t num_sprites
                          * moved left by the corners' difference. PM64_T1RECT=0: the old offset. */
                         const int t1u = sT1Rect ? gen_t1(guf, 0) >> 16 : (guf >> 16) + sGen.ds;
                         const int t1v = sT1Rect ? gen_t1(to_fix16(gv), 1) >> 16 : ifloorf(gv) + sGen.dt;
-                        t1 = texel_at(gtex1->px, gtex1->is16, wrapf(t1v, gtex1->h, gtex1->wrap_t, pow2mask(gtex1->h)) * gtex1->w +
-                                                              wrapf(t1u, gtex1->w, gtex1->wrap_s, pow2mask(gtex1->w)));
+                        t1 = texel_at(gtex1->px, gtex1->is16, wrapf(t1v, gtex1->h, soft_unit_wrap(1,gtex1,true), pow2mask(gtex1->h)) * gtex1->w +
+                                                              wrapf(t1u, gtex1->w, soft_unit_wrap(1,gtex1,false), pow2mask(gtex1->w)));
                     }
                     const uint32_t c = gfast ? pm_gen_fast(gfast, t0, t1, cr, cg, cb2, ca) : pm_gen_eval(t0, t1, cr, cg, cb2, ca);
                     int fr = (c >> 16) & 255, fg = (c >> 8) & 255, fb = c & 255, fa = (int)(c >> 24);
