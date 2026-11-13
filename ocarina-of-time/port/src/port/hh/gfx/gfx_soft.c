@@ -3505,6 +3505,7 @@ void gfx_soft_rect_eval(const int16_t *spec, int thr) {
     sEvalOn = spec != NULL;
     if (spec) { memcpy(sEval, spec, sizeof(sEval)); sEvalThr = thr; }
 }
+static bool eval_reads_texels(void) { for (int q = 0; q < 16; q++) if (sEval[q] < 0) return true; return false; }
 static inline int eval_in(int16_t k, uint32_t t, int sh) {
     return k == -1 ? (int)((t >> sh) & 0xff) : k == -2 ? (int)(t >> 24) : k;
 }
@@ -3552,7 +3553,10 @@ void gfx_scegu_draw_triangles_2d(float buf_vbo[], size_t buf_vbo_len, size_t num
         const float dvdy = (v1 - v0) / (float)(y1 - y0);
         int cx0 = imax(imax(x0, sScX0), 0), cx1 = imin(imin(x1, sScX1), sW);
         int cy0 = imax(imax(y0, sScY0), 0), cy1 = imin(imin(y1, sScY1), sH);
-        if (sEvalOn) { /* issue 12: the combiner per pixel (gfx_soft_rect_eval) */
+        /* The combiner per pixel reads the bound texture's texels: with none bound (a texture too big to import, as the
+         * telescope's mask in Majora's Mask, 224x184), every texel read 0 and the rectangle came out opaque black over the
+         * whole view (issue 24). Then it is drawn as before the per-pixel combiner. */
+        if (sEvalOn && (tex != NULL || !eval_reads_texels())) { /* issue 12: the combiner per pixel (gfx_soft_rect_eval) */
             target_ready();
             const bool ua = sUseAlpha;
             const int tw = tex ? tex->w : 1, th = tex ? tex->h : 1, mu = pow2mask(tw), mv = pow2mask(th);

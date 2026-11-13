@@ -5,6 +5,13 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Majora's Mask 1.0.11 (beta): the Astral Observatory's telescope shows Termina Field again instead of a black
+  screen (issue 24). The telescope's view is masked by a full-screen rectangle whose see-through part comes from a
+  texture too big for the renderer to keep; since 1.0.10 that rectangle's colour is worked out texel by texel (for
+  the Lens of Truth), and with no texture every texel read as solid, so the whole view was painted black, slowly.
+  Now such a rectangle is drawn as before 1.0.10. Ocarina of Time 1.1.11 gets the same guard. Checked under the ARM
+  emulator in the telescope, also at the Mini Flip's 752x560; everywhere else tried draws exactly as before.
+
 - Ocarina of Time 1.1.11: drawing the bow on horseback switches to the aiming view again, on Epona and in the Gerudo
   horseback archery (issue 23). Each camera setting lists the views it allows in a packed word written for the
   N64's byte order; the Mini read that list two bits off, so every setting allowed the wrong views and the horse's
