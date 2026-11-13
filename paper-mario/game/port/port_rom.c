@@ -98,7 +98,10 @@ void port_pi_read(uint32_t rom_addr, void *dst, uint32_t size) {
  * had already been damaged once. A cut now leaves the old save or the new one. */
 #define FLASH_SIZE (128u * 1024u)
 static uint8_t sFlash[FLASH_SIZE];
-static const char *sFlashPath;
+/* port_save_path() returns one of four rotating temporary buffers.  The flash
+ * target lives for the whole process, so own a stable copy rather than keeping
+ * a pointer that a later save-state path lookup can overwrite. */
+static char sFlashPath[640];
 static int sFlashOpen;
 /* A save that cannot be written is shown and tried again (2026-10-01 sweep): it was only logged and then forgotten (not
  * even the exit tried again), so on a full or read-only card every save was lost while the game said it had saved.
@@ -111,8 +114,11 @@ static void flash_commit_exit(void);
 void port_flash_open(void) {
     if (sFlashOpen) return;
     sFlashOpen = 1;
-    sFlashPath = getenv("PM64_SAVE");
-    if (!sFlashPath) sFlashPath = port_save_path("pm64.sav");
+    {
+        const char *path = getenv("PM64_SAVE");
+        if (!path || !path[0]) path = port_save_path("pm64.sav");
+        snprintf(sFlashPath, sizeof sFlashPath, "%s", path);
+    }
     memset(sFlash, 0xFF, sizeof sFlash);
     { char tmp[600]; snprintf(tmp, sizeof tmp, "%s.tmp", sFlashPath);
       if (remove(tmp) == 0) port_log("save: dropped %s (a save cut short; the save before it stands)\n", tmp); }
@@ -197,7 +203,7 @@ static int flash_write(void) {
 }
 
 static void flash_commit(int at_exit) {
-    if (!sFlashPath || !sFlashDirty || (!sFlashTry && !at_exit)) return;
+    if (!sFlashPath[0] || !sFlashDirty || (!sFlashTry && !at_exit)) return;
     sFlashTry = 0;
     if (flash_write()) {
         if (sFlashFails) port_log("save: written, after %d failed %s\n", sFlashFails, sFlashFails == 1 ? "try" : "tries");
