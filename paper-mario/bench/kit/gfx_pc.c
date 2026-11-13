@@ -2514,6 +2514,7 @@ uint32_t gfx_prof_rebuilds;
  * RDP combiner in gfx_soft (gfx_soft_pm_generic). */
 extern void gfx_soft_pm_generic(bool on, uint32_t w0, uint32_t w1, bool two_cycle, const uint8_t prim[4], const uint8_t env[4],
                                 uint8_t prim_lod, int ds, int dt, const int32_t t1map[6]);
+extern void gfx_soft_tex_size(int tile, int *w, int *h);
 enum { M_COMB, M_T0, M_T1, M_PRIM, M_SHADE, M_ENV, M_ONE, M_ZERO, M_OTHER };
 static int pm_mux_rgb_ab(int v, bool is_b) { return v <= 5 ? v : v == 6 ? (is_b ? M_OTHER : M_ONE) : v == 7 ? M_OTHER : M_ZERO; }
 static int pm_mux_rgb_c(int v) { return v <= 5 ? v : v == 8 ? 100 /* T0 alpha */ : v >= 16 ? M_ZERO : M_OTHER; }
@@ -2939,9 +2940,25 @@ static void gfx_tri_rebuild_state(struct LoadedVertex *v1) {
     if (tri_state.use_texture) {
         uint32_t tw, th;
         float tex_width, tex_height;
+        bool uv_extent_is_bound_texture = false;
         gfx_tile_size(0, &tw, &th);
         tex_width = (float) tw;
         tex_height = (float) th;
+#ifdef PM64
+        /* Generic TEXEL1-only combines emit UVs for the SoftTex currently
+         * bound at unit 1. The rasterizer multiplies by that texture's
+         * uploaded extent, so use the same extent here. With no valid unit-1
+         * binding, retain the established tile-0 frame. */
+        if (pmg && !pmt0 && pmt1 && rendering_state.textures[1] != NULL) {
+            int bound_w, bound_h;
+            gfx_soft_tex_size(1, &bound_w, &bound_h);
+            if (bound_w > 0 && bound_h > 0) {
+                tex_width = (float) bound_w;
+                tex_height = (float) bound_h;
+                uv_extent_is_bound_texture = true;
+            }
+        }
+#endif
         // A degenerate render-tile size (e.g. lrt < ult -> height 0 on a DK
         // Jungle terrain texture) would make 1/tex_height = Inf/NaN, which flows
         // into every vertex UV and faults the hardware GE (the host FPU/GE just
@@ -2951,8 +2968,10 @@ static void gfx_tri_rebuild_state(struct LoadedVertex *v1) {
         // A mirrored texture was imported at twice the size: one period of the
         // mirror pattern is the whole doubled image.
         tri_state.mirror = rendering_state.textures[0] != NULL ? rendering_state.textures[0]->mirror : 0;
-        if (tri_state.mirror & 1) tex_width *= 2.0f;
-        if (tri_state.mirror & 2) tex_height *= 2.0f;
+        if (!uv_extent_is_bound_texture) {
+            if (tri_state.mirror & 1) tex_width *= 2.0f;
+            if (tri_state.mirror & 2) tex_height *= 2.0f;
+        }
         float filt = ((rdp.other_mode_h & (3U << G_MDSFT_TEXTFILT)) != G_TF_POINT) ? 0.5f : 0.0f;
         float inv_w = 1.0f / tex_width, inv_h = 1.0f / tex_height;
 #ifdef PM64
