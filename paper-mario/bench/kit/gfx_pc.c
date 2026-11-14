@@ -157,6 +157,9 @@ struct TextureHashmapNode {
     
     uint32_t texture_id;
     uint32_t cms, cmt;
+    /* The import extent is part of the converted texture identity.  The same
+     * source can be addressed through tiles with different effective bounds. */
+    uint16_t import_width, import_height;
     bool linear_filter;
     uint8_t mirror; // texels imported doubled with the mirrored copy: bit 0 along S, bit 1 along T
 } __attribute__((packed, aligned(4)));
@@ -1494,7 +1497,7 @@ static int gfx_sampler_tile(int tile, const struct TextureHashmapNode *hit) {
         gfx_sampler_clobbers++;
     return gfx_samplerfix ? tile : 0;
 }
-static bool gfx_texture_cache_lookup(int tile, struct TextureHashmapNode **n, const uint8_t *orig_addr, uint32_t fmt, uint32_t siz, uint8_t mirror) {
+static bool gfx_texture_cache_lookup(int tile, struct TextureHashmapNode **n, const uint8_t *orig_addr, uint32_t fmt, uint32_t siz, uint8_t mirror, uint32_t width, uint32_t height) {
     size_t hash = (uintptr_t)orig_addr;
     uint32_t content_hash = gfx_texture_content_hash(tile, fmt, siz);
     uint32_t upload_bytes = gfx_texture_upload_bytes(tile, fmt, siz, mirror);
@@ -1502,7 +1505,8 @@ static bool gfx_texture_cache_lookup(int tile, struct TextureHashmapNode **n, co
     hash = (hash >> 5) & 0x3ff;
     struct TextureHashmapNode **node = &gfx_texture_cache.hashmap[hash];
     while (*node != NULL && *node - gfx_texture_cache.pool < (int)gfx_texture_cache.pool_pos) {
-        if ((*node)->texture_addr == orig_addr && (*node)->fmt == fmt && (*node)->siz == siz && (*node)->mirror == mirror) {
+        if ((*node)->texture_addr == orig_addr && (*node)->fmt == fmt && (*node)->siz == siz && (*node)->mirror == mirror &&
+            (*node)->import_width == width && (*node)->import_height == height) {
             if ((*node)->content_hash == content_hash) {
                 gfx_rapi->select_texture(tile, (*node)->texture_id);
 #ifdef PM64
@@ -1528,6 +1532,8 @@ static bool gfx_texture_cache_lookup(int tile, struct TextureHashmapNode **n, co
     if (stale != NULL) {
         if (gfx_debug_frame) port_log("  reimport tex %u addr %p fmt %u siz %u hash %08X->%08X\n", stale->texture_id, orig_addr, fmt, siz, stale->content_hash, content_hash);
         stale->content_hash = content_hash;
+        stale->import_width = width;
+        stale->import_height = height;
         stale->last_used_frame = gfx_frame_counter;
         stale->cms = 0;
         stale->cmt = 0;
@@ -1567,6 +1573,8 @@ static bool gfx_texture_cache_lookup(int tile, struct TextureHashmapNode **n, co
     (*node)->siz = siz;
     (*node)->mirror = mirror;
     (*node)->content_hash = content_hash;
+    (*node)->import_width = width;
+    (*node)->import_height = height;
     (*node)->last_used_frame = gfx_frame_counter;
     *n = *node;
     return false;
@@ -1868,9 +1876,9 @@ static void import_texture_desc(int tile) {
     }
     uint8_t mirror = gfx_mirror_flags(width, height);
 #ifdef PM64
-    if (gfx_texture_cache_lookup(tile, &rendering_state.textures[tile], pm_tile_src(tile, NULL, NULL, NULL), fmt, siz, mirror)) {
+    if (gfx_texture_cache_lookup(tile, &rendering_state.textures[tile], pm_tile_src(tile, NULL, NULL, NULL), fmt, siz, mirror, width, height)) {
 #else
-    if (gfx_texture_cache_lookup(tile, &rendering_state.textures[tile], rdp.loaded_texture[gfx_tex_slot(tile)].addr, fmt, siz, mirror)) {
+    if (gfx_texture_cache_lookup(tile, &rendering_state.textures[tile], rdp.loaded_texture[gfx_tex_slot(tile)].addr, fmt, siz, mirror, width, height)) {
 #endif
         return;
     }
