@@ -5,6 +5,15 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Majora's Mask 1.0.12 (beta): no more crash in Mountain Village with the Lens of Truth on
+  ([issue #28](https://github.com/mr-finster/miyoo64/issues/28)). One of the village's objects (object_yukimura_obj)
+  jumps to the game's empty display list when the camera is close, a list that lives in the game's code, so the data
+  builder could not convert that one file and left it as the ROM's bytes. The renderer then ran picture data as
+  commands, and with the lens on this ended in a crash. The data builder now converts all 942 files (the game data is
+  rebuilt from your ROM once at the first start of 1.0.12), the renderer ends the list there as the N64 does, and a
+  matrix outside the game's memory is dropped instead of read. Checked under the ARM emulator in Mountain Village with
+  the lens on (no bad address any more) and at the telescope (byte for byte as 1.0.11).
+
 - Ocarina of Time 1.1.12: a CRT overlay to test (MENU > OPTIONS > PICTURE > CRT OVERLAY, `crtoverlay=1`, off by
   default). A dark scanline at the bottom of every game line, a faint line at the edge of every game pixel, a soft
   vignette and rounded corners, lined up with how the picture is scaled on the Mini's 640x480 and the Mini v4 / Flip's

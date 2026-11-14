@@ -337,6 +337,7 @@ static struct {
 } tri_state;
 
 static uint32_t sRdpHalf1; /* G_RDPHALF_1's word: G_BRANCH_Z's target */
+static int sRdpHalf1Set; /* a G_RDPHALF_1 came since the last G_BRANCH_Z (its word may be 0) */
 static size_t buf_vbo_len;
 static size_t buf_num_vert;
 static size_t buf_vbo_num_tris;
@@ -6683,7 +6684,8 @@ static void gfx_run_dl(Gfx* cmd) {
             case G_MTX:
                 gfx_flush();
 #ifdef F3DEX_GBI_2
-                gfx_sp_matrix(C0(0, 8) ^ G_MTX_PUSH, (const int32_t *) gfx_mtx_addr(cmd->words.w1));
+                /* RSP robustness (issue #28): a matrix outside the game's memory is dropped, as F3DEX's is */
+                if (port_ptr_ok(gfx_mtx_addr(cmd->words.w1), 64)) gfx_sp_matrix(C0(0, 8) ^ G_MTX_PUSH, (const int32_t *) gfx_mtx_addr(cmd->words.w1));
 #else
                 if (port_ptr_ok(gfx_mtx_addr(cmd->words.w1), 64)) gfx_sp_matrix(C0(16, 8), (const int32_t *) gfx_mtx_addr(cmd->words.w1));
 #endif
@@ -6796,6 +6798,7 @@ static void gfx_run_dl(Gfx* cmd) {
                 break;
             case (uint8_t)G_RDPHALF_1:
                 sRdpHalf1 = cmd->words.w1; /* the branch target for G_BRANCH_Z (texrects consume their own) */
+                sRdpHalf1Set = 1;
                 break;
             case (uint8_t)G_BRANCH_Z:
                 // gSPBranchLessZraw: jump (no return) to the list G_RDPHALF_1 named
@@ -6806,6 +6809,14 @@ static void gfx_run_dl(Gfx* cmd) {
                 // oot-PSP and oot-dc do (neither keeps the RSP's fixed-point
                 // screen z) -- and GLideN64's test, z/w * 1023 <= zval, is always
                 // true for OoT's zvals of 0x400 and more (DMT: 0xAF0).
+                /* A branch to 0 is a branch to the game's empty list gActorSetupOpaDL (a code symbol, so the data pack
+                 * links it as 0: mm_pack.py; Mountain Village's lens object, object_yukimura_obj, issue #28): this
+                 * list ends, as it does on the N64. */
+                if (sRdpHalf1Set && sRdpHalf1 == 0) {
+                    sRdpHalf1Set = 0;
+                    return;
+                }
+                sRdpHalf1Set = 0;
                 if (sRdpHalf1 != 0) {
                     if ((uintptr_t)seg_addr(sRdpHalf1) < PORT_REAL_PTR_MIN) {
                         gfx_log_unresolved("G_BRANCH_Z", sRdpHalf1);

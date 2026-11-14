@@ -139,6 +139,9 @@ def main():
             if ((0x01000000 <= v < 0x10000000 and t in "DdBbRrTtAa") or (n.startswith("SampleBank_") and t in "Aa")) \
                     and re.match(r"^[A-Za-z_]\w*$", n):
                 f.write("PROVIDE(%s = 0x%08X);\n" % (n, v))
+        # gActorSetupOpaDL is the game's empty display list (z_actor.c), a code symbol: object_yukimura_obj branches to it
+        # (gsSPBranchLessZraw). Linked as 0 (the recipe's zero op), which the renderer takes as that empty list.
+        f.write("PROVIDE(gActorSetupOpaDL = 0x00000000);\n")
 
     rom = bytearray(open(args.rom, "rb").read())
     jobs = []
