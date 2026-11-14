@@ -135,6 +135,10 @@ Each picture is held by the panel's vsyncs, so it follows the panel's real rate 
 three pictures don't fit in two updates, it steps down gradually (26.7, 25, 24, 23.3 fps) and only then to 20;
 `fps30steps=0` goes straight from 30 to 20.
 
+CRT overlay (`crtoverlay=1`, or MENU > OPTIONS > PICTURE > CRT OVERLAY; off by default, a test): a CRT look over the
+picture, with a scanline at the bottom of every game line (so the lines never drift against the picture), a faint line
+at the edge of every game pixel, a soft vignette and rounded corners, for both the 640x480 and the 752x560 panels.
+
 Sound, Miyoo only: `audiofill=0` (or `OOT_AUDIOFILL=0`) gives the old audio buffering. The default keeps one
 more SDL callback's worth queued (+16 ms), so a late audio update no longer leaves a gap (the `underruns +N` on
 the AUDIO lines in `console.log`).

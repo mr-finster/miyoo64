@@ -37,6 +37,12 @@ static void ControlsApply(const char* value) {
     HhCtl_Reload();
 }
 
+static void CrtOverlayApply(const char* value) {
+    extern int gfx_crt_overlay; /* gfx_sdl12.c: from the next picture */
+
+    gfx_crt_overlay = value[0] == '1';
+}
+
 static void HudFilterApply(const char* value) {
     gfx_soft_hud_box = value[0] != '0';
 }
@@ -59,6 +65,8 @@ const struct miyoo_option miyoo_options[] = {
     { .label = "PICTURE" },
     { .label = "30 FPS", .key = "fps30", MIYOO_OPT_ONOFF, .def = "0", .when = MIYOO_OPT_NOW, .apply = Fps30Apply,
       .help = "IN-BETWEEN FRAMES: SMOOTHER MOTION, THE SAME GAME SPEED" },
+    { .label = "CRT OVERLAY", .key = "crtoverlay", MIYOO_OPT_ONOFF, .def = "0", .when = MIYOO_OPT_NOW,
+      .apply = CrtOverlayApply, .help = "SCANLINES ON EVERY GAME LINE, ROUNDED CORNERS; A TEST" },
     { .label = "PRERENDERED ROOMS", .key = "crop3d",
       MIYOO_OPT_VALUES({ "2", "FOLLOW LINK" }, { "1", "CENTRED" }, { "0", "SQUEEZED" }), .def = "2",
       .help = "TRUE SHAPE, THE VIEW FOLLOWING LINK OR CENTRED; OR SQUEEZED TO FIT" },

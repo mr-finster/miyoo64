@@ -687,6 +687,94 @@ static void fill_frame(uint8_t *pix, int pitch, int W, int H, int rot, const uin
     }
 }
 
+/* CRT overlay (crtoverlay=1, MENU > OPTIONS > PICTURE > CRT OVERLAY; off by default, a test): after the frame is on the
+ * panel, every panel pixel is darkened by a fixed amount, as a black overlay of varying opacity would. Built once per
+ * panel size from the same rules as the 640x480 / 752x560 overlay PNGs (made for these ports, no outside art), lined up
+ * with the ports' own scaling of the 320x240 frame (2x, or blit's maps on a 752x560 panel):
+ *  - a scanline (30%) on the last panel row of every game line, so every N64 line ends in one dark row;
+ *  - a faint mask (8%) on the last panel column of every game pixel;
+ *  - a soft vignette (up to 40% at the edges, from 72% of the way out) and rounded corners (radius 18, antialiased).
+ * Stored as a multiplier per pixel (256 = untouched), in the game's orientation; a turned panel reads it turned. */
+#include <math.h>
+int gfx_crt_overlay SAVESTATE_EXCLUDE = -1; /* -1: not read yet; hh_options.c sets it from the page */
+static uint16_t *sCrtMul SAVESTATE_EXCLUDE;
+static int sCrtW SAVESTATE_EXCLUDE, sCrtH SAVESTATE_EXCLUDE;
+static int crt_build(int W, int H) {
+    if (sCrtMul != NULL && sCrtW == W && sCrtH == H) return 1;
+    uint16_t *m = (uint16_t *)realloc(sCrtMul, (size_t)W * H * sizeof(uint16_t));
+    if (m == NULL) return 0;
+    sCrtMul = m; sCrtW = W; sCrtH = H;
+    const float SCAN = 0.30f, MASK = 0.08f, VIG_START = 0.72f, VIG_MAX = 0.40f, RADIUS = 18.0f;
+    for (int y = 0; y < H; y++) {
+        const int gy = (y * BASE_H) / H, gy1 = ((y + 1) * BASE_H) / H;
+        const bool row_end = (y == H - 1) || gy1 != gy;
+        const float ny = (y + 0.5f) / H * 2.0f - 1.0f;
+        for (int x = 0; x < W; x++) {
+            const int gx = (x * BASE_W + BASE_W / 2) / W, gx1 = ((x + 1) * BASE_W + BASE_W / 2) / W;
+            const bool col_end = (x == W - 1) || (gx1 != gx && gx < BASE_W - 1);
+            float keep = 1.0f; /* the light that goes through */
+            if (row_end) keep *= 1.0f - SCAN;
+            if (col_end) keep *= 1.0f - MASK;
+            const float nx = (x + 0.5f) / W * 2.0f - 1.0f;
+            const float d = sqrtf(sqrtf(nx * nx * nx * nx + ny * ny * ny * ny)); /* a rounded-rectangle distance */
+            float v = (d - VIG_START) / (1.0f - VIG_START);
+            v = v < 0.0f ? 0.0f : v > 1.0f ? 1.0f : v;
+            keep *= 1.0f - v * v * VIG_MAX;
+            const float cx = fminf(x + 0.5f, W - x - 0.5f), cy = fminf(y + 0.5f, H - y - 0.5f);
+            if (cx < RADIUS && cy < RADIUS) {
+                float c = hypotf(RADIUS - cx, RADIUS - cy) - RADIUS + 0.5f; /* 0 inside, 1 outside the corner */
+                c = c < 0.0f ? 0.0f : c > 1.0f ? 1.0f : c;
+                keep = fminf(keep, 1.0f - c);
+            }
+            m[y * W + x] = (uint16_t)lrintf(keep * 256.0f);
+        }
+    }
+    fprintf(stderr, "crt: overlay for %dx%d\n", W, H);
+    return 1;
+}
+static void crt_apply(uint8_t *pix, int pitch, int W, int H, int rot) {
+    if (gfx_crt_overlay < 0) { const char *e = getenv("OOT_CRTOVERLAY"); gfx_crt_overlay = e != NULL && e[0] == '1'; }
+    if (gfx_crt_overlay && crt_build(W, H)) {
+    for (int y = 0; y < H; y++) {
+        uint32_t *row = (uint32_t *)(pix + y * pitch);
+        const uint16_t *m = sCrtMul + (size_t)(rot ? H - 1 - y : y) * W;
+        if (!rot) {
+            for (int x = 0; x < W; x++) {
+                const uint32_t p = row[x], k = m[x];
+                row[x] = 0xFF000000u | ((((p & 0xFF00FFu) * k) >> 8) & 0xFF00FFu) | ((((p & 0xFF00u) * k) >> 8) & 0xFF00u);
+            }
+        } else {
+            for (int x = 0; x < W; x++) {
+                const uint32_t p = row[x], k = m[W - 1 - x];
+                row[x] = 0xFF000000u | ((((p & 0xFF00FFu) * k) >> 8) & 0xFF00FFu) | ((((p & 0xFF00u) * k) >> 8) & 0xFF00u);
+            }
+        }
+    }
+    }
+    { /* OOT_CRTDUMP=<n>:<file> (test hook): the n-th presented panel picture as a PPM, as it went to the screen */
+        static long sN SAVESTATE_EXCLUDE = -2, sCall SAVESTATE_EXCLUDE;
+        static char sPath[400] SAVESTATE_EXCLUDE;
+        if (sN == -2) {
+            const char *e = getenv("OOT_CRTDUMP");
+            sN = -1;
+            if (e != NULL && sscanf(e, "%ld:%399s", &sN, sPath) != 2) sN = -1;
+        }
+        if (sN >= 0 && sCall++ == sN) {
+            FILE *fp = fopen(sPath, "wb");
+            if (fp != NULL) {
+                fprintf(fp, "P6\n%d %d\n255\n", W, H);
+                for (int y = 0; y < H; y++)
+                    for (int x = 0; x < W; x++) {
+                        const uint32_t p = ((const uint32_t *)(pix + y * pitch))[x];
+                        const unsigned char c[3] = { (unsigned char)(p >> 16), (unsigned char)(p >> 8), (unsigned char)p };
+                        fwrite(c, 1, 3, fp);
+                    }
+                fclose(fp);
+            }
+        }
+    }
+}
+
 /* Present thread: the staged frame onto the screen surface. 320x240 is doubled exactly; any
  * other size (never in play) is scaled nearest to fit. */
 static void blit_stage_to_screen(void) {
@@ -732,6 +820,8 @@ static void blit_stage_to_screen(void) {
             }
         }
     }
+    if (f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0)
+        crt_apply(pix, pitch, sScreen->w, sScreen->h, rot); /* CRT overlay (crtoverlay=1), off by default */
     if (SDL_MUSTLOCK(sScreen)) SDL_UnlockSurface(sScreen);
 }
 

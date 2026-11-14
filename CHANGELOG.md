@@ -5,6 +5,12 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Ocarina of Time 1.1.12: a CRT overlay to test (MENU > OPTIONS > PICTURE > CRT OVERLAY, `crtoverlay=1`, off by
+  default). A dark scanline at the bottom of every game line, a faint line at the edge of every game pixel, a soft
+  vignette and rounded corners, lined up with how the picture is scaled on the Mini's 640x480 and the Mini v4 / Flip's
+  752x560 panels, so the lines never drift against the picture. Suggested by Successful-Engine-11, who sent PNG
+  overlays; this one is built in the game from the same idea.
+
 - Ocarina of Time 1.1.12, contributed by cacuracaptors from their own Miyoo Mini port of the game (oot-miyoomini, MIT),
   all of it off by default or giving the same picture:
   - 30 frames a second (MENU > OPTIONS > PICTURE > 30 FPS, `fps30=1`, off by default,

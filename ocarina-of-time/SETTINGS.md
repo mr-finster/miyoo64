@@ -3,7 +3,7 @@
 - Optional. Put it at `App/OcarinaOfTime/data/debug.cfg`, one `key=value` per line.
 - A missing key keeps its default.
 - The in-game menu's OPTIONS page changes some of these keys (`controls`, `fineaim`, `fineaimpct`, `fineaimms`, `crop3d`,
-  `msgbox1to1`, `hudfilter`, `watergrain`, `declick`, `fps30`) and writes them to this file, keeping your other lines.
+  `msgbox1to1`, `hudfilter`, `watergrain`, `declick`, `fps30`, `crtoverlay`) and writes them to this file, keeping your other lines.
   Adding a key to the page: [docs/OPTIONS.md](../docs/OPTIONS.md).
 
 | Key | Default | What it does |
@@ -54,6 +54,7 @@
 | `rect2t` | `1` | Full-screen and 2D effects made of two textures drawn with both, in the N64's colours (the Haunted Wasteland's sandstorm orange over the whole view, the title logo's flames); `0` = the first texture only (the sandstorm pale cream with clear sand along the bottom) |
 | `modifyvtx` | `1` | Model joints the N64 re-maps (gSPModifyVertex) drawn with the right texture there, as on the N64: Barinade's ceiling tentacles, the Bazaar shopkeeper's shoulders, adult Ruto's arm fins (also child Ruto, the roof man, Volvagia, the Like Like, Dead Hand, the Shell Blade, Jabu-Jabu's muscle blocks, the fish); `0` = the old look (the previous joint's texture stretched across the seam); `ab` = off and on in turn every 100 frames, for an A/B |
 | `fps30` | `0` | 30 frames a second: the in-between frames drawn with everything that moves blended between the game's 20 updates a second (actors, the camera, effects, Epona, scrolling textures, the dialog box), the game's speed unchanged; where the pictures don't fit it steps down (26.7, 25, 24, 23.3 fps) and then to 20. Each picture is held by the panel's vsyncs. `0` = 20 fps, as the N64 |
+| `crtoverlay` | `0` | A CRT look over the picture (a test): a dark scanline at the bottom of every game line, a faint line at the edge of every game pixel, a soft vignette and rounded corners, lined up with the picture's scaling on 640x480 and 752x560 panels. A few ms a frame on the present thread. `1` = on (MENU > OPTIONS > PICTURE > CRT OVERLAY) |
 | `fps30steps` | `1` | With fps30: the frame rate steps down gradually (26.7, 25, 24, 23.3) where 30 doesn't fit, before 20; `0` = 30 or 20 only |
 | `halfwater` | `1` | The Deku Tree basement water (and other see-through surfaces of one colour strength) drawn at half resolution: faster there, softer, the grain mostly lost; `0` = full resolution |
 | `hfxsplit` | `1` | With halfwater: the water layer's composite drawn by both cores, the same picture; `0` = the first core alone, the older, slower way |
