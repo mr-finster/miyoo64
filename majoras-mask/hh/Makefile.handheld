@@ -45,7 +45,7 @@ OPT_FLAGS = -O2 -g -fno-math-errno -ffp-contract=off $(EXTRA_CFLAGS)
 SDL_CFLAGS := -I$(MM_SYSROOT)/usr/include -I$(MM_SYSROOT)/usr/include/SDL -D_REENTRANT -D_FILE_OFFSET_BITS=64
 SDL_LIBS   := -L$(MM_SYSROOT)/usr/lib -Wl,-rpath-link,$(MM_SYSROOT)/usr/lib -lSDL -lrt
 HH_VERSION ?= dev
-HH_RELEASE ?= 1.0.11
+HH_RELEASE ?= 1.0.12
 # the two objects that print HH_VERSION / HH_RELEASE are rebuilt by every make (a changed release number alone does not
 # touch their sources: 1.0.6 shipped printing 1.0.4)
 VERSION_O := $(BUILD_DIR)/$(HH)/src/hh_mm.o $(BUILD_DIR)/$(HH)/src/hh_port.o
