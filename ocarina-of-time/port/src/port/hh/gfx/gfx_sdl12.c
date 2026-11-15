@@ -701,7 +701,7 @@ static void fill_frame(uint8_t *pix, int pitch, int W, int H, int rot, const uin
  * with the ports' own scaling of the 320x240 frame (2x, or blit's maps on a 752x560 panel):
  *  - a scanline (30%) on the last panel row of every game line, so every N64 line ends in one dark row;
  *  - a faint mask (8%) on the last panel column of every game pixel;
- *  - a soft vignette (up to 40% at the edges, from 72% of the way out) and rounded corners (radius 18, antialiased).
+ *  - rounded corners (radius 18, antialiased). No vignette: on the Mini it made the picture too dark (the user's test).
  * Stored as a multiplier per pixel (256 = untouched), in the game's orientation; a turned panel reads it turned. */
 #include <math.h>
 int gfx_crt_overlay SAVESTATE_EXCLUDE = -1; /* -1: not read yet; hh_options.c sets it from the page */
@@ -712,22 +712,16 @@ static int crt_build(int W, int H) {
     uint16_t *m = (uint16_t *)realloc(sCrtMul, (size_t)W * H * sizeof(uint16_t));
     if (m == NULL) return 0;
     sCrtMul = m; sCrtW = W; sCrtH = H;
-    const float SCAN = 0.30f, MASK = 0.08f, VIG_START = 0.72f, VIG_MAX = 0.40f, RADIUS = 18.0f;
+    const float SCAN = 0.30f, MASK = 0.08f, RADIUS = 18.0f;
     for (int y = 0; y < H; y++) {
         const int gy = (y * BASE_H) / H, gy1 = ((y + 1) * BASE_H) / H;
         const bool row_end = (y == H - 1) || gy1 != gy;
-        const float ny = (y + 0.5f) / H * 2.0f - 1.0f;
         for (int x = 0; x < W; x++) {
             const int gx = (x * BASE_W + BASE_W / 2) / W, gx1 = ((x + 1) * BASE_W + BASE_W / 2) / W;
             const bool col_end = (x == W - 1) || (gx1 != gx && gx < BASE_W - 1);
             float keep = 1.0f; /* the light that goes through */
             if (row_end) keep *= 1.0f - SCAN;
             if (col_end) keep *= 1.0f - MASK;
-            const float nx = (x + 0.5f) / W * 2.0f - 1.0f;
-            const float d = sqrtf(sqrtf(nx * nx * nx * nx + ny * ny * ny * ny)); /* a rounded-rectangle distance */
-            float v = (d - VIG_START) / (1.0f - VIG_START);
-            v = v < 0.0f ? 0.0f : v > 1.0f ? 1.0f : v;
-            keep *= 1.0f - v * v * VIG_MAX;
             const float cx = fminf(x + 0.5f, W - x - 0.5f), cy = fminf(y + 0.5f, H - y - 0.5f);
             if (cx < RADIUS && cy < RADIUS) {
                 float c = hypotf(RADIUS - cx, RADIUS - cy) - RADIUS + 0.5f; /* 0 inside, 1 outside the corner */

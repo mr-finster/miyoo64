@@ -15,9 +15,9 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   the lens on (no bad address any more) and at the telescope (byte for byte as 1.0.11).
 
 - Ocarina of Time 1.1.12: a CRT overlay to test (MENU > OPTIONS > PICTURE > CRT OVERLAY, `crtoverlay=1`, off by
-  default). A dark scanline at the bottom of every game line, a faint line at the edge of every game pixel, a soft
-  vignette and rounded corners, lined up with how the picture is scaled on the Mini's 640x480 and the Mini v4 / Flip's
-  752x560 panels, so the lines never drift against the picture. Suggested by Successful-Engine-11, who sent PNG
+  default). A dark scanline at the bottom of every game line, a faint line at the edge of every game pixel and
+  rounded corners (no vignette, too dark on the Mini), lined up with how the picture is scaled on the Mini's 640x480
+  and the Mini v4 / Flip's 752x560 panels, so the lines never drift against the picture. Suggested by Successful-Engine-11, who sent PNG
   overlays; this one is built in the game from the same idea. The overlay is applied as the picture is copied to the
   screen (the first test build read the screen back afterwards, which slowed the game to a crawl on the Mini).
 
