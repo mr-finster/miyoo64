@@ -5,6 +5,12 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Super Mario 64 1.1.8: the picture goes to the screen fully opaque
+  ([issue #21](https://github.com/mr-finster/miyoo64/issues/21)). The renderer's own alpha byte reached the panel, and
+  on MajoraGuy's Mini Plus those pixels came out washed out (flat grass, snow and carpet, Mario without his shading,
+  the power meter's lines gone) until the pause screen's dimming rewrote them. Ocarina of Time and Majora's Mask
+  already sent every pixel opaque. To be confirmed on a Mini Plus.
+
 - Majora's Mask 1.0.12 (beta): no more crash in Mountain Village with the Lens of Truth on
   ([issue #28](https://github.com/mr-finster/miyoo64/issues/28)). One of the village's objects (object_yukimura_obj)
   jumps to the game's empty display list when the camera is close, a list that lives in the game's code, so the data

@@ -202,10 +202,14 @@ static void present(uint32_t *src, int w, int h) {
     if (k < 1) k = 1;
     const int ox = (dw - w * k) / 2, oy = (dh - h * k) / 2;
     const SDL_PixelFormat *f = sPanel->format;
-    const uint32_t a = f->Amask;
+    const int xrgb = f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0;
+    /* Issue #21: every game pixel goes out opaque. The panel's Amask is 0 on the Mini's 32 bpp surface, so "| Amask"
+     * left the renderer's own alpha byte (its coverage and blend values) in the panel, and a Mini Plus showed those
+     * pixels washed out (flat grass, snow and carpet, Mario unshaded, the power meter's lines gone) until the pause
+     * screen's dimming rewrote them. The Ocarina of Time / Majora's Mask blits force 0xFF000000 the same way. */
+    const uint32_t a = xrgb ? 0xFF000000u : f->Amask;
     uint8_t *const base = (uint8_t *)sPanel->pixels;
     if (SDL_MUSTLOCK(sPanel)) SDL_LockSurface(sPanel);
-    const int xrgb = f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0;
     if (xrgb && k >= 2 && h * k != dh && fill_on()) {
         int fx, fy, fw, fh;
         miyoo_panel_area(w, h, &fx, &fy, &fw, &fh);
