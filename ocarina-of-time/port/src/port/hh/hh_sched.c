@@ -272,7 +272,7 @@ int HhSched_FrameDeadline(uint32_t* usec) {
 
 
 /*
- * OOT_FPS30 (debug.cfg fps30=1, MENU > OPTIONS > 30 FPS; off by default): the game's 20 updates a second shown at
+ * OOT_FPS30 (debug.cfg fps30, MENU > OPTIONS > 30 FPS; on by default, fps30=0 for 20): the game's 20 updates a second shown at
  * 30 frames a second, the in-between frames drawn from the frame's own display list with the matrices blended
  * between the last update and this one (hh_interp.c records them in Play_Draw; gfx_pc.c swaps them in). The game's
  * speed is unchanged. Two updates make three pictures, 2 vsyncs each:
@@ -329,7 +329,7 @@ static int SchedPsp_FiTask(OSScTask* task) {
         const char* e = getenv("OOT_FPS30");
 
         sEnvRead = 1;
-        port_fi_enabled = e != NULL && e[0] == '1';
+        port_fi_enabled = !(e != NULL && e[0] == '0'); /* on by default (1.1.12) */
     }
     if (!port_fi_enabled || !gfx_sdl12_hold_ok() || !(task->flags & OS_SC_SWAPBUFFER) || task->framebuffer == NULL) {
         gfx_sdl12_next_hold(0);

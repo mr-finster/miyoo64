@@ -63,7 +63,7 @@ const struct miyoo_option miyoo_options[] = {
       .def = "1000", .when = MIYOO_OPT_NOW, .apply = FineAimApply,
       .help = "FINE AIM: WHEN A HELD D-PAD REACHES FULL SPEED" },
     { .label = "PICTURE" },
-    { .label = "30 FPS", .key = "fps30", MIYOO_OPT_ONOFF, .def = "0", .when = MIYOO_OPT_NOW, .apply = Fps30Apply,
+    { .label = "30 FPS", .key = "fps30", MIYOO_OPT_ONOFF, .def = "1", .when = MIYOO_OPT_NOW, .apply = Fps30Apply,
       .help = "IN-BETWEEN FRAMES: SMOOTHER MOTION, THE SAME GAME SPEED" },
     { .label = "CRT OVERLAY", .key = "crtoverlay", MIYOO_OPT_ONOFF, .def = "0", .when = MIYOO_OPT_NOW,
       .apply = CrtOverlayApply, .help = "SCANLINES ON EVERY GAME LINE, ROUNDED CORNERS; A TEST" },

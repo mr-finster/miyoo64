@@ -665,7 +665,11 @@ static void row_x2_32(uint32_t *d0, uint32_t *d1, const uint32_t *src, int n, in
 
 /* A larger panel (Mini v4 / Flip, OOT_FLIPFILL): the frame (sw x sh) at the panel's full height onto pix (W x H, pitch
  * bytes), turned when rot: blit_stage_to_screen's, and the menu's backdrop (gfx_miyoo_backdrop, unturned). */
-static void fill_frame(uint8_t *pix, int pitch, int W, int H, int rot, const uint32_t *stage, int sw, int sh) {
+static inline uint32_t crt_mul(uint32_t p, uint32_t k) {
+    return 0xFF000000u | ((((p & 0xFF00FFu) * k) >> 8) & 0xFF00FFu) | ((((p & 0xFF00u) * k) >> 8) & 0xFF00u);
+}
+static void fill_frame(uint8_t *pix, int pitch, int W, int H, int rot, const uint32_t *stage, int sw, int sh,
+                       const uint16_t *mul) {
     static int mapW SAVESTATE_EXCLUDE, mapH SAVESTATE_EXCLUDE, mapSw SAVESTATE_EXCLUDE, mapSh SAVESTATE_EXCLUDE;
     static uint16_t xmap[1280] SAVESTATE_EXCLUDE, ymap[960] SAVESTATE_EXCLUDE;
     static int dw SAVESTATE_EXCLUDE, dx SAVESTATE_EXCLUDE;
@@ -682,7 +686,11 @@ static void fill_frame(uint8_t *pix, int pitch, int W, int H, int rot, const uin
         const uint32_t *src = stage + ymap[y] * sw;
         for (int x = 0; x < dx; x++) dst[x] = 0xFF000000u;
         for (int x = dx + dw; x < W; x++) dst[x] = 0xFF000000u;
-        if (rot) { for (int x = 0; x < dw; x++) dst[W - 1 - dx - x] = src[xmap[x]] | 0xFF000000u; }
+        if (mul != NULL) { /* the CRT overlay, applied as the pixels are written (crt_on) */
+            const uint16_t *m = mul + (size_t)y * W + dx;
+            if (rot) { for (int x = 0; x < dw; x++) dst[W - 1 - dx - x] = crt_mul(src[xmap[x]], m[x]); }
+            else     { for (int x = 0; x < dw; x++) dst[dx + x] = crt_mul(src[xmap[x]], m[x]); }
+        } else if (rot) { for (int x = 0; x < dw; x++) dst[W - 1 - dx - x] = src[xmap[x]] | 0xFF000000u; }
         else     { for (int x = 0; x < dw; x++) dst[dx + x] = src[xmap[x]] | 0xFF000000u; }
     }
 }
@@ -732,25 +740,34 @@ static int crt_build(int W, int H) {
     fprintf(stderr, "crt: overlay for %dx%d\n", W, H);
     return 1;
 }
-static void crt_apply(uint8_t *pix, int pitch, int W, int H, int rot) {
+/* The overlay's multipliers for a W x H panel, or NULL when it is off. The blits apply them as they write each pixel
+ * from the staged frame: reading the panel back afterwards (the first version) read uncached framebuffer memory and
+ * cost ~40 ms a frame on the Mini. */
+static const uint16_t *crt_on(int W, int H) {
     if (gfx_crt_overlay < 0) { const char *e = getenv("OOT_CRTOVERLAY"); gfx_crt_overlay = e != NULL && e[0] == '1'; }
-    if (gfx_crt_overlay && crt_build(W, H)) {
+    return gfx_crt_overlay && crt_build(W, H) ? sCrtMul : NULL;
+}
+/* Only for a panel format no blit above handles (never on a Mini): darkened in place, reading the panel back. */
+static void crt_apply(uint8_t *pix, int pitch, int W, int H, int rot) {
+    if (crt_on(W, H) != NULL) {
     for (int y = 0; y < H; y++) {
         uint32_t *row = (uint32_t *)(pix + y * pitch);
         const uint16_t *m = sCrtMul + (size_t)(rot ? H - 1 - y : y) * W;
         if (!rot) {
             for (int x = 0; x < W; x++) {
                 const uint32_t p = row[x], k = m[x];
-                row[x] = 0xFF000000u | ((((p & 0xFF00FFu) * k) >> 8) & 0xFF00FFu) | ((((p & 0xFF00u) * k) >> 8) & 0xFF00u);
+                row[x] = crt_mul(p, k);
             }
         } else {
             for (int x = 0; x < W; x++) {
                 const uint32_t p = row[x], k = m[W - 1 - x];
-                row[x] = 0xFF000000u | ((((p & 0xFF00FFu) * k) >> 8) & 0xFF00FFu) | ((((p & 0xFF00u) * k) >> 8) & 0xFF00u);
+                row[x] = crt_mul(p, k);
             }
         }
     }
     }
+}
+static void crt_dump(const uint8_t *pix, int pitch, int W, int H) {
     { /* OOT_CRTDUMP=<n>:<file> (test hook): the n-th presented panel picture as a PPM, as it went to the screen */
         static long sN SAVESTATE_EXCLUDE = -2, sCall SAVESTATE_EXCLUDE;
         static char sPath[400] SAVESTATE_EXCLUDE;
@@ -791,16 +808,27 @@ static void blit_stage_to_screen(void) {
     const SDL_PixelFormat *f = sScreen->format;
     if (f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0 && sw * 2 == PANEL_W && sh * 2 == PANEL_H &&
         sScreen->w == PANEL_W && sScreen->h == PANEL_H) {
-        for (int y = 0; y < sh; y++) {
-            const int oy = rot ? PANEL_H - 2 - y * 2 : y * 2;
-            row_x2_32((uint32_t *)(pix + oy * pitch), (uint32_t *)(pix + (oy + 1) * pitch), sStage32 + y * sw, sw, rot);
+        const uint16_t *mul = crt_on(PANEL_W, PANEL_H);
+        if (mul == NULL) {
+            for (int y = 0; y < sh; y++) {
+                const int oy = rot ? PANEL_H - 2 - y * 2 : y * 2;
+                row_x2_32((uint32_t *)(pix + oy * pitch), (uint32_t *)(pix + (oy + 1) * pitch), sStage32 + y * sw, sw, rot);
+            }
+        } else { /* the CRT overlay (crtoverlay=1), applied as each panel pixel is written */
+            for (int py = 0; py < PANEL_H; py++) {
+                uint32_t *dst = (uint32_t *)(pix + py * pitch);
+                const uint32_t *src = sStage32 + (rot ? PANEL_H - 1 - py : py) / 2 * sw;
+                const uint16_t *m = mul + (size_t)(rot ? PANEL_H - 1 - py : py) * PANEL_W;
+                if (rot) { for (int px = 0; px < PANEL_W; px++) dst[px] = crt_mul(src[(PANEL_W - 1 - px) / 2], m[PANEL_W - 1 - px]); }
+                else     { for (int px = 0; px < PANEL_W; px++) dst[px] = crt_mul(src[px / 2], m[px]); }
+            }
         }
     } else if (f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0 &&
                (sScreen->w != PANEL_W || sScreen->h != PANEL_H)) {
         /* A larger panel (Mini v4 / Flip, OOT_FLIPFILL): the 4:3 frame at the panel's full height, centred (752x560:
          * the whole 752x560, 0.8% wider than 4:3), nearest by precomputed maps (the 2.33x has no exact form; bilinear would blur the HUD).
          * The black sides are written every frame (cheap, and a menu may have drawn there). */
-        fill_frame(pix, pitch, sScreen->w, sScreen->h, rot, sStage32, sw, sh);
+        fill_frame(pix, pitch, sScreen->w, sScreen->h, rot, sStage32, sw, sh, crt_on(sScreen->w, sScreen->h));
     } else if (f->BitsPerPixel == 32) {
         for (int y = 0; y < PANEL_H; y++) {
             uint32_t *dst = (uint32_t *)(pix + (rot ? PANEL_H - 1 - y : y) * pitch);
@@ -820,8 +848,12 @@ static void blit_stage_to_screen(void) {
             }
         }
     }
-    if (f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0)
-        crt_apply(pix, pitch, sScreen->w, sScreen->h, rot); /* CRT overlay (crtoverlay=1), off by default */
+    if (f->BitsPerPixel == 32 && f->Rshift == 16 && f->Gshift == 8 && f->Bshift == 0) {
+        if (!(sw * 2 == PANEL_W && sh * 2 == PANEL_H && sScreen->w == PANEL_W && sScreen->h == PANEL_H) &&
+            !(sScreen->w != PANEL_W || sScreen->h != PANEL_H))
+            crt_apply(pix, pitch, sScreen->w, sScreen->h, rot); /* a size the two blits above don't handle */
+        crt_dump(pix, pitch, sScreen->w, sScreen->h); /* OOT_CRTDUMP (tests) */
+    }
     if (SDL_MUSTLOCK(sScreen)) SDL_UnlockSurface(sScreen);
 }
 
@@ -840,7 +872,7 @@ int gfx_miyoo_backdrop_size(int *w, int *h) {
 int gfx_miyoo_backdrop(uint32_t *dst, int w, int h, int pitch) {
     int pw, ph;
     if (!dst || !gfx_miyoo_backdrop_size(&pw, &ph) || w != pw || h != ph || w > 1280 || h > 960) return 0;
-    fill_frame((uint8_t *)dst, pitch, w, h, 0, sStage32, sStageW, sStageH);
+    fill_frame((uint8_t *)dst, pitch, w, h, 0, sStage32, sStageW, sStageH, NULL);
     return 1;
 }
 #endif /* MIYOO */

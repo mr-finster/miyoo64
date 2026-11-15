@@ -18,11 +18,12 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   default). A dark scanline at the bottom of every game line, a faint line at the edge of every game pixel, a soft
   vignette and rounded corners, lined up with how the picture is scaled on the Mini's 640x480 and the Mini v4 / Flip's
   752x560 panels, so the lines never drift against the picture. Suggested by Successful-Engine-11, who sent PNG
-  overlays; this one is built in the game from the same idea.
+  overlays; this one is built in the game from the same idea. The overlay is applied as the picture is copied to the
+  screen (the first test build read the screen back afterwards, which slowed the game to a crawl on the Mini).
 
 - Ocarina of Time 1.1.12, contributed by cacuracaptors from their own Miyoo Mini port of the game (oot-miyoomini, MIT),
-  all of it off by default or giving the same picture:
-  - 30 frames a second (MENU > OPTIONS > PICTURE > 30 FPS, `fps30=1`, off by default,
+  30 fps on by default after a test on the Mini, the rest off by default or giving the same picture:
+  - 30 frames a second, on by default (MENU > OPTIONS > PICTURE > 30 FPS, `fps30=0` for the N64's 20,
     [PR #20](https://github.com/mr-finster/miyoo64/pull/20)). The game still updates 20 times a second; the in-between
     pictures blend everything that moves (actors, the camera, effects, Epona, scrolling textures, the dialog box), so
     the game's speed is unchanged. Where three pictures don't fit, it steps down to 26.7, 25, 24 or 23.3 fps before 20
@@ -35,8 +36,8 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   - The half-resolution water composite drawn by both cores (`hfxsplit`, on, the same picture,
     [PR #18](https://github.com/mr-finster/miyoo64/pull/18)), faster where the water is (Zora's Domain, Lake Hylia).
 
-  Checked under the ARM emulator: with the defaults (30 fps off, Original controls) every place tried draws byte for
-  byte as before, and with 30 fps and Modern on the game runs cleanly. Not yet run on a Mini here.
+  Checked under the ARM emulator: with 30 fps off and Original controls every place tried draws byte for byte as
+  before, and with 30 fps and Modern on the game runs cleanly. 30 fps played well on a Mini.
 
 - Super Smash Bros. 1.1.10: no more crash in the credits after beating Master Hand (issue 17). The highlight that
   follows a name you aim at kept reading that name after it had already been removed, and the game crashed. Now the
