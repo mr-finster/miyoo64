@@ -5,6 +5,12 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Ocarina of Time 1.1.12: Ruto appears whole when she fades in after the Water Trial in Ganon's Castle
+  ([issue #31](https://github.com/mr-finster/miyoo64/issues/31)); only her head showed. Her body's fade is the fade
+  colour times the texture's level-of-detail fraction, which on the N64 is full for a texture without mipmaps, and the
+  port took it as 0 near the camera. `lodcc2=0` in `data/debug.cfg` gives the old behaviour. Checked under the ARM
+  emulator in the Water Trial's room; five other places draw byte for byte as before.
+
 - Ocarina of Time 1.1.12: the end credits' letters are whole again
   ([issue #31](https://github.com/mr-finster/miyoo64/issues/31)). The staff roll draws its 16-pixel letters at 12
   pixels; the port picked one texture row per screen row and skipped every fourth, which took the bottom bar off an E

@@ -3704,6 +3704,16 @@ static void gfx_vc_eval_checked(uint32_t cc_id, const struct RGBA *shade, int lo
 
 
 
+/* Issue #31: LOD_FRACTION read by a real cycle 2 (adult Ruto's body: alpha = ENVIRONMENT * LOD_FRACTION) under a
+ * gSPTexture with no mip levels (level 0). The RDP's max level is then 0, every pixel is "distant" and LOD_FRACTION
+ * is 0xFF (angrylion's lodfrac_lodtile_signals); the port's distance estimate gave 0 near the camera, so her body
+ * faded in at alpha 0 while her head (alpha = ENVIRONMENT) showed. Cycle 1's estimate is kept. OOT_LODCC2=0: 0. */
+static uint8_t gfx_tex_max_level SAVESTATE_EXCLUDE;
+static int gfx_lod_cc2(void) {
+    static int sOn SAVESTATE_EXCLUDE = -1;
+    if (sOn < 0) { const char *e = getenv("OOT_LODCC2"); sOn = !(e && e[0] == '0'); }
+    return (sOn && tri_state.cc2 && !tri_state.needs_lod && gfx_tex_max_level == 0) ? 255 : 0;
+}
 /* The vertex alpha gfx_emit_vertex hands the rasterizer for shade alpha a (texels count as 1). */
 static uint8_t gfx_fog_probe_alpha(uint32_t cc_id, uint8_t a, int lod) {
     struct RGBA shade = { 90, 140, 200, a }, out;
@@ -3762,8 +3772,9 @@ static void gfx_fog_plan(uint32_t cc_id, bool use_alpha, bool use_fog) {
                 } else if (a_in) {
                     /* the vertex alpha as a function of the shade alpha: identity, constant or mixed
                      * (probed only here: ~1% of the instructions when every fogged rebuild did it) */
-                    const uint8_t g0 = gfx_fog_probe_alpha(cc_id, 0, 0), g1 = gfx_fog_probe_alpha(cc_id, 77, 0);
-                    const uint8_t g2 = gfx_fog_probe_alpha(cc_id, 255, 0);
+                    const int lc = gfx_lod_cc2();
+                    const uint8_t g0 = gfx_fog_probe_alpha(cc_id, 0, lc), g1 = gfx_fog_probe_alpha(cc_id, 77, lc);
+                    const uint8_t g2 = gfx_fog_probe_alpha(cc_id, 255, lc);
                     const bool lod_free = !tri_state.needs_lod || (gfx_fog_probe_alpha(cc_id, 77, 128) == g1 &&
                                                                      gfx_fog_probe_alpha(cc_id, 0, 255) == g0);
                     if (lod_free && g0 == 0 && g1 == 77 && g2 == 255) {
@@ -4755,7 +4766,7 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
 #endif
     uint32_t cc_id = tri_state.cc_id;
     bool use_texture = tri_state.use_texture;
-    int lod = 0;
+    int lod = gfx_lod_cc2();
     if (tri_state.needs_lod) {
         float distance_frac = (v1->w - 3000.0f) / 3000.0f;
         if (distance_frac < 0.0f) distance_frac = 0.0f;
@@ -5273,10 +5284,10 @@ static void gfx_sp_moveword(uint8_t index, uint16_t offset, uint32_t data) {
 }
 
 static void gfx_sp_texture(uint16_t sc, uint16_t tc, uint8_t level, uint8_t tile, uint8_t on) {
-    _UNUSED(level);
     _UNUSED(tile);
     _UNUSED(on);
 
+    gfx_tex_max_level = level; /* gfx_lod_cc2 */
     rsp.texture_scaling_factor.s = sc;
     rsp.texture_scaling_factor.t = tc;
 }
