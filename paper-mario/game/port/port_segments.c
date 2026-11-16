@@ -57,3 +57,37 @@ void port_segment_loaded(int seg, uint32_t rom_start) {
     if (sLog) port_log("segments: %s loaded at game frame %u, %u data bytes restored\n", port_code_segs[seg].name,
                        (unsigned) port_frame, (unsigned) n);
 }
+
+/* KZN animation segments are linked as native s16 data, but the boss explicitly
+ * DMAs them into a battle or overworld vine buffer. Preserve ordinary overlay DMAs. */
+extern unsigned char Vine0Base[], Vine1Base[], Vine2Base[], Vine3Base[];
+extern unsigned char D_80200000[], D_80204000[], D_80207000[], D_8020A000[];
+int port_vine_dma(int seg, uint32_t rom, void *dst, uint32_t size) {
+    static const struct { unsigned char *base; uint32_t size; } vines[] = {
+        { Vine0Base, 0x4000 }, { Vine1Base, 0x3000 }, { Vine2Base, 0x3000 }, { Vine3Base, 0x2000 },
+        { D_80200000, 0x4000 }, { D_80204000, 0x3000 }, { D_80207000, 0x3000 }, { D_8020A000, 0x6000 }
+    };
+    if (seg < 0 || seg >= port_code_segs_n) return 0;
+    const char *name = port_code_segs[seg].name;
+    const char prefix[] = "world_model_anim_kzn_";
+    if (strncmp(name, prefix, sizeof(prefix)-1) || strlen(name) != sizeof(prefix)+1) return 0;
+    uint32_t start=port_code_segs[seg].start, end=port_code_segs[seg].end;
+    uintptr_t target=(uintptr_t)dst;
+    if (rom < start || end < start || rom > end || size > end-rom) return 0;
+    uint32_t offset=rom-start, total=end-start;
+    for (unsigned i=0; i<sizeof vines/sizeof vines[0]; i++) {
+        uintptr_t base=(uintptr_t)vines[i].base;
+        if (offset > vines[i].size || target != base+offset) continue;
+        if (total > vines[i].size || size > vines[i].size-offset) { port_log("vine DMA: destination overflow\n"); abort(); }
+        uint8_t *src=port_code_segs[seg].data, *srcend=port_code_segs[seg].data_end;
+        if (!src || !srcend || (uintptr_t)srcend < (uintptr_t)src) { port_log("vine DMA: missing native data\n"); abort(); }
+        uintptr_t native=(uintptr_t)srcend-(uintptr_t)src;
+        if (native > total || total-native > 15 || (native & 1)) { port_log("vine DMA: incompatible native length\n"); abort(); }
+        uint32_t n = offset < native ? (uint32_t)(native-offset) : 0;
+        if (n > size) n=size;
+        if (n) memmove(dst,src+offset,n);
+        if (n<size) memset((uint8_t*)dst+n,0,size-n);
+        return 1;
+    }
+    return 0;
+}
