@@ -5,6 +5,23 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Paper Mario 1.1.10, contributed by SunnyBoon (PRs
+  [#13](https://github.com/mr-finster/miyoo64/pull/13), [#14](https://github.com/mr-finster/miyoo64/pull/14),
+  [#25](https://github.com/mr-finster/miyoo64/pull/25), [#26](https://github.com/mr-finster/miyoo64/pull/26),
+  [#27](https://github.com/mr-finster/miyoo64/pull/27), [#29](https://github.com/mr-finster/miyoo64/pull/29),
+  [#32](https://github.com/mr-finster/miyoo64/pull/32), [#33](https://github.com/mr-finster/miyoo64/pull/33),
+  [#34](https://github.com/mr-finster/miyoo64/pull/34), [#35](https://github.com/mr-finster/miyoo64/pull/35)):
+  - An in-game save no longer lands in a save-state file after the menu looks at the save slots (the save was lost and
+    the state overwritten).
+  - Lava Piranha is in her own boss fight again: her vine animations were never copied in, so the US build showed an
+    empty lava pool.
+  - The Spiny Tromp chase on Mt. Lavalava can no longer stall, Merlee's card ritual has a card to draw, Quizmo's quiz
+    stage is drawn right, and Goombario's Tattle picture, the HP bar's rounded end, badge pictures in item popups, tree
+    seams, texture reuse between different tile sizes and the partner-upgrade light fan are fixed.
+  - Checked under the ARM emulator on the US version: the Lava Piranha battle, the save fix (reproduced and fixed),
+    the first start's game data, and Mario's house, Pleasant Path, Toad Town, Mt. Lavalava, Dry Dry Outpost and two
+    battles drawing as before. The US recipes are derived again for the Quizmo stage's data.
+
 - Ocarina of Time 1.1.13: a CRT overlay to test (MENU > OPTIONS > PICTURE > CRT OVERLAY, `crtoverlay=1`, off by
   default). A dark scanline at the bottom of every game line, a faint line at the edge of every game pixel and
   rounded corners (no vignette, too dark on the Mini), lined up with how the picture is scaled on the Mini's 640x480
