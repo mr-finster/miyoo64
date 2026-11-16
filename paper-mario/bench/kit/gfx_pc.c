@@ -2514,6 +2514,7 @@ uint32_t gfx_prof_rebuilds;
  * RDP combiner in gfx_soft (gfx_soft_pm_generic). */
 extern void gfx_soft_pm_generic(bool on, uint32_t w0, uint32_t w1, bool two_cycle, const uint8_t prim[4], const uint8_t env[4],
                                 uint8_t prim_lod, int ds, int dt, const int32_t t1map[6]);
+extern void gfx_soft_pm_rect_rebase(int s, int t);
 enum { M_COMB, M_T0, M_T1, M_PRIM, M_SHADE, M_ENV, M_ONE, M_ZERO, M_OTHER };
 static int pm_mux_rgb_ab(int v, bool is_b) { return v <= 5 ? v : v == 6 ? (is_b ? M_OTHER : M_ONE) : v == 7 ? M_OTHER : M_ZERO; }
 static int pm_mux_rgb_c(int v) { return v <= 5 ? v : v == 8 ? 100 /* T0 alpha */ : v >= 16 ? M_ZERO : M_OTHER; }
@@ -3936,6 +3937,9 @@ static void gfx_sp_tri1_2d(uint8_t vtx1_idx, uint8_t vtx2_idx, UNUSED uint8_t vt
         gfx_eval_vertex_color(cc_id, &v_arr[i]->color, 0, &tri_buf[tri_num_vert].color);
         tri_num_vert++;
     }
+#ifdef PM64
+    if (pmg && pmt1) gfx_soft_pm_rect_rebase(pm_su, pm_sv);
+#endif
     if (gfx_trace_frames > 0) port_log("  2d: draw (%d,%d)-(%d,%d)\n", tri_buf[0].x, tri_buf[0].y, tri_buf[1].x, tri_buf[1].y);
     gfx_scegu_draw_triangles_2d((float*)&tri_buf[0],0,1);
     if (gfx_trace_frames > 0) port_log("  2d: drawn\n");
