@@ -84,6 +84,8 @@ void port_pi_read(uint32_t rom_addr, void *dst, uint32_t size) {
     if (rom_addr >= 0x10000000u) { memmove(dst, (const void *) (uintptr_t) rom_addr, size); return; }
     if (port_code_segment(rom_addr, rom_addr + size, &seg)) { /* linked in: see port_segments.c */
         port_segment_loaded(seg, rom_addr);
+        { extern int port_vine_dma(int, uint32_t, void *, uint32_t);
+          (void)port_vine_dma(seg, rom_addr, dst, size); }
         return;
     }
     port_rom_read(rom_addr, dst, size);
