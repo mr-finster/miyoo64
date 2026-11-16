@@ -1156,6 +1156,31 @@ index 348c585a0..5d2ffe9fa 100644
          return (Bytecode*) arg1;
      }
  
+diff --git a/src/evt/fx_api.c b/src/evt/fx_api.c
+index 86a10c75e..85a1a7ad0 100644
+--- a/src/evt/fx_api.c
++++ b/src/evt/fx_api.c
+@@ -1,6 +1,10 @@
+ #include "common.h"
+ #include "effects.h"
+ 
++#ifdef PM64_PORT
++extern EvtScript kzn_17_EVS_SetupSpinyTromp;
++#endif
++
+ void show_start_recovery_shimmer(f32 x, f32 y, f32 z, s32 amt) {
+     fx_stars_shimmer(1, x, y, z, amt + 30, amt + 30, (amt / 2) + 10, 30);
+ }
+@@ -767,6 +771,9 @@ API_CALLABLE(PlayEffect_impl) {
+     }
+ 
+     if (effectRet != nullptr) {
++#ifdef PM64_PORT
++        if (script->ptrFirstLine != kzn_17_EVS_SetupSpinyTromp || effectID != EFFECT_BOMBETTE_BREAKING)
++#endif
+         evt_set_variable(script, LVarF, (s32) effectRet);
+     }
+ 
 diff --git a/src/evt/npc_api.c b/src/evt/npc_api.c
 index ad4fc9a1b..4d42acffe 100644
 --- a/src/evt/npc_api.c
@@ -1910,26 +1935,4 @@ index b4289d6cf..0aa6cac8a 100644
 +#endif
      while (strcmp(curAsset->name, assetName) != 0) {
          curAsset++;
-     }
-diff --git a/src/evt/fx_api.c b/src/evt/fx_api.c
---- a/src/evt/fx_api.c
-+++ b/src/evt/fx_api.c
-@@ -1,5 +1,9 @@
- #include "common.h"
- #include "effects.h"
-+
-+#ifdef PM64_PORT
-+extern EvtScript kzn_17_EVS_SetupSpinyTromp;
-+#endif
- 
- void show_start_recovery_shimmer(f32 x, f32 y, f32 z, s32 amt) {
-     fx_stars_shimmer(1, x, y, z, amt + 30, amt + 30, (amt / 2) + 10, 30);
-@@ -767,5 +771,8 @@
-     }
- 
-     if (effectRet != nullptr) {
-+#ifdef PM64_PORT
-+        if (script->ptrFirstLine != kzn_17_EVS_SetupSpinyTromp || effectID != EFFECT_BOMBETTE_BREAKING)
-+#endif
-         evt_set_variable(script, LVarF, (s32) effectRet);
      }
