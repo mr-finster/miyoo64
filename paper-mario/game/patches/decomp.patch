@@ -1911,3 +1911,21 @@ index b4289d6cf..0aa6cac8a 100644
      while (strcmp(curAsset->name, assetName) != 0) {
          curAsset++;
      }
+diff --git a/src/world/area_dro/dro_02/npc_merlee.c b/src/world/area_dro/dro_02/npc_merlee.c
+--- a/src/world/area_dro/dro_02/npc_merlee.c
++++ b/src/world/area_dro/dro_02/npc_merlee.c
+@@ -208,6 +208,14 @@
+     ImgFXTexture ifxImg;
+     SpriteRasterInfo rasterInfo;
+     s32 ret;
++
++    ifxImg.raster = dro_02_card;
++    ifxImg.palette = dro_02_card_pal;
++    ifxImg.width = 32;
++    ifxImg.height = 32;
++    ifxImg.xOffset = 0;
++    ifxImg.yOffset = 0;
++    ifxImg.alpha = 255;
+ 
+     if (card->unk_00 == 0) {
+         return 1;
