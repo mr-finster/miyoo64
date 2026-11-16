@@ -5,7 +5,7 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
-- Paper Mario 1.1.10, contributed by SunnyBoon (PRs
+- Paper Mario 1.1.9, contributed by SunnyBoon (PRs
   [#13](https://github.com/mr-finster/miyoo64/pull/13), [#14](https://github.com/mr-finster/miyoo64/pull/14),
   [#25](https://github.com/mr-finster/miyoo64/pull/25), [#26](https://github.com/mr-finster/miyoo64/pull/26),
   [#27](https://github.com/mr-finster/miyoo64/pull/27), [#29](https://github.com/mr-finster/miyoo64/pull/29),
