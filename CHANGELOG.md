@@ -5,50 +5,14 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
-- Ocarina of Time 1.1.12: Ruto appears whole when she fades in after the Water Trial in Ganon's Castle
-  ([issue #31](https://github.com/mr-finster/miyoo64/issues/31)); only her head showed. Her body's fade is the fade
-  colour times the texture's level-of-detail fraction, which on the N64 is full for a texture without mipmaps, and the
-  port took it as 0 near the camera. `lodcc2=0` in `data/debug.cfg` gives the old behaviour. Checked under the ARM
-  emulator in the Water Trial's room; five other places draw byte for byte as before.
-
-- Ocarina of Time 1.1.12: the end credits' letters are whole again
-  ([issue #31](https://github.com/mr-finster/miyoo64/issues/31)). The staff roll draws its 16-pixel letters at 12
-  pixels; the port picked one texture row per screen row and skipped every fourth, which took the bottom bar off an E
-  (it read as an F). A shrunk sprite now averages the rows each screen row covers, as it already did for the columns.
-  The HUD's hearts and item icons, which the game also draws a little smaller, come out a touch smoother.
-  `hudvbox=0` in `data/debug.cfg` gives the old look. Checked under the ARM emulator on the Hyrule Field credits.
-
-- Ocarina of Time 1.1.12 (and Majora's Mask 1.0.13, the same mixer): Ganondorf's organ plays again
-  ([issue #31](https://github.com/mr-finster/miyoo64/issues/31)), in the climb up Ganon's Tower, the corridor and the
-  cutscene before the fight. The sound mixer wrote its averaged filter back into the game's own filter table, so each
-  note that started halved it; the tower's music, which runs through a filter all the way up, faded to silence. The
-  mixer now keeps its own copy, as the N64's sound processor does. `filterlut=0` in `data/debug.cfg` gives the old
-  behaviour. Checked under the ARM emulator in Ganondorf's room: silent before, the organ now.
-
-- Ocarina of Time 1.1.12: the Iron Knuckles' breastplates are back
-  ([issue #30](https://github.com/mr-finster/miyoo64/issues/30), [issue #31](https://github.com/mr-finster/miyoo64/issues/31)).
-  The plate's two-cycle combine has a constant alpha in its second cycle, but the renderer baked the first cycle's
-  alpha (0) into its texels and the texture-edge cut threw the whole plate away, so the chain mail under it showed.
-  Spirit Temple (Nabooru) and Ganon's Tower. `tpecc2a=0` in `data/debug.cfg` gives the old behaviour. Checked under
-  the ARM emulator in Ganon's Tower; six other places draw byte for byte as before.
-
-- Majora's Mask 1.0.12 (beta): no more crash in Mountain Village with the Lens of Truth on
-  ([issue #28](https://github.com/mr-finster/miyoo64/issues/28)). One of the village's objects (object_yukimura_obj)
-  jumps to the game's empty display list when the camera is close, a list that lives in the game's code, so the data
-  builder could not convert that one file and left it as the ROM's bytes. The renderer then ran picture data as
-  commands, and with the lens on this ended in a crash. The data builder now converts all 942 files (the game data is
-  rebuilt from your ROM once at the first start of 1.0.12), the renderer ends the list there as the N64 does, and a
-  matrix outside the game's memory is dropped instead of read. Checked under the ARM emulator in Mountain Village with
-  the lens on (no bad address any more) and at the telescope (byte for byte as 1.0.11).
-
-- Ocarina of Time 1.1.12: a CRT overlay to test (MENU > OPTIONS > PICTURE > CRT OVERLAY, `crtoverlay=1`, off by
+- Ocarina of Time 1.1.13: a CRT overlay to test (MENU > OPTIONS > PICTURE > CRT OVERLAY, `crtoverlay=1`, off by
   default). A dark scanline at the bottom of every game line, a faint line at the edge of every game pixel and
   rounded corners (no vignette, too dark on the Mini), lined up with how the picture is scaled on the Mini's 640x480
   and the Mini v4 / Flip's 752x560 panels, so the lines never drift against the picture. Suggested by Successful-Engine-11, who sent PNG
   overlays; this one is built in the game from the same idea. The overlay is applied as the picture is copied to the
   screen (the first test build read the screen back afterwards, which slowed the game to a crawl on the Mini).
 
-- Ocarina of Time 1.1.12, contributed by cacuracaptors from their own Miyoo Mini port of the game (oot-miyoomini, MIT),
+- Ocarina of Time 1.1.13, contributed by cacuracaptors from their own Miyoo Mini port of the game (oot-miyoomini, MIT),
   30 fps on by default after a test on the Mini, the rest off by default or giving the same picture:
   - 30 frames a second, on by default (MENU > OPTIONS > PICTURE > 30 FPS, `fps30=0` for the N64's 20,
     [PR #20](https://github.com/mr-finster/miyoo64/pull/20)). The game still updates 20 times a second; the in-between
@@ -93,7 +57,7 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 - All fifteen games: the auto save made as the Mini goes to sleep now survives a flat battery or a power cut while
   asleep. Super Mario 64 1.1.8, Mario Kart 64 1.1.10, GoldenEye 007 1.1.10, Perfect Dark 1.0.10, Ocarina of Time
-  1.1.12, Majora's Mask 1.0.12 (beta), Paper Mario 1.1.9, Star Fox 64 1.1.7, F-Zero X 1.1.7, Diddy Kong Racing 1.1.9,
+  1.1.12, Majora's Mask 1.0.14 (beta), Paper Mario 1.1.9, Star Fox 64 1.1.7, F-Zero X 1.1.7, Diddy Kong Racing 1.1.9,
   Super Smash Bros. 1.1.10, Harvest Moon 64 1.0.6, Banjo-Kazooie 1.0.4 (beta), Pilotwings 64 1.0.3 (beta) and The
   New Tetris 1.0.2 (beta). A POWER press writes the auto save that RESUME GAME offers, but Onion freezes the game
   as the button is released, usually before that save has finished on the card (it takes 0.2 to 1 s; Onion's
@@ -118,10 +82,10 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   6 to 11% in GoldenEye 007 (the Frigate's engine room, the Jungle, the Facility's tank hall, the Dam; 1% at the
   Statue park) and 6 to 14% in Perfect Dark (Carrington Villa, a Combat Simulator arena, dataDyne Central); frames
   compared byte for byte with the old way in five and three scenes. The idea comes from cacuracaptors' Ocarina of
-  Time port for the Miyoo Mini (oot-miyoomini), as in Ocarina of Time 1.1.12, written anew for this renderer.
+  Time port for the Miyoo Mini (oot-miyoomini), as in Ocarina of Time 1.1.13, written anew for this renderer.
   `stealrows=0` in GoldenEye 007's `data/debug.cfg` (Perfect Dark: `PD_STEALROWS=0` in `launch.sh`) gives the old way.
 
-- Ocarina of Time 1.1.12 and Majora's Mask 1.0.12 (beta): faster with both cores, the same picture. The second core
+- Ocarina of Time 1.1.13 and Majora's Mask 1.0.14 (beta): faster with both cores, the same picture. The second core
   used to help only with big triangles; the many small ones, most of what is drawn outside the sky, were drawn on the
   first core alone, and all of it waited while the first core read the game's display lists. Now every 3D triangle
   is set up as before and its rows wait in a queue: the second core draws the queue in order while the first goes
@@ -138,7 +102,7 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   triangles comes from GoldenEye 007 and Perfect Dark. `streamdraw=0` / `batchband=0` in `data/debug.cfg` (Majora's
   Mask: `MM_STREAMDRAW=0` / `MM_BATCHBAND=0` in `launch.sh`) give the old ways.
 
-- Ocarina of Time 1.1.12 and Majora's Mask 1.0.12 (beta): a little faster outdoors, the same picture. The sky, drawn
+- Ocarina of Time 1.1.13 and Majora's Mask 1.0.14 (beta): a little faster outdoors, the same picture. The sky, drawn
   last where nothing covers it, now skips whole 16-pixel stretches the world already covers instead of testing each
   pixel (`skyruns`), and the two cores share a big triangle's rows a few at a time from both ends instead of cutting
   it once in the middle, so the core that is ahead draws more (`stealrows`). Under qemu the 3D drawing time drops
@@ -241,6 +205,29 @@ edge for now); Ocarina of Time gets the same guard. Nothing else changed in eith
 the ARM emulator draws exactly as 1.1.10 / 1.0.10. Not yet run on a device. In-game saves carry over; save states from
 1.1.10 / 1.0.10 may not load (kept aside as `.rejected`). Only the Ocarina of Time and Majora's Mask zips and the All
 Game Pack were replaced.
+
+Updated Nov 14: Majora's Mask 1.0.12 (beta) no longer crashes in Mountain Village with the Lens of Truth on
+([issue #28](https://github.com/mr-finster/miyoo64/issues/28)). One of the village's objects (object_yukimura_obj)
+jumps to the game's empty display list, a list that lives in the game's code, so the data builder could not convert
+that one file and left it as the ROM's bytes; the renderer ran picture data as commands and crashed. The data builder
+now converts all 942 files (the game data is rebuilt from your ROM once at the first start of 1.0.12), the renderer
+ends the list there as the N64 does, and a matrix outside the game's memory is dropped instead of read. Confirmed on a
+Mini Plus by zwillan. Only the Majora's Mask zip and the All Game Pack were replaced.
+
+Updated Nov 16: Ocarina of Time 1.1.12 and Majora's Mask 1.0.13 (beta) fix the bugs MajoraGuy found in Ganon's Castle
+([issue #30](https://github.com/mr-finster/miyoo64/issues/30), [issue #31](https://github.com/mr-finster/miyoo64/issues/31)).
+The Iron Knuckles' breastplates show again: the plate's second combiner cycle makes it solid, but the renderer baked the
+first cycle's see-through value into it and cut the whole plate away (`tpecc2a=0` in `data/debug.cfg`: the old
+behaviour). Ganondorf's organ plays again in the tower, the corridor and the cutscene before the fight: the sound mixer
+wrote its averaged filter back into the game's own filter table, halving it with every note until the tower's music
+went silent (`filterlut=0`); Majora's Mask shares the mixer and gets the same fix. The end credits' letters are whole
+again: the staff roll draws its 16-pixel letters at 12 pixels and the port skipped every fourth row, taking the bottom
+bar off an E; a shrunk sprite now averages the rows it covers, which also makes the HUD's hearts and item icons a touch
+smoother (`hudvbox=0`). Ruto appears whole when she fades in after the Water Trial: her body's fade reads the
+texture's level-of-detail fraction, full on the N64 for a texture without mipmaps, which the port took as 0
+(`lodcc2=0`). Checked under the ARM emulator; every other place tried draws as 1.1.11 / 1.0.12 apart from the HUD's
+smoothing. Save states from 1.1.11 / 1.0.12 may not load (kept aside as `.rejected`); in-game saves carry over. Only
+the Ocarina of Time and Majora's Mask zips and the All Game Pack were replaced.
 
 - All fifteen games: no more crackle on loud, smooth sounds ([issue #10](https://github.com/mr-finster/miyoo64/issues/10)).
   Found and fixed by ksielick in Super Mario 64 ([PR #11](https://github.com/mr-finster/miyoo64/pull/11)): Onion's
