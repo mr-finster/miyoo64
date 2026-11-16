@@ -1831,6 +1831,25 @@ index 464832287..3b69f8641 100644
  #endif
  
      create_cameras();
+diff --git a/src/world/area_dro/dro_02/npc_merlee.c b/src/world/area_dro/dro_02/npc_merlee.c
+index 8e4431ed4..1fd59f36c 100644
+--- a/src/world/area_dro/dro_02/npc_merlee.c
++++ b/src/world/area_dro/dro_02/npc_merlee.c
+@@ -209,6 +209,14 @@ u32 N(appendGfx_ritual_card)(RitualCard* card, Matrix4f mtxParent) {
+     SpriteRasterInfo rasterInfo;
+     s32 ret;
+ 
++    ifxImg.raster = dro_02_card;
++    ifxImg.palette = dro_02_card_pal;
++    ifxImg.width = 32;
++    ifxImg.height = 32;
++    ifxImg.xOffset = 0;
++    ifxImg.yOffset = 0;
++    ifxImg.alpha = 255;
++
+     if (card->unk_00 == 0) {
+         return 1;
+     }
 diff --git a/src/world/area_end/common/Credits.inc.c b/src/world/area_end/common/Credits.inc.c
 index a92b3ba3a..83c920126 100644
 --- a/src/world/area_end/common/Credits.inc.c
@@ -1991,21 +2010,3 @@ index b4289d6cf..0aa6cac8a 100644
      while (strcmp(curAsset->name, assetName) != 0) {
          curAsset++;
      }
-diff --git a/src/world/area_dro/dro_02/npc_merlee.c b/src/world/area_dro/dro_02/npc_merlee.c
---- a/src/world/area_dro/dro_02/npc_merlee.c
-+++ b/src/world/area_dro/dro_02/npc_merlee.c
-@@ -208,6 +208,14 @@
-     ImgFXTexture ifxImg;
-     SpriteRasterInfo rasterInfo;
-     s32 ret;
-+
-+    ifxImg.raster = dro_02_card;
-+    ifxImg.palette = dro_02_card_pal;
-+    ifxImg.width = 32;
-+    ifxImg.height = 32;
-+    ifxImg.xOffset = 0;
-+    ifxImg.yOffset = 0;
-+    ifxImg.alpha = 255;
- 
-     if (card->unk_00 == 0) {
-         return 1;
