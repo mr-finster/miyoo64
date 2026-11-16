@@ -2799,12 +2799,21 @@ static void pm_primz_sync(bool rect) {
     }
 }
 #endif
+#ifdef PM64
+static inline bool pm_depth_compare(uint32_t geometry_mode, uint32_t other_mode_l) {
+    return (geometry_mode & G_ZBUFFER) != 0 && (other_mode_l & Z_CMP) != 0;
+}
+#endif
 static void gfx_tri_rebuild_state(struct LoadedVertex *v1) {
     gfx_prof_rebuilds++;
 #ifdef PM64
     pm_primz_sync(false);
 #endif
+#ifdef PM64
+    bool depth_test = pm_depth_compare(rsp.geometry_mode, rdp.other_mode_l);
+#else
     bool depth_test = (rsp.geometry_mode & G_ZBUFFER) == G_ZBUFFER;
+#endif
     if (depth_test != rendering_state.depth_test) {
         gfx_flush();
         gfx_rapi->set_depth_test(depth_test);
