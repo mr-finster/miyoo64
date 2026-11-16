@@ -5,6 +5,13 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Ocarina of Time 1.1.12 (and Majora's Mask 1.0.13, the same mixer): Ganondorf's organ plays again
+  ([issue #31](https://github.com/mr-finster/miyoo64/issues/31)), in the climb up Ganon's Tower, the corridor and the
+  cutscene before the fight. The sound mixer wrote its averaged filter back into the game's own filter table, so each
+  note that started halved it; the tower's music, which runs through a filter all the way up, faded to silence. The
+  mixer now keeps its own copy, as the N64's sound processor does. `filterlut=0` in `data/debug.cfg` gives the old
+  behaviour. Checked under the ARM emulator in Ganondorf's room: silent before, the organ now.
+
 - Ocarina of Time 1.1.12: the Iron Knuckles' breastplates are back
   ([issue #30](https://github.com/mr-finster/miyoo64/issues/30), [issue #31](https://github.com/mr-finster/miyoo64/issues/31)).
   The plate's two-cycle combine has a constant alpha in its second cycle, but the renderer baked the first cycle's

@@ -99,6 +99,7 @@ typedef struct {
     s16 filterScratch[OOT_PSP_DMEM_SIZE / sizeof(s16)];
     s32 filter2Count;
     s16* filter2Lut;
+    s16 filter2Taps[8]; /* the RSP's own copy of the coefficients (FILTER's setup loads it; never written back) */
     s32 filter2Valid;
     struct {
         s32 initialReverb;
@@ -1794,6 +1795,7 @@ void OotPspMixer_Filter(u8 flags, s32 countOrBuf, void* state) {
         sMixer.filter2Count = ROUND_UP_16(countOrBuf);
         sMixer.filter2Lut = state;
         sMixer.filter2Valid = state != NULL;
+        if (state != NULL) memcpy(sMixer.filter2Taps, state, sizeof(sMixer.filter2Taps));
         return;
     }
 
@@ -1801,17 +1803,24 @@ void OotPspMixer_Filter(u8 flags, s32 countOrBuf, void* state) {
         return;
     }
 
+    /* Issue #31 (Ganon's Tower's organ silent): the averaged taps went back into the game's own filter table, so
+     * every note started with A_INIT (its state zeroed) halved the table; the tower's identity filter (32767 in
+     * tap 3) decayed to ~90 and the organ to silence. The RSP averages into its own copy and the state only.
+     * OOT_FILTERLUT=0: the table written back, as before. */
+    static int sLutWrite = -1;
+    if (sLutWrite < 0) { const char *e = getenv("OOT_FILTERLUT"); sLutWrite = (e != NULL && e[0] == '0'); }
+    const int lutWrite = sLutWrite;
     if (flags & A_INIT) {
         memset(save, 0, 16 * sizeof(s16));
     }
 
     for (i = 0; i < OOT_PSP_FILTER_TAP_COUNT; i++) {
-        s16 avg = ((s32)save[OOT_PSP_FILTER_TAP_COUNT + i] + sMixer.filter2Lut[i]) >> 1;
+        s16 avg = ((s32)save[OOT_PSP_FILTER_TAP_COUNT + i] + (lutWrite ? sMixer.filter2Lut[i] : sMixer.filter2Taps[i])) >> 1;
 
         history[i] = save[i];
         taps[i] = avg;
         save[OOT_PSP_FILTER_TAP_COUNT + i] = avg;
-        sMixer.filter2Lut[i] = avg;
+        if (lutWrite) sMixer.filter2Lut[i] = avg; else sMixer.filter2Taps[i] = avg;
     }
 
     input = DMEM_S16((u16)countOrBuf);
