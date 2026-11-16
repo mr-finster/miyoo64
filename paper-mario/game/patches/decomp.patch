@@ -1911,3 +1911,25 @@ index b4289d6cf..0aa6cac8a 100644
      while (strcmp(curAsset->name, assetName) != 0) {
          curAsset++;
      }
+diff --git a/src/evt/fx_api.c b/src/evt/fx_api.c
+--- a/src/evt/fx_api.c
++++ b/src/evt/fx_api.c
+@@ -1,5 +1,9 @@
+ #include "common.h"
+ #include "effects.h"
++
++#ifdef PM64_PORT
++extern EvtScript kzn_17_EVS_SetupSpinyTromp;
++#endif
+ 
+ void show_start_recovery_shimmer(f32 x, f32 y, f32 z, s32 amt) {
+     fx_stars_shimmer(1, x, y, z, amt + 30, amt + 30, (amt / 2) + 10, 30);
+@@ -767,5 +771,8 @@
+     }
+ 
+     if (effectRet != nullptr) {
++#ifdef PM64_PORT
++        if (script->ptrFirstLine != kzn_17_EVS_SetupSpinyTromp || effectID != EFFECT_BOMBETTE_BREAKING)
++#endif
+         evt_set_variable(script, LVarF, (s32) effectRet);
+     }
