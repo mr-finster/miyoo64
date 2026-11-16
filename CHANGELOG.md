@@ -5,6 +5,13 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Ocarina of Time 1.1.12: the Iron Knuckles' breastplates are back
+  ([issue #30](https://github.com/mr-finster/miyoo64/issues/30), [issue #31](https://github.com/mr-finster/miyoo64/issues/31)).
+  The plate's two-cycle combine has a constant alpha in its second cycle, but the renderer baked the first cycle's
+  alpha (0) into its texels and the texture-edge cut threw the whole plate away, so the chain mail under it showed.
+  Spirit Temple (Nabooru) and Ganon's Tower. `tpecc2a=0` in `data/debug.cfg` gives the old behaviour. Checked under
+  the ARM emulator in Ganon's Tower; six other places draw byte for byte as before.
+
 - Majora's Mask 1.0.12 (beta): no more crash in Mountain Village with the Lens of Truth on
   ([issue #28](https://github.com/mr-finster/miyoo64/issues/28)). One of the village's objects (object_yukimura_obj)
   jumps to the game's empty display list when the camera is close, a list that lives in the game's code, so the data

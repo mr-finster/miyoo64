@@ -2253,6 +2253,17 @@ static int gfx_tpe_plan(bool use_alpha) {
     need = !blend_ok || (tpe_rgb_lossy(m) && !(rgb_mode >= 2)) || (use_alpha && tpe_a_lossy(m) && !(a_mode >= 2));
     if (!need && gfx_tpe_klerp_cc2(m)) need = true;
     if (!need) return 0;
+    {   /* Issues #30/#31: under a real cycle 2 whose alpha never reads COMBINED (the A, B and D inputs; COMBINED in C
+         * is LOD_FRACTION), cycle 1's alpha is thrown away, so baking it into the texels lost the draw. The Iron
+         * Knuckle's breastplate ((PRIM - ENV) * TEXEL0 + ENV with alpha 0, then COMBINED * SHADE with alpha 1, under
+         * TEX_EDGE) came out alpha 0 and was cut: its chain mail showed instead. The colour per texel only; the
+         * alpha is cycle 2's, in the vertex colour. OOT_TPECC2A=0: as before. */
+        static int sCc2A SAVESTATE_EXCLUDE = -1;
+        if (sCc2A < 0) { const char *e = getenv("OOT_TPECC2A"); sCc2A = !(e && e[0] == '0'); }
+        if (sCc2A && use_alpha && (rdp.other_mode_h & (3U << G_MDSFT_CYCLETYPE)) == G_CYC_2CYCLE && !rdp.cc2_pass &&
+            rdp.cc2[4] != G_ACMUX_COMBINED && rdp.cc2[5] != G_ACMUX_COMBINED && rdp.cc2[7] != G_ACMUX_COMBINED)
+            return 1;
+    }
     if (use_alpha && tpe_a_evaluable(m)) return 3;
     if (!use_alpha || !tpe_uses_t1(m, 1)) return 1; /* keep tile 0's alpha for the cc_id */
     return 0;
