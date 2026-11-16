@@ -3626,6 +3626,13 @@ void gfx_scegu_draw_triangles_2d(float buf_vbo[], size_t buf_vbo_len, size_t num
         const int32_t uf_row = tex ? to_fix16(u0 + (cx0 - x0 + 0.5f) * dudx) : 0; /* every row starts here */
         /* area filter a row at a time, through the cross-frame row cache */
         const bool boxc = boxf && cx1 > cx0 && cx1 - cx0 <= BOX_MAX;
+        /* Issue #31: shrunk along T too (the staff roll's 16x16 glyphs at 12 px, 1.33 texel rows a pixel row): each
+         * pixel row also averages the texel rows it covers, weighted by coverage, as the area filter does along S.
+         * Nearest dropped every fourth texel row and with it the bottom bar of an E (read as an F). The HUD and the
+         * text box are 1:1 along T, so only a sprite the game itself shrinks takes this. OOT_HUDVBOX=0: one row. */
+        static int sVBox SAVESTATE_EXCLUDE = -1;
+        if (sVBox < 0) { const char *e = getenv("OOT_HUDVBOX"); sVBox = !(e && e[0] == '0'); }
+        const bool vbox = boxc && sVBox && dvdy > 1.02f && dvdy <= 3.0f;
         for (int y = cy0; y < cy1; y++) {
             uint32_t *row = &sFB[y * sW];
             if (!tex) { /* solid rect */
@@ -3652,6 +3659,34 @@ void gfx_scegu_draw_triangles_2d(float buf_vbo[], size_t buf_vbo_len, size_t num
             const uint32_t *boxrow = boxc ? box_row_cached(boxtmp, cx1 - cx0, sBoundTex[0], texpx, t16, trow_base, uf_row,
                                                            duf, tw, ws2, mu, use_alpha)
                                           : NULL;
+            uint32_t boxvtmp[BOX_MAX];
+            if (vbox) { /* the texel rows this pixel row covers, from va to vb, each by its coverage (8.8) */
+                const float va = v0 + (y - y0) * dvdy, vb = va + dvdy;
+                const int n = cx1 - cx0, ra = ifloorf(va), rb = ifloorf(vb - 0.001f);
+                uint32_t accA[BOX_MAX], accR[BOX_MAX], accG[BOX_MAX], accB[BOX_MAX], accK[BOX_MAX], wsum = 0;
+                memset(accA, 0, n * 4); memset(accR, 0, n * 4); memset(accG, 0, n * 4); memset(accB, 0, n * 4); memset(accK, 0, n * 4);
+                for (int r = ra; r <= rb && r <= ra + 3; r++) {
+                    const float lo = (float)r > va ? (float)r : va, hi = (float)(r + 1) < vb ? (float)(r + 1) : vb;
+                    const uint32_t w = (uint32_t)((hi - lo) * 256.0f + 0.5f);
+                    if (w == 0) continue;
+                    uint32_t tmpr[BOX_MAX];
+                    const uint32_t *br = box_row_cached(tmpr, n, sBoundTex[0], texpx, t16, wrapf(r, th, wt2, mv) * tw, uf_row,
+                                                        duf, tw, ws2, mu, use_alpha);
+                    for (int i = 0; i < n; i++) {
+                        const uint32_t t = br[i], a = t >> 24, k = use_alpha ? a * w : 255u * w;
+                        accA[i] += a * w; accK[i] += k;
+                        accR[i] += ((t >> 16) & 0xFF) * k; accG[i] += ((t >> 8) & 0xFF) * k; accB[i] += (t & 0xFF) * k;
+                    }
+                    wsum += w;
+                }
+                if (wsum != 0) {
+                    for (int i = 0; i < n; i++) {
+                        const uint32_t k = accK[i];
+                        boxvtmp[i] = k == 0 ? 0u : ((accA[i] / wsum) << 24) | ((accR[i] / k) << 16) | ((accG[i] / k) << 8) | (accB[i] / k);
+                    }
+                    boxrow = boxvtmp;
+                }
+            }
             if (boxc && texel_is_pixel) {
                 /* the averaged texel is the pixel: as the general loop below
                  * with no combiner work (white opaque input changes nothing) */

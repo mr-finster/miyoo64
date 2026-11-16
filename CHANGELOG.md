@@ -5,6 +5,13 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- Ocarina of Time 1.1.12: the end credits' letters are whole again
+  ([issue #31](https://github.com/mr-finster/miyoo64/issues/31)). The staff roll draws its 16-pixel letters at 12
+  pixels; the port picked one texture row per screen row and skipped every fourth, which took the bottom bar off an E
+  (it read as an F). A shrunk sprite now averages the rows each screen row covers, as it already did for the columns.
+  The HUD's hearts and item icons, which the game also draws a little smaller, come out a touch smoother.
+  `hudvbox=0` in `data/debug.cfg` gives the old look. Checked under the ARM emulator on the Hyrule Field credits.
+
 - Ocarina of Time 1.1.12 (and Majora's Mask 1.0.13, the same mixer): Ganondorf's organ plays again
   ([issue #31](https://github.com/mr-finster/miyoo64/issues/31)), in the climb up Ganon's Tower, the corridor and the
   cutscene before the fight. The sound mixer wrote its averaged filter back into the game's own filter table, so each
