@@ -25,6 +25,8 @@
 
 Native ports of fifteen N64 games to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip). No emulation: each game's C code, rebuilt by its decompilation community, runs on the Mini's ARM CPU and is drawn by a software renderer that uses both of its cores. Every game has save states (9 slots and an auto save), the same in-game menu (MENU: resume, save, load, exit), and picks up where you left off after a power-off.
 
+Miyoo64 is made together with other people who port N64 games to the Mini. Kooky ([cacuracaptors](https://github.com/cacuracaptors)), who wrote their own Ocarina of Time port for the Mini ([oot-miyoomini](https://github.com/cacuracaptors/oot-miyoomini)), brought Ocarina of Time's 30 fps, its modern controls and the two-core drawing ideas the other games now share. SunnyBoon brought Paper Mario's European version and many of its fixes, and ksielick the fix for the sound's crackle in every game. See [Contributors](#contributors); pull requests are welcome.
+
 Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/latest), or https://miyoo-n64.pages.dev. What changed in each release: [Changelog](CHANGELOG.md).
 
 ## Status
@@ -34,14 +36,14 @@ Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/l
 | Perfect Dark | ✅ Playable | The full solo campaign, checked mission by mission against the N64; fills the Mini v4 and Flip screens |
 | Mario Kart 64 | ✅ Playable | Course fog, mirror mode and chrome reflections drawn as on the N64 |
 | Diddy Kong Racing | ✅ Playable | Steady 30 fps; ground lighting, fog bands and HUD icons fixed |
-| Ocarina of Time | ✅ Playable | Shop backgrounds, torch flames and Lake Hylia's water fixed (USA 1.0 ROM) |
+| Ocarina of Time | ✅ Playable | 30 fps and modern controls from Kooky's port; shop backgrounds, torch flames and Lake Hylia's water fixed (USA 1.0 ROM) |
 | GoldenEye 007 | ✅ Playable | Fills the screen, smooth real-time motion, 36–50 fps on Dam; the busiest views (Jungle) are heavier |
 | F-Zero X | ✅ Playable | Fills the screen; full speed with fog, sparks and the energy aura |
 | Star Fox 64 | ✅ Playable | Fills the screen; motion-blur warps, fog and explosions as on the N64 |
 | Paper Mario | ✅ Playable | Fills the screen; battle swirls, title cards and Tidal Wave drawn |
 | Super Smash Bros. | ✅ Playable | Hit flashes, shields and costume colours as on the N64 |
 | Super Mario 64 | ✅ Playable | Metal Mario, coloured fog and the castle window fixed, both cores drawing |
-| Majora's Mask | 🧪 Beta (1.0.10) | New: the whole game, compared scene by scene against the N64; known issues in its [README](majoras-mask/README.md#known-issues) |
+| Majora's Mask | 🧪 Beta (1.0.14) | New: the whole game, compared scene by scene against the N64; known issues in its [README](majoras-mask/README.md#known-issues) |
 | Harvest Moon 64 | ✅ Playable (1.0.5) | New: the whole game, the diary saves and the farm's days as on the N64; known issues in its [README](harvest-moon-64/README.md#known-issues) |
 | Banjo-Kazooie | 🧪 Beta (1.0.5) | New: the whole game, the intro compared scene by scene against the N64; known issues in its [README](banjo-kazooie/README.md#known-issues) |
 | Pilotwings 64 | 🧪 Beta (1.0.2) | New: hang glider, rocket belt, gyrocopter and the bonus games, the title music and flight sounds checked against the N64 |
@@ -56,7 +58,7 @@ On the Mini v4 and Mini Flip (752x560 screens) every game fills the whole screen
 | Perfect Dark | [perfect-dark](perfect-dark/) | [fgsfdsfgs/perfect_dark](https://github.com/fgsfdsfgs/perfect_dark), from [n64decomp/perfect_dark](https://github.com/n64decomp/perfect_dark) |
 | Mario Kart 64 | [mario-kart-64](mario-kart-64/) | [n64decomp/mk64](https://github.com/n64decomp/mk64) |
 | Diddy Kong Racing | [diddy-kong-racing](diddy-kong-racing/) | [DavidSM64/Diddy-Kong-Racing](https://github.com/DavidSM64/Diddy-Kong-Racing) |
-| The Legend of Zelda: Ocarina of Time | [ocarina-of-time](ocarina-of-time/) | [zeldaret/oot](https://github.com/zeldaret/oot) |
+| The Legend of Zelda: Ocarina of Time | [ocarina-of-time](ocarina-of-time/) | [zeldaret/oot](https://github.com/zeldaret/oot), with [cacuracaptors/oot-miyoomini](https://github.com/cacuracaptors/oot-miyoomini) |
 | GoldenEye 007 | [goldeneye-007](goldeneye-007/) | [n64decomp/007](https://github.com/n64decomp/007) |
 | F-Zero X | [f-zero-x](f-zero-x/) | [inspectredc/fzerox](https://github.com/inspectredc/fzerox) |
 | Star Fox 64 | [star-fox-64](star-fox-64/) | [sonicdcer/sf64](https://github.com/sonicdcer/sf64) |
@@ -206,6 +208,23 @@ version, and which Miyoo (Mini, Mini Plus ...), and attach `console.log` from `A
 are kept next to it.
 
 ## Credits
+
+### Contributors
+
+- **Kooky** ([cacuracaptors](https://github.com/cacuracaptors)): Ocarina of Time's 30 fps frame interpolation, its
+  modern controls and the two-core water composite, from their own port
+  [oot-miyoomini](https://github.com/cacuracaptors/oot-miyoomini) (MIT, notice kept in each file); the idea of the two
+  cores taking a frame's rows from both ends, now in Ocarina of Time, Majora's Mask, GoldenEye 007 and Perfect Dark
+  ([PRs #18, #20, #22](https://github.com/mr-finster/miyoo64/pulls?q=is%3Apr+author%3Acacuracaptors))
+- **SunnyBoon** ([SunnyBoon](https://github.com/SunnyBoon)): Paper Mario's European (PAL) version and its
+  fixes, Lava Piranha's fight and the save-slot fix among them
+  ([PRs](https://github.com/mr-finster/miyoo64/pulls?q=is%3Apr+author%3ASunnyBoon))
+- **ksielick** ([ksielick](https://github.com/ksielick)): the end of the sound's crackle in every game
+  ([PR #11](https://github.com/mr-finster/miyoo64/pull/11))
+- Everyone who reports bugs with logs and save states, MajoraGuy, zwillan and Canadadry among them, and
+  Successful-Engine-11 for the CRT overlay's idea
+
+### Upstream projects
 
 Built on the work of the decompilation communities:
 
