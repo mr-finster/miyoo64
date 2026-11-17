@@ -218,6 +218,10 @@ replaced; save states from the old versions may not load (kept aside as `.reject
   Playground's timer went on from the time of the load, not of the save. The game's clock is now part of the save
   state and carries on from the saved time. Checked under qemu with a timer counting up, a save, and a load four
   seconds later (game time): 7.50 s before the load, back to 2.56 s after it (1.0.13 went on to 9.30 s).
+  The sun is whole again (same issue): the game draws it from three strips of one 64x64 4-bit picture, each read
+  as an 8-bit texture twice as wide, which showed a grid of small suns. The port now draws the one picture on one
+  quad, as the decompilation lists it and as the PC port 2 Ship 2 Harkinian draws it, with the day and evening
+  pictures blended as before (`MM_SUNWHOLE=0` in `launch.sh` draws the strips).
 
 
 - Super Mario 64 1.1.8, experimental and off unless asked for: the Mini's 2D engine (SigmaStar MI_GFX) can draw

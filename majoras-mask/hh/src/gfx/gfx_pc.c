@@ -6772,6 +6772,14 @@ static void gfx_run_dl(Gfx* cmd) {
                 break;
             }
             case G_DL:
+                if (C0(16, 1) == 0) { /* the sun drawn whole in place of gSunDL's three strips (hh_sun.c, issue #37) */
+                    extern Gfx *hh_sun_dl_for(uintptr_t w1);
+                    Gfx *sun = hh_sun_dl_for((uintptr_t)cmd->words.w1);
+                    if (sun != NULL) {
+                        gfx_run_dl(sun);
+                        break;
+                    }
+                }
                 if ((uintptr_t)seg_addr(cmd->words.w1) < PORT_REAL_PTR_MIN || !port_ptr_ok(seg_addr(cmd->words.w1), 8)) {
                     gfx_log_unresolved("G_DL", cmd->words.w1);
                     if (C0(16, 1) != 0) {

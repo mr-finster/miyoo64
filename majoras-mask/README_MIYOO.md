@@ -112,6 +112,7 @@ MENU > OPTIONS changes the fine aim, the dialog text, the HUD filter and the sou
   resampled once, in the game; `32000` hands the OS 32 kHz as before 1.0.9).
 - `MM_ZRECT=0`: the Lens of Truth as before 1.0.10, the things it reveals drawn on the whole screen instead of
   only inside its circle.
+- `MM_SUNWHOLE=0`: the sun drawn from gSunDL's three strips as before 1.0.14 (a grid of small suns).
 - `MM_FLIPFILL=0`: on a Mini v4 or Mini Flip, keep the 2x picture with a border instead of the full height
   (`OOT_FLIPFILL`, the test builds' name, still works).
 
