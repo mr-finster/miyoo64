@@ -730,12 +730,28 @@ OSThread* __osGetCurrFaultedThread(void) {
     return NULL;
 }
 
+/* The game's clock, in microseconds, is game state: the minigame, race and bottle timers (z_parameter.c) are
+ * osGetTime() minus a start time kept in gSaveContext, so a save state taken mid-minigame must bring the clock back
+ * with it (issue #37: the Deku Scrub Playground's timer ran on after a load). It advances by the host clock's steps;
+ * the last host reading is not in the state, so after a load the clock carries on from the saved time. */
+static u64 sOsTimeUs HH_GS_BSS;
+static u64 sOsTimeHostUs;
+static pthread_mutex_t sOsTimeLock = PTHREAD_MUTEX_INITIALIZER; /* the scheduler, graph and audio threads read it */
+
 OSTime osGetTime(void) {
     u64 ticks = 0;
+    u64 us;
 
     sceRtcGetCurrentTick(&ticks);
+    pthread_mutex_lock(&sOsTimeLock);
+    if (sOsTimeHostUs != 0 && ticks > sOsTimeHostUs) {
+        sOsTimeUs += ticks - sOsTimeHostUs;
+    }
+    sOsTimeHostUs = ticks;
+    us = sOsTimeUs;
+    pthread_mutex_unlock(&sOsTimeLock);
     /* MM: OSTime in CPU counter cycles (46.875 MHz), as the game's OS_USEC_TO_CYCLES / OSTIME_TO_TIMER expect */
-    return OS_USEC_TO_CYCLES(ticks);
+    return OS_USEC_TO_CYCLES(us);
 }
 
 void osSetTime(UNUSED OSTime time) {

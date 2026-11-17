@@ -47,6 +47,13 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   Checked under the ARM emulator: with 30 fps off and Original controls every place tried draws byte for byte as
   before, and with 30 fps and Modern on the game runs cleanly. 30 fps played well on a Mini.
 
+- Majora's Mask 1.0.14 (beta): a save state made during a timed game brings its timer back
+  ([issue #37](https://github.com/mr-finster/miyoo64/issues/37)). The minigame, race and bottle timers are the
+  game's clock minus the time they started, and the port's clock was the Mini's own, so after a load the Deku Scrub
+  Playground's timer went on from the time of the load, not of the save. The game's clock is now part of the save
+  state and carries on from the saved time. Checked under qemu with a timer counting up, a save, and a load four
+  seconds later (game time): 7.50 s before the load, back to 2.56 s after it (1.0.13 went on to 9.30 s).
+
 - Super Smash Bros. 1.1.10: no more crash in the credits after beating Master Hand (issue 17). The highlight that
   follows a name you aim at kept reading that name after it had already been removed, and the game crashed. Now the
   highlight goes away with its name. Found from the reporter's log (the crash address names this spot in the 1.1.8
