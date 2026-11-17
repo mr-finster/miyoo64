@@ -84,8 +84,15 @@ port has no walk or half-stick button.
 
 ## Settings (in `launch.sh`)
 
-MENU > OPTIONS changes the fine aim, the dialog text, the HUD filter and the sound's fades, and keeps them in
+MENU > OPTIONS changes the fine aim, the dialog text, the HUD filter, the sound's fades and 30 fps, and keeps them in
 `data/debug.cfg` ([SETTINGS.md](SETTINGS.md)). The variables below go in `launch.sh`.
+
+30 fps (off by default; MENU > OPTIONS > PICTURE > 30 FPS, or `fps30=1`): the game still updates 20 times a second,
+so its speed is the same, and the frames in between are drawn with everything that moves blended between two updates.
+Each picture is held by the panel's vsyncs, so it follows the panel's real rate (59.7 Hz on the Mini Plus). Where
+three pictures don't fit in two updates, it steps down gradually (26.7, 25, 24, 23.3 fps) and only then to 20;
+`OOT_FPS30STEPS=0` goes straight from 30 to 20. Majora's Mask has things Ocarina of Time doesn't: if something
+jumps or flickers out of place with 30 fps on while the camera moves, tell us where (place and time of day).
 
 - `MM_ROTATE=0`: draw the picture unturned, for an SDL that turns the panel itself (the MinUI launcher
   sets it).

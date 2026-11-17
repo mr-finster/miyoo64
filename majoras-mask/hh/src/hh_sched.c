@@ -6,6 +6,7 @@
 #include "oot_psp_renderer.h"
 
 #include <pspkernel.h>
+#include "hh_interp.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -281,6 +282,144 @@ int HhSched_FrameDeadline(uint32_t* usec) {
 }
 
 
+/*
+ * OOT_FPS30 (debug.cfg fps30, MENU > OPTIONS > PICTURE > 30 FPS; off by default in Majora's Mask): the game's 20 updates a second shown at
+ * 30 frames a second, the in-between frames drawn from the frame's own display list with the matrices blended
+ * between the last update and this one (hh_interp.c records them in Play_Draw; gfx_pc.c swaps them in). The game's
+ * speed is unchanged. Two updates make three pictures, 2 vsyncs each:
+ *   tick A: the point 1/3 of the way from the last update to this one, then this update itself;
+ *   tick B: the point 2/3 of the way from the last update to this one (this update itself is not shown).
+ * So the screen shows u - 2/3, u, u + 2/3, u + 4/3, u + 2, ...: evenly spaced, two vsyncs apart. Every picture is held
+ * by vsyncs on the present thread (gfx_sdl12.c), which also paces the game: 3 vsyncs an update at the panel's
+ * real rate (59.7 Hz on the Mini Plus) instead of the 60 Hz clock below. The game thread is at most two pictures
+ * ahead of the screen.
+ * Frame rate steps between 30 and 20 (OOT_FPS30STEPS, default 1; 0 = straight to 20): when three pictures don't
+ * fit in two updates, a tick A is followed by n ticks B instead of one: n + 2 pictures in n + 1 updates, about
+ * 60 * (n + 2) / (3 * (n + 1)) fps (n = 2: 26.7, 3: 25, 4: 24, 5: 23.3). Below that, 20: each update shows the
+ * update itself, 3 vsyncs, the same pictures as with OOT_FPS30 off. Each picture still goes
+ * up on the vsync of the moment it shows (1/3 of an update at its tick's vsync 0, the update at 2, the 2/3 point
+ * at 1), so the motion stays even with pictures of 2 and 3 vsyncs; a tick B's picture is held 3 vsyncs when another
+ * B follows. n comes from the average draw: n + 2 draws (and n + 1 updates of ~1 ms) must fit in n + 1 ticks of
+ * 50 ms. It rises at once, and falls with 2 ms to spare (or when the last draw is already 6 ms under). For the
+ * devices clocked at 1600 MHz (Mini, Mini v4, Mini Flip) the heavy places step down a little instead of to 20.
+ * Outside the game (title, file select) and in the pause menu (30 updates a second already) every frame is the
+ * game's own, held its VI count.
+ * Written for the Miyoo Mini port (cacuracaptors/oot-miyoomini, MIT) after Ship of Harkinian's approach.
+ */
+extern int port_fi_enabled; /* hh_interp.c */
+extern void gfx_sdl12_next_hold(int vsyncs);
+extern int gfx_sdl12_hold_ok(void);
+static FiRepl* sFiRepl;
+static int sFiNextA = 1, sFiStepN = 1, sFiStepB = 1, sFiSteps = -1;
+static float sFiDrawMs = 15.0f, sFiLastMs = 15.0f;
+
+static void SchedPsp_FiDraw(OSScTask* task, const FiRepl* repl, int hold) {
+    extern uint32_t gfx_sdl12_present_wait_us(void);
+    const u32 t0 = sceKernelGetSystemTimeLow();
+    float ms;
+
+    gHhFiRepl = repl;
+    gfx_sdl12_next_hold(hold);
+    {   /* as the usual way below: the screen's colour image (framebuffer effects, the motion blur) */
+        extern void gfx_set_screen_fb(const void* fb);
+        gfx_set_screen_fb(TASK_FRAMEBUFFER(task)->framebuffer);
+    }
+    OotPspRenderer_RenderTask(&task->list);
+    gHhFiRepl = NULL;
+    /* the draw's own time: the wait for the screen to take the last picture left out */
+    ms = ((s32)(sceKernelGetSystemTimeLow() - t0) - (s32)gfx_sdl12_present_wait_us()) / 1000.0f;
+    if (ms < 500.0f) {
+        sFiLastMs = ms;
+        sFiDrawMs = sFiDrawMs * 0.75f + ms * 0.25f;
+    }
+}
+
+/* 1: the task was drawn, shown and paced here; 0: the usual way */
+static int SchedPsp_FiTask(OSScTask* task) {
+    int cs, ps;
+
+    static int sEnvRead;
+
+    if (!sEnvRead) {
+        const char* e = getenv("OOT_FPS30");
+
+        sEnvRead = 1;
+        port_fi_enabled = e != NULL && e[0] == '1'; /* off by default in Majora's Mask */
+    }
+    if (!port_fi_enabled || !gfx_sdl12_hold_ok() || !(task->flags & OS_SC_SWAPBUFFER) || task->framebuffer == NULL) {
+        gfx_sdl12_next_hold(0);
+        return 0;
+    }
+    if (sFiRepl == NULL) {
+        sFiRepl = (FiRepl*)calloc(1, sizeof(FiRepl));
+        if (sFiRepl == NULL) {
+            port_fi_enabled = 0;
+            return 0;
+        }
+    }
+    if (!port_fi_pair(task->list.t.data_ptr, &cs, &ps)) {
+        /* not a recorded game frame: the frame itself, its VI count; the next recorded one starts with a tick A */
+        sFiNextA = 1;
+        SchedPsp_FiDraw(task, NULL, (int)SchedPsp_GetUpdateRate(task));
+    } else {
+        /* the steps' limits: n + 2 draws in n + 1 ticks, less the updates, the copies to the screen and a margin */
+        static const float lim[5] = { 30.0f, 34.0f, 36.5f, 38.0f, 39.0f }; /* n = 1..5 */
+        const float P = sFiDrawMs;
+        int n = 1;
+
+        if (sFiSteps < 0) {
+            const char* e = getenv("OOT_FPS30STEPS");
+
+            sFiSteps = !(e != NULL && e[0] == '0');
+        }
+        while (n <= 5 && P > lim[n - 1]) {
+            n++;
+        }
+        if (!sFiSteps && n > 1) {
+            n = 6; /* no steps: 30 or 20 */
+        }
+        if (n > sFiStepN) {
+            sFiStepN = n;
+        } else if (n < sFiStepN && (P < lim[n - 1] - 2.0f || sFiLastMs < lim[n - 1] - 6.0f)) {
+            sFiStepN = n;
+        }
+        if (sFiNextA && sFiStepN <= 5) {
+            /* tick A: the 1/3 point (vsync 0 of the tick) and the update (vsync 2); a tick B always follows */
+            port_fi_build(cs, ps, 1.0f / 3.0f, sFiRepl);
+            SchedPsp_FiDraw(task, sFiRepl, 2);
+            SchedPsp_FiDraw(task, NULL, 2);
+            sFiStepB = 0;
+            sFiNextA = 0;
+        } else if (sFiStepN > 5) {
+            /* 20 fps: the update itself, 3 vsyncs (as with OOT_FPS30 off); a tick A when the steps come back */
+            sFiNextA = 1;
+            SchedPsp_FiDraw(task, NULL, 3);
+        } else {
+            /* tick B: the 2/3 point (vsync 1), held until the next picture: a tick A's first (vsync 0 of the next
+             * tick: 2 vsyncs) or another tick B's (vsync 1 of the next: 3) */
+            sFiStepB++;
+            sFiNextA = sFiStepN <= 5 && sFiStepB >= sFiStepN;
+            port_fi_build(cs, ps, 2.0f / 3.0f, sFiRepl);
+            SchedPsp_FiDraw(task, sFiRepl, sFiNextA ? 2 : 3);
+        }
+    }
+    osViSwapBuffer(TASK_FRAMEBUFFER(task)->swapBuffer);
+    {
+        extern void HhMm_FrameDone(void);
+        HhMm_FrameDone();
+    }
+    {
+        extern void HhPerf_PaceDone(void); /* HITCH lines: the swap */
+
+        HhPerf_PaceDone();
+    }
+    /* no clock pacing: the present thread's vsync holds pace the game. A later return to the usual way starts a
+     * fresh 60 Hz timeline. */
+    sGfxPacingInitialized = 0;
+    return 1;
+}
+
+
 void Sched_Notify(Scheduler* sc) {
     OSScTask* task;
 
@@ -305,6 +444,8 @@ void Sched_Notify(Scheduler* sc) {
 
             HhJpeg_RunTask(&task->list);
             HhPerf_Jpeg(sceKernelGetSystemTimeLow() - jpegStart);
+        } else if (task->list.t.type == M_GFXTASK && SchedPsp_FiTask(task)) {
+            /* OOT_FPS30: drawn, shown and paced above */
         } else if (task->list.t.type == M_GFXTASK) {
             {   /* the screen's colour image this task draws (gfx_pc.c: framebuffer effects, MM's motion blur) */
                 extern void gfx_set_screen_fb(const void* fb);
