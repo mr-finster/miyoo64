@@ -25,7 +25,7 @@
 
 Native ports of fifteen N64 games to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip). No emulation: each game's C code, rebuilt by its decompilation community, runs on the Mini's ARM CPU and is drawn by a software renderer that uses both of its cores. Every game has save states (9 slots and an auto save), the same in-game menu (MENU: resume, save, load, exit), and picks up where you left off after a power-off.
 
-Miyoo64 is made together with other people who port N64 games to the Mini. mr-finster started it and made the [website](https://miyoo-n64.pages.dev), and works closely with Kooky to blend all of our improvements into this one project. Kooky ([cacuracaptors](https://github.com/cacuracaptors)), who made the first Mario Kart 64 for the Mini and their own Ocarina of Time port ([oot-miyoomini](https://github.com/cacuracaptors/oot-miyoomini)), brought Ocarina of Time's 30 fps, its modern controls and the two-core drawing ideas the other games now share. SunnyBoon brought Paper Mario's European version and many of its fixes, and ksielick the fix for the sound's crackle in every game. See [Contributors](#contributors); pull requests are welcome.
+Miyoo64 is made together with other people who port N64 games to the Mini. mr-finster started it and made the [website](https://miyoo-n64.pages.dev), and works closely with cacuracaptors (Kooky) to blend all of our improvements into this one project. [cacuracaptors](https://github.com/cacuracaptors) (Kooky), who made the first Mario Kart 64 for the Mini and their own Ocarina of Time port ([oot-miyoomini](https://github.com/cacuracaptors/oot-miyoomini)), brought Ocarina of Time's 30 fps, its modern controls and the two-core drawing ideas the other games now share. SunnyBoon brought Paper Mario's European version and many of its fixes, and ksielick the fix for the sound's crackle in every game. See [Contributors](#contributors); pull requests are welcome.
 
 Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/latest), or https://miyoo-n64.pages.dev. What changed in each release: [Changelog](CHANGELOG.md).
 
@@ -36,7 +36,7 @@ Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/l
 | Perfect Dark | ✅ Playable | The full solo campaign, checked mission by mission against the N64; fills the Mini v4 and Flip screens |
 | Mario Kart 64 | ✅ Playable | Course fog, mirror mode and chrome reflections drawn as on the N64 |
 | Diddy Kong Racing | ✅ Playable | Steady 30 fps; ground lighting, fog bands and HUD icons fixed |
-| Ocarina of Time | ✅ Playable | 30 fps and modern controls from Kooky's port; shop backgrounds, torch flames and Lake Hylia's water fixed (USA 1.0 ROM) |
+| Ocarina of Time | ✅ Playable | 30 fps and modern controls from cacuracaptors' (Kooky's) port; shop backgrounds, torch flames and Lake Hylia's water fixed (USA 1.0 ROM) |
 | GoldenEye 007 | ✅ Playable | Fills the screen, smooth real-time motion, 36–50 fps on Dam; the busiest views (Jungle) are heavier |
 | F-Zero X | ✅ Playable | Fills the screen; full speed with fog, sparks and the energy aura |
 | Star Fox 64 | ✅ Playable | Fills the screen; motion-blur warps, fog and explosions as on the N64 |
@@ -213,8 +213,8 @@ are kept next to it.
 
 - **mr-finster** ([mr-finster](https://github.com/mr-finster)): started Miyoo64 and made the
   [website](https://miyoo-n64.pages.dev): the ports of all fifteen games, their renderers, the game menu and save
-  states, and the releases; works closely with Kooky to blend all of our improvements into this one project
-- **Kooky** ([cacuracaptors](https://github.com/cacuracaptors)): the first Mario Kart 64 for the Mini
+  states, and the releases; works closely with cacuracaptors (Kooky) to blend all of our improvements into this one project
+- **[cacuracaptors](https://github.com/cacuracaptors)** (Kooky): the first Mario Kart 64 for the Mini
   ([mk64-miyoomini](https://github.com/cacuracaptors/mk64-miyoomini)), then Ocarina of Time's 30 fps frame interpolation, its
   modern controls and the two-core water composite, from their own port
   [oot-miyoomini](https://github.com/cacuracaptors/oot-miyoomini) (MIT, notice kept in each file); the idea of the two
