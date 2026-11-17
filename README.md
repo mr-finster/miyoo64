@@ -25,7 +25,7 @@
 
 Native ports of fifteen N64 games to the Miyoo Mini family (Mini, Mini Plus, Mini v4, Mini Flip). No emulation: each game's C code, rebuilt by its decompilation community, runs on the Mini's ARM CPU and is drawn by a software renderer that uses both of its cores. Every game has save states (9 slots and an auto save), the same in-game menu (MENU: resume, save, load, exit), and picks up where you left off after a power-off.
 
-Miyoo64 is made together with other people who port N64 games to the Mini. Kooky ([cacuracaptors](https://github.com/cacuracaptors)), who wrote their own Ocarina of Time port for the Mini ([oot-miyoomini](https://github.com/cacuracaptors/oot-miyoomini)), brought Ocarina of Time's 30 fps, its modern controls and the two-core drawing ideas the other games now share. SunnyBoon brought Paper Mario's European version and many of its fixes, and ksielick the fix for the sound's crackle in every game. See [Contributors](#contributors); pull requests are welcome.
+Miyoo64 is made together with other people who port N64 games to the Mini. Kooky ([cacuracaptors](https://github.com/cacuracaptors)), who made the first Mario Kart 64 for the Mini and their own Ocarina of Time port ([oot-miyoomini](https://github.com/cacuracaptors/oot-miyoomini)), brought Ocarina of Time's 30 fps, its modern controls and the two-core drawing ideas the other games now share. SunnyBoon brought Paper Mario's European version and many of its fixes, and ksielick the fix for the sound's crackle in every game. See [Contributors](#contributors); pull requests are welcome.
 
 Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/latest), or https://miyoo-n64.pages.dev. What changed in each release: [Changelog](CHANGELOG.md).
 
@@ -211,7 +211,8 @@ are kept next to it.
 
 ### Contributors
 
-- **Kooky** ([cacuracaptors](https://github.com/cacuracaptors)): Ocarina of Time's 30 fps frame interpolation, its
+- **Kooky** ([cacuracaptors](https://github.com/cacuracaptors)): the first Mario Kart 64 for the Mini
+  ([mk64-miyoomini](https://github.com/cacuracaptors/mk64-miyoomini)), then Ocarina of Time's 30 fps frame interpolation, its
   modern controls and the two-core water composite, from their own port
   [oot-miyoomini](https://github.com/cacuracaptors/oot-miyoomini) (MIT, notice kept in each file); the idea of the two
   cores taking a frame's rows from both ends, now in Ocarina of Time, Majora's Mask, GoldenEye 007 and Perfect Dark
