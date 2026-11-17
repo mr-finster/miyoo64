@@ -5,79 +5,11 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
-- Paper Mario 1.1.9, contributed by SunnyBoon (PRs
-  [#13](https://github.com/mr-finster/miyoo64/pull/13), [#14](https://github.com/mr-finster/miyoo64/pull/14),
-  [#25](https://github.com/mr-finster/miyoo64/pull/25), [#26](https://github.com/mr-finster/miyoo64/pull/26),
-  [#27](https://github.com/mr-finster/miyoo64/pull/27), [#29](https://github.com/mr-finster/miyoo64/pull/29),
-  [#32](https://github.com/mr-finster/miyoo64/pull/32), [#33](https://github.com/mr-finster/miyoo64/pull/33),
-  [#34](https://github.com/mr-finster/miyoo64/pull/34), [#35](https://github.com/mr-finster/miyoo64/pull/35)):
-  - An in-game save no longer lands in a save-state file after the menu looks at the save slots (the save was lost and
-    the state overwritten).
-  - Lava Piranha is in her own boss fight again: her vine animations were never copied in, so the US build showed an
-    empty lava pool.
-  - The Spiny Tromp chase on Mt. Lavalava can no longer stall, Merlee's card ritual has a card to draw, Quizmo's quiz
-    stage is drawn right, and Goombario's Tattle picture, the HP bar's rounded end, badge pictures in item popups, tree
-    seams, texture reuse between different tile sizes and the partner-upgrade light fan are fixed.
-  - Checked under the ARM emulator on the US version: the Lava Piranha battle, the save fix (reproduced and fixed),
-    the first start's game data, and Mario's house, Pleasant Path, Toad Town, Mt. Lavalava, Dry Dry Outpost and two
-    battles drawing as before. The US recipes are derived again for the Quizmo stage's data.
-
-- Ocarina of Time 1.1.13: a CRT overlay to test (MENU > OPTIONS > PICTURE > CRT OVERLAY, `crtoverlay=1`, off by
-  default). A dark scanline at the bottom of every game line, a faint line at the edge of every game pixel and
-  rounded corners (no vignette, too dark on the Mini), lined up with how the picture is scaled on the Mini's 640x480
-  and the Mini v4 / Flip's 752x560 panels, so the lines never drift against the picture. Suggested by Successful-Engine-11, who sent PNG
-  overlays; this one is built in the game from the same idea. The overlay is applied as the picture is copied to the
-  screen (the first test build read the screen back afterwards, which slowed the game to a crawl on the Mini).
-
-- Ocarina of Time 1.1.13, contributed by cacuracaptors from their own Miyoo Mini port of the game (oot-miyoomini, MIT),
-  30 fps on by default after a test on the Mini, the rest off by default or giving the same picture:
-  - 30 frames a second, on by default (MENU > OPTIONS > PICTURE > 30 FPS, `fps30=0` for the N64's 20,
-    [PR #20](https://github.com/mr-finster/miyoo64/pull/20)). The game still updates 20 times a second; the in-between
-    pictures blend everything that moves (actors, the camera, effects, Epona, scrolling textures, the dialog box), so
-    the game's speed is unchanged. Where three pictures don't fit, it steps down to 26.7, 25, 24 or 23.3 fps before 20
-    (`fps30steps=0` goes straight to 20), and at 20 it shows the game's own frames, as with 30 fps off.
-  - Modern controls (MENU > OPTIONS > CONTROLS > STYLE, `controls=1`, Original by default,
-    [PR #22](https://github.com/mr-finster/miyoo64/pull/22)). X jumps where Link can jump and SELECT gives C-left
-    (START + left still does too); no automatic jump or ledge grab off an edge; running straight on from a roll,
-    rolls chained and steered, a little steering in the air. Each part also has its own `debug.cfg` key
-    ([SETTINGS.md](ocarina-of-time/SETTINGS.md)). With Original the game plays exactly as before.
-  - The half-resolution water composite drawn by both cores (`hfxsplit`, on, the same picture,
-    [PR #18](https://github.com/mr-finster/miyoo64/pull/18)), faster where the water is (Zora's Domain, Lake Hylia).
-
-  Checked under the ARM emulator: with 30 fps off and Original controls every place tried draws byte for byte as
-  before, and with 30 fps and Modern on the game runs cleanly. 30 fps played well on a Mini.
-
-- Majora's Mask 1.0.14 (beta): a save state made during a timed game brings its timer back
-  ([issue #37](https://github.com/mr-finster/miyoo64/issues/37)). The minigame, race and bottle timers are the
-  game's clock minus the time they started, and the port's clock was the Mini's own, so after a load the Deku Scrub
-  Playground's timer went on from the time of the load, not of the save. The game's clock is now part of the save
-  state and carries on from the saved time. Checked under qemu with a timer counting up, a save, and a load four
-  seconds later (game time): 7.50 s before the load, back to 2.56 s after it (1.0.13 went on to 9.30 s).
-
 - Super Smash Bros. 1.1.10: no more crash in the credits after beating Master Hand (issue 17). The highlight that
   follows a name you aim at kept reading that name after it had already been removed, and the game crashed. Now the
   highlight goes away with its name. Found from the reporter's log (the crash address names this spot in the 1.1.8
   build, rebuilt byte for byte); built, not yet run through the credits under the emulator.
 
-- Super Mario 64 1.1.8, experimental and off unless asked for: the Mini's 2D engine (SigmaStar MI_GFX) can draw
-  each frame onto the panel, doubled and turned, in place of the CPU (`hwblit=1` in `data/sm64_display.cfg`, or
-  `SM64_HWBLIT=1` / `MIYOO_HWBLIT=1` in `launch.sh`). The CPU then only copies the 320x240 frame for the engine
-  instead of writing the whole 640x480 panel. The engine's picture is used only where a check at start finds it
-  identical to the CPU's, pixel for pixel (a scaled blit, rows by stride, or two quarter turns, the first that
-  matches); `hwblit=2` uses its smooth scaler instead (a softer picture, which also fills a Mini v4 / Flip panel).
-  The engine's libraries are opened at run time: a firmware without them, a panel buffer the engine can't reach, or
-  any blit that fails leaves the CPU drawing as before, with one `hwblit:` line in `console.log`. Not yet run on a
-  device: `kit-hwblit/hwblit_test` (an Apps entry) checks and times the engine there. Under qemu, with the switch off
-  or on (no engine there: the CPU draws), the frames are byte for byte those of before; against a software stand-in
-  for the engine (`kit-hwblit/qemu_check.sh`) the whole path gives the same frames too.
-
-- Paper Mario 1.1.9: the pieces of a broken brick block, wooden crate, boarded floor or bombed rock tumble on both
-  axes again. Each piece's two turn angles are small unsigned numbers stepped by a float; one of the two steps goes
-  below zero from the first frame, which wraps round on the N64 but became 0 on the Mini's ARM CPU (float to
-  unsigned saturates there), so every piece turned about one axis only. The step now goes through a signed number
-  and wraps as on the N64. Found by listing every float-to-unsigned conversion in the Mini's binary; checked by
-  compiling the four files (no such conversion left in them) and with the same lines under the ARM emulator, not
-  yet seen in the game.
 
 - All fifteen games: the auto save made as the Mini goes to sleep now survives a flat battery or a power cut while
   asleep. Super Mario 64 1.1.8, Mario Kart 64 1.1.10, GoldenEye 007 1.1.10, Perfect Dark 1.0.10, Ocarina of Time
@@ -96,7 +28,9 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   longer replaces its save with a short write on a full card. Checked in an emulator with Onion's sleep and
   power-off simulated ([Sleep and wake](docs/SLEEP-AND-WAKE.md#the-seal-149)). In-game saves carry over; save
   states from before may not load (kept aside as `.rejected`). Banjo-Kazooie's part is out: its 1.0.4 came
-  on Nov 10 as an update to 1.4.8, below. The other fourteen are not released yet.
+  on Nov 10 as an update to 1.4.8, below, and Super Mario 64, Ocarina of Time, Majora's Mask and Paper Mario got it
+  on Nov 17. The other ten are not released yet.
+
 
 - GoldenEye 007 1.1.10 and Perfect Dark 1.0.10: faster with both cores, the same picture. The two cores used to cut
   the rows they share once, at an estimate (a big triangle's in the middle, a batch of triangles where half the work
@@ -109,32 +43,6 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   Time port for the Miyoo Mini (oot-miyoomini), as in Ocarina of Time 1.1.13, written anew for this renderer.
   `stealrows=0` in GoldenEye 007's `data/debug.cfg` (Perfect Dark: `PD_STEALROWS=0` in `launch.sh`) gives the old way.
 
-- Ocarina of Time 1.1.13 and Majora's Mask 1.0.14 (beta): faster with both cores, the same picture. The second core
-  used to help only with big triangles; the many small ones, most of what is drawn outside the sky, were drawn on the
-  first core alone, and all of it waited while the first core read the game's display lists. Now every 3D triangle
-  is set up as before and its rows wait in a queue: the second core draws the queue in order while the first goes
-  on with the display list (`streamdraw`), and when the picture is next needed (before the sky, the menus and text,
-  a depth read, the end of the frame) both cores finish what is left together, a band of rows each from both ends
-  until they meet, each band in the game's order (`batchband`). Under qemu with both cores a frame's render time
-  drops 8 to 33% in Ocarina of Time (about 30% in Hyrule Field, Kokiri Forest, Zora's Domain and the Deku Tree, 26%
-  in Kakariko, 24% in the Market, 19% at Lake Hylia, 8% on Death Mountain Trail) and 23 to 31% in Majora's Mask
-  (South Clock Town, the Southern Swamp, North Clock Town, Termina Field, Great Bay Coast, Mountain Village); frames
-  compared byte for byte with the old way in thirteen Ocarina of Time scenes (the Bottom of the Well with the Lens of
-  Truth among them) plus the pause menu and a cutscene, and in seven Majora's Mask scenes (the Lens of Truth on the
-  Snowhead path among them) plus the pause menu. The second core drawing a queue of set-up triangles is cacuracaptors' idea in
-  their Ocarina of Time port for the Miyoo Mini (oot-miyoomini), written anew for this renderer; handing it batches of
-  triangles comes from GoldenEye 007 and Perfect Dark. `streamdraw=0` / `batchband=0` in `data/debug.cfg` (Majora's
-  Mask: `MM_STREAMDRAW=0` / `MM_BATCHBAND=0` in `launch.sh`) give the old ways.
-
-- Ocarina of Time 1.1.13 and Majora's Mask 1.0.14 (beta): a little faster outdoors, the same picture. The sky, drawn
-  last where nothing covers it, now skips whole 16-pixel stretches the world already covers instead of testing each
-  pixel (`skyruns`), and the two cores share a big triangle's rows a few at a time from both ends instead of cutting
-  it once in the middle, so the core that is ahead draws more (`stealrows`). Under qemu the 3D drawing time drops
-  1 to 6% in Ocarina of Time (most in Hyrule Field, Lake Hylia and Zora's Domain) and 3 to 7% in Majora's Mask
-  (Termina Field, Clock Town); frames compared byte for byte with 1.1.9 in eight scenes. Both ideas come from
-  cacuracaptors' Ocarina of Time port for the Miyoo Mini (oot-miyoomini), written anew for this renderer.
-  `skyruns=0` / `stealrows=0` in `data/debug.cfg` (Majora's Mask: `MM_SKYRUNS=0` / `MM_STEALROWS=0` in `launch.sh`)
-  give the old way. Save states from 1.1.9 / 1.0.10 may not load (kept aside as `.rejected`); in-game saves carry over.
 
 ## 1.4.8 (2026-11-07: the sound at 48 kHz in all fifteen games, Pilotwings 64's demo crash)
 
@@ -252,6 +160,116 @@ texture's level-of-detail fraction, full on the N64 for a texture without mipmap
 (`lodcc2=0`). Checked under the ARM emulator; every other place tried draws as 1.1.11 / 1.0.12 apart from the HUD's
 smoothing. Save states from 1.1.11 / 1.0.12 may not load (kept aside as `.rejected`); in-game saves carry over. Only
 the Ocarina of Time and Majora's Mask zips and the All Game Pack were replaced.
+
+Updated Nov 17: Paper Mario 1.1.9, Ocarina of Time 1.1.13, Majora's Mask 1.0.14 (beta) and Super Mario 64 1.1.8.
+Paper Mario's ten fixes come from SunnyBoon, and Ocarina of Time's 30 fps, modern controls and faster water from
+cacuracaptors, from their own Miyoo Mini port of the game. These four also keep the auto save made as the
+Mini goes to sleep through a flat battery or a power cut (see Next). Only these four zips and the All Game Pack were
+replaced; save states from the old versions may not load (kept aside as `.rejected`), and in-game saves carry over.
+
+- Paper Mario 1.1.9, contributed by SunnyBoon (PRs
+  [#13](https://github.com/mr-finster/miyoo64/pull/13), [#14](https://github.com/mr-finster/miyoo64/pull/14),
+  [#25](https://github.com/mr-finster/miyoo64/pull/25), [#26](https://github.com/mr-finster/miyoo64/pull/26),
+  [#27](https://github.com/mr-finster/miyoo64/pull/27), [#29](https://github.com/mr-finster/miyoo64/pull/29),
+  [#32](https://github.com/mr-finster/miyoo64/pull/32), [#33](https://github.com/mr-finster/miyoo64/pull/33),
+  [#34](https://github.com/mr-finster/miyoo64/pull/34), [#35](https://github.com/mr-finster/miyoo64/pull/35)):
+  - An in-game save no longer lands in a save-state file after the menu looks at the save slots (the save was lost and
+    the state overwritten).
+  - Lava Piranha is in her own boss fight again: her vine animations were never copied in, so the US build showed an
+    empty lava pool.
+  - The Spiny Tromp chase on Mt. Lavalava can no longer stall, Merlee's card ritual has a card to draw, Quizmo's quiz
+    stage is drawn right, and Goombario's Tattle picture, the HP bar's rounded end, badge pictures in item popups, tree
+    seams, texture reuse between different tile sizes and the partner-upgrade light fan are fixed.
+  - Checked under the ARM emulator on the US version: the Lava Piranha battle, the save fix (reproduced and fixed),
+    the first start's game data, and Mario's house, Pleasant Path, Toad Town, Mt. Lavalava, Dry Dry Outpost and two
+    battles drawing as before. The US recipes are derived again for the Quizmo stage's data.
+
+
+- Ocarina of Time 1.1.13: a CRT overlay to test (MENU > OPTIONS > PICTURE > CRT OVERLAY, `crtoverlay=1`, off by
+  default). A dark scanline at the bottom of every game line, a faint line at the edge of every game pixel and
+  rounded corners (no vignette, too dark on the Mini), lined up with how the picture is scaled on the Mini's 640x480
+  and the Mini v4 / Flip's 752x560 panels, so the lines never drift against the picture. Suggested by Successful-Engine-11, who sent PNG
+  overlays; this one is built in the game from the same idea. The overlay is applied as the picture is copied to the
+  screen (the first test build read the screen back afterwards, which slowed the game to a crawl on the Mini).
+
+
+- Ocarina of Time 1.1.13, contributed by cacuracaptors from their own Miyoo Mini port of the game (oot-miyoomini, MIT),
+  30 fps on by default after a test on the Mini, the rest off by default or giving the same picture:
+  - 30 frames a second, on by default (MENU > OPTIONS > PICTURE > 30 FPS, `fps30=0` for the N64's 20,
+    [PR #20](https://github.com/mr-finster/miyoo64/pull/20)). The game still updates 20 times a second; the in-between
+    pictures blend everything that moves (actors, the camera, effects, Epona, scrolling textures, the dialog box), so
+    the game's speed is unchanged. Where three pictures don't fit, it steps down to 26.7, 25, 24 or 23.3 fps before 20
+    (`fps30steps=0` goes straight to 20), and at 20 it shows the game's own frames, as with 30 fps off.
+  - Modern controls (MENU > OPTIONS > CONTROLS > STYLE, `controls=1`, Original by default,
+    [PR #22](https://github.com/mr-finster/miyoo64/pull/22)). X jumps where Link can jump and SELECT gives C-left
+    (START + left still does too); no automatic jump or ledge grab off an edge; running straight on from a roll,
+    rolls chained and steered, a little steering in the air. Each part also has its own `debug.cfg` key
+    ([SETTINGS.md](ocarina-of-time/SETTINGS.md)). With Original the game plays exactly as before.
+  - The half-resolution water composite drawn by both cores (`hfxsplit`, on, the same picture,
+    [PR #18](https://github.com/mr-finster/miyoo64/pull/18)), faster where the water is (Zora's Domain, Lake Hylia).
+
+  Checked under the ARM emulator: with 30 fps off and Original controls every place tried draws byte for byte as
+  before, and with 30 fps and Modern on the game runs cleanly. 30 fps played well on a Mini.
+
+
+- Majora's Mask 1.0.14 (beta): a save state made during a timed game brings its timer back
+  ([issue #37](https://github.com/mr-finster/miyoo64/issues/37)). The minigame, race and bottle timers are the
+  game's clock minus the time they started, and the port's clock was the Mini's own, so after a load the Deku Scrub
+  Playground's timer went on from the time of the load, not of the save. The game's clock is now part of the save
+  state and carries on from the saved time. Checked under qemu with a timer counting up, a save, and a load four
+  seconds later (game time): 7.50 s before the load, back to 2.56 s after it (1.0.13 went on to 9.30 s).
+
+
+- Super Mario 64 1.1.8, experimental and off unless asked for: the Mini's 2D engine (SigmaStar MI_GFX) can draw
+  each frame onto the panel, doubled and turned, in place of the CPU (`hwblit=1` in `data/sm64_display.cfg`, or
+  `SM64_HWBLIT=1` / `MIYOO_HWBLIT=1` in `launch.sh`). The CPU then only copies the 320x240 frame for the engine
+  instead of writing the whole 640x480 panel. The engine's picture is used only where a check at start finds it
+  identical to the CPU's, pixel for pixel (a scaled blit, rows by stride, or two quarter turns, the first that
+  matches); `hwblit=2` uses its smooth scaler instead (a softer picture, which also fills a Mini v4 / Flip panel).
+  The engine's libraries are opened at run time: a firmware without them, a panel buffer the engine can't reach, or
+  any blit that fails leaves the CPU drawing as before, with one `hwblit:` line in `console.log`. Not yet run on a
+  device: `kit-hwblit/hwblit_test` (an Apps entry) checks and times the engine there. Under qemu, with the switch off
+  or on (no engine there: the CPU draws), the frames are byte for byte those of before; against a software stand-in
+  for the engine (`kit-hwblit/qemu_check.sh`) the whole path gives the same frames too.
+
+
+- Paper Mario 1.1.9: the pieces of a broken brick block, wooden crate, boarded floor or bombed rock tumble on both
+  axes again. Each piece's two turn angles are small unsigned numbers stepped by a float; one of the two steps goes
+  below zero from the first frame, which wraps round on the N64 but became 0 on the Mini's ARM CPU (float to
+  unsigned saturates there), so every piece turned about one axis only. The step now goes through a signed number
+  and wraps as on the N64. Found by listing every float-to-unsigned conversion in the Mini's binary; checked by
+  compiling the four files (no such conversion left in them) and with the same lines under the ARM emulator, not
+  yet seen in the game.
+
+
+- Ocarina of Time 1.1.13 and Majora's Mask 1.0.14 (beta): faster with both cores, the same picture. The second core
+  used to help only with big triangles; the many small ones, most of what is drawn outside the sky, were drawn on the
+  first core alone, and all of it waited while the first core read the game's display lists. Now every 3D triangle
+  is set up as before and its rows wait in a queue: the second core draws the queue in order while the first goes
+  on with the display list (`streamdraw`), and when the picture is next needed (before the sky, the menus and text,
+  a depth read, the end of the frame) both cores finish what is left together, a band of rows each from both ends
+  until they meet, each band in the game's order (`batchband`). Under qemu with both cores a frame's render time
+  drops 8 to 33% in Ocarina of Time (about 30% in Hyrule Field, Kokiri Forest, Zora's Domain and the Deku Tree, 26%
+  in Kakariko, 24% in the Market, 19% at Lake Hylia, 8% on Death Mountain Trail) and 23 to 31% in Majora's Mask
+  (South Clock Town, the Southern Swamp, North Clock Town, Termina Field, Great Bay Coast, Mountain Village); frames
+  compared byte for byte with the old way in thirteen Ocarina of Time scenes (the Bottom of the Well with the Lens of
+  Truth among them) plus the pause menu and a cutscene, and in seven Majora's Mask scenes (the Lens of Truth on the
+  Snowhead path among them) plus the pause menu. The second core drawing a queue of set-up triangles is cacuracaptors' idea in
+  their Ocarina of Time port for the Miyoo Mini (oot-miyoomini), written anew for this renderer; handing it batches of
+  triangles comes from GoldenEye 007 and Perfect Dark. `streamdraw=0` / `batchband=0` in `data/debug.cfg` (Majora's
+  Mask: `MM_STREAMDRAW=0` / `MM_BATCHBAND=0` in `launch.sh`) give the old ways.
+
+
+- Ocarina of Time 1.1.13 and Majora's Mask 1.0.14 (beta): a little faster outdoors, the same picture. The sky, drawn
+  last where nothing covers it, now skips whole 16-pixel stretches the world already covers instead of testing each
+  pixel (`skyruns`), and the two cores share a big triangle's rows a few at a time from both ends instead of cutting
+  it once in the middle, so the core that is ahead draws more (`stealrows`). Under qemu the 3D drawing time drops
+  1 to 6% in Ocarina of Time (most in Hyrule Field, Lake Hylia and Zora's Domain) and 3 to 7% in Majora's Mask
+  (Termina Field, Clock Town); frames compared byte for byte with 1.1.9 in eight scenes. Both ideas come from
+  cacuracaptors' Ocarina of Time port for the Miyoo Mini (oot-miyoomini), written anew for this renderer.
+  `skyruns=0` / `stealrows=0` in `data/debug.cfg` (Majora's Mask: `MM_SKYRUNS=0` / `MM_STEALROWS=0` in `launch.sh`)
+  give the old way. Save states from 1.1.9 / 1.0.10 may not load (kept aside as `.rejected`); in-game saves carry over.
+
 
 - All fifteen games: no more crackle on loud, smooth sounds ([issue #10](https://github.com/mr-finster/miyoo64/issues/10)).
   Found and fixed by ksielick in Super Mario 64 ([PR #11](https://github.com/mr-finster/miyoo64/pull/11)): Onion's
