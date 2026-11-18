@@ -6,20 +6,39 @@ This experimental native PAL build requires your own unmodified European PAL
 (SHA-1 `328a1f1beba30ce5e178f031662019eb32c5f3b5`). ROMs and extracted
 game assets are not distributed with the port.
 
-Use the Docker prerequisites in the main README, place the ROM at
-`port/baseroms/pal-1.0/baserom.z64`, and from `ocarina-of-time` run:
+The validated build used the existing `oot-pal-m1-build:local` Docker image,
+an existing populated `port/.venv`, and the existing IDO and EGCS tools. In a
+clean checkout, make those tools available and place your ROM at
+`port/baseroms/pal-1.0/baserom.z64`. With `ocarina-of-time` mounted as `/work`
+in that container, run the following from `/work/port`:
 
 ```sh
-./dev.sh 'cd port && make setup VERSION=pal-1.0'
-./dev.sh 'cd port && make -k CC_CHECK=true VERSION=pal-1.0 REGION=EU -j4'
-./dev.sh 'cd port && make -f Makefile.handheld PLAT=miyoo VERSION=pal-1.0 -j4'
-./dev.sh 'VERSION=pal-1.0 PAL_AUDIO_M22=1 tools/build_miyoo.sh'
+make -o venv setup VERSION=pal-1.0 -j4
+make VERSION=pal-1.0 REGION=EU -j4 asset_files \
+  build/pal-1.0/assets/text/message_data.enc.nes.h \
+  build/pal-1.0/assets/text/message_data_staff.enc.nes.h
+make VERSION=pal-1.0 REGION=EU -j4 build/pal-1.0/assets/audio/sequence_sizes.h
+make -f Makefile.handheld PLAT=miyoo VERSION=pal-1.0 -j4
+cd /work
+VERSION=pal-1.0 PAL_AUDIO_M22=1 tools/build_miyoo.sh
 ```
 
-The intermediate N64 header-generation command has produced compiler errors
-after generating the required headers in the tested environment; it was stopped
-and the handheld build then succeeded. A clean end-to-end build has not been
-verified. The output is `OcarinaOfTime-PAL-AudioM22.zip`. PAL and US currently share
+`-o venv` reuses the populated environment and skips package installation; the
+tools must already be available. The previous broad N64 make invocation also
+started N64 compilation, which produced IDO errors. That compilation is not
+needed for the handheld build: the explicit targets above generate its asset,
+text and sequence-size inputs. A clean isolated ARM32 build of commit
+`5b26c72590cdffdc6e09e7538b0b6fa14d35665f` succeeded with this sequence.
+
+Its release gates passed: binary/recipe stamp match, independently derived
+recipes and roundtrip, source provenance, `.hhassets` NOBITS, save-state COPY
+relocations, embedded and whole-ROM leak budgets, host-path/metadata checks,
+and package contents. The package ZIP integrity check also passed. The leak
+checks reported 6 matching windows (budget 16) and 61 KiB attributed to existing
+decomp source tables (budget 80 KiB); they are not a claim of zero matches.
+This build has stamp `926C0645` and has **not** been tested on hardware.
+
+The output is `OcarinaOfTime-PAL-AudioM22.zip`. PAL and US currently share
 handheld build and generated directories: use a clean separate checkout when
 switching versions. Follow the README installation instructions for Onion OS;
 install the app-only package and place your own matching ROM at
