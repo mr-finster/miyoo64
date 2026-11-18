@@ -15,7 +15,7 @@ set -u
 PLAT=${1:-handheld}
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 cd "$ROOT/port" || exit 1
-list=$(make -f Makefile.handheld PLAT=$PLAT -s print-C_FILES | sed 's/^C_FILES=//') || { echo "ERROR: make print-C_FILES failed"; exit 1; }
+list=$(make -f Makefile.handheld PLAT=$PLAT VERSION="${VERSION:-ntsc-1.0}" -s print-C_FILES | sed 's/^C_FILES=//') || { echo "ERROR: make print-C_FILES failed"; exit 1; }
 tracked=$(git -c safe.directory='*' -C "$ROOT" ls-files port) || { echo "ERROR: git ls-files failed"; exit 1; }
 bad=0; n=0
 for f in $list; do
@@ -24,7 +24,7 @@ for f in $list; do
         echo "UNTRACKED source compiled into the executable: port/$f"; bad=$((bad + 1))
     fi
 done
-gen=$(make -f Makefile.handheld PLAT=$PLAT -s print-GEN_C | sed 's/^GEN_C=//')
+gen=$(make -f Makefile.handheld PLAT=$PLAT VERSION="${VERSION:-ntsc-1.0}" -s print-GEN_C | sed 's/^GEN_C=//')
 for f in $gen; do
     case "$f" in
         build/hh-gen/oot_psp_asset_segments.c|build/hh-gen/oot_psp_asset_tables.c|build/hh-gen/oot_psp_audio_tables.c) ;;

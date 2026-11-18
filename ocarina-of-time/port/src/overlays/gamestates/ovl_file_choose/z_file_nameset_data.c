@@ -46,7 +46,7 @@ Vtx gOptionsMenuSettingsGERVtx[] = {
 };
 #endif
 
-#if OOT_PAL && PLATFORM_N64
+#if OOT_PAL && (PLATFORM_N64 || defined(TARGET_HANDHELD))
 Vtx gOptionsMenuBrightnessVtx[] = {
 #include "assets/overlays/ovl_file_choose/gOptionsMenuBrightnessVtx.inc.c"
 };
@@ -70,7 +70,7 @@ Vtx gOptionsDividerBrightnessVtx[] = {
 #include "assets/overlays/ovl_file_choose/gOptionsDividerBrightnessVtx.inc.c"
 };
 
-#if OOT_PAL && PLATFORM_N64
+#if OOT_PAL && (PLATFORM_N64 || defined(TARGET_HANDHELD))
 Vtx gOptionsDividerLanguageVtx[] = {
 #include "assets/overlays/ovl_file_choose/gOptionsDividerLanguageVtx.inc.c"
 };

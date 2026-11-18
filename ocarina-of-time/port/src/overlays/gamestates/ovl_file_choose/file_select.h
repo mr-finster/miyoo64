@@ -237,7 +237,7 @@ extern s16 gCharPageHira[];
 extern s16 gCharPageKata[];
 extern s16 gNextCharPage[];
 #endif
-#if OOT_PAL && PLATFORM_N64
+#if OOT_PAL && (PLATFORM_N64 || defined(TARGET_HANDHELD))
 extern Vtx gOptionsMenuBrightnessVtx[];
 extern Vtx gOptionsMenuLanguageVtx[];
 extern Vtx gOptionsDividerLanguageVtx[];
