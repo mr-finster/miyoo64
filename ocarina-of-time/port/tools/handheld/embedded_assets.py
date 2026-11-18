@@ -18,17 +18,18 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-VARIANTS = ("_pal", "_pal_n64", "_pal_gc", "_ique", "_mq", "_v2", "_v3", "_gc")
+sys.path.insert(0, str(ROOT))
+from tools.version_config import load_version_config
 
 DEF_RE = re.compile(r"^\s*(?:static\s+)?(?:const\s+)?[A-Za-z_]\w*\s+\**\s*([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)*=", re.M)
 INC_RE = re.compile(r'#include "assets/[^"]+/([A-Za-z_]\w*)\.[^"]*inc\.c"')
 
-def symbols():
+def symbols(version="ntsc-1.0"):
     names = set()
     # Every top-level definition in the extracted asset sources game code includes
     # (the extractor names unnamed offsets itself, e.g. ovl_Boss_Ganon_00001E80_Tex).
     for sub in ("overlays", "code", "n64dd"):
-        for c in (ROOT / "extracted" / "ntsc-1.0" / "assets" / sub).rglob("*.c"):
+        for c in (ROOT / "extracted" / version / "assets" / sub).rglob("*.c"):
             if c.name.endswith(".inc.c"):
                 continue
             names.update(DEF_RE.findall(c.read_text(errors="replace")))
@@ -38,18 +39,18 @@ def symbols():
         if "/port/" in str(src):
             continue
         names.update(INC_RE.findall(src.read_text(errors="replace")))
-    for sub in ("overlays", "code", "n64dd"):
-        for xml in sorted((ROOT / "assets" / "xml" / sub).glob("*.xml")):
-            if xml.stem.endswith(VARIANTS):
-                continue
-            for elem in ET.parse(xml).getroot().iter():
-                name = elem.attrib.get("Name")
-                if name and elem.tag not in ("Root", "File", "ExternalFile"):
-                    names.add(name)
+    for asset in load_version_config(version).assets:
+        parts = asset.xml_path.parts
+        if len(parts) < 4 or parts[:2] != ("assets", "xml") or parts[2] not in ("overlays", "code", "n64dd"):
+            continue
+        for elem in ET.parse(ROOT / asset.xml_path).getroot().iter():
+            name = elem.attrib.get("Name")
+            if name and elem.tag not in ("Root", "File", "ExternalFile"):
+                names.add(name)
     return names
 
-def split(objcopy, obj):
-    names = symbols()
+def split(objcopy, obj, version="ntsc-1.0"):
+    names = symbols(version)
     out = subprocess.run([objcopy.replace("objcopy", "readelf"), "-SW", obj], capture_output=True, text=True).stdout
     renames = []
     for line in out.splitlines():
@@ -66,6 +67,6 @@ def split(objcopy, obj):
 
 if __name__ == "__main__":
     if sys.argv[1] == "list":
-        print("\n".join(sorted(symbols())))
+        print("\n".join(sorted(symbols(sys.argv[2] if len(sys.argv) > 2 else "ntsc-1.0"))))
     else:
-        split(sys.argv[2], sys.argv[3])
+        split(sys.argv[2], sys.argv[3], sys.argv[4] if len(sys.argv) > 4 else "ntsc-1.0")

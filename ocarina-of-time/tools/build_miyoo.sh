@@ -27,22 +27,38 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+VERSION="${VERSION:-ntsc-1.0}"
+case "$VERSION" in
+    ntsc-1.0) GAME=miyoo/game.json; ROM_SHA1=ad69c91157f6705e8ab06c79fe08aad47bb57ba7; OUT_NAME=OcarinaOfTime-miyoo ;;
+    pal-1.0)
+        GAME=miyoo/game-pal-m12.json; ROM_SHA1=328a1f1beba30ce5e178f031662019eb32c5f3b5; OUT_NAME=OcarinaOfTime-PAL-M12
+        if [ "${PAL_AUDIO_M22:-0}" = 1 ]; then
+            GAME=miyoo/game-pal-audiom22.json; OUT_NAME=OcarinaOfTime-PAL-AudioM22
+        fi ;;
+    *) echo "ERROR: unsupported VERSION: $VERSION"; exit 1 ;;
+esac
 ROMARG="${1:-}"
 PERSONAL="${PERSONAL:-0}"
 [ -n "$ROMARG" ] && PERSONAL=1
+if [ "$VERSION" = pal-1.0 ] && [ "$PERSONAL" = 1 ]; then
+    echo "ERROR: PAL test packages must not contain a ROM"; exit 1
+fi
 OUT_DIR="${OUT_DIR:-$ROOT}"
-OUT="$OUT_DIR/OcarinaOfTime-miyoo.zip"
-[ "$PERSONAL" = 1 ] && OUT="$OUT_DIR/OcarinaOfTime-miyoo-PERSONAL.zip"
+OUT="$OUT_DIR/$OUT_NAME.zip"
+[ "$PERSONAL" = 1 ] && OUT="$OUT_DIR/$OUT_NAME-PERSONAL.zip"
 rm -f "$OUT" # first: a failed gate must not leave an older zip under this build's name
 B=port/build/hh-miyoo
 TC="${MIYOO_TOOLCHAIN:-/opt/miyoomini-toolchain}/usr/bin/arm-linux-gnueabihf-"
-DROM=port/baseroms/ntsc-1.0/baserom-decompressed.z64
-GAME=miyoo/game.json
+DROM=port/baseroms/$VERSION/baserom-decompressed.z64
 for f in $B/oot $B/oot_embedded.elf $B/embedded.bin $B/oot_recipes.bin $B/oot_recipes.bin.ops $B/build_stamp.c; do
     test -f "$f" || { echo "ERROR: $f missing: build PLAT=miyoo first (notes/miyoo.md)"; exit 1; }
 done
 test -x "${TC}gcc" || { echo "ERROR: no Miyoo toolchain at ${TC}gcc (MIYOO_TOOLCHAIN)"; exit 1; }
 test -f "$DROM" || { echo "ERROR: $DROM missing (the decomp's setup makes it from the player's ROM)"; exit 1; }
+grep -aFq "$ROM_SHA1" "$B/oot" || { echo "FAIL: binary ROM version does not match $VERSION"; exit 1; }
+expected=$(cut -d' ' -f1 "port/baseroms/$VERSION/checksum.md5")
+actual=$(md5sum "$DROM" | cut -d' ' -f1)
+[ "$expected" = "$actual" ] || { echo "FAIL: decompressed ROM mismatch"; exit 1; }
 
 echo "gate 4: oot_recipes.bin is this link's"
 RST=$(python3 -c "import sys; b=open(sys.argv[1],'rb').read(); print(b[-8:-4][::-1].hex() if b[-4:]==b'HHRC' else 'none')" $B/oot_recipes.bin)
@@ -54,7 +70,7 @@ echo "gate R: the recipes' literal budget (derived again, compared)"
 RT=$(mktemp -d)
 gcc -O2 -Wall -Wno-unused-function -o "$RT/hh_recipes" port/tools/handheld/hh_recipes.c -lz
 (cd port && env -u HH_LITERAL_BUDGET tools/handheld/recipes.sh "${TC}nm" "${TC}readelf" build/hh-miyoo/oot_embedded.elf \
-    build/hh-miyoo/build_stamp.c build/hh-gen/oot_psp_asset_segments.c extracted/ntsc-1.0/baserom \
+    build/hh-miyoo/build_stamp.c build/hh-gen/oot_psp_asset_segments.c extracted/$VERSION/baserom \
     build/hh-gen/data/segments/oot_psp_assets.bin build/hh-miyoo/embedded.bin "$RT/hh_recipes" "$RT/oot_recipes.bin") 2> "$RT/log" \
     || { cat "$RT/log"; echo "FAIL: the recipes do not derive within the budget"; exit 1; }
 grep -E 'literal\)|literals .* other|round trip' "$RT/log" | sed 's/^/  /'
@@ -64,7 +80,7 @@ echo "  the shipped oot_recipes.bin is the one derived here, within the fixed bu
 rm -rf "$RT"
 
 echo "gate 0: provenance"
-sh port/tools/handheld/check_provenance.sh miyoo
+VERSION="$VERSION" sh port/tools/handheld/check_provenance.sh miyoo
 
 echo "gate 1: .hhassets NOBITS"
 "${TC}readelf" -SW $B/oot | grep -E '\.hhassets +NOBITS' >/dev/null || { echo "FAIL: .hhassets is not NOBITS"; exit 1; }
@@ -130,8 +146,9 @@ echo "  $HAVE"
 
 echo "pack"
 set -- "$GAME" --build "$STAGE" -o "$OUT" --check
+if [ "$VERSION" = pal-1.0 ]; then set -- "$@" --layouts app; fi
 if [ "$PERSONAL" = 1 ]; then
-    ROM="${ROMARG:-port/baseroms/ntsc-1.0/baserom.z64}"
+    ROM="${ROMARG:-port/baseroms/$VERSION/baserom.z64}"
     test -f "$ROM" || { echo "FAIL: no ROM at $ROM"; exit 1; }
     set -- "$@" --rom "$ROM"
 fi

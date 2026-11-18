@@ -442,7 +442,10 @@ static int HhDebugBootEntrance(GameStateFunc* nextInit, size_t* nextSize) {
             gSaveContext.chamberCutsceneNum = (u8)strtol(c, NULL, 0);
         }
     }
-    if (gSaveContext.language != LANGUAGE_JPN) {
+#if OOT_NTSC
+    if (gSaveContext.language != LANGUAGE_JPN)
+#endif
+    {
         /* The NTSC debug save's name is katakana (リンク), which the English text
          * path decodes to garbage glyphs ("<junk>, it's so hot in here!"); a file
          * made on the file select is fine. Name it "Link" in the filename charset. */

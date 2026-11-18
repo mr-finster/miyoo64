@@ -1,0 +1,13 @@
+{
+  "id": "oot-pal-m12",
+  "title": "Ocarina of Time PAL Test",
+  "folder": "OcarinaOfTime-PAL-M12",
+  "exe": "oot",
+  "files": ["oot", "oot_recipes.bin"],
+  "icon": "icon.png",
+  "env": "OOT",
+  "data": "data",
+  "rom": {"name": "The Legend of Zelda: Ocarina of Time (PAL 1.0)", "sha1": "328a1f1beba30ce5e178f031662019eb32c5f3b5", "size": 33554432},
+  "system": "OOTPALM12",
+  "minui_tag": "OOTPALM12"
+}

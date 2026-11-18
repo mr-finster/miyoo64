@@ -38,6 +38,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <zlib.h>
+#include "versions.h"
 #include "miyoo_romfind.h"
 
 #include "hh_recipe_ops.h"
@@ -52,12 +53,26 @@ extern unsigned char __hhassets_end[];
 extern const uint32_t hh_build_stamp;
 
 #define ROM_SIZE 0x2000000u
+#if OOT_VERSION == PAL_1_0
+#define DMADATA_OFFSET 0x7950u
+#define DMADATA_COUNT 1511u
+#define ROM_SHA1 "328a1f1beba30ce5e178f031662019eb32c5f3b5"
+#define ROM_REGION 'P'
+#define ROM_MEDIA 'N'
+#define ROM_VERSION_NAME "PAL 1.0"
+#elif OOT_VERSION == NTSC_1_0
 #define DMADATA_OFFSET 0x7430u
 #define DMADATA_COUNT 1510u
+#define ROM_SHA1 "ad69c91157f6705e8ab06c79fe08aad47bb57ba7"
+#define ROM_REGION 'E'
+#define ROM_MEDIA 'C'
+#define ROM_VERSION_NAME "USA 1.0"
+#else
+#error Unsupported ROM version
+#endif
 #define RECIPES_NAME "oot_recipes.bin"
 #define PKG_ROM_NAME "rom.z64" /* the ROM in the game folder, next to the executable */
 
-#define ROM_SHA1 "ad69c91157f6705e8ab06c79fe08aad47bb57ba7" /* USA 1.0, z64 order */
 
 typedef struct {
     uint32_t ovs, ove, vs, fo, flags, size;
@@ -292,14 +307,13 @@ static int quick_check(const char* path, char* why, size_t whylen, int* order) {
     else return 0;
     unswap(h, 64, o);
     if (memcmp(h + 0x20, "THE LEGEND OF ZELDA", 19) != 0) return 0;
-    if (h[0x3B] != 'C' || h[0x3C] != 'Z' || h[0x3D] != 'L') {
+    if (h[0x3B] != ROM_MEDIA || h[0x3C] != 'Z' || h[0x3D] != 'L') {
         snprintf(why, whylen, "is a Zelda ROM, but not Ocarina of Time for the N64.");
         return -1;
     }
-    if (h[0x3E] == 'P') { snprintf(why, whylen, "is the European (PAL) version."); return -1; }
-    if (h[0x3E] == 'J') { snprintf(why, whylen, "is the Japanese version."); return -1; }
-    if (h[0x3E] != 'E') { snprintf(why, whylen, "is not the USA version."); return -1; }
-    if (h[0x3F] != 0) { snprintf(why, whylen, "is USA version 1.%d (Rev %d).", h[0x3F], h[0x3F]); return -1; }
+    if (h[0x3E] != ROM_REGION || h[0x3F] != 0) {
+        snprintf(why, whylen, "is not " ROM_VERSION_NAME "."); return -1;
+    }
     if ((uint64_t)st.st_size != ROM_SIZE) { snprintf(why, whylen, "is not 32 MB (a trimmed or damaged ROM)."); return -1; }
     *order = o;
     return 1;
@@ -352,7 +366,7 @@ static int try_file(const char* path, void* ctx) {
         ok = rom.f != NULL && rom_verify(&rom);
         if (rom.f) fclose(rom.f);
         if (ok) { snprintf(fd->path, sizeof(fd->path), "%s", path); fd->order = o; return 1; }
-        snprintf(why, sizeof(why), "%s", rom.f ? "doesn't match USA 1.0 (damaged or modified)." : "can't be read.");
+        snprintf(why, sizeof(why), "%s", rom.f ? "doesn't match " ROM_VERSION_NAME " (damaged or modified)." : "can't be read.");
         port_log_always("hh: %s: %s, passed over\n", path, why);
         sRomName[0] = 0;
         progress("Looking for your ROM...", 0);
@@ -617,9 +631,9 @@ void HhConvert_Ensure(const char* root) {
             if (fd.why[0]) {
                 char l1[96];
                 snprintf(l1, sizeof(l1), "%s", fd.whyName);
-                HhRomScreen_Fail(l1, fd.why, "Ocarina of Time needs USA 1.0.");
+                HhRomScreen_Fail(l1, fd.why, "Ocarina of Time needs " ROM_VERSION_NAME ".");
             }
-            HhRomScreen_Fail("No Ocarina of Time ROM found.", "Put your USA 1.0 ROM (.z64/.v64/.n64)", MRF_NOT_FOUND_2);
+            HhRomScreen_Fail("No Ocarina of Time ROM found.", "Put your " ROM_VERSION_NAME " ROM (.z64/.v64/.n64)", MRF_NOT_FOUND_2);
             return;
         }
         port_log_always("hh: ROM %s (%s order), SHA-1 checked\n", fd.path, fd.order == 0 ? "z64" : fd.order == 1 ? "v64" : "n64");

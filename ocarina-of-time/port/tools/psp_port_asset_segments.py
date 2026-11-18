@@ -282,15 +282,6 @@ class NativeAssetContext:
         self._index_native_u64_symbol_ranges()
         self._index_segment_symbols()
 
-    def _should_use_xml(self, path: Path) -> bool:
-        stem = path.stem
-
-        if self.version.startswith("pal"):
-            return True
-
-        variant_suffixes = ("_pal", "_pal_n64", "_pal_gc", "_v2", "_v2_mq", "_v3", "_v3_mq", "_ique", "_mq")
-        return not stem.endswith(variant_suffixes)
-
     def _add_texture_range(self, segment_name: str, offset: int, size: int) -> None:
         if size <= 0:
             return
@@ -298,16 +289,13 @@ class NativeAssetContext:
         self.texture_ranges_by_segment.setdefault(segment_name, []).append(texture_storage_range(offset, size))
 
     def _load_xml_offsets(self) -> None:
-        xml_roots = [
-            ROOT / "assets" / "xml" / "objects",
-            ROOT / "assets" / "xml" / "scenes",
-            ROOT / "assets" / "xml" / "textures",
-            ROOT / "assets" / "xml" / "misc",
-        ]
-
-        for xml_path in itertools.chain.from_iterable(root.glob("**/*.xml") for root in xml_roots if root.exists()):
-            if not self._should_use_xml(xml_path):
+        config = version_config.load_version_config(self.version)
+        allowed_roots = {"objects", "scenes", "textures", "misc"}
+        for asset in config.assets:
+            parts = asset.xml_path.parts
+            if len(parts) < 4 or parts[:2] != ("assets", "xml") or parts[2] not in allowed_roots:
                 continue
+            xml_path = ROOT / asset.xml_path
 
             try:
                 root = ET.parse(xml_path).getroot()
@@ -372,7 +360,13 @@ class NativeAssetContext:
                     if (symbol_name is None) or (offset_text is None):
                         continue
 
-                    offsets[symbol_name] = parse_xml_int(offset_text)
+                    offset = parse_xml_int(offset_text)
+                    if symbol_name in offsets and offsets[symbol_name] != offset:
+                        raise ValueError(
+                            f"conflicting offsets for {segment_name}/{symbol_name}: "
+                            f"0x{offsets[symbol_name]:X} and 0x{offset:X} in {xml_path}"
+                        )
+                    offsets[symbol_name] = offset
 
     def _add_object_paths(self, segment_name: str, *patterns: str) -> None:
         paths: list[Path] = []
