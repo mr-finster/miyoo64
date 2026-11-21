@@ -186,7 +186,7 @@ static inline void romdataWrongRomError(const char *fmt, ...)
 	va_end(args);
 
 #ifdef PLATFORM_MIYOO
-	sysFatalError("Wrong ROM file: %s\n%s\nThis port needs Perfect Dark (USA) Rev 1.\nTo look for your ROM again, put a file named rebuild in App/PerfectDark/data.", romName, reason);
+	sysFatalError("Wrong ROM file: %s\n%s\nThis port needs the ROM for this build (" ROMDATA_ROM_DESC ").", romName, reason);
 #else
 	sysFatalError("Wrong ROM file.\n%s\nEnsure that you have the correct " ROMDATA_ROM_DESC " ROM in z64 format.", reason);
 #endif
