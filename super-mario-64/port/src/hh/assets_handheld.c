@@ -4,7 +4,7 @@
  * objects live in a NOLOAD region (__assets_start..__assets_end, see the
  * "Asset split" section of port/Makefile) that is filled at boot
  *   1. from assets.bin, a cache in the save dir written on the first run, or
- *   2. from the player's own Super Mario 64 (USA) ROM on the SD card, by
+ *   2. from the player's own matching Super Mario 64 ROM on the SD card, by
  *      executing the recipe table recipes.bin that ships in the zip
  *      (numbers only: ROM offsets, byte-swap patterns, sizes -- see
  *      tools/assets/derive_recipes.py / emit_recipes.py), then cached as 1.
@@ -120,8 +120,18 @@ static int rom_read(u32 off, u8* dst, u32 len) {
 
 static void rom_close(void) { if (sRom) { fclose(sRom); sRom = NULL; } }
 
+#ifdef VERSION_EU
+#define SM64_ROM_REGION 'P'
+#define SM64_ROM_SHA1 "4ac5721683d0e0b6bbb561b58a71740845dceea9"
+#define SM64_ROM_NAME "Europe"
+#else
+#define SM64_ROM_REGION 'E'
+#define SM64_ROM_SHA1 "9bef1128717f958171a4afac3ed78ee2bb4e86ce"
+#define SM64_ROM_NAME "USA"
+#endif
+
 /* Open + validate: an N64 ROM in any byte order whose header says
- * SUPER MARIO 64, US region. The CRC of the generated region is the real test. */
+ * SUPER MARIO 64 and the selected region. The CRC of the generated region is the real test. */
 static int rom_open(const char* path, char* err, u32 errlen) {
     u8 hdr[0x40];
     rom_close();
@@ -136,7 +146,7 @@ static int rom_open(const char* path, char* err, u32 errlen) {
     else { snprintf(err, errlen, "not an N64 ROM"); rom_close(); return 0; }
     if (!rom_read(0, hdr, sizeof(hdr))) { snprintf(err, errlen, "unreadable"); rom_close(); return 0; }
     if (memcmp(hdr + 0x20, "SUPER MARIO 64", 14) != 0) { snprintf(err, errlen, "not Super Mario 64"); rom_close(); return 0; }
-    if (hdr[0x3E] != 'E') { snprintf(err, errlen, "not the US (NTSC) version (region '%c')", hdr[0x3E]); rom_close(); return 0; }
+    if (hdr[0x3E] != SM64_ROM_REGION) { snprintf(err, errlen, "not the " SM64_ROM_NAME " version (region '%c')", hdr[0x3E]); rom_close(); return 0; }
     return 1;
 }
 
@@ -553,10 +563,9 @@ static int try_load(const char* path, char* err, u32 errlen) {
 
 /* ------------------------------------------------------------------ ROM search */
 /* The ROM: miyoo_romfind.h's search (the game's folder, data/, the path that worked last time, Roms/, the card two
- * folders deep), each candidate checked here: Super Mario 64's header (any byte order, the US cart), then the whole
+ * folders deep), each candidate checked here: Super Mario 64's header (any byte order, selected region), then the whole
  * file's SHA-1. A file that fails either is passed over and the search goes on. `why` names the last Super Mario 64
  * dump refused (another game's ROM is only logged). */
-#define SM64_ROM_SHA1 "9bef1128717f958171a4afac3ed78ee2bb4e86ce" /* Super Mario 64 (USA), z64 order */
 struct RomTry { char* why; u32 whylen; };
 static void sha1_progress(void* ctx, uint64_t done, uint64_t total) {
     (void) ctx;
@@ -580,11 +589,11 @@ static int rom_try(const char* path, void* ctx) {
         return 0;
     }
     if (strcmp(hex, SM64_ROM_SHA1) != 0) {
-        snprintf(t->why, t->whylen, "%s: SHA-1 %.12s..., not the US ROM", mrf_base(path), hex);
+        snprintf(t->why, t->whylen, "%s: SHA-1 %.12s..., not the " SM64_ROM_NAME " ROM", mrf_base(path), hex);
         port_log_always("assets: skipping %s: a Super Mario 64 ROM, but SHA-1 %s (want %s)\n", path, hex, SM64_ROM_SHA1);
         return 0;
     }
-    port_log_always("assets: ROM %s (Super Mario 64 (USA), SHA-1 checked)\n", path);
+    port_log_always("assets: ROM %s (Super Mario 64 (" SM64_ROM_NAME "), SHA-1 checked)\n", path);
     return 1;
 }
 
@@ -847,9 +856,9 @@ static void assets_load(const char* argv0) {
     if (!find_rom(rom, sizeof(rom), why, sizeof(why))) {
         if (why[0]) {
             port_log_always("assets: rejected: %s\n", why);
-            fail_screen("No usable Super Mario 64 ROM.", why, "It must be the USA cart's dump.");
+            fail_screen("No usable Super Mario 64 ROM.", why, "It must be the " SM64_ROM_NAME " cart's dump.");
         }
-        fail_screen("No Super Mario 64 ROM found.", MRF_NOT_FOUND_1, MRF_NOT_FOUND_2);
+        fail_screen("No Super Mario 64 ROM found.", "Put your " SM64_ROM_NAME " ROM on the SD card.", MRF_NOT_FOUND_2);
         return;
     }
     {
@@ -862,7 +871,7 @@ static void assets_load(const char* argv0) {
     if (!blob_parse(blob, blob_len)) { fail_screen("Cannot extract the game data:", "recipes.bin is corrupt.", NULL); return; }
     if (!generate(rom, screen_progress, err, sizeof(err))) {
         port_log_always("assets: %s\n", err);
-        fail_screen("This isn't the expected ROM data.", "It must be the US (NTSC) cart.", NULL);
+        fail_screen("This isn't the expected ROM data.", "It must be the " SM64_ROM_NAME " cart.", NULL);
         return;
     }
     screen_progress("Saving", 95);

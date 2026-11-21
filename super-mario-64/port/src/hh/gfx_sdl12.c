@@ -49,7 +49,11 @@ extern struct GfxDimensions gfx_current_dimensions;
 
 #define SCREEN_W 320 /* the N64's own screen, doubled onto the 640x480 panel */
 #define SCREEN_H 240
+#ifdef VERSION_EU
+#define FRAMERATE 25 /* PAL VI at 50 Hz, two VIs per game iteration */
+#else
 #define FRAMERATE 30
+#endif
 #define FRAME_TIME_MS (1000 / FRAMERATE)
 /* Max consecutive skipped renders. 1 (not 2): when the device can't hold
  * 30 fps, render-skip-render-skip is a steady 15 fps; allowing 2 skips

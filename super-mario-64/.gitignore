@@ -25,11 +25,13 @@
 # the Miyoo Mini release (the shared Miyoo kit: the packer, the launch templates, the port's game.json)
 !miyoo/
 !miyoo/game.json
+!miyoo/game_pal.json
 !miyoo/templates/
 !miyoo/templates/*
 !miyoo/tools/
 !miyoo/tools/*.py
 !README_MIYOO.md
+!README_PAL.md
 # The port tree: sm64-port @ 2b17d08 (2024-11-15), the n64decomp/sm64 decomp plus the
 # PC port layer. CODE ONLY is tracked. The decomp's committed ROM-derived game data is
 # fetched from that pinned commit by tools/decomp_data.sh (user-approved 2026-09-24),
