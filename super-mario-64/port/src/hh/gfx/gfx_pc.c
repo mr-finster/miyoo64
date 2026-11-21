@@ -113,7 +113,7 @@ extern void port_log(const char* fmt, ...);
 #define GU_PSM_T16		(6) /* Texture */
 #define GU_PSM_T32		(7) /* Texture */
 extern void* getStaticVramTexBuffer(unsigned int width, unsigned int height, unsigned int psm);
-extern void gfx_scegu_draw_triangles_2d(float buf_vbo[], size_t buf_vbo_len, size_t buf_vbo_num_tris);
+extern void gfx_scegu_draw_triangles_2d(float buf_vbo[], bool flip, size_t buf_vbo_num_tris);
 extern float identity_matrix[4][4];
 
 struct RGBA {
@@ -3537,7 +3537,7 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
 }
 
 /* This will be going away possibly, it all depends on how we end up treating hw sprites */
-static void gfx_sp_tri1_2d(uint8_t vtx1_idx, uint8_t vtx2_idx, UNUSED uint8_t vtx3_idx) {
+static void gfx_sp_tri1_2d(uint8_t vtx1_idx, uint8_t vtx2_idx, bool flip) {
 #ifdef HH_CENSUS
     hh_census_draw(true);
 #endif
@@ -3737,7 +3737,7 @@ static void gfx_sp_tri1_2d(uint8_t vtx1_idx, uint8_t vtx2_idx, UNUSED uint8_t vt
         tri_num_vert++;
     }
     if (gfx_trace_frames > 0) port_log("  2d: draw (%d,%d)-(%d,%d)\n", tri_buf[0].x, tri_buf[0].y, tri_buf[1].x, tri_buf[1].y);
-    gfx_scegu_draw_triangles_2d((float*)&tri_buf[0],0,1);
+    gfx_scegu_draw_triangles_2d((float*)&tri_buf[0],flip,1);
     if (gfx_trace_frames > 0) port_log("  2d: drawn\n");
 }
 
@@ -4259,7 +4259,7 @@ static void gfx_dp_set_fill_color(uint32_t packed_color) {
  * target from native) before the sky. */
 static bool gfx_rect_on_3d;
 
-static void gfx_draw_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry) {
+static void gfx_draw_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry, bool flip) {
     gfx_set_phase(gfx_rect_on_3d);
     uint32_t saved_other_mode_h = rdp.other_mode_h;
     uint32_t cycle_type = (rdp.other_mode_h & (3U << G_MDSFT_CYCLETYPE));
@@ -4358,7 +4358,7 @@ static void gfx_draw_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_t lr
     tri_state.valid = false;
     rsp.geometry_mode = 0;
     
-    gfx_sp_tri1_2d(0, 1, 2);
+    gfx_sp_tri1_2d(0, 1, flip);
     
     rsp.geometry_mode = geometry_mode_saved;
     rdp.viewport = viewport_saved;
@@ -4437,7 +4437,7 @@ static void gfx_dp_texture_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int3
         if (draw < 0) { const char *e = getenv("SM64_TEXRECTINV"); draw = e && e[0] == '1'; }
         if (!draw) { rdp.combine_mode = saved_combine_mode; return; }
     }
-    gfx_draw_rectangle(ulx, uly, lrx, lry);
+    gfx_draw_rectangle(ulx, uly, lrx, lry, flip);
     rdp.combine_mode = saved_combine_mode;
 }
 
@@ -4509,7 +4509,7 @@ static void gfx_dp_fill_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_t
     // colour.  Forcing the fill colour here (what sm64-port did) drew those
     // boxes opaque black or not at all, depending on the fill colour's 1-bit
     // alpha.
-    gfx_draw_rectangle(ulx, uly, lrx, lry);
+    gfx_draw_rectangle(ulx, uly, lrx, lry, false);
     gfx_rect_on_3d = false;
     rdp.combine_mode = saved_combine_mode;
 }

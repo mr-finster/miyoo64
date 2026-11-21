@@ -183,22 +183,29 @@ void exec_display_list(struct SPTask *spTask) {
     PORT_PROF_ADD(PROF_GFX, port_time_us() - t);
 }
 
-/* One game frame of audio: two AI buffers of 528 or 544 samples at 32 kHz (the
- * US timing sm64-port uses), the long ones while the ring is under its cushion.
+/* One game frame of audio: two AI buffers at 32 kHz, the long ones while the
+ * ring is under its cushion. EU uses the original 50 Hz VI cadence.
  * Called by the game thread each frame and by the backstop thread when the ring
  * runs low (both under port_audio_mix_lock). */
+#ifdef VERSION_EU
+/* EU presets are 32 kHz at 50 VI/s: 640 samples, with the N64's +/-16 cushion. */
+#define AUDIO_VI_RATE 50
+#define SAMPLES_HIGH 656
+#define SAMPLES_LOW 624
+#else
+#define AUDIO_VI_RATE 60
 #define SAMPLES_HIGH 544
 #define SAMPLES_LOW 528
+#endif
 extern int port_audio_sync(void);
-/* Samples for the next 1/60 s buffer: long while the ring is under its
- * cushion, else short -- or, under SM64_AUDIO_SYNC, exactly 32000/60 on
- * average (533 or 534), whatever the ring holds. */
+/* Samples for one VI: long while the ring is under its cushion, else short;
+ * under SM64_AUDIO_SYNC use exactly 32000/AUDIO_VI_RATE on average. */
 static u32 audio_buffer_samples(void) {
     if (port_audio_sync()) {
         static u32 sAcc SAVESTATE_EXCLUDE;
         sAcc += 32000;
-        const u32 n = sAcc / 60;
-        sAcc %= 60;
+        const u32 n = sAcc / AUDIO_VI_RATE;
+        sAcc %= AUDIO_VI_RATE;
         return n;
     }
     const u32 queued = port_audio_out_queued_bytes() / 4;
@@ -213,7 +220,7 @@ void port_sm64_audio_frame(void) {
     port_audio_out_push(buf, (n0 + n1) * 4);
 }
 
-/* One N64 audio frame (1/60 s) for wait_for_audio_frames, which the N64's game
+/* One N64 audio VI for wait_for_audio_frames, which the N64's game
  * thread spins in while its audio thread renders: audio_reset_session waits
  * there for the notes' release and the reverb tail, then for the load lock.
  * We have no audio thread to wait for, so render the frame here -- paced by
