@@ -63,8 +63,8 @@ You need the Miyoo Mini toolchain at `/opt/miyoomini-toolchain` (the Mario Kart 
 ```sh
 tools/fetch_assets.sh                    # src/assets/ntsc-final from the pinned commit
 tools/gen_headers.sh                     # src/generated/ntsc-final: the ID headers the code includes
-make -j4                                 # build/miyoo/pd.arm
-mkdir -p build/zip && /opt/miyoomini-toolchain/usr/bin/arm-linux-gnueabihf-strip -o build/zip/pd build/miyoo/pd.arm
+make -j4                                 # build/miyoo/ntsc-final/pd.arm
+mkdir -p build/zip && /opt/miyoomini-toolchain/usr/bin/arm-linux-gnueabihf-strip -o build/zip/pd build/miyoo/ntsc-final/pd.arm
 python3 miyoo/tools/miyoo_pack.py miyoo/game.json --build build/zip -o PerfectDark-miyoo.zip --check
 ```
 

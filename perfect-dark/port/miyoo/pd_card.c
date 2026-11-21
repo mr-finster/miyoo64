@@ -63,7 +63,11 @@
 #define PD_LOCAL_WHERE " (in the game's folder)"
 #define MB 0x100000u
 
-static const char kRomSha1[] = "af8788ac4d1a57260eae9c53ffe851fcf2a3319b"; /* Perfect Dark (USA) (Rev 1), z64 */
+#if PAL
+static const char kRomSha1[] = "a663d3f4eee0b198471132db92e9639a9edd1985";
+#else
+static const char kRomSha1[] = "af8788ac4d1a57260eae9c53ffe851fcf2a3319b";
+#endif
 #ifdef PD_CARD_TESTSHA
 /* test builds only (-DPD_CARD_TESTSHA): PD_CARD_TESTSHA=<sha1> takes another image for the dump.
  * Never in a release. */
@@ -327,12 +331,20 @@ static int card_check(const char *path, const char *where, const char *out, cons
         *say = "It is not a 32 MB ROM.";
         return 0;
     }
+#if PAL
+    if (hdr[0x3E] != 'P' || order != ORDER_Z64) {
+        *why = "not a PAL z64 ROM";
+        *say = "Use the European PAL ROM in z64 byte order.";
+        return 0;
+    }
+#else
     if (hdr[0x3E] != 'E') { /* the cart's country code: E USA, P Europe, J Japan */
         *why = "not the Perfect Dark (USA) dump";
         *say = hdr[0x3E] == 'P' ? "It is the European (PAL) version." :
                hdr[0x3E] == 'J' ? "It is the Japanese version." : "It is not the USA version.";
         return 0;
     }
+#endif
     snprintf(sProg.sub, sizeof(sProg.sub), "%s%s", base_name(path), where);
     sProg.done = 0;
     sProg.total = PD_ROM_SIZE / MB * (out ? 2 : 1) + (out ? 1 : 0);
@@ -412,11 +424,11 @@ static int card_check(const char *path, const char *where, const char *out, cons
         sha1_final(&s, hex);
         if (strcmp(hex, kRomSha1) != 0) {
             if (w >= 0) { close(w); remove(tmp); }
-            printf("[card] %s: a Perfect Dark ROM, but not the USA Rev 1 this port is built for (SHA-1 %s%s)\n", path,
+            printf("[card] %s: a Perfect Dark ROM, but not the ROM version this port is built for (SHA-1 %s%s)\n", path,
                    hex, pass ? ", on the second read" : "");
-            *why = "not the Perfect Dark (USA) (Rev 1) dump";
+            *why = "not the required Perfect Dark ROM dump";
             *say = pass ? "It could not be read the same twice." :
-                   hdr[0x3F] == 0 ? "It is the USA 1.0 (Rev 0) version." : "It is damaged or modified.";
+                   "It is the wrong version, damaged or modified.";
             break;
         }
         if (pass == 0) {
@@ -463,7 +475,7 @@ static int card_try(const char *path, const char *out)
         }
         return 0;
     }
-    printf("[card] %s: Perfect Dark (USA) (Rev 1) verified, saved as %s\n", path, out);
+    printf("[card] %s: Perfect Dark ROM verified, saved as %s\n", path, out);
     return 1;
 }
 
@@ -474,7 +486,7 @@ static int card_try(const char *path, const char *out)
 static int card_mrf_try(const char *path, void *out) { return card_try(path, (const char *)out); }
 static int card_search(const char *app, const char *save, const char *out)
 {
-    static const char *const own[] = { PD_LOCAL_ROM, "pd.ntsc-final.z64", PD_COPY, NULL };
+    static const char *const own[] = { PD_LOCAL_ROM, "pd." VERSION_ROMID ".z64", PD_COPY, NULL };
     static MrfSearch s; /* .bss: PATH_MAX buffers */
     memset(&s, 0, sizeof(s));
     s.app_dir = app;
@@ -490,7 +502,7 @@ static int card_search(const char *app, const char *save, const char *out)
 /* the paths; the normal start (system calls only, in the game's process)                */
 
 static char sSave[PATH_MAX];  /* the save folder */
-static char sLocal[3][PATH_MAX]; /* the game folder's ROM, where it may be */
+static char sLocal[4][PATH_MAX]; /* the game folder's ROM, where it may be */
 static int sNumLocal;
 
 static void card_paths(void)
@@ -512,8 +524,12 @@ static void card_paths(void)
     }
     if (base[0]) {
         snprintf(sLocal[sNumLocal++], PATH_MAX, "%s/" PD_LOCAL_ROM, base);
-        snprintf(sLocal[sNumLocal++], PATH_MAX, "%s/pd.ntsc-final.z64", base); /* the PC port's name */
+        snprintf(sLocal[sNumLocal++], PATH_MAX, "%s/pd." VERSION_ROMID ".z64", base); /* the PC port's name */
     }
+#if PAL
+    /* Map the shared z64 in place; it goes through the existing local-ROM SHA-1 check. */
+    snprintf(sLocal[sNumLocal++], PATH_MAX, "%s", "/mnt/SDCARD/Roms/N64/PerfectDarkPAL.z64");
+#endif
     /* the same file twice (the executable in --basedir, as launch.sh runs it): once */
     for (i = 1; i < sNumLocal; i++) {
         struct stat a, b;
@@ -634,7 +650,7 @@ static void card_work(void)
         card_done(copy);
     }
     /* the card */
-    printf("[card] first start: looking for your Perfect Dark (USA) ROM under %s\n", root);
+    printf("[card] first start: looking for your Perfect Dark ROM under %s\n", root);
     sProg.l1 = kCardL1;
     sProg.l2 = kCardL2;
     card_send(MSG_PROGRESS, 0, "Looking on the SD card", kCardL1, kCardL2, "Looking for your ROM...", kFoot, NULL);
@@ -648,19 +664,24 @@ static void card_work(void)
         if (card_check(copy, "", NULL, &why, &say) <= 0) {
             printf("[card] rebuild: no dump on the card and %s: %s\n", copy, why);
             card_fail(PD_COPY, "The ROM copy failed its check.", say ? say : "It could not be read.",
-                      "Copy your USA ROM to the SD card.");
+                      "Copy the matching ROM to the SD card.");
         }
         printf("[card] rebuild: no dump on the card; %s verified in place\n", copy);
         found = 1;
     }
     if (!found) {
-        printf("FATAL: no Perfect Dark (USA) (Rev 1) ROM found. Copy your dump (.z64, .n64 or .v64) anywhere on the\n"
+        printf("FATAL: no matching Perfect Dark ROM found. Copy your dump (.z64, .n64 or .v64) anywhere on the\n"
                "card (App/PerfectDark/, Roms/ and its folders, or up to two folders deep), and start again.\n");
         if (sReject != NULL)
-            card_fail(sRejectName, "This Perfect Dark ROM can't be used.", sReject, "This port needs the USA Rev 1 ROM.");
+            card_fail(sRejectName, "This Perfect Dark ROM can't be used.", sReject, "This port needs the matching ROM version.");
         if (sLocalReject != NULL)
-            card_fail(sLocalName, "This ROM can't be used.", sLocalReject, "Use the USA Rev 1 ROM as rom.z64.");
+            card_fail(sLocalName, "This ROM can't be used.", sLocalReject, "Use the matching ROM as rom.z64.");
+#if PAL
+        card_fail(NULL, "No Perfect Dark PAL ROM found.",
+                  "Put your PAL z64 ROM at", "Roms/N64/PerfectDarkPAL.z64");
+#else
         card_fail(NULL, "No Perfect Dark ROM found.", MRF_NOT_FOUND_1, MRF_NOT_FOUND_2);
+#endif
     }
     if (rebuild && remove(rb) == 0)
         printf("[card] rebuild: done, %s removed\n", rb);
