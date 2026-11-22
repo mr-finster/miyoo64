@@ -34,6 +34,17 @@ static void fill_setup(int w, int h) {
     const char *e = getenv("DKR_FLIPFILL");
     const int dw = sReal->w, dh = sReal->h;
     sFill = !(e && e[0] == '0') && sScale >= 2 && h * sScale != dh && dw <= 2048 && dh <= 2048;
+#if defined(DKR_PAL264)
+    /* Directly map every PAL row to the panel; retain the 4:3 displayed picture. */
+    if (h == 264 && dw <= 2048 && dh <= 2048 && dh >= h) {
+        sFill = 1;
+        sFw = dw < dh * w / 240 ? dw : dh * w / 240;
+        sFx = (dw - sFw) / 2;
+        for (int x = 0; x < sFw; x++) sXmap[x] = (uint16_t)(x * w / sFw);
+        for (int y = 0; y < dh; y++) sYmap[y] = (uint16_t)(y * h / dh);
+        return;
+    }
+#endif
     if (!sFill) return;
     sFw = dh * w / h; if (sFw > dw || (dw - sFw) * 50 <= dw) sFw = dw; /* a gap of 2% or less (752x560: 3 columns a side): the full width, 0.8% wider, no black slivers */
     sFx = (dw - sFw) / 2;

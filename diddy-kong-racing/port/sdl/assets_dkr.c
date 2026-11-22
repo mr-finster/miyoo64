@@ -30,7 +30,11 @@
 #include "port.h"
 #include "miyoo_romfind.h"
 
+#if defined(VERSION_pal_v80)
+#define CACHE_NAME "dkr_pal_v80_assets.bin"
+#else
 #define CACHE_NAME "dkr_assets.bin"
+#endif
 #if defined(MIYOO)
 /* Miyoo Mini: the card is /mnt/SDCARD; Onion and the stock firmware keep N64 ROMs in Roms/N64. */
 #define SD_CARD    "/mnt/SDCARD/"
@@ -45,8 +49,14 @@
 #define REGION_START    ((u32) PORT_ASSETS_LUT_START)
 #define REGION_END      ((u32) PORT_ASSETS_END)
 #define REGION_SIZE     (REGION_END - REGION_START)
-static const char kRomSha1[]    = "6d96743d46f8c0cd0edb0ec5600b003c89b93755";
+#if defined(VERSION_pal_v80)
+static const char kRomSha1[] = "b7f628073237b3d211d40406aa0884ff8fdd70d5";
+/* Derived only after the complete PAL ROM has passed its known SHA-1. */
+static char kRegionSha1[41];
+#else
+static const char kRomSha1[] = "6d96743d46f8c0cd0edb0ec5600b003c89b93755";
 static const char kRegionSha1[] = "7c3b1d346c29774e9c30e4cb897b525f3833b1b5";
+#endif
 
 static const u8 *sRegion;   /* mmap of dkr_assets.bin */
 u32 gPortRomBytes; /* not game state: outside the save ranges (port file, not in gamestate.ld) */
@@ -168,9 +178,13 @@ static u8 *rom_load(const char *path, char *err, u32 errlen) {
         sha1_init(&s); sha1_screen(&s, rom, ROM_SIZE, 8, 20); sha1_hex(&s, hex);
         if (strcmp(hex, kRomSha1) != 0) {
             free(rom);
+            #if defined(VERSION_pal_v80)
+            snprintf(err, errlen, "not PAL 1.1 (sha1 %.12s...)", hex);
+#else
             if (hdr[0x3E] != 'E') snprintf(err, errlen, "not the US version (region '%c')", hdr[0x3E]);
             else if (hdr[0x3F] != 1) snprintf(err, errlen, "this is the US 1.0 cart"); /* the screen's next line asks for 1.1 */
             else snprintf(err, errlen, "unknown dump (sha1 %.12s...)", hex);
+#endif
             return NULL;
         }
     }
@@ -293,7 +307,11 @@ static int map_cache(char *err, u32 errlen) {
     if (p == MAP_FAILED) { snprintf(err, errlen, "mmap failed"); return 0; }
     /* Every boot checks the size only (above). The full SHA-1 ran when the file
      * was made (tmp, fsync, rename); DKR_VERIFY=1 re-runs it. */
+    #if defined(VERSION_pal_v80)
+    if (1) {
+#else
     if (getenv("DKR_VERIFY")) {
+#endif
         Sha1 s; char hex[41];
         sha1_init(&s); sha1_update(&s, (const u8 *) p, REGION_SIZE); sha1_hex(&s, hex);
         if (strcmp(hex, kRegionSha1) != 0) { munmap(p, REGION_SIZE); snprintf(err, errlen, "sha1 mismatch"); return 0; }
@@ -443,7 +461,11 @@ static void screen_progress(const char *what, int pct) {
     sLastPct = pct;
     sLastStage = sStage;
     snprintf(sLastSub, sizeof(sLastSub), "%s", sSub);
+#if defined(VERSION_pal_v80)
+    ui_draw("Checking PAL game data", "from your ROM.", sStage, pct, "ROM required on each start.");
+#else
     ui_draw("First start: building the game", "data from your ROM.", sStage, pct, "This happens once.");
+#endif
 }
 
 static void fail_screen(const char *l1, const char *l2, const char *l3) {
@@ -458,6 +480,43 @@ static void fail_screen(const char *l1, const char *l2, const char *l3) {
     exit(1);
 }
 
+#if defined(VERSION_pal_v80)
+void port_assets_load(void) {
+    char err[160], why[200], rom_path[512];
+    u8 *rom;
+    Sha1 s;
+    ui_begin();
+    screen_progress("Finding the PAL ROM", 0);
+    rom = find_rom(rom_path, sizeof(rom_path), why, sizeof(why));
+    if (!rom) {
+        fail_screen("No usable Diddy Kong Racing ROM.", "PAL 1.1 (Rev 1) ROM required.", why[0] ? why : NULL);
+        return;
+    }
+    /* The complete ROM hash was verified by find_rom; derive the exact cache hash. */
+    sha1_init(&s);
+    sha1_screen(&s, rom + REGION_START, REGION_SIZE, 20, 30);
+    sha1_hex(&s, kRegionSha1);
+    if (!map_cache(err, sizeof(err))) {
+        remove_stale_tmp();
+        screen_progress("Copying the game data", 30);
+        if (!write_cache(rom + REGION_START, err, sizeof(err))) {
+            free(rom);
+            fail_screen("Cannot write the game data:", err, NULL);
+            return;
+        }
+        if (!map_cache(err, sizeof(err))) {
+            free(rom);
+            fail_screen("Cannot read back the game data:", err, NULL);
+            return;
+        }
+    }
+    free(rom);
+    screen_progress("Done", 100);
+    if (!getenv("DKR_SPLASH_DUMP") && !getenv("DKR_ASSETS_ONLY")) usleep(600 * 1000);
+    ui_black();
+    ui_end(0);
+}
+#else
 void port_assets_load(void) {
     char err[160], why[200], rom_path[512];
     u8 *rom;
@@ -518,6 +577,8 @@ void port_assets_load(void) {
     ui_black();
     ui_end(0);
 }
+
+#endif
 
 /* PI DMA source: `rom` is a cartridge offset inside the asset region. */
 int port_rom_read(u32 rom, void *dst, u32 len) {

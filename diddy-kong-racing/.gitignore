@@ -9,10 +9,16 @@
 !/decomp/
 !/port/
 !/README_MIYOO.md
+!/README_PAL_V80.md
+!/README_PAL_M07A.md
+!/README_PAL_M07B.md
 # the Miyoo Mini packer (the shared miyoo/): its tool, templates and this port's game.json and icon only
 !/miyoo/
 /miyoo/*
 !/miyoo/game.json
+!/miyoo/game-pal-v80.json
+!/miyoo/game-pal-v80-m07a.json
+!/miyoo/game-pal-v80-m07b.json
 !/miyoo/icon.png
 !/miyoo/icon.svg
 !/miyoo/tools/
