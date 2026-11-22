@@ -1885,9 +1885,9 @@ static const uint32_t *box_row_cached(uint32_t *tmp, int n, const void *px, bool
     return out;
 }
 
-void gfx_scegu_draw_triangles_2d(float buf_vbo[], size_t buf_vbo_len, size_t num_sprites) {
+void gfx_scegu_draw_triangles_2d(float buf_vbo[], bool flip, size_t num_sprites) {
     sky_flush(); /* a 2D draw may blend over the sky */
-    (void)buf_vbo_len;
+    /* RDP TEXRECTFLIP: S follows Y, T follows X. */
     const Vtx2D *q = (const Vtx2D *)buf_vbo;
     const SoftTex *tex = (sCurShader && sCurShader->cc.used_textures[0]) ? &sTex[sBoundTex[0]] : NULL;
     if (tex && !tex->valid) { untex_log("2d", sBoundTex[0]); tex = NULL; }
@@ -1916,8 +1916,8 @@ void gfx_scegu_draw_triangles_2d(float buf_vbo[], size_t buf_vbo_len, size_t num
         if (x1 < x0) { int t = x0; x0 = x1; x1 = t; float tu = u0; u0 = u1; u1 = tu; }
         if (y1 < y0) { int t = y0; y0 = y1; y1 = t; float tv = v0; v0 = v1; v1 = tv; }
         if (x1 <= x0 || y1 <= y0) continue;
-        const float dudx = (u1 - u0) / (float)(x1 - x0);
-        const float dvdy = (v1 - v0) / (float)(y1 - y0);
+        const float dudx = (u1 - u0) / (float)(flip ? y1 - y0 : x1 - x0);
+        const float dvdy = (v1 - v0) / (float)(flip ? x1 - x0 : y1 - y0);
         int cx0 = imax(imax(x0, sScX0), 0), cx1 = imin(imin(x1, sScX1), sW);
         int cy0 = imax(imax(y0, sScY0), 0), cy1 = imin(imin(y1, sScY1), sH);
         if (cx0 >= cx1 || cy0 >= cy1) continue; /* wholly clipped (e.g. menu strips past the right edge) */
@@ -1943,8 +1943,8 @@ void gfx_scegu_draw_triangles_2d(float buf_vbo[], size_t buf_vbo_len, size_t num
          * per-texel unpack, so those fall to the general loop below). */
         if (gfx_soft_hud_box < 0) { const char *e = getenv("SM64_HUDFILTER"); gfx_soft_hud_box = !(e && e[0] == '0'); }
         /* shrunk 1..3x along S: area-average (see box_row) */
-        const bool boxf = tex && gfx_soft_hud_box && dudx > 1.02f && dudx <= 3.0f && cx1 - cx0 <= BOX_MAX;
-        const bool plain = !boxf && tex && !t16 && rgb_tex && a_tex && !rgb_texa &&
+        const bool boxf = !flip && tex && gfx_soft_hud_box && dudx > 1.02f && dudx <= 3.0f && cx1 - cx0 <= BOX_MAX;
+        const bool plain = !flip && !boxf && tex && !t16 && rgb_tex && a_tex && !rgb_texa &&
                            ((!rgb_in && !a_in) || (!sTexAdd && cr == 255 && cg == 255 && cb2 == 255 && ca == 255));
         const int tw = tex ? tex->w : 0, th = tex ? tex->h : 0;
         const int mu = tex ? pow2mask(tw) : -1, mv = tex ? pow2mask(th) : -1;
@@ -2007,7 +2007,11 @@ void gfx_scegu_draw_triangles_2d(float buf_vbo[], size_t buf_vbo_len, size_t num
              * rewound its row store (diddy-kong-racing 061ee77, the cross-port lead's S4) */
             const uint32_t *boxrow = (boxf && cx1 > cx0) ? box_row_cached(boxtmp, cx1 - cx0, texpx, t16, trow_base, uf, duf, tw, ws2, mu, use_alpha) : NULL;
             for (int x = cx0; x < cx1; x++, uf += duf) {
-                const uint32_t t = boxf ? boxrow[x - cx0] : texel_at(texpx, t16, trow_base + wrapf(uf >> 16, tw, ws2, mu));
+                const int ti = flip
+                    ? wrapf(ifloorf(v0 + (x - x0 + 0.5f) * dvdy), th, wt2, mv) * tw
+                        + wrapf(ifloorf(u0 + (y - y0 + 0.5f) * dudx), tw, ws2, mu)
+                    : trow_base + wrapf(uf >> 16, tw, ws2, mu);
+                const uint32_t t = boxf ? boxrow[x - cx0] : texel_at(texpx, t16, ti);
                 const int ta = (t>>24)&0xff;
                 const int tr = rgb_texa ? ta : (t>>16)&0xff, tg = rgb_texa ? ta : (t>>8)&0xff, tb = rgb_texa ? ta : t&0xff;
                 int fr, fg, fb, fa;
