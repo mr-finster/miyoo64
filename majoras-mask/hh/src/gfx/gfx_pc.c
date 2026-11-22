@@ -5372,8 +5372,12 @@ static inline bool gfx_r23_on(void) {
     if (gfx_r23 < 0) { const char *e = getenv("OOT_R23"); gfx_r23 = !(e && e[0] == '0'); }
     return gfx_r23 != 0;
 }
+static bool gfx_hires(void);
+static int32_t hires_x(int32_t v);
+static int32_t hires_y(int32_t v);
 static void gfx_dp_set_scissor(uint32_t mode, uint32_t ulx, uint32_t uly, uint32_t lrx, uint32_t lry) {
     _UNUSED(mode);
+    if (gfx_hires()) { ulx = (uint32_t) hires_x((int32_t) ulx); lrx = (uint32_t) hires_x((int32_t) lrx); uly = (uint32_t) hires_y((int32_t) uly); lry = (uint32_t) hires_y((int32_t) lry); } /* issue 38 */
 #ifndef HANDHELD
     sCenR28Sc++;
     sCenR28Now = lrx < ulx || lry < uly;
@@ -5912,6 +5916,27 @@ static const void *sScreenCI SAVESTATE_EXCLUDE;
 static int sFbFx SAVESTATE_EXCLUDE = -1;
 static uint32_t sCiSiz SAVESTATE_EXCLUDE, sCiWidth SAVESTATE_EXCLUDE;
 void gfx_set_screen_fb(const void *fb) { sScreenCI = fb; }
+/* Issue 38: the colour image is the depth image, so a rectangle goes into depth (Smash's R34, the depth clears) --
+ * unless that image is the screen this task draws. The Bombers' Notebook (z_play_hireso.c) draws at the hi-res size
+ * with both images set to segment 0x0F, the frame buffer; it uses no depth, and the N64 draws it onto the screen.
+ * Dropped as depth writes, the whole notebook was a black screen. */
+static bool gfx_ci_is_depth(void) {
+    return rdp.color_image_address == rdp.z_buf_address && (sScreenCI == NULL || rdp.color_image_address != sScreenCI);
+}
+/* Issue 38: the notebook draws into the hi-res frame buffer (576x454, z_play.c SysCfb_SetHiResMode), which the N64's
+ * VI shows full screen. Its rectangles and scissor are scaled down onto the screen here (the texture steps up by
+ * the same factor, so each texture still spans its rectangle). Only while that hi-res image is this task's screen. */
+#define HIRES_CFB_W 576
+#define HIRES_CFB_H 454
+static bool gfx_hires(void) {
+    return sCiWidth == HIRES_CFB_W && sScreenCI != NULL && rdp.color_image_address == sScreenCI;
+}
+static int32_t hires_x(int32_t v) { return (int32_t) ((int64_t) v * SCREEN_WIDTH / HIRES_CFB_W); }
+static int32_t hires_y(int32_t v) { return (int32_t) ((int64_t) v * SCREEN_HEIGHT / HIRES_CFB_H); }
+static int16_t hires_step(int32_t d, int num, int den) {
+    int32_t v = (int32_t) ((int64_t) d * num / den);
+    return (int16_t) (v > 32767 ? 32767 : v < -32768 ? -32768 : v);
+}
 static bool gfx_fbfx_on(void) {
     if (sFbFx < 0) { const char *e = getenv("MM_FBFX"); sFbFx = !(e && e[0] == '0'); }
     return sFbFx && sScreenCI != NULL;
@@ -5941,6 +5966,10 @@ static bool gfx_fbfx_offscreen_rect(int32_t ulx, int32_t uly, int32_t lrx, int32
  * palettes 1-3 over the font at TMEM 0, one glyph plane each): drawn with that tile's palette. */
 static void gfx_dp_texture_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry, uint8_t tile, int16_t uls, int16_t ult, int16_t dsdx, int16_t dtdy, bool flip) {
     if (gfx_fbfx_offscreen_rect(ulx, uly, lrx, lry)) return;
+    if (gfx_hires()) { /* issue 38: the hi-res notebook onto the screen */
+        ulx = hires_x(ulx); lrx = hires_x(lrx); uly = hires_y(uly); lry = hires_y(lry);
+        dsdx = hires_step(dsdx, HIRES_CFB_W, SCREEN_WIDTH); dtdy = hires_step(dtdy, HIRES_CFB_H, SCREEN_HEIGHT);
+    }
     const uint8_t t = tile & 7, saved = rdp.tile_palette;
     const bool swap = t != G_TX_RENDERTILE && rdp.texture_tile.fmt == G_IM_FMT_CI &&
                       rdp.tiles[t].tmem == rdp.texture_tile.tmem && rdp.tiles[t].palette != saved;
@@ -6109,7 +6138,7 @@ static void gfx_dp_texture_rectangle_impl(int32_t ulx, int32_t uly, int32_t lrx,
     {
         static int sZimgRect SAVESTATE_EXCLUDE = -1;
         if (sZimgRect < 0) { const char *e = getenv("OOT_ZIMGRECT"); sZimgRect = e && e[0] == '1'; }
-        if (rdp.color_image_address == rdp.z_buf_address) {
+        if (gfx_ci_is_depth()) {
 #ifndef HANDHELD
             if (cc_census_on()) sCenZimgRects++;
 #endif
@@ -6343,10 +6372,11 @@ static void gfx_s2dex_bg(bool copy, const void *ptr) {
 }
 
 static void gfx_dp_fill_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry) {
-    if (rdp.color_image_address == rdp.z_buf_address) {
+    if (gfx_ci_is_depth()) {
         // Don't clear Z buffer here since we already did it with glClear
         return;
     }
+    if (gfx_hires()) { ulx = hires_x(ulx); lrx = hires_x(lrx); uly = hires_y(uly); lry = hires_y(lry); } /* issue 38 */
     if (gfx_fbfx_on()) {
         /* PreRender_FetchFbufCoverage: the screen's coverage written over the screen (G_RM_VISCVG); there is none */
         if ((rdp.other_mode_l & ~7u) == ((uint32_t) (G_RM_VISCVG | G_RM_VISCVG2) & ~7u)) {
