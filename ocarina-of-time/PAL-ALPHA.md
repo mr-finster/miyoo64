@@ -20,7 +20,7 @@ make VERSION=pal-1.0 REGION=EU -j4 asset_files \
 make VERSION=pal-1.0 REGION=EU -j4 build/pal-1.0/assets/audio/sequence_sizes.h
 make -f Makefile.handheld PLAT=miyoo VERSION=pal-1.0 -j4
 cd /work
-VERSION=pal-1.0 PAL_AUDIO_M22=1 tools/build_miyoo.sh
+VERSION=pal-1.0 tools/build_miyoo.sh
 ```
 
 `-o venv` reuses the populated environment and skips package installation; the
@@ -30,19 +30,19 @@ needed for the handheld build: the explicit targets above generate its asset,
 text and sequence-size inputs. A clean isolated ARM32 build of commit
 `5b26c72590cdffdc6e09e7538b0b6fa14d35665f` succeeded with this sequence.
 
-Its release gates passed: binary/recipe stamp match, independently derived
+That previous candidate’s release gates passed: binary/recipe stamp match, independently derived
 recipes and roundtrip, source provenance, `.hhassets` NOBITS, save-state COPY
 relocations, embedded and whole-ROM leak budgets, host-path/metadata checks,
 and package contents. The package ZIP integrity check also passed. The leak
 checks reported 6 matching windows (budget 16) and 61 KiB attributed to existing
 decomp source tables (budget 80 KiB); they are not a claim of zero matches.
-This build has stamp `926C0645` and has **not** been tested on hardware.
+That previous candidate has stamp `926C0645` and has **not** been tested on hardware.
 
-The output is `OcarinaOfTime-PAL-AudioM22.zip`. PAL and US currently share
+The output is `OcarinaOfTimePAL-v0.1.0-alpha.zip`. Set `RELEASE_VERSION` to a version such as `v0.1.1-alpha` for subsequent packages; the app folder remains `OcarinaOfTimePAL`. PAL and US currently share
 handheld build and generated directories: use a clean separate checkout when
 switching versions. Follow the README installation instructions for Onion OS;
 install the app-only package and place your own matching ROM at
-`App/OcarinaOfTime-PAL-AudioM22/rom.z64` on the card.
+`App/OcarinaOfTimePAL/rom.z64` on the card.
 Keep its data directory separate from other builds and back up your saves.
 
 On a Miyoo Mini Plus with Onion OS, the owner reports successful startup,

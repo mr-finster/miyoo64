@@ -31,10 +31,10 @@ VERSION="${VERSION:-ntsc-1.0}"
 case "$VERSION" in
     ntsc-1.0) GAME=miyoo/game.json; ROM_SHA1=ad69c91157f6705e8ab06c79fe08aad47bb57ba7; OUT_NAME=OcarinaOfTime-miyoo ;;
     pal-1.0)
-        GAME=miyoo/game-pal-m12.json; ROM_SHA1=328a1f1beba30ce5e178f031662019eb32c5f3b5; OUT_NAME=OcarinaOfTime-PAL-M12
-        if [ "${PAL_AUDIO_M22:-0}" = 1 ]; then
-            GAME=miyoo/game-pal-audiom22.json; OUT_NAME=OcarinaOfTime-PAL-AudioM22
-        fi ;;
+        GAME=miyoo/game-pal.json; ROM_SHA1=328a1f1beba30ce5e178f031662019eb32c5f3b5
+        RELEASE_VERSION="${RELEASE_VERSION:-v0.1.0-alpha}"
+        [[ "$RELEASE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]] || { echo "ERROR: invalid RELEASE_VERSION"; exit 1; }
+        OUT_NAME="OcarinaOfTimePAL-$RELEASE_VERSION" ;;
     *) echo "ERROR: unsupported VERSION: $VERSION"; exit 1 ;;
 esac
 ROMARG="${1:-}"

@@ -307,6 +307,7 @@ static int quick_check(const char* path, char* why, size_t whylen, int* order) {
     else return 0;
     unswap(h, 64, o);
     if (memcmp(h + 0x20, "THE LEGEND OF ZELDA", 19) != 0) return 0;
+#if OOT_VERSION == PAL_1_0
     if (h[0x3B] != ROM_MEDIA || h[0x3C] != 'Z' || h[0x3D] != 'L') {
         snprintf(why, whylen, "is a Zelda ROM, but not Ocarina of Time for the N64.");
         return -1;
@@ -314,6 +315,16 @@ static int quick_check(const char* path, char* why, size_t whylen, int* order) {
     if (h[0x3E] != ROM_REGION || h[0x3F] != 0) {
         snprintf(why, whylen, "is not " ROM_VERSION_NAME "."); return -1;
     }
+#else
+    if (h[0x3C] != 'Z' || h[0x3D] != 'L' || (h[0x3B] != 'C' && !(h[0x3B] == 'N' && h[0x3E] == 'P'))) {
+        snprintf(why, whylen, "is a Zelda ROM, but not Ocarina of Time for the N64.");
+        return -1;
+    }
+    if (h[0x3E] == 'P') { snprintf(why, whylen, "is the European (PAL) version."); return -1; }
+    if (h[0x3E] == 'J') { snprintf(why, whylen, "is the Japanese version."); return -1; }
+    if (h[0x3E] != 'E') { snprintf(why, whylen, "is not the USA version."); return -1; }
+    if (h[0x3F] != 0) { snprintf(why, whylen, "is USA version 1.%d (Rev %d).", h[0x3F], h[0x3F]); return -1; }
+#endif
     if ((uint64_t)st.st_size != ROM_SIZE) { snprintf(why, whylen, "is not 32 MB (a trimmed or damaged ROM)."); return -1; }
     *order = o;
     return 1;

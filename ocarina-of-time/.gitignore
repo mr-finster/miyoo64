@@ -36,8 +36,7 @@ port/tools/ido7.1_compiler
 !PAL-ALPHA.md
 !miyoo/
 !miyoo/game.json
-!miyoo/game-pal-m12.json
-!miyoo/game-pal-audiom22.json
+!miyoo/game-pal.json
 !miyoo/tools/
 !miyoo/tools/miyoo_pack.py
 !miyoo/templates/
