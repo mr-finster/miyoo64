@@ -295,6 +295,26 @@ replaced; save states from the old versions may not load (kept aside as `.reject
   flight) do the same. Checked in an emulator: the demo plays, both demos loop, and every such block in the ROM
   fits (only this header was ever cut).
 
+Updated Nov 23: Majora's Mask 1.0.15 (beta) fixes a crash and a black screen.
+
+- No more crash in the Southern Swamp as the boat goes into the next area
+  ([issue #41](https://github.com/mr-finster/miyoo64/issues/41)). The swamp's grass is drawn by one grass actor that
+  each patch of grass hands its blades to, and the patches remember it in a variable the N64 clears whenever their
+  code is loaded again. The port links that code in and never counted how many patches were alive, so it never
+  cleared it until the next scene: after the area behind the boat was unloaded, the next area's grass was handed to
+  an actor that was gone, wrote over a signpost in its place, and the next actor the game added crashed it. The port
+  now counts them and reloads the code as the N64 does. Found from MajoraGuy's save state: it crashes 1.0.14 under
+  the emulator at that moment, and the fixed build reloads the grass code and makes a new grass actor instead.
+- The Bombers' Notebook shows again instead of a black screen
+  ([issue #38](https://github.com/mr-finster/miyoo64/issues/38)). The notebook draws at 576x454, twice the game's
+  own size, into the same picture the game's depth goes to; the port took every rectangle drawn there for depth and
+  skipped it. Rectangles into the screen's own picture are drawn now, scaled to the game's size.
+
+Checked under the ARM emulator: the zip's first start from the ROM, the swamp boat ride and its area changes, and
+Clock Town, Termina Field, Snowhead and one more scene draw as 1.0.14 within the emulator's run-to-run noise. Save states
+from 1.0.14 may not load (kept aside as `.rejected`); in-game saves carry over. Only the Majora's Mask zip and the All
+Game Pack were replaced.
+
 ## 1.4.7 (Banjo-Kazooie's enemies, fine aim in the Zeldas, faster GoldenEye 007 and Perfect Dark)
 
 Rebuilt: Super Smash Bros. 1.1.8, GoldenEye 007 1.1.8, Perfect Dark 1.0.8, Majora's Mask 1.0.8, Ocarina of
