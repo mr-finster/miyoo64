@@ -2563,11 +2563,7 @@ void hud_finish_position(Object_Racer *racer) {
     s32 racerCount;
 #if VERSION == VERSION_80
     static char sDidNotFinish[] = "DID NOT FINISH";
-#if defined(PORT)
-#define DID_NOT_FINISH sDidNotFinish
-#else
 #define DID_NOT_FINISH &sDidNotFinish
-#endif
 #define FINISH_TEXT_OFFSET 40
 #define FINISH_TIME_OFFSET 0
 #elif VERSION == VERSION_79

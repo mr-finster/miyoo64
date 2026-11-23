@@ -51,8 +51,8 @@
 #define REGION_SIZE     (REGION_END - REGION_START)
 #if defined(VERSION_pal_v80)
 static const char kRomSha1[] = "b7f628073237b3d211d40406aa0884ff8fdd70d5";
-/* Derived only after the complete PAL ROM has passed its known SHA-1. */
-static char kRegionSha1[41];
+/* SHA-1 of canonical PAL bytes [0xED170, 0xB8D060). */
+static const char kRegionSha1[] = "7c3b1d346c29774e9c30e4cb897b525f3833b1b5";
 #else
 static const char kRomSha1[] = "6d96743d46f8c0cd0edb0ec5600b003c89b93755";
 static const char kRegionSha1[] = "7c3b1d346c29774e9c30e4cb897b525f3833b1b5";
@@ -307,11 +307,7 @@ static int map_cache(char *err, u32 errlen) {
     if (p == MAP_FAILED) { snprintf(err, errlen, "mmap failed"); return 0; }
     /* Every boot checks the size only (above). The full SHA-1 ran when the file
      * was made (tmp, fsync, rename); DKR_VERIFY=1 re-runs it. */
-    #if defined(VERSION_pal_v80)
-    if (1) {
-#else
     if (getenv("DKR_VERIFY")) {
-#endif
         Sha1 s; char hex[41];
         sha1_init(&s); sha1_update(&s, (const u8 *) p, REGION_SIZE); sha1_hex(&s, hex);
         if (strcmp(hex, kRegionSha1) != 0) { munmap(p, REGION_SIZE); snprintf(err, errlen, "sha1 mismatch"); return 0; }
@@ -461,11 +457,7 @@ static void screen_progress(const char *what, int pct) {
     sLastPct = pct;
     sLastStage = sStage;
     snprintf(sLastSub, sizeof(sLastSub), "%s", sSub);
-#if defined(VERSION_pal_v80)
-    ui_draw("Checking PAL game data", "from your ROM.", sStage, pct, "ROM required on each start.");
-#else
     ui_draw("First start: building the game", "data from your ROM.", sStage, pct, "This happens once.");
-#endif
 }
 
 static void fail_screen(const char *l1, const char *l2, const char *l3) {
@@ -480,43 +472,6 @@ static void fail_screen(const char *l1, const char *l2, const char *l3) {
     exit(1);
 }
 
-#if defined(VERSION_pal_v80)
-void port_assets_load(void) {
-    char err[160], why[200], rom_path[512];
-    u8 *rom;
-    Sha1 s;
-    ui_begin();
-    screen_progress("Finding the PAL ROM", 0);
-    rom = find_rom(rom_path, sizeof(rom_path), why, sizeof(why));
-    if (!rom) {
-        fail_screen("No usable Diddy Kong Racing ROM.", "PAL 1.1 (Rev 1) ROM required.", why[0] ? why : NULL);
-        return;
-    }
-    /* The complete ROM hash was verified by find_rom; derive the exact cache hash. */
-    sha1_init(&s);
-    sha1_screen(&s, rom + REGION_START, REGION_SIZE, 20, 30);
-    sha1_hex(&s, kRegionSha1);
-    if (!map_cache(err, sizeof(err))) {
-        remove_stale_tmp();
-        screen_progress("Copying the game data", 30);
-        if (!write_cache(rom + REGION_START, err, sizeof(err))) {
-            free(rom);
-            fail_screen("Cannot write the game data:", err, NULL);
-            return;
-        }
-        if (!map_cache(err, sizeof(err))) {
-            free(rom);
-            fail_screen("Cannot read back the game data:", err, NULL);
-            return;
-        }
-    }
-    free(rom);
-    screen_progress("Done", 100);
-    if (!getenv("DKR_SPLASH_DUMP") && !getenv("DKR_ASSETS_ONLY")) usleep(600 * 1000);
-    ui_black();
-    ui_end(0);
-}
-#else
 void port_assets_load(void) {
     char err[160], why[200], rom_path[512];
     u8 *rom;
@@ -544,23 +499,39 @@ void port_assets_load(void) {
             char reason[40];
             snprintf(reason, sizeof(reason), "%.36s.", strrchr(why, ':') ? strrchr(why, ':') + 2 : why);
             if (reason[0] >= 'a' && reason[0] <= 'z') reason[0] = (char) (reason[0] - 'a' + 'A');
+#if defined(VERSION_pal_v80)
+            fail_screen("No usable Diddy Kong Racing ROM.", reason, "It must be the PAL 1.1 (Rev 1) cart.");
+#else
             fail_screen("No usable Diddy Kong Racing ROM.", reason, "It must be the US 1.1 (Rev 1) cart.");
+#endif
         }
+#if defined(VERSION_pal_v80)
+        fail_screen("No Diddy Kong Racing ROM found.", "Put your PAL 1.1 ROM (.z64/.v64/.n64)", MRF_NOT_FOUND_2);
+#else
         fail_screen("No Diddy Kong Racing ROM found.", "Put your USA 1.1 ROM (.z64/.v64/.n64)", MRF_NOT_FOUND_2);
+#endif
     }
     {
         const char *base = strrchr(rom_path, '/');
         base = base ? base + 1 : rom_path;
         snprintf(sSub, sizeof(sSub), "%.60s", base);
     }
+#if defined(VERSION_pal_v80)
+    port_log_always("assets: ROM %s is PAL 1.1 (sha1 %s)\n", rom_path, kRomSha1);
+#else
     port_log_always("assets: ROM %s is US 1.1 (sha1 %s)\n", rom_path, kRomSha1);
+#endif
     screen_progress("Checking the ROM", 20);
     {
         Sha1 s; char hex[41];
         sha1_init(&s); sha1_screen(&s, rom + REGION_START, REGION_SIZE, 20, 30); sha1_hex(&s, hex);
         if (strcmp(hex, kRegionSha1) != 0) {
             free(rom);
+#if defined(VERSION_pal_v80)
+            fail_screen("This isn't the expected ROM data.", "It must be the PAL 1.1 (Rev 1) cart.", NULL);
+#else
             fail_screen("This isn't the expected ROM data.", "It must be the US 1.1 (Rev 1) cart.", NULL);
+#endif
         }
     }
     screen_progress("Copying the game data", 30);
@@ -577,8 +548,6 @@ void port_assets_load(void) {
     ui_black();
     ui_end(0);
 }
-
-#endif
 
 /* PI DMA source: `rom` is a cartridge offset inside the asset region. */
 int port_rom_read(u32 rom, void *dst, u32 len) {

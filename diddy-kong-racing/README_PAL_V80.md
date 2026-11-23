@@ -16,7 +16,7 @@ your own canonical big-endian `.z64` ROM (12,582,912 bytes), SHA-1
 3. Its settings, asset cache and saves are under
    `App/DiddyKongRacingPALM07b/data/pal-v80-m07b`. Keep these separate from
    US, M0.6 and M0.7a data; save states are specific to the binary that made
-   them. The PAL loader validates the normalized ROM and cache before use.
+   them. The PAL loader validates the normalized ROM on first import. On subsequent starts it checks the cache size; set `DKR_VERIFY=1` to check its full SHA-1.
 
 The alpha was tested on a Miyoo Mini Plus: startup, title, options, racing,
 HUD, minimap, right-edge correction and smooth performance were confirmed.
@@ -40,17 +40,18 @@ sleep/save changes. That integrated combination has not been tested on
 hardware and is not claimed to be the released binary.
 
 With the toolchain described in [README.md](README.md#building-the-miyoo-zip),
-build the PAL M0.7b configuration with:
+build the current PAL configuration with:
 
 ```sh
-./dev.sh 'make PLAT=miyoo VERSION=pal_v80 PAL264=1 M07B=1 -j3'
+./dev.sh 'make PLAT=miyoo VERSION=pal_v80 -j3'
 ```
 
-The unstripped executable is `build/miyoo-pal-v80-m07b/dkr`.
-[README_PAL_M07B.md](README_PAL_M07B.md) describes the packaging and checks;
-its check script expects the locally preserved reference packages. The
-standard PAL `VERSION=pal_v80` configuration remains distinct and does not
-select this 264-line viewport experiment by itself.
+The executable is `build/miyoo-pal-v80/dkr`. The standard package uses
+`App/DiddyKongRacingPAL/` and `data/pal-v80`; its menu entry is
+**Diddy Kong Racing PAL**. Use `VERSION=pal_v80 sh tools/build_miyoo.sh
+/path/to/canonical-pal-rom.z64` to package and check it. Do not overwrite an
+existing installation when testing an unverified build. Saves and settings
+must be preserved when upgrading.
 
 The DKR decompilation is CC0; see `decomp/LICENSE.md`. The existing port's
 other credits and license notices are listed in [README.md](README.md#credits).
