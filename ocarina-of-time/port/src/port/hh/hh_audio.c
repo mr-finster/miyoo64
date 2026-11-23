@@ -28,6 +28,7 @@
 
 #include "ultra64.h"
 #include "audio.h"
+#include "versions.h"
 #include "oot_psp_mixer.h"
 #include "hh_game.h"
 #include "hh_declick.h"
@@ -420,7 +421,11 @@ static void HhAudio_RunOneUpdateLocked(void) {
 
 static void* HhAudio_Thread(void* arg) {
     struct timespec next;
+#if OOT_PAL_N64
+    const long periodNs = 20000000L;
+#else
     const long periodNs = 16666667L;
+#endif
 
     (void)arg;
     clock_gettime(CLOCK_MONOTONIC, &next);

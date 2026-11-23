@@ -15,8 +15,18 @@
 PLAT    ?= pc
 .DEFAULT_GOAL := all
 SHELL := /bin/bash
-VERSION := ntsc-1.0
-REGION  := US
+VERSION ?= ntsc-1.0
+ifeq ($(VERSION),pal-1.0)
+REGION := EU
+HH_OOT_VERSION := PAL_1_0
+HH_OOT_REGION := REGION_EU
+else ifeq ($(VERSION),ntsc-1.0)
+REGION := US
+HH_OOT_VERSION := NTSC_1_0
+HH_OOT_REGION := REGION_US
+else
+$(error Unsupported handheld VERSION: $(VERSION))
+endif
 N64_BUILD_DIR := build/$(VERSION)
 EXTRACTED_DIR := extracted/$(VERSION)
 BUILD_DIR     := build/hh-$(PLAT)
@@ -89,6 +99,9 @@ endif
 # Sources                                                                      #
 #==============================================================================#
 include handheld_game_sources.mk
+ifeq ($(VERSION),pal-1.0)
+HH_GAME_SOURCES += src/boot/viconfig.c
+endif
 
 HH_PORT_SOURCES := $(sort $(wildcard src/port/hh/*.c)) src/port/hh/gfx/gfx_pc.c src/port/hh/gfx/gfx_cc.c src/port/hh/gfx/gfx_soft.c \
                    $(if $(filter miyoo,$(PLAT)),src/port/hh/gfx/gfx_sdl12.c,src/port/hh/gfx/gfx_sdl.c)
@@ -106,7 +119,7 @@ DEP_FILES := $(O_FILES:.o=.d)
 # Flags                                                                        #
 #==============================================================================#
 DEFINES := -D_LANGUAGE_C -DNON_MATCHING -DAVOID_UB -DDEBUG_FEATURES=0 \
-           -DOOT_VERSION=NTSC_1_0 -DOOT_REVISION=0 -DOOT_REGION=REGION_US \
+           -DOOT_VERSION=$(HH_OOT_VERSION) -DOOT_REVISION=0 -DOOT_REGION=$(HH_OOT_REGION) \
            -DLIBULTRA_VERSION=LIBULTRA_VERSION_L -DLIBULTRA_PATCH=0 \
            -DPLATFORM_PSP=1 -DPLATFORM_N64=0 -DPLATFORM_GC=0 -DPLATFORM_IQUE=0 \
            -DF3DEX_GBI_2 -DF3DEX_GBI_PL -DGBI_DOWHILE \
@@ -167,6 +180,12 @@ HH_ASSET_SOURCES := \
 	$(sort $(filter-out %.inc.c,$(wildcard $(EXTRACTED_DIR)/assets/scenes/*/*/*.c))) \
 	$(sort $(filter-out %.inc.c,$(wildcard $(EXTRACTED_DIR)/assets/textures/*/*.c))) \
 	$(sort $(filter-out %.inc.c,$(wildcard $(EXTRACTED_DIR)/assets/misc/*/*.c)))
+ifeq ($(VERSION),pal-1.0)
+HH_ASSET_SOURCES := $(filter-out $(wildcard assets/objects/gameplay_keep/*ntsc*.c) \
+    assets/textures/icon_item_jpn_static/icon_item_jpn_static.c assets/text/jpn_message_data_static.c,$(HH_ASSET_SOURCES))
+HH_ASSET_SOURCES += assets/textures/icon_item_ger_static/icon_item_ger_static.c \
+                    assets/textures/icon_item_fra_static/icon_item_fra_static.c
+endif
 HH_ASSET_O := $(patsubst %.c,$(ASSET_BUILD_DIR)/%.o,$(HH_ASSET_SOURCES))
 # the asset sources are compiled for ARM with the Miyoo toolchain (for every PLAT: their bytes are data)
 ARM_CC ?= $(MIYOO_TOOLCHAIN)/usr/bin/arm-linux-gnueabihf-gcc
@@ -221,6 +240,7 @@ objs: $(O_FILES)
 # identical PROGBITS link yields the bytes (build/hh-<plat>/embedded.bin, local
 # only), which the game loads into the region at boot (hh_embedded.c).
 EMBED_SRCS := $(shell grep -rlE '\#include "assets/[^"]+\.c"' src --include='*.c' | grep -v '^src/port/')
+$(patsubst %.c,$(BUILD_DIR)/%.o,$(EMBED_SRCS)): tools/handheld/embedded_assets.py
 define EMBED_LD_SCRIPT
 SECTIONS\n{\n  .hhassets $(1) : ALIGN(4096) { __hhassets_start = .; KEEP(*(.hhasset .hhasset.*)) . = ALIGN(4096); __hhassets_end = .; }\n}\nINSERT AFTER .bss;\n
 endef
@@ -310,7 +330,7 @@ $(TEXBE_STAMP): tools/handheld/texbe.py
 $(BUILD_DIR)/%.o: %.c | $(TEXBE_STAMP)
 	@mkdir -p $(dir $@)
 	$(V)$(CC) -c $(CFLAGS) -MMD -MP -MF $(@:.o=.d) -o $@ $<
-	$(V)$(if $(filter $<,$(EMBED_SRCS)),$(PYTHON) tools/handheld/embedded_assets.py split $(OBJCOPY) $@)
+	$(V)$(if $(filter $<,$(EMBED_SRCS)),$(PYTHON) tools/handheld/embedded_assets.py split $(OBJCOPY) $@ $(VERSION))
 
 clean:
 	$(RM) -r $(BUILD_DIR)
