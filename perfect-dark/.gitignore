@@ -28,6 +28,7 @@
 !tools/rareunzip
 !tools/assetmgr/mk*
 !miyoo/game.json
+!miyoo/game-pal.json
 !miyoo/icon.png
 !miyoo/templates/app_config.json
 # Never, even if the patterns above match:

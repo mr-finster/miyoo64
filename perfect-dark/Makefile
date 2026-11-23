@@ -19,12 +19,12 @@ CC        := $(TOOLCHAIN)/usr/bin/arm-linux-gnueabihf-gcc
 MARCH     := -march=armv7ve+neon-vfpv4 -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
 OPT       ?= -O2
 
-BUILD_DIR := build/miyoo
+BUILD_DIR := build/miyoo/$(ROMID)
 # `make SAN="-fsanitize=bounds,object-size"` (into build/miyoo-san, run under qemu-arm): the crash sweep's build
 # (an index past a fixed-size array; the toolchain's libubsan reports file:line).
 ifneq ($(SAN),)
   MARCH     += $(SAN) -fno-omit-frame-pointer
-  BUILD_DIR := build/miyoo-san
+  BUILD_DIR := build/miyoo-san/$(ROMID)
 endif
 ELF       := $(BUILD_DIR)/pd.arm
 

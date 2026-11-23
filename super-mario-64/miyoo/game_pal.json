@@ -1,0 +1,13 @@
+{
+  "id": "sm64pal",
+  "title": "Super Mario 64 PAL",
+  "folder": "SuperMario64PAL",
+  "exe": "sm64",
+  "files": ["sm64", "recipes.bin"],
+  "icon": "icon.png",
+  "env": "SM64",
+  "data": ".",
+  "rom": {"name": "Super Mario 64 (Europe)", "sha1": "4ac5721683d0e0b6bbb561b58a71740845dceea9", "size": 8388608},
+  "system": "SUPERMARIO64PAL",
+  "minui_tag": "SM64PAL"
+}

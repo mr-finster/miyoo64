@@ -22,8 +22,13 @@ if [ ! -e "$REF" ]; then
     printf '%s\n' "/src/assets/$R/*.json" "/src/assets/$R/lang/*.json" \
         "/src/assets/$R/pads/*.json" "/src/assets/$R/tiles/*.json" > "$REF/.git/info/sparse-checkout"
     git -C "$REF" checkout --quiet --detach "$PIN"
+else
+    [ "$(git -C "$REF" rev-parse HEAD)" = "$PIN" ] || { echo "$REF is not at $PIN; remove it first" >&2; exit 1; }
+    # Refresh a checkout that may have been created for another region.
+    git -C "$REF" sparse-checkout init --no-cone
+    printf '%s\n' "/src/assets/$R/*.json" "/src/assets/$R/lang/*.json" \
+        "/src/assets/$R/pads/*.json" "/src/assets/$R/tiles/*.json" | git -C "$REF" sparse-checkout set --no-cone --stdin
 fi
-[ "$(git -C "$REF" rev-parse HEAD)" = "$PIN" ] || { echo "$REF is not at $PIN; remove it first" >&2; exit 1; }
 mkdir -p "$ROOT/src/assets/$R"
 for d in . lang pads tiles; do
     mkdir -p "$ROOT/src/assets/$R/$d"

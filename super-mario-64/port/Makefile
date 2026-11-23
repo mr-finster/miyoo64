@@ -1146,7 +1146,7 @@ $(HH_ASSETS_BIN): $(HH_ELF_ASSETS) $(EXE) $(HH_TOOLS)/make_assets.py
 # ROM. Needed whenever the asset LAYOUT changes (any asset source, compiler or
 # flag change), not for code-only changes: `make PLAT=miyoo assets-recipes`.
 # The JSON is numbers only and tracked; emit_recipes.py refuses a stale one.
-HH_RECIPES_OUT := $(HH_TOOLS)/recipes_$(PLAT).json
+HH_RECIPES_OUT := $(HH_TOOLS)/recipes_$(PLAT)$(if $(filter-out us,$(VERSION)),_$(VERSION)).json
 HH_RECIPES_JSON := $(HH_RECIPES_OUT)
 HH_RECIPES_BIN := $(BUILD_DIR)/recipes.bin
 assets-recipes: $(HH_ASSETS_BIN)

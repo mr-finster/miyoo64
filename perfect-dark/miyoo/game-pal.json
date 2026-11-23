@@ -1,0 +1,20 @@
+{
+  "id": "pdp",
+  "title": "Perfect Dark PAL",
+  "folder": "PerfectDarkPAL",
+  "exe": "pd",
+  "files": [
+    "pd"
+  ],
+  "icon": "icon.png",
+  "env": "PD",
+  "data": "data",
+  "rom": {
+    "name": "Perfect Dark (Europe) (PAL final)",
+    "sha1": "a663d3f4eee0b198471132db92e9639a9edd1985",
+    "size": 33554432
+  },
+  "rom_store": false,
+  "system": "PERFECTDARKPAL",
+  "minui_tag": "PDP"
+}
