@@ -1217,7 +1217,7 @@ index e71e199..369ce09 100644
      }
  
 diff --git a/src/code/z_actor.c b/src/code/z_actor.c
-index a99b37f..4108114 100644
+index a99b37f..eb9fe6f 100644
 --- a/src/code/z_actor.c
 +++ b/src/code/z_actor.c
 @@ -2517,6 +2517,12 @@ void Actor_InitContext(PlayState* play, ActorContext* actorCtx, ActorEntry* acto
@@ -1259,6 +1259,37 @@ index a99b37f..4108114 100644
          profile = overlayEntry->profile;
      } else {
          if (overlayEntry->loadedRamAddr == NULL) {
+@@ -3529,9 +3547,16 @@ Actor* Actor_SpawnAsChildAndCutscene(ActorContext* actorCtx, PlayState* play, s1
+     }
+ 
+     overlayEntry = &gActorOverlayTable[index];
++#ifdef TARGET_HANDHELD
++    /* Linked-in overlays are counted too, so the last instance's Actor_Delete frees the overlay and the next
++     * spawn reloads it (hh_ovl.c), as the N64 does. Obj_Grass_Unit's sGrassManager outlived its manager otherwise:
++     * the next room's grass wrote into the freed actor and broke an actor list (issue 41, Southern Swamp). */
++    overlayEntry->numLoaded++;
++#else
+     if (overlayEntry->vramStart != NULL) {
+         overlayEntry->numLoaded++;
+     }
++#endif
+ 
+     PRINTF(T("アクタークライアントは %d 個目です\n", "Actor client No. %d\n"), overlayEntry->numLoaded);
+ 
+@@ -3685,6 +3710,13 @@ Actor* Actor_Delete(ActorContext* actorCtx, Actor* actor, PlayState* play) {
+ 
+     if (overlayEntry->vramStart == NULL) {
+         PRINTF(T("オーバーレイではありません\n", "Not an overlay\n"));
++#ifdef TARGET_HANDHELD
++        /* counted at spawn (above); a save state from before that has 0 here for a live instance: left alone */
++        if (overlayEntry->numLoaded > 0) {
++            overlayEntry->numLoaded--;
++            Actor_FreeOverlay(overlayEntry);
++        }
++#endif
+     } else {
+         overlayEntry->numLoaded--;
+         Actor_FreeOverlay(overlayEntry);
 diff --git a/src/code/z_effect_soft_sprite.c b/src/code/z_effect_soft_sprite.c
 index 614009c..93c462d 100644
 --- a/src/code/z_effect_soft_sprite.c
