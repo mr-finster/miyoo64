@@ -94,7 +94,7 @@ endif
 # -fno-strict-aliasing: the decomp relies on MIPS wraparound and type punning.
 COMMON_FLAGS := $(MARCH) $(OPT) -std=gnu99 -funsigned-char -fno-strict-aliasing -fwrapv -fno-common \
                 -D_LANGUAGE_C -DNON_MATCHING=1 -DNON_EQUIVALENT=1 -DAVOID_UB=1 -D_FINALROM -DNDEBUG -DF3DDKR_GBI \
-                $(if $(filter pal_v80-miyoo,$(VERSION)-$(PLAT)),-DDKR_PAL264=1 -DDKR_M07B=1) -DVERSION_$(VERSION) -D_MIPS_SZLONG=32 -DPORT_ASSETS_LUT_START=$(ASSETS_LUT_START) -DPORT_ASSETS_END=$(ASSETS_END) -DCIC_ID=6103 -DPORT=1 $(PLAT_DEFS)
+                $(if $(filter pal_v80-miyoo,$(VERSION)-$(PLAT)),-DDKR_PAL264=1 -DDKR_PAL_VIEWPORT_OFFSET=1) -DVERSION_$(VERSION) -D_MIPS_SZLONG=32 -DPORT_ASSETS_LUT_START=$(ASSETS_LUT_START) -DPORT_ASSETS_END=$(ASSETS_END) -DCIC_ID=6103 -DPORT=1 $(PLAT_DEFS)
 
 DECOMP_INC := -Idecomp -Idecomp/include -Idecomp/include/libc -Idecomp/include/PR -Idecomp/include/sys \
               -Idecomp/src -Idecomp/libultra -Idecomp/libultra/src/gu -Idecomp/libultra/src/libc \

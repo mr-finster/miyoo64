@@ -28,16 +28,16 @@ triangles or special views that share its exact viewport.
 
 The PAL version uses the 50 Hz game path, PAL-specific ROM and asset-region
 validation, and a 320x264 render target. Its output retains 4:3 display
-proportions. The experimental full-screen PAL viewport adjustment moves the
+proportions. The full-screen PAL viewport adjustment moves the
 matching 3D viewport four source pixels right without changing its width.
 
 The published asset is the hardware-tested M0.7b binary from local source
 commit `94736a0e07a30364763767d230dc3ea028f19b2a`; its embedded revision
 string is `unknown+` because its build container did not see Git metadata.
-The release asset bytes are unchanged. The current PR applies the PAL changes
-to a newer upstream base that also contains subsequent DKR audio, input and
-sleep/save changes. That integrated combination has not been tested on
-hardware and is not claimed to be the released binary.
+The release asset bytes are unchanged. The integrated PAL build was subsequently validated on a real Miyoo Mini
+Plus, including startup, language selection, racing, HUD, audio, saving,
+loading and return to Onion OS. It was merged upstream in PR #44.
+The original alpha release asset remains unchanged.
 
 With the toolchain described in [README.md](README.md#building-the-miyoo-zip),
 build the current PAL configuration with:
