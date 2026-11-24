@@ -55,7 +55,11 @@ static int sScrW SAVESTATE_EXCLUDE = 240, sScrH SAVESTATE_EXCLUDE = 240;
 #define SCREEN_W sScrW
 #define SCREEN_H sScrH
 #define SCREEN_MAX_W 320
+#if defined(DKR_PAL264)
+#define SCREEN_MAX_H 264
+#else
 #define SCREEN_MAX_H 240
+#endif
 #define FRAMERATE 30
 #define FRAME_TIME_MS (1000 / FRAMERATE)
 /* Max consecutive skipped renders. 1 (not 2): when the device can't hold
@@ -126,7 +130,11 @@ static void apply_res(int idx) {
     sResIdx = idx;
     /* 320x240 screen: the N64's own size, presented 1:1 whatever the display mode says */
     const int base_w = (SCREEN_W == 320 || gHandheldDisplayMode != HH_DISPLAY_CONVERT) ? 320 : 240;
+#if defined(DKR_PAL264)
+    const int base_h = 264;
+#else
     const int base_h = 240;
+#endif
     const int int_w = (base_w * sResPct[idx] / 100) & ~1;
     const int int_h = (base_h * sResPct[idx] / 100) & ~1;
     /* gfx_pc's dimensions are the NATIVE size; the backend swaps them to the
@@ -278,13 +286,20 @@ static void gfx_sdl12_init(const char *game_name, bool start_in_fullscreen) {
     SDL_Init(SDL_INIT_VIDEO /* no SDL_INIT_TIMER: its thread woke every 1 ms and nothing uses SDL timers */);
     SDL_ShowCursor(SDL_DISABLE);
     sScrW = handheld_screen_w(); sScrH = handheld_screen_h();
+#if defined(DKR_PAL264)
+    sScrW = 320; sScrH = 264;
+#endif
     sScreen = set_video_mode(SCREEN_W, SCREEN_H);
+#if defined(DKR_PAL264)
+    if (sScreen && (sScreen->w != SCREEN_W || sScreen->h != SCREEN_H)) sScreen = NULL;
+#else
     if (SCREEN_W != 240 && (!sScreen || sScreen->w != SCREEN_W || sScreen->h != SCREEN_H)) {
         /* the display can't do 320x240: back to the square size */
         handheld_screen_confirm(sScreen ? sScreen->w : 0, sScreen ? sScreen->h : 0);
         sScrW = handheld_screen_w(); sScrH = handheld_screen_h();
         sScreen = set_video_mode(SCREEN_W, SCREEN_H);
     }
+#endif
     if (!sScreen) {
         fprintf(stderr, "gfx_sdl12: SDL_SetVideoMode failed: %s\n", SDL_GetError());
         exit(1);

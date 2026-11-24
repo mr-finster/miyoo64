@@ -4,7 +4,7 @@
 #   make PLAT=miyoo   -j$(nproc)   # Miyoo Mini cross build (SDL 1.2, glibc, 320x240 doubled)
 #
 # Game code: decomp/ (DavidSM64/Diddy-Kong-Racing, CC0, see decomp/UPSTREAM),
-# compiled NON_MATCHING for us.v80 with the port's edits under #ifdef PORT.
+# compiled NON_MATCHING for us.v80 (default) or pal.v80 with the port's edits.
 # Platform: port/ (libultra shim, F3DDKR display-list front end, software
 # rasterizer, SDL backends -- the MK64 port's platform kit, adapted).
 #
@@ -14,17 +14,23 @@
 # closed forms (tools/gen_trig_tables.py), not copied from the ROM.
 
 PLAT     ?= pc
-VERSION  := us_v80
-BUILD    := build/$(PLAT)$(if $(filter 1,$(UBSAN)),-ubsan)$(if $(SAN),-san)
-ELF      := $(BUILD)/dkr
-PYTHON   ?= python3
-
-# Asset ROM offsets (us.v80): the LUT and the start of the asset data. The PI
-# shim serves these offsets from dkr_assets.bin, extracted from the player's ROM.
+VERSION  ?= us_v80
+ifeq ($(VERSION),us_v80)
 ASSETS_LUT_START := 0xED0E0
 ASSETS_LUT_END   := 0xED1B0
 ASSETS_END       := 0xB8CFD0
+else ifeq ($(VERSION),pal_v80)
+ASSETS_LUT_START := 0xED170
+ASSETS_LUT_END   := 0xED240
+ASSETS_END       := 0xB8D060
+else
+$(error Unsupported VERSION $(VERSION); choose us_v80 or pal_v80)
+endif
+BUILD    := build/$(PLAT)$(if $(filter pal_v80,$(VERSION)),-pal-v80)$(if $(filter 1,$(UBSAN)),-ubsan)$(if $(SAN),-san)
+ELF      := $(BUILD)/dkr
+PYTHON   ?= python3
 
+# The PI shim serves the selected ROM asset region from its cache.
 V := @
 ifeq ($(VERBOSE),1)
   V :=
@@ -88,7 +94,7 @@ endif
 # -fno-strict-aliasing: the decomp relies on MIPS wraparound and type punning.
 COMMON_FLAGS := $(MARCH) $(OPT) -std=gnu99 -funsigned-char -fno-strict-aliasing -fwrapv -fno-common \
                 -D_LANGUAGE_C -DNON_MATCHING=1 -DNON_EQUIVALENT=1 -DAVOID_UB=1 -D_FINALROM -DNDEBUG -DF3DDKR_GBI \
-                -DVERSION_$(VERSION) -D_MIPS_SZLONG=32 -DPORT_ASSETS_LUT_START=$(ASSETS_LUT_START) -DPORT_ASSETS_END=$(ASSETS_END) -DCIC_ID=6103 -DPORT=1 $(PLAT_DEFS)
+                $(if $(filter pal_v80-miyoo,$(VERSION)-$(PLAT)),-DDKR_PAL264=1 -DDKR_M07B=1) -DVERSION_$(VERSION) -D_MIPS_SZLONG=32 -DPORT_ASSETS_LUT_START=$(ASSETS_LUT_START) -DPORT_ASSETS_END=$(ASSETS_END) -DCIC_ID=6103 -DPORT=1 $(PLAT_DEFS)
 
 DECOMP_INC := -Idecomp -Idecomp/include -Idecomp/include/libc -Idecomp/include/PR -Idecomp/include/sys \
               -Idecomp/src -Idecomp/libultra -Idecomp/libultra/src/gu -Idecomp/libultra/src/libc \

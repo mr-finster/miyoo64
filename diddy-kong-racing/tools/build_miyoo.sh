@@ -36,38 +36,48 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
 PERSONAL=${PERSONAL:-0}
 NO_LEAK_SCAN=${NO_LEAK_SCAN:-0}
-BIN=build/miyoo/dkr
-GAME=miyoo/game.json
-FOLDER=DiddyKongRacing
-OUT=DiddyKongRacing-miyoo.zip
-if [ "$PERSONAL" = 1 ]; then OUT=DiddyKongRacing-miyoo-PERSONAL.zip
-elif [ "$NO_LEAK_SCAN" = 1 ]; then OUT=DiddyKongRacing-miyoo-UNSCANNED.zip; fi
-# The previous zip goes first: a failed gate must not leave it in place looking like this build.
+VERSION=${VERSION:-us_v80}
+case "$VERSION" in
+  us_v80) BUILD_DIR=build/miyoo; GAME=miyoo/game.json; FOLDER=DiddyKongRacing; ROM_DEFAULT=refs/Diddy-Kong-Racing/baseroms/baserom.us.v80.z64 ;;
+  pal_v80) BUILD_DIR=build/miyoo-pal-v80; GAME=miyoo/game-pal-v80.json; FOLDER=DiddyKongRacingPAL; ROM_DEFAULT=refs/Diddy-Kong-Racing/baseroms/baserom.pal.v80.z64 ;;
+  *) echo "ERROR: unknown VERSION $VERSION"; exit 1 ;;
+esac
+BIN=$BUILD_DIR/dkr
+OUT=$FOLDER-miyoo.zip
+if [ "$PERSONAL" = 1 ]; then OUT=$FOLDER-miyoo-PERSONAL.zip
+elif [ "$NO_LEAK_SCAN" = 1 ]; then OUT=$FOLDER-miyoo-UNSCANNED.zip; fi
 rm -f "$OUT"
-STAGE=build/miyoo_stage
-TMPZIP=build/miyoo_pack.zip
-UNPACK=build/miyoo_unpack
+STAGE=${BUILD_DIR}_stage
+TMPZIP=${BUILD_DIR}_pack.zip
+UNPACK=${BUILD_DIR}_unpack
 TC=${MIYOO_TOOLCHAIN:-/opt/miyoomini-toolchain}/usr/bin/arm-linux-gnueabihf
-ROM=${1:-refs/Diddy-Kong-Racing/baseroms/baserom.us.v80.z64}
+ROM=${1:-$ROM_DEFAULT}
 test -x "$BIN" || { echo "ERROR: $BIN missing - run make PLAT=miyoo first"; exit 1; }
 test -x "$TC-readelf" || { echo "ERROR: the Miyoo toolchain is not at $TC-* (set MIYOO_TOOLCHAIN)"; exit 1; }
 if [ ! -f "$ROM" ]; then
     if [ "$NO_LEAK_SCAN" = 1 ] && [ "$PERSONAL" != 1 ]; then
         echo "WARNING: no ROM at $ROM: gate 4 (the leak scan) will be SKIPPED; $OUT is not a release"
     else
-        echo "ERROR: ROM $ROM missing. The leak scan (gate 4) needs your Diddy Kong Racing US 1.1 ROM"
-        echo "       (SHA-1 6d96743d46f8c0cd0edb0ec5600b003c89b93755; it is read, never shipped):"
+        echo "ERROR: ROM $ROM missing. The leak scan (gate 4) needs the $VERSION ROM"
+        echo "       It is read, never shipped:"
         echo "           sh tools/build_miyoo.sh /path/to/baserom.us.v80.z64"
         echo "       NO_LEAK_SCAN=1 skips that gate and writes an UNSCANNED zip, which is not a release."
         exit 1
     fi
 fi
 
+if [ "$VERSION" = pal_v80 ] && [ -f "$ROM" ]; then
+    # The scan consumes canonical z64 bytes; validate the complete image first.
+    expected=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["rom"]["sha1"])' "$GAME")
+    actual=$(sha1sum "$ROM" | cut -d' ' -f1)
+    [ "$actual" = "$expected" ] || { echo "ERROR: ROM must be the matching canonical z64 (SHA-1 mismatch)"; exit 1; }
+fi
+
 echo "--- gate 1: provenance of the code ---"
 bad=0; n=0
-for f in $(make -s PLAT=miyoo print-sources); do
+for f in $(make -s PLAT=miyoo VERSION="$VERSION" print-sources); do
     n=$((n + 1))
-    case "$f" in build/miyoo/gen/trig_tables.c) continue ;; esac
+    case "$f" in "$BUILD_DIR"/gen/trig_tables.c) continue ;; esac
     git ls-files --error-unmatch "$f" >/dev/null 2>&1 || { echo "UNTRACKED source in the executable: $f"; bad=$((bad + 1)); }
 done
 for f in "$GAME" miyoo/tools/miyoo_pack.py miyoo/templates/* miyoo/icon.png; do
@@ -126,7 +136,7 @@ echo "App/$FOLDER: $GOT_APP"
 echo "--- gate 4: leak scan of every file in the zip against the ROM ---"
 if [ -f "$ROM" ]; then
     # a PERSONAL zip carries the ROM itself on purpose: everything else is scanned
-    find "$UNPACK" -type f ! -path "*/App/$FOLDER/rom.z64" -print0 | xargs -0 python3 tools/leak_scan.py --rom "$ROM"
+    find "$UNPACK" -type f ! -path "*/App/$FOLDER/rom.z64" -print0 | xargs -0 python3 tools/leak_scan.py --version "$VERSION" --rom "$ROM"
 else
     echo "SKIPPED (NO_LEAK_SCAN=1, no ROM): $OUT is not a release"
 fi

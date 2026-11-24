@@ -30,7 +30,11 @@
 #include "port.h"
 #include "miyoo_romfind.h"
 
+#if defined(VERSION_pal_v80)
+#define CACHE_NAME "dkr_pal_v80_assets.bin"
+#else
 #define CACHE_NAME "dkr_assets.bin"
+#endif
 #if defined(MIYOO)
 /* Miyoo Mini: the card is /mnt/SDCARD; Onion and the stock firmware keep N64 ROMs in Roms/N64. */
 #define SD_CARD    "/mnt/SDCARD/"
@@ -45,8 +49,14 @@
 #define REGION_START    ((u32) PORT_ASSETS_LUT_START)
 #define REGION_END      ((u32) PORT_ASSETS_END)
 #define REGION_SIZE     (REGION_END - REGION_START)
-static const char kRomSha1[]    = "6d96743d46f8c0cd0edb0ec5600b003c89b93755";
+#if defined(VERSION_pal_v80)
+static const char kRomSha1[] = "b7f628073237b3d211d40406aa0884ff8fdd70d5";
+/* SHA-1 of canonical PAL bytes [0xED170, 0xB8D060). */
 static const char kRegionSha1[] = "7c3b1d346c29774e9c30e4cb897b525f3833b1b5";
+#else
+static const char kRomSha1[] = "6d96743d46f8c0cd0edb0ec5600b003c89b93755";
+static const char kRegionSha1[] = "7c3b1d346c29774e9c30e4cb897b525f3833b1b5";
+#endif
 
 static const u8 *sRegion;   /* mmap of dkr_assets.bin */
 u32 gPortRomBytes; /* not game state: outside the save ranges (port file, not in gamestate.ld) */
@@ -168,9 +178,13 @@ static u8 *rom_load(const char *path, char *err, u32 errlen) {
         sha1_init(&s); sha1_screen(&s, rom, ROM_SIZE, 8, 20); sha1_hex(&s, hex);
         if (strcmp(hex, kRomSha1) != 0) {
             free(rom);
+            #if defined(VERSION_pal_v80)
+            snprintf(err, errlen, "not PAL 1.1 (sha1 %.12s...)", hex);
+#else
             if (hdr[0x3E] != 'E') snprintf(err, errlen, "not the US version (region '%c')", hdr[0x3E]);
             else if (hdr[0x3F] != 1) snprintf(err, errlen, "this is the US 1.0 cart"); /* the screen's next line asks for 1.1 */
             else snprintf(err, errlen, "unknown dump (sha1 %.12s...)", hex);
+#endif
             return NULL;
         }
     }
@@ -485,23 +499,39 @@ void port_assets_load(void) {
             char reason[40];
             snprintf(reason, sizeof(reason), "%.36s.", strrchr(why, ':') ? strrchr(why, ':') + 2 : why);
             if (reason[0] >= 'a' && reason[0] <= 'z') reason[0] = (char) (reason[0] - 'a' + 'A');
+#if defined(VERSION_pal_v80)
+            fail_screen("No usable Diddy Kong Racing ROM.", reason, "It must be the PAL 1.1 (Rev 1) cart.");
+#else
             fail_screen("No usable Diddy Kong Racing ROM.", reason, "It must be the US 1.1 (Rev 1) cart.");
+#endif
         }
+#if defined(VERSION_pal_v80)
+        fail_screen("No Diddy Kong Racing ROM found.", "Put your PAL 1.1 ROM (.z64/.v64/.n64)", MRF_NOT_FOUND_2);
+#else
         fail_screen("No Diddy Kong Racing ROM found.", "Put your USA 1.1 ROM (.z64/.v64/.n64)", MRF_NOT_FOUND_2);
+#endif
     }
     {
         const char *base = strrchr(rom_path, '/');
         base = base ? base + 1 : rom_path;
         snprintf(sSub, sizeof(sSub), "%.60s", base);
     }
+#if defined(VERSION_pal_v80)
+    port_log_always("assets: ROM %s is PAL 1.1 (sha1 %s)\n", rom_path, kRomSha1);
+#else
     port_log_always("assets: ROM %s is US 1.1 (sha1 %s)\n", rom_path, kRomSha1);
+#endif
     screen_progress("Checking the ROM", 20);
     {
         Sha1 s; char hex[41];
         sha1_init(&s); sha1_screen(&s, rom + REGION_START, REGION_SIZE, 20, 30); sha1_hex(&s, hex);
         if (strcmp(hex, kRegionSha1) != 0) {
             free(rom);
+#if defined(VERSION_pal_v80)
+            fail_screen("This isn't the expected ROM data.", "It must be the PAL 1.1 (Rev 1) cart.", NULL);
+#else
             fail_screen("This isn't the expected ROM data.", "It must be the US 1.1 (Rev 1) cart.", NULL);
+#endif
         }
     }
     screen_progress("Copying the game data", 30);
