@@ -2982,6 +2982,44 @@ static inline void pend_publish(void) { /* the slot pend_slot gave is filled: it
     }
 }
 #endif /* MIYOO */
+/* MM_SCALARSTAT=1 (diagnostic, cacuracaptors, MIT): which 3D triangles take which pixel path -- tri_rows (the NEON
+ * rows, fast), raster_rows with the NEON rows (an owned-edge or OOT_PLD draw), or raster_rows' scalar loops -- by the
+ * triangle's area, and the scalar ones by their flags (sig bits: see stat_sig). A SCALAR line every 300 frames in the
+ * log. Off: one test per triangle. */
+static int sScStat SAVESTATE_EXCLUDE = -1;
+static uint64_t sScPx[3] SAVESTATE_EXCLUDE;
+static struct { uint32_t sig; uint64_t px; uint32_t n; } sScTab[48] SAVESTATE_EXCLUDE;
+static int sScFrames SAVESTATE_EXCLUDE;
+static void scstat_add(int cls, uint32_t sig, float px) {
+    sScPx[cls] += (uint64_t)px;
+    if (cls == 0 && sScStat < 2) return; /* MM_SCALARSTAT=2: the fast rows' kinds too */
+    int i;
+    for (i = 0; i < 48 && sScTab[i].px != 0 && sScTab[i].sig != sig; i++) {}
+    if (i < 48) { sScTab[i].sig = sig; sScTab[i].px += (uint64_t)px + 1; sScTab[i].n++; }
+}
+static void scstat_frame(void) {
+    if (sScStat <= 0 || ++sScFrames < 300) return;
+    extern void port_log_always(const char *fmt, ...);
+    const uint64_t t = sScPx[0] + sScPx[1] + sScPx[2] + 1;
+    port_log_always("SCALAR px/frame: fast %llu (%d%%) | rows+neon %llu (%d%%) | scalar %llu (%d%%)\n",
+                    (unsigned long long)(sScPx[0] / 300), (int)(sScPx[0] * 100 / t), (unsigned long long)(sScPx[2] / 300),
+                    (int)(sScPx[2] * 100 / t), (unsigned long long)(sScPx[1] / 300), (int)(sScPx[1] * 100 / t));
+    for (int k = 0; k < 12; k++) {
+        int b = -1;
+        for (int i = 0; i < 48; i++) if (sScTab[i].px != 0 && (b < 0 || sScTab[i].px > sScTab[b].px)) b = i;
+        if (b < 0) break;
+        port_log_always("SCALAR   %s sig %06x: %llu px/frame (%d%%), %u tris\n",
+                        (sScTab[b].sig >> 24) & 1 ? ((sScTab[b].sig >> 25) == 99 ? "lean " : (sScTab[b].sig >> 25) == 0 ? "neonC" :
+                        (sScTab[b].sig >> 25) == 1 ? "leana" : (sScTab[b].sig >> 25) == 2 ? "leans" : (sScTab[b].sig >> 25) == 3 ? "leanl" :
+                        (sScTab[b].sig >> 25) == 4 ? "leanz" : "leanlz") : (sScTab[b].sig >> 23) & 1 ? "neon" : "scal",
+                        (unsigned)(sScTab[b].sig & 0x7FFFFF), (unsigned long long)(sScTab[b].px / 300),
+                        (int)(sScTab[b].px * 100 / t), sScTab[b].n / 300);
+        sScTab[b].px = 0;
+    }
+    memset(sScTab, 0, sizeof(sScTab));
+    memset(sScPx, 0, sizeof(sScPx));
+    sScFrames = 0;
+}
 static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, bool use_z) {
     float area = edge(v0, v1, v2->x, v2->y);
     if (area == 0.0f) return -1; /* (winding cull happens in gfx_sp_tri1; the GE cull mode is never set here) */
@@ -3408,6 +3446,28 @@ static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, b
      * So a pixel the fill takes showed nothing but the clear colour or the sky. */
     uint8_t *const cov = (sCov && fbuf == sCovTarget && sCovSz >= sW * sH && !sSkyTag && !sSkyPass && (!ztest || sUseAlpha))
                          ? sCov : NULL; /* (either phase: a prerendered room's ortho triangles come before the 3D) */
+#if defined(HH_CM_NEON)
+    if (sScStat != 0) { /* MM_SCALARSTAT */
+        if (sScStat < 0) { const char *e = getenv("MM_SCALARSTAT"); sScStat = e != NULL ? atoi(e) : 0; }
+        if (sScStat > 0 && !sUiMode) {
+            float apx = fabsf(area) * 0.5f;
+            const float box = (float)(maxx - minx + 1) * (float)(maxy - miny + 1);
+            if (apx > box) apx = box;
+            const int cls = (cm_rows && sFastRows && !own && !sPld) ? 0 : cm_rows ? 2 : 1;
+            const uint32_t sig = (uint32_t)(tex != NULL) | (uint32_t)ztest << 1 | (uint32_t)cm_mod << 2 |
+                                 (uint32_t)texlerp << 3 | (uint32_t)texlerpv << 4 | (uint32_t)texadd << 5 |
+                                 (uint32_t)rgb_texa << 6 | (uint32_t)rgb_in << 7 | (uint32_t)rgb_tex << 8 |
+                                 (uint32_t)a_tex << 9 | (uint32_t)a_in << 10 | (uint32_t)fogtri << 11 |
+                                 (uint32_t)(fga >= 0) << 12 | (uint32_t)(dtex != NULL) << 13 | (uint32_t)sUseAlpha << 14 |
+                                 (uint32_t)use_bilin << 15 | (uint32_t)t16 << 16 | (uint32_t)own << 17 |
+                                 (uint32_t)pshade << 18 | (uint32_t)persp << 19 | (uint32_t)flat << 20 |
+                                 (uint32_t)(ws != WRAP_REPEAT || wt != WRAP_REPEAT) << 21 | (uint32_t)sDetail.mul << 22 |
+                                 (uint32_t)(cls == 2) << 23 |
+                                 (cls == 0 ? (1u << 24) | ((uint32_t)(cmt.lean ? 99 : cmt.lean2) << 25) : 0u);
+            scstat_add(cls, sig, apx);
+        }
+    }
+#endif
 #if defined(HH_CM_NEON)
     if (cm_rows && sFastRows && !own && !sPld) { /* OOT_FASTROWS: the rows in tri_rows, the same row functions */
         TriRows R;
@@ -4554,6 +4614,7 @@ void gfx_soft_set_pause_background_active(bool on) {
 }
 
 static void gfx_soft_start_frame(void) {
+    scstat_frame(); /* MM_SCALARSTAT */
     sky_settle();
     sZSaved = false; /* issue 12: a depth copy from the last frame is stale */
     ovd_frame();
@@ -4592,6 +4653,18 @@ static void gfx_soft_end_frame(void) {
     gfx_soft_last_frame_had_3d = sHad3D;
     gfx_soft_frames_rendered++;
     select_target(false); /* leave native current for present/menu/dumps */
+    { /* MM_FRAMEHASH=1 (diagnostic, cacuracaptors, MIT): an FNV-1a hash of each finished picture in the log, to compare
+       * two builds or settings over the same pad replay (MM_PAD_PLAY) picture by picture */
+        static int sFh SAVESTATE_EXCLUDE = -1;
+        if (sFh < 0) { const char *e = getenv("MM_FRAMEHASH"); sFh = e != NULL && e[0] == '1'; }
+        if (sFh > 0 && sNatFB != NULL) {
+            extern void port_log_always(const char *fmt, ...);
+            uint32_t h = 2166136261u;
+            const uint32_t *p = (const uint32_t *)sNatFB;
+            for (int i = 0, k = sNatW * sNatH; i < k; i++) h = (h ^ (p[i] & 0xFFFFFFu)) * 16777619u;
+            port_log_always("FHASH %lu %08x\n", (unsigned long)gfx_soft_frames_rendered, (unsigned)h);
+        }
+    }
 }
 static void gfx_soft_finish_render(void) { }
 

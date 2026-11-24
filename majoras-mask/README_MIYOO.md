@@ -124,6 +124,16 @@ jumps or flickers out of place with 30 fps on while the camera moves, tell us wh
 - `MM_ZRECT=0`: the Lens of Truth as before 1.0.10, the things it reveals drawn on the whole screen instead of
   only inside its circle.
 - `MM_SUNWHOLE=0`: the sun drawn from gSunDL's three strips as before 1.0.14 (a grid of small suns).
+- For testing (the picture and the game are the same; off by default):
+  - `MM_PAD_RECORD=<file>` writes the pad the game reads on each of its frames; `MM_PAD_PLAY=<file>` gives the game
+    those pads back, frame by frame, instead of the buttons. With either, the random numbers start from a fixed seed,
+    so the same start (`entrance=` in `debug.cfg`) plays the same game: a performance test repeats exactly.
+  - `MM_FRAMEHASH=1`: a hash of every finished picture in `console.log` (`FHASH`), to compare two builds or settings
+    picture by picture over the same pad replay.
+  - `MM_SCALARSTAT=1` (`2`: the fast rows too): which 3D pixels take which row kind, every 300 frames (`SCALAR`).
+  - `MM_FIDIAG=1`: with 30 fps, each step change and the draw times every 300 pictures (`FISTEP`, `FISTAT`).
+  - `OOT_PROF=1` (or `prof=1` in `debug.cfg`): the sampling profiler; `OOT_PROF_OUT=<file>`, `OOT_PROF_FROM=<frame>`,
+    `OOT_PROF_CORE=0` (only the samples on the game thread's core).
 - `MM_FLIPFILL=0`: on a Mini v4 or Mini Flip, keep the 2x picture with a border instead of the full height
   (`OOT_FLIPFILL`, the test builds' name, still works).
 

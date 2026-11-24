@@ -843,10 +843,10 @@ index 1b9bd0b..f740110 100644
  
          // Shuffle row 1 -> 0
 diff --git a/src/code/graph.c b/src/code/graph.c
-index 2c9efee..ac517d8 100644
+index 2c9efee..4a2017f 100644
 --- a/src/code/graph.c
 +++ b/src/code/graph.c
-@@ -358,6 +358,54 @@ void Graph_Update(GraphicsContext* gfxCtx, GameState* gameState) {
+@@ -358,6 +358,103 @@ void Graph_Update(GraphicsContext* gfxCtx, GameState* gameState) {
      Graph_ExecuteAndDraw(gfxCtx, gameState);
  }
  
@@ -860,6 +860,52 @@ index 2c9efee..ac517d8 100644
 +GameState* volatile gHhGameState;
 +s32 HhMm_Boundary(GameStateOverlay* ovl);
 +void HhMm_StateEvent(const char* what, GameStateOverlay* ovl);
++
++/* debug.cfg entrance= (hh_mm.c reads it into MM_ENTRANCE, with MM_TIME and MM_DAY): after Setup, the debug save
++ * and that place, as the map select's MapSelect_LoadGame does (cacuracaptors, MIT) */
++#include "z64save.h"
++#include "z64environment.h"
++#include "sequence.h"
++char* getenv(const char* name); /* the host's (the game's libc headers have neither) */
++long strtol(const char* s, char** end, int base);
++static s32 HhMm_TestBoot(void) {
++    const char* e = getenv("MM_ENTRANCE");
++
++    if (e == NULL) {
++        return false;
++    }
++    gSaveContext.fileNum = 0xFF;
++    Sram_InitDebugSave();
++    gSaveContext.buttonStatus[EQUIP_SLOT_B] = BTN_ENABLED;
++    gSaveContext.buttonStatus[EQUIP_SLOT_C_LEFT] = BTN_ENABLED;
++    gSaveContext.buttonStatus[EQUIP_SLOT_C_DOWN] = BTN_ENABLED;
++    gSaveContext.buttonStatus[EQUIP_SLOT_C_RIGHT] = BTN_ENABLED;
++    gSaveContext.buttonStatus[EQUIP_SLOT_A] = BTN_ENABLED;
++    gSaveContext.hudVisibilityForceButtonAlphasByStatus = false;
++    gSaveContext.nextHudVisibility = HUD_VISIBILITY_IDLE;
++    gSaveContext.hudVisibility = HUD_VISIBILITY_IDLE;
++    gSaveContext.hudVisibilityTimer = 0;
++    gSaveContext.save.entrance = (u16)strtol(e, NULL, 0);
++    e = getenv("MM_TIME");
++    if (e != NULL) {
++        gSaveContext.save.time = (u16)strtol(e, NULL, 0);
++    }
++    e = getenv("MM_DAY");
++    if (e != NULL) {
++        gSaveContext.save.day = (s32)strtol(e, NULL, 0);
++    }
++    gSaveContext.respawn[RESPAWN_MODE_DOWN].entrance = 0xFFFF;
++    gSaveContext.seqId = (u8)NA_BGM_DISABLED;
++    gSaveContext.ambienceId = AMBIENCE_ID_DISABLED;
++    gSaveContext.showTitleCard = true;
++    gSaveContext.respawnFlag = 0;
++    gSaveContext.respawn[RESPAWN_MODE_GORON].entrance = 0xFF;
++    gSaveContext.respawn[RESPAWN_MODE_ZORA].entrance = 0xFF;
++    gSaveContext.respawn[RESPAWN_MODE_DEKU].entrance = 0xFF;
++    gSaveContext.respawn[RESPAWN_MODE_HUMAN].entrance = 0xFF;
++    gWeatherMode = WEATHER_MODE_CLEAR;
++    return true;
++}
 +
 +void Graph_ThreadEntry(void* arg) {
 +    gZBufferLoRes = malloc(sizeof(*gZBufferLoRes) + sizeof(*gWorkBufferLoRes) + 64 - 1);
@@ -891,6 +937,9 @@ index 2c9efee..ac517d8 100644
 +        }
 +        HhMm_StateEvent("done", gHhOvl);
 +        gHhNextOvl = Graph_GetNextGameState(gHhGameState);
++        if ((gHhOvl == &gGameStateOverlayTable[GAMESTATE_SETUP]) && HhMm_TestBoot()) {
++            gHhNextOvl = &gGameStateOverlayTable[GAMESTATE_PLAY]; /* debug.cfg entrance=: straight into the game */
++        }
 +        GameState_Destroy(gHhGameState);
 +        free(gHhGameState);
 +        Overlay_FreeGameState(gHhOvl);
@@ -901,7 +950,7 @@ index 2c9efee..ac517d8 100644
  void Graph_ThreadEntry(void* arg) {
      GraphicsContext gfxCtx;
      GameStateOverlay* nextOvl = &gGameStateOverlayTable[0];
-@@ -416,3 +464,4 @@ void Graph_ThreadEntry(void* arg) {
+@@ -416,3 +513,4 @@ void Graph_ThreadEntry(void* arg) {
  
      PRINTF(T("グラフィックスレッド実行終了\n", "End of graphic thread execution\n"));
  }
@@ -1803,7 +1852,7 @@ index 4cbd1b6..27a5249 100644
      // Draw treble clef
      if (msgCtx->textBoxType == TEXTBOX_TYPE_OCARINA) {
 diff --git a/src/code/z_play.c b/src/code/z_play.c
-index dc076fc..162a46f 100644
+index dc076fc..fbf3a5d 100644
 --- a/src/code/z_play.c
 +++ b/src/code/z_play.c
 @@ -145,6 +145,12 @@ void Play_DisableMotionBlur(void) {
@@ -1896,6 +1945,22 @@ index dc076fc..162a46f 100644
          *CONTROLLER1(&this->state) = input;
      }
  
+@@ -2257,7 +2284,15 @@ void Play_Init(GameState* thisx) {
+     D_801D0D54 = false;
+ 
+     FrameAdvance_Init(&this->frameAdvCtx);
++#ifdef TARGET_HANDHELD
++    {
++        u32 HhMm_RandSeed(u32 seed); /* hh_mm.c: a fixed seed while a pad recording records or plays */
++
++        Rand_Seed(HhMm_RandSeed(osGetTime()));
++    }
++#else
+     Rand_Seed(osGetTime());
++#endif
+     Matrix_Init(&this->state);
+ 
+     this->state.main = Play_Main;
 diff --git a/src/code/z_player_lib.c b/src/code/z_player_lib.c
 index a90113c..55de6b2 100644
 --- a/src/code/z_player_lib.c
