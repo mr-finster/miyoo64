@@ -108,6 +108,10 @@ jumps or flickers out of place with 30 fps on while the camera moves, tell us wh
   reading the game's display lists; the picture is the same).
 - `MM_SKYRUNS=0`: the sky tested pixel by pixel where the world covers it, as before 1.0.12 (default: skipped 16
   pixels at a time).
+- `MM_SKYLERP=0`: the sky's tint (Majora's Mask's sky is a texture tinted by the time of day, not a plain texture
+  as Ocarina of Time's) in the general pixel loops, as before (default: in its own NEON rows; the picture is the same).
+- `MM_SKYZ=0`: the sky drawn first, everywhere, as before (default: kept and drawn last, only where the depth buffer
+  says nothing covered it; the picture is the same).
 - `MM_ABFRAME=1`, with `MM_SKYRUNS=ab`, `MM_STEALROWS=ab`, `MM_BATCHBAND=ab`, `MM_BANDCARRY=ab` or `MM_STREAMDRAW=ab`: that switch off and on in turn, frame by frame, and an ABF line in
   `console.log` with each one's drawing time (for measuring; the pixels are the same either way).
 - `MM_SLEEPSAVE=0`: no auto save before sleep.

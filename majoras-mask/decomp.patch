@@ -2077,10 +2077,10 @@ index ba15bcc..c5541b5 100644
      Gfx* dList;
      Gfx* dListEnd;
 diff --git a/src/code/z_vr_box_draw.c b/src/code/z_vr_box_draw.c
-index a4066b7..bc606d9 100644
+index a4066b7..eb6f7e3 100644
 --- a/src/code/z_vr_box_draw.c
 +++ b/src/code/z_vr_box_draw.c
-@@ -21,6 +21,9 @@ void Skybox_SetColors(SkyboxContext* skyboxCtx, u8 primR, u8 primG, u8 primB, u8
+@@ -21,8 +21,15 @@ void Skybox_SetColors(SkyboxContext* skyboxCtx, u8 primR, u8 primG, u8 primB, u8
  }
  
  void Skybox_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyboxId, s16 blend, f32 x, f32 y, f32 z) {
@@ -2089,9 +2089,20 @@ index a4066b7..bc606d9 100644
 +#endif
      OPEN_DISPS(gfxCtx);
  
++#ifdef TARGET_HANDHELD
++    /* the port: the sky's tags, as OoT's (gfx_soft: OOT_SKYDEFER draws it last, only where nothing covered it) */
++    gDPNoOpTag(POLY_OPA_DISP++, HH_TAG_SKY_BEGIN);
++#endif
      Gfx_SetupDL40_Opa(gfxCtx);
-@@ -70,6 +73,9 @@ void Skybox_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyboxId
+ 
+     gSPSegment(POLY_OPA_DISP++, 0x0B, skyboxCtx->palette);
+@@ -68,8 +75,14 @@ void Skybox_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyboxId
+     }
+ 
      gDPPipeSync(POLY_OPA_DISP++);
++#ifdef TARGET_HANDHELD
++    gDPNoOpTag(POLY_OPA_DISP++, HH_TAG_SKY_END);
++#endif
  
      CLOSE_DISPS(gfxCtx);
 +#ifdef TARGET_HANDHELD

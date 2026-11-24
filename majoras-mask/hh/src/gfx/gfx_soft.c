@@ -2032,12 +2032,149 @@ cm_row_leans_m(const CmTri *T, uint32_t *fb, uint16_t *zp, int n, float zf, floa
 #define CM_ROW_PIXELS CM_PIXELS_LEAN
 #undef CM_ROW_SKIPPED
 #define CM_ROW_SKIPPED(s)
+/* MM_SKYLERP (2026-11-24, cacuracaptors, MIT): Majora's Mask's sky (Clock Town by day: ~110,000 px a frame, a third of
+ * the 3D pixels at 1600 MHz in the scalar loops) is not texture-only as OoT's: it is the (A - K) * TEXEL0 + K tint,
+ * opaque, without a z test, bilinear on clamped textures. cm_row_leanl's pixel without its depth test and depth write
+ * (the scalar loop makes neither without ZTEST), not blended, not fogged, no detail layer: the same integer steps,
+ * so the same pixels. cm_row_leanlz draws it in place; cm_row_leanlz_m in OOT_SKYDEFER's deferred sky (only where
+ * nothing covered it, MM_SKYRUNS as cm_row_leans_m). MM_SKYLERP=0: the scalar loops, as before. */
+static int sSkyLerp SAVESTATE_EXCLUDE = 1;
+#define CM_LZ_PIXEL                                                                                     \
+        const uint16x4_t S = vmin_u16(vqshrun_n_s32(acc, 16), v255);                                    \
+        uint16x4_t M = vsub_u16(vadd_u16(lk, cm_div255_lean(vmul_u16(vqsub_u16(S, lk), Tx))),             \
+                                cm_div255_lean(vmul_u16(vqsub_u16(lk, S), Tx)));                        \
+        M = vorr_u16(M, a255);                                                                          \
+        vst1_lane_u32(pf, vreinterpret_u32_u8(vmovn_u16(vcombine_u16(M, M))), 0);
+#define CM_PIXELS_LEANLZ(MODE, ALPHA, DETAIL, FOG, ...)                                                  \
+    for (uint32_t *pf = fb; pf < end; pf++, uf += duf, vf += dvf, acc = vaddq_s32(acc, dacc)) {         \
+        uint16x4_t Tx; __VA_ARGS__                                                                      \
+        CM_LZ_PIXEL                                                                                     \
+    }
+#define CM_PIXELS_LEANLZM(MODE, ALPHA, DETAIL, FOG, ...)                                                 \
+    for (uint32_t *pf = fb; pf < end; pf++, pm++, uf += duf, vf += dvf, acc = vaddq_s32(acc, dacc)) {   \
+        if (*pm) continue;                                                                              \
+        uint16x4_t Tx; __VA_ARGS__                                                                      \
+        CM_LZ_PIXEL                                                                                     \
+    }
+#define CM_LZ_LOCALS                                                                                    \
+    const uint16x4_t a255 = vcreate_u16(0x00FF000000000000ull);                                         \
+    const uint16x4_t v255 = vdup_n_u16(255), lk = T->lk;                                                \
+    const uint32_t *const px32 = (const uint32_t *)T->px;                                               \
+    const void *const px = T->px;                                                                       \
+    const int tw = T->w, th = T->h, ws = T->ws, wt = T->wt, mu = T->mu, mv = T->mv;                     \
+    const float swdx = T->swdx, uwdx = T->uwdx, vwdx = T->vwdx, zdx = T->zdx;                           \
+    const float crdx = T->crdx, cgdx = T->cgdx, cbdx = T->cbdx, cadx = T->cadx;                         \
+    const float32x4_t tsz = { T->ftw, T->ftw, T->fth, T->fth };                                         \
+    const int32x4_t dacc0 = T->dacc;                                                                    \
+    const bool pshade = T->pshade && T->persp;                                                          \
+    const int32_t zdq = T->zdq;                                                                         \
+    const bool persp = T->persp;                                                                        \
+    const bool rr = ws == WRAP_REPEAT && wt == WRAP_REPEAT && mu >= 0 && mv >= 0;                       \
+    const unsigned itw = sClampTap ? (unsigned)(tw - 1) : 0u, ith = (unsigned)(th - 1);                 \
+    const uint32_t askip = 0; /* (no alpha test: CM_LBILINI's SKIP 0) */                                \
+    (void)th; (void)px; (void)zdq; (void)askip; (void)zp;
+#define CM_LZ_FETCHES                                                                                   \
+    if (rr) { if (T->t16) { CM_ROW(1, 0, 0, 0, CM_LBILIN16) } else { CM_ROW(1, 0, 0, 0, CM_LBILIN_RR32(px32, mu, CM_WRAP_RRV)) } } \
+    else    { if (T->t16) { CM_ROW(1, 0, 0, 0, CM_LBILINI(CM_TAP16, 0)) } else { CM_ROW(1, 0, 0, 0, CM_LBILINI32(0)) } }
+#undef CM_ROW_PIXELS
+#define CM_ROW_PIXELS CM_PIXELS_LEANLZ
+static void __attribute__((noinline))
+cm_row_leanlz(const CmTri *T, uint32_t *fb, uint16_t *zp, int n,
+              float zf, float cr, float cg, float cb, float ca, float uw, float vw, float sw, float rw) {
+    CM_LZ_LOCALS
+    CM_LZ_FETCHES
+}
+#undef CM_ROW_PIXELS
+#define CM_ROW_PIXELS CM_PIXELS_LEANLZM
+static void __attribute__((noinline))
+cm_row_leanlz_m(const CmTri *T, uint32_t *fb, uint16_t *zp, int n, float zf, float cr, float cg, float cb, float ca,
+                float uw, float vw, float sw, float rw, const uint8_t *pm) {
+    CM_LZ_LOCALS
+    extern int gHhAbPhase;
+    const bool mskip = sSkyRuns == 2 ? gHhAbPhase != 0 : sSkyRuns != 0;
+#undef CM_ROW_MSKIP
+#define CM_ROW_MSKIP(span) (mskip && mask_all_set(pm, (span)))
+#undef CM_ROW_SKIPPED
+#define CM_ROW_SKIPPED(s) pm += (s);
+    CM_LZ_FETCHES
+#undef CM_ROW_MSKIP
+#define CM_ROW_MSKIP(span) 0
+#undef CM_ROW_SKIPPED
+#define CM_ROW_SKIPPED(s)
+}
+/* MM_SKYZ (2026-11-24, cacuracaptors, MIT): OOT_SKYDEFER told by the depth buffer instead of the marking rows. A kept
+ * sky triangle is drawn at the flush only where z is still the clear value (0xFFFF): every draw that may run between
+ * keeping and flushing writes z wherever it writes colour (an opaque, z-tested, z-writing draw, in any row kind), so
+ * a pixel such a draw wrote has z < 0xFFFF and is skipped, and an untouched one shows the sky; anything else (a blend,
+ * an alpha test, a draw without z) flushes the sky first, as before. Majora's Mask's world is drawn mostly by rows
+ * that do not mark (cm_row_leana, the tint rows, the scalar loops), so with the mask each of them flushed the sky and
+ * drained the batch: the sky could not wait. Its coverage for OOT_CRACKFILL is kept as drawn in place (DsRows.cov).
+ * MM_SKYZ=0: the mask, as before (and Majora's Mask, without sky tags, keeps no sky either way). */
+static int sDsZ SAVESTATE_EXCLUDE = 1;
+static inline bool z_all_set(const uint16_t *zp, int n) { /* every z in zp[0..n) written (below the clear value) */
+    for (int i = 0; i < n; i++) if (zp[i] == 0xFFFFu) return false;
+    return true;
+}
+#define CM_PIXELS_LEANLZZ(MODE, ALPHA, DETAIL, FOG, ...)                                                 \
+    for (uint32_t *pf = fb; pf < end; pf++, pz++, uf += duf, vf += dvf, acc = vaddq_s32(acc, dacc)) {   \
+        if (*pz != 0xFFFFu) continue;                                                                   \
+        uint16x4_t Tx; __VA_ARGS__                                                                      \
+        CM_LZ_PIXEL                                                                                     \
+    }
+#define CM_PIXELS_LEANSZ(MODE, ALPHA, DETAIL, FOG, ...)                                                  \
+    for (uint32_t *pf = fb; pf < end; pf++, pz++, uf += duf, vf += dvf) {                               \
+        if (*pz != 0xFFFFu) continue;                                                                   \
+        uint16x4_t Tx; __VA_ARGS__                                                                      \
+        vst1_lane_u32(pf, vreinterpret_u32_u8(vmovn_u16(vcombine_u16(vorr_u16(Tx, a255), Tx))), 0);       \
+    }
+#undef CM_ROW_MSKIP
+#define CM_ROW_MSKIP(span) (mskip && z_all_set(zp, (span)))
+#undef CM_ROW_PIXELS
+#define CM_ROW_PIXELS CM_PIXELS_LEANLZZ
+static void __attribute__((noinline))
+cm_row_leanlz_z(const CmTri *T, uint32_t *fb, uint16_t *zp, int n, float zf, float cr, float cg, float cb, float ca,
+                float uw, float vw, float sw, float rw) {
+    CM_LZ_LOCALS
+    extern int gHhAbPhase;
+    const bool mskip = sSkyRuns == 2 ? gHhAbPhase != 0 : sSkyRuns != 0;
+    CM_LZ_FETCHES
+}
+#undef CM_ROW_PIXELS
+#define CM_ROW_PIXELS CM_PIXELS_LEANSZ
+static void __attribute__((noinline))
+cm_row_leans_z(const CmTri *T, uint32_t *fb, uint16_t *zp, int n, float zf, float cr, float cg, float cb, float ca,
+               float uw, float vw, float sw, float rw) {
+    const uint16x4_t a255 = vcreate_u16(0x00FF000000000000ull);
+    const uint32_t *const px32 = (const uint32_t *)T->px;
+    const void *const px = T->px;
+    const int tw = T->w, th = T->h, ws = T->ws, wt = T->wt, mu = T->mu, mv = T->mv;
+    const float swdx = T->swdx, uwdx = T->uwdx, vwdx = T->vwdx, zdx = T->zdx;
+    const float crdx = T->crdx, cgdx = T->cgdx, cbdx = T->cbdx, cadx = T->cadx;
+    const float32x4_t tsz = { T->ftw, T->ftw, T->fth, T->fth };
+    const int32x4_t dacc0 = T->dacc;
+    const bool pshade = false;
+    const int32_t zdq = T->zdq;
+    const bool persp = T->persp;
+    const bool rr = ws == WRAP_REPEAT && wt == WRAP_REPEAT && mu >= 0 && mv >= 0;
+    const unsigned itw = sClampTap ? (unsigned)(tw - 1) : 0u, ith = (unsigned)(th - 1);
+    const uint32_t askip = 0;
+    (void)th; (void)px; (void)zdq; (void)dacc0; (void)askip;
+    extern int gHhAbPhase;
+    const bool mskip = sSkyRuns == 2 ? gHhAbPhase != 0 : sSkyRuns != 0;
+    if (rr) { if (T->t16) { CM_ROW(1, 0, 0, 0, CM_LBILIN16) } else { CM_ROW(1, 0, 0, 0, CM_LBILIN_RR32(px32, mu, CM_WRAP_RRV)) } }
+    else    { if (T->t16) { CM_ROW(1, 0, 0, 0, CM_LBILINI(CM_TAP16, 0)) } else { CM_ROW(1, 0, 0, 0, CM_LBILINI32(0)) } }
+}
+#undef CM_ROW_MSKIP
+#define CM_ROW_MSKIP(span) 0
+#undef CM_ROW_PIXELS
+#define CM_ROW_PIXELS CM_PIXELS_LEAN
 typedef struct { /* a kept sky triangle's row values (raster_tri's names, TRI_ROW_SETUP's inputs) */
     float e0c, e0x, e0y, e1c, e1x, e1y, e2c, e2x, e2y, inv_area, w0dx, w1dx, w2dx;
     float z0, z1, z2, r0, r1, r2, g0, g1, g2, bl0, bl1, bl2, a0, a1, a2, uw0, uw1, uw2, vw0, vw1, vw2, iw0, iw1, iw2;
     int minx, maxx, miny, maxy, stride;
     bool flat, persp, p3d;
-    uint16_t *zbuf; /* the target's z (the sky's rows step its pointer, never read it) */
+    uint16_t *zbuf; /* the target's z (the sky's rows step its pointer, never read it; MM_SKYZ reads it) */
+    uint8_t *cov;   /* MM_SKYZ: OOT_CRACKFILL's coverage the triangle drew in place (NULL: none) */
 } DsRows;
 #define DS_MAX 192
 static struct { CmTri cmt; DsRows R; } sDsTri[DS_MAX] SAVESTATE_EXCLUDE;
@@ -2145,7 +2282,12 @@ static uint32_t __attribute__((noinline)) sky_rows(const CmTri *T, const DsRows 
     const bool own = false; OwnTri oe; (void)oe; /* the sky: opaque, the inclusive solve */
     for (int y = miny; y < maxy; y++) {
         TRI_ROW_SETUP
-        cm_row_leans_m(T, fbuf + idx, zb + idx, xe - xs, zf, cr, cg, cb, ca, uw, vw, sw, rw, sDsMask + idx);
+        if (R.cov) memset(R.cov + idx, 1, (size_t)(xe - xs));
+        if (sDsZ) {
+            if (T->lean2 == 5) cm_row_leanlz_z(T, fbuf + idx, zb + idx, xe - xs, zf, cr, cg, cb, ca, uw, vw, sw, rw);
+            else cm_row_leans_z(T, fbuf + idx, zb + idx, xe - xs, zf, cr, cg, cb, ca, uw, vw, sw, rw);
+        } else if (T->lean2 == 5) cm_row_leanlz_m(T, fbuf + idx, zb + idx, xe - xs, zf, cr, cg, cb, ca, uw, vw, sw, rw, sDsMask + idx);
+        else cm_row_leans_m(T, fbuf + idx, zb + idx, xe - xs, zf, cr, cg, cb, ca, uw, vw, sw, rw, sDsMask + idx);
     }
     return tri_px;
 }
@@ -2204,7 +2346,12 @@ static void sky_flush(void) {
 #else
         for (int y = R.miny; y < R.maxy; y++) {
             TRI_ROW_SETUP
-            cm_row_leans_m(T, fbuf + idx, zb + idx, xe - xs, zf, cr, cg, cb, ca, uw, vw, sw, rw, sDsMask + idx);
+            if (R.cov) memset(R.cov + idx, 1, (size_t)(xe - xs));
+            if (sDsZ) {
+                if (T->lean2 == 5) cm_row_leanlz_z(T, fbuf + idx, zb + idx, xe - xs, zf, cr, cg, cb, ca, uw, vw, sw, rw);
+                else cm_row_leans_z(T, fbuf + idx, zb + idx, xe - xs, zf, cr, cg, cb, ca, uw, vw, sw, rw);
+            } else if (T->lean2 == 5) cm_row_leanlz_m(T, fbuf + idx, zb + idx, xe - xs, zf, cr, cg, cb, ca, uw, vw, sw, rw, sDsMask + idx);
+            else cm_row_leans_m(T, fbuf + idx, zb + idx, xe - xs, zf, cr, cg, cb, ca, uw, vw, sw, rw, sDsMask + idx);
         }
 #endif
         if (R.p3d) gfx_soft_span_px += tri_px; /* the stat raster_tri's caller would have added */
@@ -3076,7 +3223,11 @@ static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, b
      * (cm_row_leanz); a blend-twice copy (cmt.extra) never comes without z */
     const bool noz_rows = sNoZLean && sAlphaLean && sCmNeon && tex && !ztest && cm_mod && sUseAlpha && use_bilin && !dtex && !fogtri &&
                           (t16 || sBil64 != 0 || !(ws == WRAP_REPEAT && wt == WRAP_REPEAT && tmask_u >= 0 && tmask_v >= 0));
-    const bool cm_rows = lerp_rows || noz_rows || (sCmNeon && tex && (!fogtri || (ztest && cm_mod && (fga < 0 || sCmFga))) &&
+    /* MM_SKYLERP: the same tint without a z test, opaque, not fogged, no detail layer (cm_row_leanlz) */
+    const bool lerpz_rows = sSkyLerp && sLerpLean && sCmNeon && tex && !ztest && use_bilin && !dtex && texlerp && rgb_tex &&
+                            rgb_in && !rgb_texa && !sUseAlpha && !fogtri &&
+                            (t16 || sBil64 != 0 || !(ws == WRAP_REPEAT && wt == WRAP_REPEAT && tmask_u >= 0 && tmask_v >= 0));
+    const bool cm_rows = lerp_rows || noz_rows || lerpz_rows || (sCmNeon && tex && (!fogtri || (ztest && cm_mod && (fga < 0 || sCmFga))) &&
                          (use_bilin || !sUiMode || gfx_soft_hud_box <= 0) &&
                          (dtex ? dneon : ((ztest && cm_mod) || (!ztest && texonly && !sUseAlpha))));
     CmTri cmt;
@@ -3171,6 +3322,7 @@ static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, b
         /* OOT_LERPLEAN: the tint rows (the conditions above, lerp_rows) */
         if (noz_rows) { cmt.lean = false; cmt.lean2 = 4; }
         if (lerp_rows) { cmt.lean = false; cmt.lean2 = 3; cmt.lk = (uint16x4_t){ (uint16_t)lkb, (uint16_t)lkg, (uint16_t)lkr, 0 }; }
+        if (lerpz_rows) { cmt.lean = false; cmt.lean2 = 5; cmt.lk = (uint16x4_t){ (uint16_t)lkb, (uint16_t)lkg, (uint16_t)lkr, 0 }; }
     }
 #endif
 
@@ -3217,24 +3369,29 @@ static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, b
 
 #if defined(HH_CM_NEON)
     { /* OOT_SKYDEFER: keep the sky's rows; anything but a marking row draws the kept sky first */
-        const bool marking = cm_rows && cmt.lean && !cmt.alpha && sLeanZ && zbias == 0 && dmask && fbuf == sDsFB;
-        const bool keep = sSkyDefer && sDsTag && cm_rows && cmt.lean2 == 2 && !sSkyPass && sDsAllow;
-        if ((sDsN && !marking) || keep) PEND_DRAIN(); /* MM_BATCHBAND: the flush draws, the keep changes the mask */
+        /* MM_SKYZ: any opaque z-tested draw writing z (its pixels get z < 0xFFFF) lets the sky wait */
+        const bool marking = sDsZ ? (ztest && dmask && !sUseAlpha && fbuf == sDsFB)
+                                  : (cm_rows && cmt.lean && !cmt.alpha && sLeanZ && zbias == 0 && dmask && fbuf == sDsFB);
+        const bool keep = sSkyDefer && sDsTag && cm_rows && (cmt.lean2 == 2 || cmt.lean2 == 5) && !sSkyPass && sDsAllow;
+        if ((sDsN && !marking) || (keep && !sDsZ)) PEND_DRAIN(); /* MM_BATCHBAND: the flush draws, the keep changes the mask */
         if (sDsN && !marking && !keep) sky_flush();
         if (sDsN && marking) sDsMarked = true;
         if (keep) {
             if (sDsN && (sDsMarked || sDsN == DS_MAX || fbuf != sDsFB)) sky_flush();
             const int sz = sW * sH;
-            if (!sDsN) {
+            if (!sDsN && !sDsZ) {
                 if (sDsMaskSz < sz) { free(sDsMask); sDsMask = (uint8_t *)malloc((size_t)sz); sDsMaskSz = sDsMask ? sz : 0; }
                 if (sDsMask) memset(sDsMask, 0, (size_t)sz);
             }
-            if (sDsMask) {
+            if (sDsMask || sDsZ) {
+                /* MM_SKYZ: the coverage it would have drawn in place (raster_tri's cov below, for a sky without z) */
+                uint8_t *const kcov = (sDsZ && sCov && fbuf == sCovTarget && sCovSz >= sW * sH && !sSkyTag && !sSkyPass && !ztest)
+                                      ? sCov : NULL;
                 const DsRows R = { e0c, e0x, e0y, e1c, e1x, e1y, e2c, e2x, e2y, inv_area, w0dx, w1dx, w2dx,
                                    z0, z1, z2, r0, r1, r2, g0, g1, g2, bl0, bl1, bl2, a0, a1, a2, uw0, uw1, uw2,
-                                   vw0, vw1, vw2, iw0, iw1, iw2, minx, maxx, miny, maxy, sW, flat, persp, sDsP3D, zb };
+                                   vw0, vw1, vw2, iw0, iw1, iw2, minx, maxx, miny, maxy, sW, flat, persp, sDsP3D, zb, kcov };
                 sDsTri[sDsN].cmt = cmt; sDsTri[sDsN].R = R; sDsN++;
-                sDsFB = fbuf; sDsMarking = true; sDsMarked = false;
+                sDsFB = fbuf; sDsMarking = !sDsZ; sDsMarked = false;
                 return 0; /* its span pixels are counted when it is drawn */
             }
         }
@@ -3261,7 +3418,7 @@ static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, b
         R.ek2 = w2dx > 0.0f ? 0 : w2dx < 0.0f ? 1 : 2;
         R.cov = cov; R.fbuf = fbuf; R.zb = zb; R.t = &cmt;
         R.fn = cmt.lean ? cm_row_lean : cmt.lean2 == 1 ? cm_row_leana : cmt.lean2 == 2 ? cm_row_leans
-             : cmt.lean2 == 3 ? cm_row_leanl : cmt.lean2 == 4 ? cm_row_leanz : cm_row_neon; /* as the loop below */
+             : cmt.lean2 == 3 ? cm_row_leanl : cmt.lean2 == 4 ? cm_row_leanz : cmt.lean2 == 5 ? cm_row_leanlz : cm_row_neon; /* as the loop below */
 #if defined(MIYOO)
         if (sPendOn) { /* MM_BATCHBAND: its rows wait (pend_drain) */
             PendTri *p = pend_slot(1, area, minx, maxx, miny, maxy, sPhase3D, cmt.enote);
@@ -4356,7 +4513,9 @@ static void gfx_soft_init(void) {
     { const char *e = getenv("OOT_EDGETINT"); if (e && e[0] == '0') sEdgeTint = 0; }
 #if defined(HH_CM_NEON)
     { const char *e = getenv("OOT_SKYDEFER"); if (e) sSkyDefer = e[0] != '0'; }
-    { const char *e = getenv("MM_SKYRUNS"); if (e) sSkyRuns = e[0] == 'a' ? 2 : e[0] != '0'; } /* "ab": MM_ABFRAME */
+    { const char *e = getenv("MM_SKYRUNS"); if (e) sSkyRuns = e[0] == 'a' ? 2 : e[0] != '0'; }  /* "ab": MM_ABFRAME */
+    { const char *e = getenv("MM_SKYLERP"); if (e) sSkyLerp = e[0] != '0'; }
+    { const char *e = getenv("MM_SKYZ"); if (e) sDsZ = e[0] != '0'; }
 #endif
     if (!sTexArena) {
         sTexArena = aligned_alloc(16, TEXARENA_SZ);
@@ -4803,7 +4962,11 @@ static void sky_upscale(void) {
 }
 
 void gfx_scegu_set_sky_pass(bool on) {
+#if defined(HH_CM_NEON)
+    sSkyTag = on && !sDsZ; /* OOT_CRACKFILL: the sky is no coverage (MM_SKYZ: kept as Majora's Mask drew it untagged) */
+#else
     sSkyTag = on; /* OOT_CRACKFILL: the sky is no coverage */
+#endif
 #if defined(HH_CM_NEON)
     sDsTag = on; /* OOT_SKYDEFER keeps the full-resolution sky's rows (the tags change no target or pixel then) */
 #endif
