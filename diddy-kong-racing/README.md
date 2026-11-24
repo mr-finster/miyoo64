@@ -4,6 +4,8 @@ A native port of Diddy Kong Racing, built from the Diddy Kong Racing decompilati
 
 **No game data is included**, here or in the zip. You need your own ROM.
 
+For European PAL 1.1 (English, French and German), see the [PAL alpha instructions](README_PAL_V80.md). The US build and its installation below remain separate.
+
 Download `DiddyKongRacing-miyoo.zip` from https://miyoo-n64.pages.dev, and install it as the [top-level README](../README.md#install) says.
 
 ## Your ROM

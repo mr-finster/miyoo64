@@ -17,6 +17,7 @@
 #include "thread3_main.h"
 
 #if defined(PORT)
+#include "game_text.h"
 /* Port: EEPROM and Controller Pak images must stay byte-compatible with a real
  * N64 (big-endian). These helpers convert between that on-disk order and the
  * host order at the points where the game reads/writes typed multi-byte fields.

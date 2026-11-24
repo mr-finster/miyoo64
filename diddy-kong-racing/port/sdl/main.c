@@ -28,6 +28,7 @@
 #include "gfx_rendering_api.h"
 #include "savestate.h"
 #include "handheld_menu.h" /* handheld_power_pending (0 off handheld) */
+#include <errno.h>
 #if defined(MIYOO)
 #include "miyoo_clock.h"
 #endif
@@ -1000,7 +1001,34 @@ static void game_session_fixed_stack(void) {
 }
 #endif
 
+#if defined(VERSION_pal_v80)
+/* Keep every PAL write separate even if DKR_DATA points at the US data directory. */
+static void pal_data_dir(const char *argv0) {
+    char base[512], dir[544];
+    const char *env = getenv("DKR_DATA");
+    const char *slash = argv0 ? strrchr(argv0, '/') : NULL;
+    if (env && env[0]) {
+        if (snprintf(base, sizeof(base), "%s", env) >= (int) sizeof(base)) exit(1);
+    } else if (slash) {
+        if ((size_t) (slash - argv0) + sizeof("/data") > sizeof(base)) exit(1);
+        memcpy(base, argv0, (size_t) (slash - argv0));
+        base[slash - argv0] = 0;
+        strcat(base, "/data");
+    } else {
+        snprintf(base, sizeof(base), "./data");
+    }
+    mkdir(base, 0777);
+    if (snprintf(dir, sizeof(dir), "%s/pal-v80", base) >= (int) sizeof(dir)) exit(1);
+    if (strlen(dir) >= 250) { fprintf(stderr, "PAL data path too long\n"); exit(1); }
+    if (mkdir(dir, 0777) != 0 && errno != EEXIST) { perror("PAL data directory"); exit(1); }
+    if (setenv("DKR_DATA", dir, 1) != 0) { perror("DKR_DATA"); exit(1); }
+}
+#endif
+
 int main(int argc, char **argv) {
+#if defined(VERSION_pal_v80)
+    pal_data_dir(argc > 0 ? argv[0] : NULL);
+#endif
 #if defined(MIYOO)
     miyoo_console_setup(argc > 0 ? argv[0] : NULL);
 #endif

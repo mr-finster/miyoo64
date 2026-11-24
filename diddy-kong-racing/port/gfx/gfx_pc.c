@@ -105,10 +105,22 @@ extern void port_log(const char* fmt, ...);
 #define SCALE_8_3(VAL_) ((VAL_) / 0x24)
 
 #define SCREEN_WIDTH 320
+#if defined(DKR_PAL264)
+#define SCREEN_HEIGHT 264
+#else
 #define SCREEN_HEIGHT 240
+#endif
 #define HALF_SCREEN_WIDTH (SCREEN_WIDTH / 2)
 #define HALF_SCREEN_HEIGHT (SCREEN_HEIGHT / 2)
 
+/* PAL's extra scanlines do not make the 4:3 output narrower. */
+static float gfx_output_aspect(void) {
+#if defined(DKR_PAL264)
+    return (float)gfx_current_dimensions.width / ((float)gfx_current_dimensions.height * (240.0f / 264.0f));
+#else
+    return (float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height;
+#endif
+}
 #define RATIO_X (gfx_current_dimensions.width / (2.0f * HALF_SCREEN_WIDTH))
 #define RATIO_Y (gfx_current_dimensions.height / (2.0f * HALF_SCREEN_HEIGHT))
 
@@ -788,7 +800,11 @@ static int sHudMode SAVESTATE_EXCLUDE = -1;
 static int sHudKeep SAVESTATE_EXCLUDE; /* inside a PORT_HUD_TAG_KEEP bracket */
 static int hud_fit_mode(void) {
     if (sHudMode < 0) { const char *e = getenv("DKR_HUD"); sHudMode = !(e && e[0] == '0'); }
+#if defined(DKR_PAL264)
+    return sHudMode && !sHudKeep && gfx_hud_anchor == 1 && gfx_output_aspect() < 4.0f / 3.0f;
+#else
     return sHudMode && !sHudKeep && gfx_hud_anchor == 1 && gfx_current_dimensions.width * 3 < gfx_current_dimensions.height * 4;
+#endif
 }
 /* A placed element: full (leave it squeezed), or the output x it grows around, by how much, and the
  * shift that keeps it on the screen. */
@@ -1858,7 +1874,7 @@ static void gfx_sp_matrix(uint8_t parameters, const int32_t *addr) {
         memcpy(matrix_inline, rsp.P_matrix, sizeof(rsp.P_matrix));
 #if defined(PORT_GE_TL) && defined(PORT_GE_TL_ASPECT)
         {
-            float k = (4.0f / 3.0f) / ((float) gfx_current_dimensions.width / (float) gfx_current_dimensions.height);
+            float k = (4.0f / 3.0f) / (gfx_output_aspect());
             float (*Pm)[4] = (float (*)[4]) matrix_inline;
             Pm[0][0] *= k; Pm[1][0] *= k; Pm[2][0] *= k; Pm[3][0] *= k;
         }
@@ -1913,7 +1929,7 @@ static void gfx_sp_pop_matrix(uint32_t count) {
 }
 
 static float gfx_adjust_x_for_aspect_ratio(float x) {
-    return x * (4.0f / 3.0f) / ((float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height);
+    return x * (4.0f / 3.0f) / (gfx_output_aspect());
 }
 
 struct ShaderProgram {
@@ -1963,7 +1979,7 @@ static void gfx_sp_vertex(size_t n_vertices, size_t dest_index, const Vtx *verti
 #endif
     /* The aspect quotient of gfx_adjust_x_for_aspect_ratio, divided once a
      * batch instead of every vertex (same operands: the same float). */
-    const float aspect_q = (float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height;
+    const float aspect_q = gfx_output_aspect();
     for (size_t i = 0; i < n_vertices; i++, dest_index++) {
         const Vtx_t *v = &vertices[i].v;
         const Vtx_tn *vn = &vertices[i].n;
@@ -3830,7 +3846,7 @@ static void gfx_dkr_vertex(int n, bool append, const uint8_t *src) {
     }
     gfx_sp_vertex(n, dest, tmp);
     if (dest == 0 && !rsp.dkr_billboard) { /* a possible anchor: remember gfx_sp_vertex's x widening */
-        rsp.dkr_anchor_xk = rsp.is_persp ? (4.0f / 3.0f) / ((float) gfx_current_dimensions.width / (float) gfx_current_dimensions.height) : 1.0f;
+        rsp.dkr_anchor_xk = rsp.is_persp ? (4.0f / 3.0f) / (gfx_output_aspect()) : 1.0f;
     }
     if (gfx_trace_frames > 0) {
         const struct LoadedVertex *d = &rsp.loaded_vertices[dest];
@@ -4157,11 +4173,25 @@ static bool gfx_raw_vp_valid;
 static uint32_t gfx_raw_sc[4];
 static bool gfx_raw_sc_valid;
 
+#if defined(DKR_M07B) && defined(DKR_PAL264) && defined(VERSION_pal_v80)
+/* Experimental PAL A/B: the original full-screen 1P viewport is shifted four
+ * source pixels left. Match its complete positive-scale geometry; split and
+ * custom boxes do not generally match. Identical full-screen special views and
+ * HUD triangles using this viewport also move. No width or height is changed. */
+static bool gfx_m07b_fullscreen_viewport(const Vp_t *vp) {
+    return vp->vscale[0] == 640 && vp->vtrans[0] == 624 &&
+           vp->vscale[1] == 580 && vp->vtrans[1] == 508;
+}
+#endif
+
 static void gfx_calc_and_set_viewport(const Vp_t *viewport) {
     // 2 bits fraction
     float width = 2.0f * viewport->vscale[0] / 4.0f;
     float height = 2.0f * viewport->vscale[1] / 4.0f;
     float x = (viewport->vtrans[0] / 4.0f) - width / 2.0f;
+#if defined(DKR_M07B) && defined(DKR_PAL264) && defined(VERSION_pal_v80)
+    if (gfx_m07b_fullscreen_viewport(viewport)) x += 4.0f;
+#endif
 #if defined(TARGET_HANDHELD)
     /* Our software rasterizer is top-down (row 0 = top) and gfx_emit_vertex
      * already flips NDC y inside the viewport rect, so viewport.y must be the
@@ -4644,7 +4674,7 @@ static void gfx_draw_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_t lr
     float lrxf = lrx;
     float lryf = lry;
 
-    const float out_aspect = (float) gfx_current_dimensions.width / (float) gfx_current_dimensions.height;
+    const float out_aspect = gfx_output_aspect();
 #ifndef PORT_GE_TL
     if (out_aspect < 4.0f / 3.0f - 0.01f) {
         /* Output narrower than the game's 4:3 (handheld CONVERT, a square output).
@@ -5375,7 +5405,7 @@ void gfx_init(struct GfxWindowManagerAPI *wapi, struct GfxRenderingAPI *rapi, co
         // Avoid division by zero
         gfx_current_dimensions.height = 1;
     }
-    gfx_current_dimensions.aspect_ratio = (float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height;
+    gfx_current_dimensions.aspect_ratio = gfx_output_aspect();
 }
 
 struct GfxRenderingAPI *gfx_get_current_rendering_api(void) {

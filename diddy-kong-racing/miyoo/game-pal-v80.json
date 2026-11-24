@@ -1,0 +1,19 @@
+{
+  "id": "dkr-pal-v80",
+  "title": "Diddy Kong Racing PAL",
+  "folder": "DiddyKongRacingPAL",
+  "exe": "dkr",
+  "files": [
+    "dkr"
+  ],
+  "icon": "icon.png",
+  "env": "DKR",
+  "data": "data",
+  "rom": {
+    "name": "Diddy Kong Racing (Europe) (Rev 1)",
+    "sha1": "b7f628073237b3d211d40406aa0884ff8fdd70d5",
+    "size": 12582912
+  },
+  "system": "DIDDYKONGPAL",
+  "minui_tag": "DKRPAL"
+}

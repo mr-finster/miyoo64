@@ -36,7 +36,11 @@ extern int port_rom_read(u32 rom, void *dst, u32 len);
 extern u32 port_time_us(void);
 
 /* ------------------------------------------------------------------ globals */
-s32 osTvType = 1; /* OS_TV_TYPE_NTSC */
+#if defined(VERSION_pal_v80)
+s32 osTvType = OS_TV_PAL;
+#else
+s32 osTvType = OS_TV_NTSC;
+#endif
 s32 osResetType = 0;
 u64 osClockRate = 62500000;
 OSViMode osViModeTable[56];
@@ -69,7 +73,11 @@ u32 osGetCount(void) { return (u32) ((port_clock_us() * 46875ull) / 1000ull); }
  * many passed since the last frame (2 = 30 fps, 3 = 20 fps ...) and the whole
  * simulation scales by that. port_vi_fields(min) sleeps until at least `min`
  * fields have passed since the previous call, then returns how many did. */
+#if defined(VERSION_pal_v80)
+#define FIELD_US 20000u /* 50 Hz */
+#else
 #define FIELD_US 16683u /* 59.94 Hz */
+#endif
 static u64 sFieldClock;
 /* DKR_FAST=1 (headless tests): no sleeping; exactly `minFields` fields pass
  * per call on a virtual clock, so a run is fast and frame-for-frame
