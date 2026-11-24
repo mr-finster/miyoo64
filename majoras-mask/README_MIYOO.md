@@ -73,8 +73,17 @@ records which data it is), so keep the ROM on the card.
 | START + left / down / right | C-left / C-down / C-right |
 | START + L1 | L (the minimap on/off) |
 | MENU | the game menu (resume, save/load state, controls, options, exit) |
+| SELECT | with MENU > OPTIONS > CONTROLS > STYLE: MODERN (below), C-left, as X jumps |
 
 While you play an instrument, the d-pad is the four C notes and A is A. B puts it away.
+
+**Modern controls:** MENU > OPTIONS > CONTROLS > STYLE (`controls=` in `debug.cfg`, ORIGINAL by default): MODERN
+gives Link a jump on X (C-left moves to SELECT, and stays on START + left) and turns off the automatic jump and
+ledge grab at edges; A held after a roll runs faster, and a roll or a landing goes straight into the run; A again
+near a roll's end rolls again, and the d-pad steers rolls and, a little, jumps. Only Link and the Fierce Deity get
+them: Deku, Goron and Zora Link keep the N64's controls (X is C-left for them), as their A, their edges and their
+water work their own way. Each part has its own key too (SETTINGS.md), to try them one at a time. Pad replays
+(`MM_PAD_PLAY`) don't carry the X jump.
 
 **Fine aim:** in first person and while aiming (the C-up look, the bow and its magic arrows, the hookshot,
 Deku bubbles, Zora fins), the d-pad starts as a small push of the stick, 20% of full tilt, for the first

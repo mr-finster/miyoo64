@@ -1011,7 +1011,12 @@ char** gHhMmArgv; /* hh_mm_convert.c: the first start starts the game again in a
  * (cacuracaptors, MIT), after the decomp's map select (MapSelect_LoadGame). */
 static void HhMm_TestBootKeys(void) {
     static const char* const keys[][2] = { { "entrance", "MM_ENTRANCE" }, { "time", "MM_TIME" }, { "day", "MM_DAY" },
-                                            { "prof", "OOT_PROF" } };
+                                            { "prof", "OOT_PROF" },
+                                            /* CONTROLS MODERN's parts, one at a time (hh_controls.c) */
+                                            { "jumpbutton", "MM_JUMPBUTTON" }, { "autojump", "MM_AUTOJUMP" },
+                                            { "ledgegrab", "MM_LEDGEGRAB" }, { "sprint", "MM_SPRINT" },
+                                            { "betterroll", "MM_BETTERROLL" }, { "airsteer", "MM_AIRSTEER" },
+                                            { "jumpstrength", "MM_JUMPSTRENGTH" } };
     char line[256];
     FILE* f = fopen(port_save_path("debug.cfg"), "r");
 
@@ -1053,6 +1058,10 @@ int main(int argc, char** argv) {
         }
     }
 #endif
+    {
+        extern void HhCtl_Reload(void); /* hh_controls.c: CONTROLS ORIGINAL / MODERN (debug.cfg controls=) */
+        HhCtl_Reload();
+    }
     {   /* kit k1.6: nice -10 before any thread exists (all inherit it): the OS's helpers fit in the frame gaps */
         extern void hh_game_priority(void);
         hh_game_priority();
