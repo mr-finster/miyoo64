@@ -1710,11 +1710,55 @@ index 053a032..a919d31 100644
      if (ovl == NULL) {
          s32 i;
  
+diff --git a/src/code/z_kankyo.c b/src/code/z_kankyo.c
+index 5e5e288..1f438f2 100644
+--- a/src/code/z_kankyo.c
++++ b/src/code/z_kankyo.c
+@@ -532,7 +532,16 @@ void Environment_JumpForwardInTime(void);
+ void Environment_GraphCallback(GraphicsContext* gfxCtx, void* arg) {
+     PlayState* play = (PlayState*)arg;
+ 
++#ifdef TARGET_HANDHELD
++    {
++        /* the port: the sun's lens flare asks the renderer's depth (hh_renderer.c), as OoT's PSP path */
++        _Bool OotPspRenderer_IsDepthClear(s32 x, s32 y);
++
++        sSunScreenDepth = OotPspRenderer_IsDepthClear(sSunDepthTestX, sSunDepthTestY) ? GPACK_ZDZ(G_MAXFBZ, 0) : 0;
++    }
++#else
+     sSunScreenDepth = SysCfb_GetZBufferPixel(sSunDepthTestX, sSunDepthTestY);
++#endif
+     Lights_GlowCheck(play);
+ }
+ 
 diff --git a/src/code/z_lights.c b/src/code/z_lights.c
-index d7917a6..dc62e93 100644
+index d7917a6..424e303 100644
 --- a/src/code/z_lights.c
 +++ b/src/code/z_lights.c
-@@ -445,6 +445,9 @@ void Lights_DrawGlow(PlayState* play) {
+@@ -409,12 +409,22 @@ void Lights_GlowCheck(PlayState* play) {
+             if ((projectedPos.z > 1) && (fabsf(projectedPos.x * invW) < 1) && (fabsf(projectedPos.y * invW) < 1)) {
+                 s32 screenPosX = PROJECTED_TO_SCREEN_X(projectedPos, invW);
+                 s32 screenPosY = PROJECTED_TO_SCREEN_Y(projectedPos, invW);
++#ifdef TARGET_HANDHELD
++                /* the port: the renderer's depth (hh_renderer.c), as OoT's PSP path; the game's z-buffer here is never
++                 * drawn into, so no halo ever passed (Tatl, the Poes, the torches) */
++                _Bool OotPspRenderer_DepthTest(s32 x, s32 y, f32 projectedZ);
++
++                if (OotPspRenderer_DepthTest(screenPosX, screenPosY, projectedPos.z * invW)) {
++                    params->drawGlow = true;
++                }
++#else
+                 s32 wZ = (s32)(projectedPos.z * invW * ((G_MAXZ / 2) * 32)) + ((G_MAXZ / 2) * 32);
+                 s32 zBuf = SysCfb_GetZBufferInt(screenPosX, screenPosY);
+ 
+                 if (wZ < zBuf) {
+                     params->drawGlow = true;
+                 }
++#endif
+             }
+         }
+ 
+@@ -445,6 +455,9 @@ void Lights_DrawGlow(PlayState* play) {
                  if (params->drawGlow) {
                      f32 scale = SQ((f32)params->radius) * 2e-6f;
  
@@ -1724,7 +1768,7 @@ index d7917a6..dc62e93 100644
                      gDPSetPrimColor(gfx++, 0, 0, params->color[0], params->color[1], params->color[2], 50);
  
                      Matrix_Translate(params->x, params->y, params->z, MTXMODE_NEW);
-@@ -453,6 +456,9 @@ void Lights_DrawGlow(PlayState* play) {
+@@ -453,6 +466,9 @@ void Lights_DrawGlow(PlayState* play) {
                      MATRIX_FINALIZE_AND_LOAD(gfx++, play->state.gfxCtx);
  
                      gSPDisplayList(gfx++, gameplay_keep_DL_029CF0);
@@ -2169,6 +2213,42 @@ index 2fc63e5..84766c7 100644
              ptr->unk_00 = true;
              ptr->unk_04 = *vec;
              ptr->unk_04.x += Rand_CenteredFloat(ptr->unk_00 + (this->unk_330 * 4000.0f));
+diff --git a/src/overlays/actors/ovl_En_Invadepoh/z_en_invadepoh.c b/src/overlays/actors/ovl_En_Invadepoh/z_en_invadepoh.c
+index fc4078e..14a1a48 100644
+--- a/src/overlays/actors/ovl_En_Invadepoh/z_en_invadepoh.c
++++ b/src/overlays/actors/ovl_En_Invadepoh/z_en_invadepoh.c
+@@ -1294,7 +1294,13 @@ s32 EnInvadepoh_LensFlareCheck(PlayState* play, Vec3f* pos) {
+         f32 screenPosY = PROJECTED_TO_SCREEN_Y(projectedPos, invW);
+         s32 wZ = (s32)(projectedPos.z * invW * ((G_MAXZ / 2) * 32)) + ((G_MAXZ / 2) * 32);
+ 
++#ifdef TARGET_HANDHELD
++        _Bool OotPspRenderer_DepthTest(s32 x, s32 y, f32 projectedZ); /* the port: the renderer's depth */
++
++        if (OotPspRenderer_DepthTest(screenPosX, screenPosY, projectedPos.z * invW)) {
++#else
+         if (wZ < SysCfb_GetZBufferInt(screenPosX, screenPosY)) {
++#endif
+             return true;
+         }
+     }
+diff --git a/src/overlays/actors/ovl_En_Invadepoh_Demo/z_en_invadepoh_demo.c b/src/overlays/actors/ovl_En_Invadepoh_Demo/z_en_invadepoh_demo.c
+index 7d1e4e7..a4d2968 100644
+--- a/src/overlays/actors/ovl_En_Invadepoh_Demo/z_en_invadepoh_demo.c
++++ b/src/overlays/actors/ovl_En_Invadepoh_Demo/z_en_invadepoh_demo.c
+@@ -579,7 +579,13 @@ s32 EnInvadepohDemo_Ufo_LensFlareCheck(PlayState* play, Vec3f* pos) {
+         f32 screenPosY = PROJECTED_TO_SCREEN_Y(projectedPos, invW);
+         s32 wZ = (s32)(projectedPos.z * invW * ((G_MAXZ / 2) * 32)) + ((G_MAXZ / 2) * 32);
+ 
++#ifdef TARGET_HANDHELD
++        _Bool OotPspRenderer_DepthTest(s32 x, s32 y, f32 projectedZ); /* the port: the renderer's depth */
++
++        if (OotPspRenderer_DepthTest(screenPosX, screenPosY, projectedPos.z * invW)) {
++#else
+         if (wZ < SysCfb_GetZBufferInt(screenPosX, screenPosY)) {
++#endif
+             return true;
+         }
+     }
 diff --git a/src/overlays/effects/ovl_Effect_Ss_Bubble/z_eff_ss_bubble.c b/src/overlays/effects/ovl_Effect_Ss_Bubble/z_eff_ss_bubble.c
 index fe0847c..3f77898 100644
 --- a/src/overlays/effects/ovl_Effect_Ss_Bubble/z_eff_ss_bubble.c
