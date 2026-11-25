@@ -4,7 +4,11 @@
  * natively, so port_pi_read skips them (port_segments.c). */
 #include "port.h"
 #include "port_rom_identity.h"
+#include "port_flash_language.h"
 #include "handheld_menu.h" /* the failed-save caption (a no-op off the handheld) */
+#if defined(MIYOO) && defined(PM64_ROM_REGION_PAL)
+#include "miyoo_i18n.h"
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -215,7 +219,13 @@ static void flash_commit(int at_exit) {
     }
     sFlashFails++;
     /* the game has already said it saved: the player must hear otherwise (the kit's caption; nothing off the handheld) */
-    if (!at_exit) handheld_menu_notify("GAME SAVE FAILED");
+    if (!at_exit) {
+#if defined(MIYOO) && defined(PM64_ROM_REGION_PAL)
+        handheld_menu_notify(miyoo_i18n(MT_GAME_SAVE_FAILED));
+#else
+        handheld_menu_notify("GAME SAVE FAILED");
+#endif
+    }
 }
 /* Once a frame (port_host.c): the frame's in-game save, whole, as one replace */
 void port_flash_commit(void) { flash_commit(0); }
@@ -226,6 +236,20 @@ void port_flash_read(uint32_t offset, void *dst, uint32_t len) {
     if (offset >= FLASH_SIZE) { memset(dst, 0xFF, len); return; }
     if (len > FLASH_SIZE - offset) len = FLASH_SIZE - offset;
     memcpy(dst, sFlash + offset, len);
+}
+
+/* fio_read_flash maps logical slots to 128 physical pages; the port maps
+ * each physical page to 128 bytes. The boot menu runs before game startup. */
+int port_flash_language(void) {
+#if defined(PM64_ROM_REGION_PAL)
+    for (uint32_t page = 6; page <= 7; page++) {
+        uint8_t raw[0x80];
+        port_flash_read(page * 0x80 * 0x80, raw, sizeof raw);
+        int language = port_flash_globals_language(raw);
+        if (language >= 0) return language;
+    }
+#endif
+    return -1;
 }
 
 void port_flash_write(uint32_t offset, const void *src, uint32_t len) {

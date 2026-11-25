@@ -1089,6 +1089,23 @@ index 0be512c20..fca05d4d4 100644
      if (swizzlePointers) {
          entity_swizzle_anim_pointers(entityData, animBaseAddr, entity->gfxBaseAddr);
      }
+diff --git a/src/entity/HeartBlock.c b/src/entity/HeartBlock.c
+index 3778a6673..496a949b6 100644
+--- a/src/entity/HeartBlock.c
++++ b/src/entity/HeartBlock.c
+@@ -276,6 +276,12 @@ void entity_HeartBlockContent__anim_heal(Entity* entity, s32 arg1) {
+             }
+             break;
+         case 5:
++#ifdef PM64_PORT
++            /* With pos=0 the happy draws read slots 8 and 7 (lags 2 and 3) in this 10-slot ring. */
++            data->yawBuffer[ARRAY_COUNT(data->yawBuffer) - 2] = 0.0f;
++            data->yawBuffer[ARRAY_COUNT(data->yawBuffer) - 3] = 0.0f;
++            data->yawBufferPos = 0;
++#endif
+             playerStatus->animFlags &= ~PA_FLAG_RAISED_ARMS;
+             enable_player_input();
+             set_time_freeze_mode(TIME_FREEZE_NONE);
 diff --git a/src/entity/ShatteringBlock_common.c b/src/entity/ShatteringBlock_common.c
 index 5ec4f646f..3dc296013 100644
 --- a/src/entity/ShatteringBlock_common.c

@@ -277,6 +277,7 @@ static struct RDP {
     void *color_image_address;
 #ifdef PM64
     uint32_t pm_cc_w0, pm_cc_w1; /* the raw G_SETCOMBINE words, both cycles (pm_cc_generic) */
+    uint16_t pm_k4;             /* raw 9-bit G_SETCONVERT K4 */
     uint8_t pm_prim_lod;         /* G_SETPRIMCOLOR's LOD fraction */
 #endif
 } rdp  __attribute__((aligned(4)));
@@ -293,6 +294,7 @@ static struct RenderingState {
     bool decal_mode;
     bool alpha_blend;
     bool edge_opaque; // TEX_EDGE without FORCE_BL: the soft backend writes it unblended (X12)
+    bool edge_full_coverage;
     bool own_edges;   // PM64_FILLRULE: blended / alpha-tested without AA_EN, each pixel to one triangle of an edge
     bool tex_add; // backend texture function is ADD (texel + vertex colour)
 } rendering_state __attribute__((aligned(16)));
@@ -882,6 +884,13 @@ static void gfx_flush(void) {
         }*/
     }
 }
+
+#ifdef PM64
+static bool pm_m41_edge(uint32_t omh, uint32_t oml) {
+    return (omh & (3U << G_MDSFT_CYCLETYPE)) == G_CYC_1CYCLE &&
+        oml == (G_RM_AA_ZB_TEX_EDGE | G_RM_AA_ZB_TEX_EDGE2);
+}
+#endif
 
 static struct ShaderProgram *gfx_lookup_or_create_shader_program(uint32_t shader_id) {
     struct ShaderProgram *prg = gfx_rapi->lookup_shader(shader_id);
@@ -2567,6 +2576,15 @@ uint32_t gfx_prof_rebuilds;
  * RDP combiner in gfx_soft (gfx_soft_pm_generic). */
 extern void gfx_soft_pm_generic(bool on, uint32_t w0, uint32_t w1, bool two_cycle, const uint8_t prim[4], const uint8_t env[4],
                                 uint8_t prim_lod, int ds, int dt, const int32_t t1map[6]);
+extern void gfx_soft_pm_k4(uint16_t raw);
+static void gfx_dp_set_convert(uint32_t w1) {
+    const uint16_t k4 = (w1 >> 9) & 0x1ff;
+    if (rdp.pm_k4 != k4) {
+        gfx_flush();
+        tri_state.valid = false;
+    }
+    rdp.pm_k4 = k4;
+}
 extern void gfx_soft_pm_rect_rebase(int s, int t);
 extern void gfx_soft_tex_size(int tile, int *w, int *h);
 enum { M_COMB, M_T0, M_T1, M_PRIM, M_SHADE, M_ENV, M_ONE, M_ZERO, M_OTHER };
@@ -2713,9 +2731,10 @@ static int pm_genshade_on(void) {
 /* Import + bind the textures the generic combine reads and hand the backend its state. */
 /* The generic draw's TEXEL1 follows TEXEL0's S/T: (s + a) * 2^k + c (gen_t1). pm_gen_setup notes k and whether
  * both texels are read, for the per-triangle UV drop (gfx_emit_triangle, pm_uv_step). */
-static int pm_t1_k[2], pm_t1_linked;
+static int pm_t1_k[2], pm_t1_linked, pm_t1_only;
 static void pm_gen_setup(bool two_cycle, bool t0, bool t1) {
     pm_t1_linked = t0 && t1;
+    pm_t1_only = !t0 && t1;
     pm_t1_k[0] = pm_t1_k[1] = 0;
     for (int pass = 0; pass < 2; pass++) { /* a reset under tile 1's import: tile 0 again (gfx_cache_epoch) */
     const uint32_t epoch = gfx_cache_epoch;
@@ -2757,6 +2776,7 @@ static void pm_gen_setup(bool two_cycle, bool t0, bool t1) {
     }
     gfx_soft_pm_shroud(pm_shroud(), rdp.blend_color.r, rdp.blend_color.g, rdp.blend_color.b);
     { extern bool gfx_soft_1cyc_t1; gfx_soft_1cyc_t1 = pm_1cyc_t1_on(); }
+    gfx_soft_pm_k4(rdp.pm_k4);
     gfx_soft_pm_generic(true, rdp.pm_cc_w0, rdp.pm_cc_w1, two_cycle, prim, env, rdp.pm_prim_lod, ds, dt, t1map);
     if (t1 && pm_tileshift_on() && !pm_t1scale_on() && (pm_tiles[t1i].shifts != pm_tiles[pm_prim_tile].shifts || pm_tiles[t1i].shiftt != pm_tiles[pm_prim_tile].shiftt)) {
         static uint32_t sSeen[8][2]; static int sLogged; /* the generic path samples TEXEL1 at tile 0's scale: */
@@ -2881,6 +2901,17 @@ static void gfx_tri_rebuild_state(struct LoadedVertex *v1) {
 #endif
     bool use_fog = (rdp.other_mode_l >> 30) == G_BL_CLR_FOG;
     bool texture_edge = (rdp.other_mode_l & CVG_X_ALPHA) == CVG_X_ALPHA;
+#if defined(PM64) && !defined(TARGET_PSP)
+    {
+        extern void gfx_soft_set_edge_full_coverage(bool on);
+        const bool full = pm_m41_edge(rdp.other_mode_h, rdp.other_mode_l);
+        if (full != rendering_state.edge_full_coverage) {
+            gfx_flush();
+            gfx_soft_set_edge_full_coverage(full);
+            rendering_state.edge_full_coverage = full;
+        }
+    }
+#endif
     bool use_noise = (rdp.other_mode_l & G_AC_DITHER) == G_AC_DITHER;
     if (texture_edge) {
         use_alpha = true;
@@ -2896,7 +2927,10 @@ static void gfx_tri_rebuild_state(struct LoadedVertex *v1) {
         static int sEdgeOp = -1;
         extern void gfx_soft_set_edge_opaque(bool on);
         if (sEdgeOp < 0) { const char *e = getenv("PM64_EDGEOPAQUE"); sEdgeOp = e != NULL && e[0] == '1'; }
-        const bool eo = sEdgeOp && texture_edge && !(rdp.other_mode_l & FORCE_BL);
+        bool eo = sEdgeOp && texture_edge && !(rdp.other_mode_l & FORCE_BL);
+#ifdef PM64
+        if (pm_m41_edge(rdp.other_mode_h, rdp.other_mode_l)) eo = true;
+#endif
         if (eo != rendering_state.edge_opaque) {
             gfx_flush();
             gfx_soft_set_edge_opaque(eo);
@@ -3300,7 +3334,7 @@ static void gfx_emit_triangle(const struct LoadedVertex *a, const struct LoadedV
             float offu = (rdp.texture_tile.cms & G_TX_CLAMP) ? 0.0f : ((rdp.texture_tile.cms & G_TX_MIRROR) && !(tri_state.mirror & 1)) ? 2.0f * port_floorf(minu * 0.5f) : port_floorf(minu);
             float offv = (rdp.texture_tile.cmt & G_TX_CLAMP) ? 0.0f : ((rdp.texture_tile.cmt & G_TX_MIRROR) && !(tri_state.mirror & 2)) ? 2.0f * port_floorf(minv * 0.5f) : port_floorf(minv);
 #ifdef PM64
-            if (!pm_uvdrop_on()) offu = offv = 0.0f; /* PM64_UVDROP=0: no drop at all, the exact reference */
+            if (!pm_uvdrop_on() || (pm_gen_active && pm_t1_only)) offu = offv = 0.0f; /* TEXEL1-only uses its own sampler and coordinate frame. */
             else if (pm_gen_active && pm_t1_linked && (offu != 0.0f || offv != 0.0f) && pm_uvrebase_on()) {
                 /* Dropping n repeats of TEXEL0 moves TEXEL1 by n * W0 * 2^k texels: whole repeats of TEXEL1 only when
                  * that is a multiple of its period P1. So drop in steps of the smallest power of two L that makes
@@ -5359,6 +5393,11 @@ static void gfx_run_dl(Gfx* cmd) {
             case G_SETFILLCOLOR:
                 gfx_dp_set_fill_color(cmd->words.w1);
                 break;
+#ifdef PM64
+            case G_SETCONVERT:
+                gfx_dp_set_convert(cmd->words.w1);
+                break;
+#endif
             case G_SETCOMBINE:
 #ifdef PM64
                 rdp.pm_cc_w0 = cmd->words.w0 & 0x00FFFFFF;
@@ -5577,10 +5616,14 @@ void gfx_overlay_state_dirty(void) {
  * clear the backend arena; textures re-import from the restored course data on
  * the next frame (same coordinated flush the arena-full path uses each frame).
  * Then forget cached GE state so the whole pipeline is re-sent. */
-void gfx_savestate_fixup(void) {
-    { extern void port_state_loaded(void) __attribute__((weak)); if (port_state_loaded) port_state_loaded(); } /* PM64: the asset region's pages */
+void gfx_renderer_soft_reset(void) {
     gfx_texture_cache_reset(false);
     gfx_overlay_state_dirty();
+}
+
+void gfx_savestate_fixup(void) {
+    { extern void port_state_loaded(void) __attribute__((weak)); if (port_state_loaded) port_state_loaded(); } /* PM64: the asset region's pages */
+    gfx_renderer_soft_reset();
 }
 
 void gfx_start_frame(void) {

@@ -806,6 +806,7 @@ def preflight(paths, segs, units, ninja, plat):
     kit = ['savestate.c']
     if plat == 'miyoo':
         kit += ['miyoo_panel.c', 'miyoo_menu.c', 'miyoo_remap.c', 'miyoo_worker.c', 'miyoo_clock.c', 'miyoo_sleepsave.c']
+        if region == 'pal': kit += ['miyoo_i18n.c']
     local_sources += [os.path.join(ROOT, 'kit/platform', name) for name in kit]
     for filename in local_sources:
         if not os.path.isfile(filename):
@@ -1124,6 +1125,7 @@ def generate(plat, region='us'):
         kit_files = ('savestate.c',)
         if plat == 'miyoo':  # the Miyoo kit (the shared Miyoo kit): the panel, its menu, the second core, the clock
             kit_files += ('miyoo_panel.c', 'miyoo_menu.c', 'miyoo_remap.c', 'miyoo_worker.c', 'miyoo_clock.c', 'miyoo_sleepsave.c')
+            if region == 'pal': kit_files += ('miyoo_i18n.c',)
         for fn in kit_files:
             out = f'{obj_root}/hhkit/{fn[:-2]}.o'
             lines.append(f'build {out}: cc_host {C_ROOT}/kit/platform/{fn}')

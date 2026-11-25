@@ -27,6 +27,48 @@
 #if defined(MIYOO)
 #include "miyoo_panel.h"
 #include "miyoo_worker.h"
+#if defined(PM64) && defined(PM64_ROM_REGION_PAL)
+extern int gCurrentLanguage;
+extern int16_t get_game_mode(void);
+enum { PM64_STARTUP_MODE = 0 }; /* GAME_MODE_STARTUP in game_modes.h */
+/* Port-only hint for the next early prompt; never applied to game state. */
+static int sEarlyLanguage SAVESTATE_EXCLUDE = -2; /* -2 unread, -1 unavailable */
+static int early_language(void) {
+    static const char *const code[] = { "EN", "DE", "FR", "ES" };
+    if (sEarlyLanguage != -2) return sEarlyLanguage;
+    sEarlyLanguage = -1;
+    FILE *f = fopen(port_save_path("menu-last-language.cfg"), "rb");
+    if (f) {
+        char b[4] = {0}; size_t n = fread(b, 1, sizeof b, f);
+        if (!ferror(f) && (n == 2 || (n == 3 && b[2] == '\n')))
+            for (int i = 0; i < 4; i++) if (b[0] == code[i][0] && b[1] == code[i][1]) sEarlyLanguage = i;
+        fclose(f);
+    }
+    return sEarlyLanguage;
+}
+/* Called after each game frame: defer until any pending boot state is loaded. */
+void port_pal_language_remember(void) {
+    static const char *const code[] = { "EN", "DE", "FR", "ES" };
+    if (get_game_mode() == PM64_STARTUP_MODE || savestate_boot_load_pending() ||
+        (unsigned)gCurrentLanguage >= 4 || early_language() == gCurrentLanguage) return;
+    char path[640], tmp[672];
+    snprintf(path, sizeof path, "%s", port_save_path("menu-last-language.cfg"));
+    snprintf(tmp, sizeof tmp, "%s.tmp", path);
+    FILE *f = fopen(tmp, "wb");
+    if (!f) return;
+    int ok = fprintf(f, "%s\n", code[gCurrentLanguage]) == 3 && fflush(f) == 0 && fsync(fileno(f)) == 0;
+    if (fclose(f) != 0) ok = 0;
+    if (ok && rename(tmp, path) == 0) sEarlyLanguage = gCurrentLanguage;
+    else remove(tmp);
+}
+/* Live language wins after startup, including after loading a state. */
+int port_pal_language(void) {
+    if (get_game_mode() != PM64_STARTUP_MODE) return gCurrentLanguage;
+    int l = early_language();
+    if (l < 0) l = port_flash_language();
+    return l >= 0 ? l : gCurrentLanguage;
+}
+#endif
 #endif
 
 int port_quit;
@@ -422,6 +464,9 @@ int main(int argc, char **argv) {
         port_loop_stage = PORT_STAGE_GAME;
         port_game_retrace();
         port_game_retrace();
+#if defined(MIYOO) && defined(PM64) && defined(PM64_ROM_REGION_PAL)
+        port_pal_language_remember();
+#endif
         port_frame++;
         port_debug_frame();
         port_loop_stage = PORT_STAGE_SAVE;

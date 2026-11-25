@@ -31,6 +31,14 @@ void port_game_boot(void) {
     port_log("game: booted\n");
 }
 
+/* Use Paper Mario's implemented Soft Reset lifecycle (main_loop.c). */
+void port_game_soft_reset_request(void) {
+    extern void gfx_renderer_soft_reset(void);
+    port_audio_out_flush();
+    gfx_renderer_soft_reset();
+    gOverrideFlags |= GLOBAL_OVERRIDES_SOFT_RESET;
+}
+
 /* one retrace: nusys's graphics thread calls the game's callback with the number of queued tasks (always 0 here) */
 void port_game_retrace(void) {
     if (nuGfxFunc != NULL) nuGfxFunc(nuGfxTaskSpool);

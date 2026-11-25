@@ -47,6 +47,8 @@ void savestate_request_power_save(void);
 int  savestate_boot_load_pending(void); /* 1 if launched to resume a quicksave */
 /* After gfx_init: RESUME GAME / NEW GAME when an auto save exists (handheld). */
 void savestate_boot_prompt(void);
+/* Abandon a pending boot state load without touching its file. */
+void savestate_cancel_boot_load(void);
 /* 1 while the game loop runs: a power-off is handled by the game (the auto save, then quit). */
 int savestate_power_ready(void);
 /* EXIT GAME: quicksave (the auto save RESUME GAME offers), then quit. */
