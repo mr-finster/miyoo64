@@ -29,21 +29,23 @@ Miyoo64 is made together with other people who port N64 games to the Mini. mr-fi
 
 Downloads: the [latest release](https://github.com/mr-finster/miyoo64/releases/latest), or https://miyoo-n64.pages.dev. What changed in each release: [Changelog](CHANGELOG.md).
 
+European (PAL) versions of Super Mario 64, Ocarina of Time (alpha) and Diddy Kong Racing, from SunnyBoon, are separate downloads in the release (`SuperMario64PAL-miyoo.zip`, `OcarinaOfTimePAL-miyoo.zip`, `DiddyKongRacingPAL-miyoo.zip`). Each needs its European ROM and installs beside the US game.
+
 ## Status
 
 | Game | State | Highlights |
 |---|---|---|
 | Perfect Dark | ✅ Playable | The full solo campaign, checked mission by mission against the N64; fills the Mini v4 and Flip screens |
 | Mario Kart 64 | ✅ Playable | Course fog, mirror mode and chrome reflections drawn as on the N64 |
-| Diddy Kong Racing | ✅ Playable | Steady 30 fps; ground lighting, fog bands and HUD icons fixed |
-| Ocarina of Time | ✅ Playable | 30 fps and modern controls from cacuracaptors' (Kooky's) port; shop backgrounds, torch flames and Lake Hylia's water fixed (USA 1.0 ROM) |
+| Diddy Kong Racing | ✅ Playable | Steady 30 fps; ground lighting, fog bands and HUD icons fixed; a European (PAL) version too |
+| Ocarina of Time | ✅ Playable | 30 fps and modern controls from cacuracaptors' (Kooky's) port; shop backgrounds, torch flames and Lake Hylia's water fixed (USA 1.0 ROM); a European (PAL) alpha too |
 | GoldenEye 007 | ✅ Playable | Fills the screen, smooth real-time motion, 36–50 fps on Dam; the busiest views (Jungle) are heavier |
 | F-Zero X | ✅ Playable | Fills the screen; full speed with fog, sparks and the energy aura |
 | Star Fox 64 | ✅ Playable | Fills the screen; motion-blur warps, fog and explosions as on the N64 |
 | Paper Mario | ✅ Playable | Fills the screen; battle swirls, title cards and Tidal Wave drawn |
 | Super Smash Bros. | ✅ Playable | Hit flashes, shields and costume colours as on the N64 |
-| Super Mario 64 | ✅ Playable | Metal Mario, coloured fog and the castle window fixed, both cores drawing |
-| Majora's Mask | 🧪 Beta (1.0.16) | New: the whole game, compared scene by scene against the N64; known issues in its [README](majoras-mask/README.md#known-issues) |
+| Super Mario 64 | ✅ Playable | Metal Mario, coloured fog and the castle window fixed, both cores drawing; a European (PAL) version too |
+| Majora's Mask | 🧪 Beta (1.0.17) | New: the whole game, compared scene by scene against the N64; 30 fps and modern controls from cacuracaptors; known issues in its [README](majoras-mask/README.md#known-issues) |
 | Harvest Moon 64 | ✅ Playable (1.0.5) | New: the whole game, the diary saves and the farm's days as on the N64; known issues in its [README](harvest-moon-64/README.md#known-issues) |
 | Banjo-Kazooie | 🧪 Beta (1.0.5) | New: the whole game, the intro compared scene by scene against the N64; known issues in its [README](banjo-kazooie/README.md#known-issues) |
 | Pilotwings 64 | 🧪 Beta (1.0.2) | New: hang glider, rocket belt, gyrocopter and the bonus games, the title music and flight sounds checked against the N64 |

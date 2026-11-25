@@ -44,6 +44,39 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
   `stealrows=0` in GoldenEye 007's `data/debug.cfg` (Perfect Dark: `PD_STEALROWS=0` in `launch.sh`) gives the old way.
 
 
+## 1.4.9 (2026-11-25: European (PAL) versions of three games, Majora's Mask at 30 fps)
+
+New: European (PAL) versions of Super Mario 64, Ocarina of Time and Diddy Kong Racing, contributed by SunnyBoon,
+each its own app beside the US one (`App/SuperMario64PAL`, `App/OcarinaOfTimePAL`, `App/DiddyKongRacingPAL`) and
+its own download. They need the European ROM, checked by its SHA-1 as the US games are. Majora's Mask 1.0.17 (beta)
+brings cacuracaptors' (Kooky's) 30 fps, light halos, a faster sky and modern controls. The other games and the All
+Game Pack are the 1.4.8 zips, with the new Majora's Mask in the All Game Pack; the PAL games are separate downloads.
+
+- Super Mario 64 PAL, Super Mario 64 (Europe) ROM ([PR #42](https://github.com/mr-finster/miyoo64/pull/42)): the
+  European game with its English, German and French text, at its own 25 updates a second and 50 Hz sound.
+  `SuperMario64PAL-miyoo.zip`.
+- Ocarina of Time PAL (alpha), Ocarina of Time (Europe) 1.0 ROM ([PR #40](https://github.com/mr-finster/miyoo64/pull/40)):
+  the European game with its English, German and French text. Tested on a Mini Plus by SunnyBoon.
+  `OcarinaOfTimePAL-miyoo.zip`.
+- Diddy Kong Racing PAL, Diddy Kong Racing (Europe) (Rev 1) ROM ([PR #44](https://github.com/mr-finster/miyoo64/pull/44)):
+  the European game with its English, German and French text and its full 264-line picture. Tested on a Mini Plus
+  by SunnyBoon. `DiddyKongRacingPAL-miyoo.zip`.
+- Majora's Mask 1.0.17 (beta), from cacuracaptors (PRs [#48](https://github.com/mr-finster/miyoo64/pull/48), [#49](https://github.com/mr-finster/miyoo64/pull/49), [#50](https://github.com/mr-finster/miyoo64/pull/50), [#51](https://github.com/mr-finster/miyoo64/pull/51), [#52](https://github.com/mr-finster/miyoo64/pull/52)):
+  - 30 fps (off by default; MENU > OPTIONS > PICTURE > 30 FPS): the frames in between the game's 20 a second drawn
+    with everything that moves blended, the game's speed unchanged. Since Majora's Mask has things Ocarina of Time
+    doesn't, tell us where something jumps with it on.
+  - The light halos show again: the torches, Tatl, the sun's lens flare and the UFO lights. Their check read a
+    depth buffer the port never draws into, so no halo ever passed; it now asks the renderer's depth.
+  - A faster sky: its time-of-day tint in NEON rows, and drawn last only where nothing covers it. The same picture,
+    checked frame by frame.
+  - Modern controls (off by default; MENU > OPTIONS > CONTROLS > STYLE), as in Ocarina of Time: X jumps, A held
+    after a roll runs faster, rolls chain and steer. For Link and the Fierce Deity.
+  - Test tools for us: start in a place, frame-exact pad replay, a picture hash.
+
+Checked under the ARM emulator from each zip on a fresh card: the PAL games' first start from the European ROM,
+their titles and a level each; Majora's Mask's halos against 1.0.16, and 30 fps on. Perfect Dark PAL is not in this
+release: its text loses rows in places (the lowercase e loses its bar), and it waits for that fix.
+
 ## 1.4.8 (2026-11-07: the sound at 48 kHz in all fifteen games, Pilotwings 64's demo crash)
 
 All fifteen games are rebuilt: Super Mario 64 1.1.7, Mario Kart 64 1.1.9, GoldenEye 007 1.1.9, Perfect Dark 1.0.9, Ocarina of Time
