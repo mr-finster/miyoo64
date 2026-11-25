@@ -91,3 +91,5 @@ build/
 !tools/port/k4_state_test.c
 !tools/port/k4_test.c
 !tools/port/m41_edge_test.c
+
+!miyoo/icon-pal.png

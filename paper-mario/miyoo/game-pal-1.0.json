@@ -7,7 +7,7 @@
     "pm64",
     "recipes.bin"
   ],
-  "icon": "icon.png",
+  "icon": "icon-pal.png",
   "readme": "README-PAL-1.0.txt",
   "env": "PM64",
   "data": "data",
