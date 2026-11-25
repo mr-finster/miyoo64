@@ -312,6 +312,11 @@ extern int gfx_sdl12_hold_ok(void);
 static FiRepl* sFiRepl;
 static int sFiNextA = 1, sFiStepN = 1, sFiStepB = 1, sFiSteps = -1;
 static float sFiDrawMs = 15.0f, sFiLastMs = 15.0f;
+/* MM_FIDIAG=1 (diagnostic, cacuracaptors, MIT): FISTEP lines when the step changes (the average draw P and the last
+ * one), FISTAT every 300 pictures (draws over 30 / 33 ms, the longest, pictures shown at a step). */
+static int sFiDiag = -1;
+static unsigned sFdN, sFd30, sFd33, sFdStep;
+static float sFdMax;
 
 static void SchedPsp_FiDraw(OSScTask* task, const FiRepl* repl, int hold) {
     extern uint32_t gfx_sdl12_present_wait_us(void);
@@ -331,6 +336,22 @@ static void SchedPsp_FiDraw(OSScTask* task, const FiRepl* repl, int hold) {
     if (ms < 500.0f) {
         sFiLastMs = ms;
         sFiDrawMs = sFiDrawMs * 0.75f + ms * 0.25f;
+    }
+    if (sFiDiag > 0) {
+        extern void port_log_always(const char* fmt, ...);
+        sFdN++;
+        sFd30 += ms > 30.0f;
+        sFd33 += ms > 33.0f;
+        sFdStep += sFiStepN > 1;
+        if (ms > sFdMax) {
+            sFdMax = ms;
+        }
+        if (sFdN >= 300) {
+            port_log_always("FISTAT %u draws: >30 ms %u, >33 ms %u, max %.1f, P %.1f, at a step %u\n", sFdN, sFd30, sFd33,
+                            sFdMax, sFiDrawMs, sFdStep);
+            sFdN = sFd30 = sFd33 = sFdStep = 0;
+            sFdMax = 0.0f;
+        }
     }
 }
 
@@ -371,6 +392,8 @@ static int SchedPsp_FiTask(OSScTask* task) {
             const char* e = getenv("OOT_FPS30STEPS");
 
             sFiSteps = !(e != NULL && e[0] == '0');
+            e = getenv("MM_FIDIAG");
+            sFiDiag = e != NULL && e[0] == '1';
         }
         while (n <= 5 && P > lim[n - 1]) {
             n++;
@@ -378,10 +401,18 @@ static int SchedPsp_FiTask(OSScTask* task) {
         if (!sFiSteps && n > 1) {
             n = 6; /* no steps: 30 or 20 */
         }
-        if (n > sFiStepN) {
-            sFiStepN = n;
-        } else if (n < sFiStepN && (P < lim[n - 1] - 2.0f || sFiLastMs < lim[n - 1] - 6.0f)) {
-            sFiStepN = n;
+        {
+            const int was = sFiStepN;
+
+            if (n > sFiStepN) {
+                sFiStepN = n;
+            } else if (n < sFiStepN && (P < lim[n - 1] - 2.0f || sFiLastMs < lim[n - 1] - 6.0f)) {
+                sFiStepN = n;
+            }
+            if (sFiDiag > 0 && sFiStepN != was) {
+                extern void port_log_always(const char* fmt, ...);
+                port_log_always("FISTEP %d -> %d: P %.1f, last %.1f ms\n", was, sFiStepN, P, sFiLastMs);
+            }
         }
         if (sFiNextA && sFiStepN <= 5) {
             /* tick A: the 1/3 point (vsync 0 of the tick) and the update (vsync 2); a tick B always follows */

@@ -19,6 +19,7 @@
             else if (cmt.lean2 == 2) cm_row_leans(&cmt, fbuf + idx, zb + idx, xe - xs, zf, cr, cg, cb, ca, uw, vw, sw, rw);
             else if (cmt.lean2 == 3) cm_row_leanl(&cmt, fbuf + idx, zb + idx, xe - xs, zf, cr, cg, cb, ca, uw, vw, sw, rw);
             else if (cmt.lean2 == 4) cm_row_leanz(&cmt, fbuf + idx, zb + idx, xe - xs, zf, cr, cg, cb, ca, uw, vw, sw, rw);
+            else if (cmt.lean2 == 5) cm_row_leanlz(&cmt, fbuf + idx, zb + idx, xe - xs, zf, cr, cg, cb, ca, uw, vw, sw, rw);
             else cm_row_neon(&cmt, fbuf + idx, zb + idx, xe - xs, zf, cr, cg, cb, ca, uw, vw, sw, rw);
             continue;
         }

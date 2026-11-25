@@ -108,6 +108,10 @@ jumps or flickers out of place with 30 fps on while the camera moves, tell us wh
   reading the game's display lists; the picture is the same).
 - `MM_SKYRUNS=0`: the sky tested pixel by pixel where the world covers it, as before 1.0.12 (default: skipped 16
   pixels at a time).
+- `MM_SKYLERP=0`: the sky's tint (Majora's Mask's sky is a texture tinted by the time of day, not a plain texture
+  as Ocarina of Time's) in the general pixel loops, as before (default: in its own NEON rows; the picture is the same).
+- `MM_SKYZ=0`: the sky drawn first, everywhere, as before (default: kept and drawn last, only where the depth buffer
+  says nothing covered it; the picture is the same).
 - `MM_ABFRAME=1`, with `MM_SKYRUNS=ab`, `MM_STEALROWS=ab`, `MM_BATCHBAND=ab`, `MM_BANDCARRY=ab` or `MM_STREAMDRAW=ab`: that switch off and on in turn, frame by frame, and an ABF line in
   `console.log` with each one's drawing time (for measuring; the pixels are the same either way).
 - `MM_SLEEPSAVE=0`: no auto save before sleep.
@@ -120,6 +124,16 @@ jumps or flickers out of place with 30 fps on while the camera moves, tell us wh
 - `MM_ZRECT=0`: the Lens of Truth as before 1.0.10, the things it reveals drawn on the whole screen instead of
   only inside its circle.
 - `MM_SUNWHOLE=0`: the sun drawn from gSunDL's three strips as before 1.0.14 (a grid of small suns).
+- For testing (the picture and the game are the same; off by default):
+  - `MM_PAD_RECORD=<file>` writes the pad the game reads on each of its frames; `MM_PAD_PLAY=<file>` gives the game
+    those pads back, frame by frame, instead of the buttons. With either, the random numbers start from a fixed seed,
+    so the same start (`entrance=` in `debug.cfg`) plays the same game: a performance test repeats exactly.
+  - `MM_FRAMEHASH=1`: a hash of every finished picture in `console.log` (`FHASH`), to compare two builds or settings
+    picture by picture over the same pad replay.
+  - `MM_SCALARSTAT=1` (`2`: the fast rows too): which 3D pixels take which row kind, every 300 frames (`SCALAR`).
+  - `MM_FIDIAG=1`: with 30 fps, each step change and the draw times every 300 pictures (`FISTEP`, `FISTAT`).
+  - `OOT_PROF=1` (or `prof=1` in `debug.cfg`): the sampling profiler; `OOT_PROF_OUT=<file>`, `OOT_PROF_FROM=<frame>`,
+    `OOT_PROF_CORE=0` (only the samples on the game thread's core).
 - `MM_FLIPFILL=0`: on a Mini v4 or Mini Flip, keep the 2x picture with a border instead of the full height
   (`OOT_FLIPFILL`, the test builds' name, still works).
 

@@ -843,10 +843,10 @@ index 1b9bd0b..f740110 100644
  
          // Shuffle row 1 -> 0
 diff --git a/src/code/graph.c b/src/code/graph.c
-index 2c9efee..ac517d8 100644
+index 2c9efee..4a2017f 100644
 --- a/src/code/graph.c
 +++ b/src/code/graph.c
-@@ -358,6 +358,54 @@ void Graph_Update(GraphicsContext* gfxCtx, GameState* gameState) {
+@@ -358,6 +358,103 @@ void Graph_Update(GraphicsContext* gfxCtx, GameState* gameState) {
      Graph_ExecuteAndDraw(gfxCtx, gameState);
  }
  
@@ -860,6 +860,52 @@ index 2c9efee..ac517d8 100644
 +GameState* volatile gHhGameState;
 +s32 HhMm_Boundary(GameStateOverlay* ovl);
 +void HhMm_StateEvent(const char* what, GameStateOverlay* ovl);
++
++/* debug.cfg entrance= (hh_mm.c reads it into MM_ENTRANCE, with MM_TIME and MM_DAY): after Setup, the debug save
++ * and that place, as the map select's MapSelect_LoadGame does (cacuracaptors, MIT) */
++#include "z64save.h"
++#include "z64environment.h"
++#include "sequence.h"
++char* getenv(const char* name); /* the host's (the game's libc headers have neither) */
++long strtol(const char* s, char** end, int base);
++static s32 HhMm_TestBoot(void) {
++    const char* e = getenv("MM_ENTRANCE");
++
++    if (e == NULL) {
++        return false;
++    }
++    gSaveContext.fileNum = 0xFF;
++    Sram_InitDebugSave();
++    gSaveContext.buttonStatus[EQUIP_SLOT_B] = BTN_ENABLED;
++    gSaveContext.buttonStatus[EQUIP_SLOT_C_LEFT] = BTN_ENABLED;
++    gSaveContext.buttonStatus[EQUIP_SLOT_C_DOWN] = BTN_ENABLED;
++    gSaveContext.buttonStatus[EQUIP_SLOT_C_RIGHT] = BTN_ENABLED;
++    gSaveContext.buttonStatus[EQUIP_SLOT_A] = BTN_ENABLED;
++    gSaveContext.hudVisibilityForceButtonAlphasByStatus = false;
++    gSaveContext.nextHudVisibility = HUD_VISIBILITY_IDLE;
++    gSaveContext.hudVisibility = HUD_VISIBILITY_IDLE;
++    gSaveContext.hudVisibilityTimer = 0;
++    gSaveContext.save.entrance = (u16)strtol(e, NULL, 0);
++    e = getenv("MM_TIME");
++    if (e != NULL) {
++        gSaveContext.save.time = (u16)strtol(e, NULL, 0);
++    }
++    e = getenv("MM_DAY");
++    if (e != NULL) {
++        gSaveContext.save.day = (s32)strtol(e, NULL, 0);
++    }
++    gSaveContext.respawn[RESPAWN_MODE_DOWN].entrance = 0xFFFF;
++    gSaveContext.seqId = (u8)NA_BGM_DISABLED;
++    gSaveContext.ambienceId = AMBIENCE_ID_DISABLED;
++    gSaveContext.showTitleCard = true;
++    gSaveContext.respawnFlag = 0;
++    gSaveContext.respawn[RESPAWN_MODE_GORON].entrance = 0xFF;
++    gSaveContext.respawn[RESPAWN_MODE_ZORA].entrance = 0xFF;
++    gSaveContext.respawn[RESPAWN_MODE_DEKU].entrance = 0xFF;
++    gSaveContext.respawn[RESPAWN_MODE_HUMAN].entrance = 0xFF;
++    gWeatherMode = WEATHER_MODE_CLEAR;
++    return true;
++}
 +
 +void Graph_ThreadEntry(void* arg) {
 +    gZBufferLoRes = malloc(sizeof(*gZBufferLoRes) + sizeof(*gWorkBufferLoRes) + 64 - 1);
@@ -891,6 +937,9 @@ index 2c9efee..ac517d8 100644
 +        }
 +        HhMm_StateEvent("done", gHhOvl);
 +        gHhNextOvl = Graph_GetNextGameState(gHhGameState);
++        if ((gHhOvl == &gGameStateOverlayTable[GAMESTATE_SETUP]) && HhMm_TestBoot()) {
++            gHhNextOvl = &gGameStateOverlayTable[GAMESTATE_PLAY]; /* debug.cfg entrance=: straight into the game */
++        }
 +        GameState_Destroy(gHhGameState);
 +        free(gHhGameState);
 +        Overlay_FreeGameState(gHhOvl);
@@ -901,7 +950,7 @@ index 2c9efee..ac517d8 100644
  void Graph_ThreadEntry(void* arg) {
      GraphicsContext gfxCtx;
      GameStateOverlay* nextOvl = &gGameStateOverlayTable[0];
-@@ -416,3 +464,4 @@ void Graph_ThreadEntry(void* arg) {
+@@ -416,3 +513,4 @@ void Graph_ThreadEntry(void* arg) {
  
      PRINTF(T("グラフィックスレッド実行終了\n", "End of graphic thread execution\n"));
  }
@@ -1710,11 +1759,55 @@ index 053a032..a919d31 100644
      if (ovl == NULL) {
          s32 i;
  
+diff --git a/src/code/z_kankyo.c b/src/code/z_kankyo.c
+index 5e5e288..1f438f2 100644
+--- a/src/code/z_kankyo.c
++++ b/src/code/z_kankyo.c
+@@ -532,7 +532,16 @@ void Environment_JumpForwardInTime(void);
+ void Environment_GraphCallback(GraphicsContext* gfxCtx, void* arg) {
+     PlayState* play = (PlayState*)arg;
+ 
++#ifdef TARGET_HANDHELD
++    {
++        /* the port: the sun's lens flare asks the renderer's depth (hh_renderer.c), as OoT's PSP path */
++        _Bool OotPspRenderer_IsDepthClear(s32 x, s32 y);
++
++        sSunScreenDepth = OotPspRenderer_IsDepthClear(sSunDepthTestX, sSunDepthTestY) ? GPACK_ZDZ(G_MAXFBZ, 0) : 0;
++    }
++#else
+     sSunScreenDepth = SysCfb_GetZBufferPixel(sSunDepthTestX, sSunDepthTestY);
++#endif
+     Lights_GlowCheck(play);
+ }
+ 
 diff --git a/src/code/z_lights.c b/src/code/z_lights.c
-index d7917a6..dc62e93 100644
+index d7917a6..424e303 100644
 --- a/src/code/z_lights.c
 +++ b/src/code/z_lights.c
-@@ -445,6 +445,9 @@ void Lights_DrawGlow(PlayState* play) {
+@@ -409,12 +409,22 @@ void Lights_GlowCheck(PlayState* play) {
+             if ((projectedPos.z > 1) && (fabsf(projectedPos.x * invW) < 1) && (fabsf(projectedPos.y * invW) < 1)) {
+                 s32 screenPosX = PROJECTED_TO_SCREEN_X(projectedPos, invW);
+                 s32 screenPosY = PROJECTED_TO_SCREEN_Y(projectedPos, invW);
++#ifdef TARGET_HANDHELD
++                /* the port: the renderer's depth (hh_renderer.c), as OoT's PSP path; the game's z-buffer here is never
++                 * drawn into, so no halo ever passed (Tatl, the Poes, the torches) */
++                _Bool OotPspRenderer_DepthTest(s32 x, s32 y, f32 projectedZ);
++
++                if (OotPspRenderer_DepthTest(screenPosX, screenPosY, projectedPos.z * invW)) {
++                    params->drawGlow = true;
++                }
++#else
+                 s32 wZ = (s32)(projectedPos.z * invW * ((G_MAXZ / 2) * 32)) + ((G_MAXZ / 2) * 32);
+                 s32 zBuf = SysCfb_GetZBufferInt(screenPosX, screenPosY);
+ 
+                 if (wZ < zBuf) {
+                     params->drawGlow = true;
+                 }
++#endif
+             }
+         }
+ 
+@@ -445,6 +455,9 @@ void Lights_DrawGlow(PlayState* play) {
                  if (params->drawGlow) {
                      f32 scale = SQ((f32)params->radius) * 2e-6f;
  
@@ -1724,7 +1817,7 @@ index d7917a6..dc62e93 100644
                      gDPSetPrimColor(gfx++, 0, 0, params->color[0], params->color[1], params->color[2], 50);
  
                      Matrix_Translate(params->x, params->y, params->z, MTXMODE_NEW);
-@@ -453,6 +456,9 @@ void Lights_DrawGlow(PlayState* play) {
+@@ -453,6 +466,9 @@ void Lights_DrawGlow(PlayState* play) {
                      MATRIX_FINALIZE_AND_LOAD(gfx++, play->state.gfxCtx);
  
                      gSPDisplayList(gfx++, gameplay_keep_DL_029CF0);
@@ -1759,7 +1852,7 @@ index 4cbd1b6..27a5249 100644
      // Draw treble clef
      if (msgCtx->textBoxType == TEXTBOX_TYPE_OCARINA) {
 diff --git a/src/code/z_play.c b/src/code/z_play.c
-index dc076fc..162a46f 100644
+index dc076fc..fbf3a5d 100644
 --- a/src/code/z_play.c
 +++ b/src/code/z_play.c
 @@ -145,6 +145,12 @@ void Play_DisableMotionBlur(void) {
@@ -1852,6 +1945,22 @@ index dc076fc..162a46f 100644
          *CONTROLLER1(&this->state) = input;
      }
  
+@@ -2257,7 +2284,15 @@ void Play_Init(GameState* thisx) {
+     D_801D0D54 = false;
+ 
+     FrameAdvance_Init(&this->frameAdvCtx);
++#ifdef TARGET_HANDHELD
++    {
++        u32 HhMm_RandSeed(u32 seed); /* hh_mm.c: a fixed seed while a pad recording records or plays */
++
++        Rand_Seed(HhMm_RandSeed(osGetTime()));
++    }
++#else
+     Rand_Seed(osGetTime());
++#endif
+     Matrix_Init(&this->state);
+ 
+     this->state.main = Play_Main;
 diff --git a/src/code/z_player_lib.c b/src/code/z_player_lib.c
 index a90113c..55de6b2 100644
 --- a/src/code/z_player_lib.c
@@ -2033,10 +2142,10 @@ index ba15bcc..c5541b5 100644
      Gfx* dList;
      Gfx* dListEnd;
 diff --git a/src/code/z_vr_box_draw.c b/src/code/z_vr_box_draw.c
-index a4066b7..bc606d9 100644
+index a4066b7..eb6f7e3 100644
 --- a/src/code/z_vr_box_draw.c
 +++ b/src/code/z_vr_box_draw.c
-@@ -21,6 +21,9 @@ void Skybox_SetColors(SkyboxContext* skyboxCtx, u8 primR, u8 primG, u8 primB, u8
+@@ -21,8 +21,15 @@ void Skybox_SetColors(SkyboxContext* skyboxCtx, u8 primR, u8 primG, u8 primB, u8
  }
  
  void Skybox_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyboxId, s16 blend, f32 x, f32 y, f32 z) {
@@ -2045,9 +2154,20 @@ index a4066b7..bc606d9 100644
 +#endif
      OPEN_DISPS(gfxCtx);
  
++#ifdef TARGET_HANDHELD
++    /* the port: the sky's tags, as OoT's (gfx_soft: OOT_SKYDEFER draws it last, only where nothing covered it) */
++    gDPNoOpTag(POLY_OPA_DISP++, HH_TAG_SKY_BEGIN);
++#endif
      Gfx_SetupDL40_Opa(gfxCtx);
-@@ -70,6 +73,9 @@ void Skybox_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyboxId
+ 
+     gSPSegment(POLY_OPA_DISP++, 0x0B, skyboxCtx->palette);
+@@ -68,8 +75,14 @@ void Skybox_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyboxId
+     }
+ 
      gDPPipeSync(POLY_OPA_DISP++);
++#ifdef TARGET_HANDHELD
++    gDPNoOpTag(POLY_OPA_DISP++, HH_TAG_SKY_END);
++#endif
  
      CLOSE_DISPS(gfxCtx);
 +#ifdef TARGET_HANDHELD
@@ -2169,6 +2289,42 @@ index 2fc63e5..84766c7 100644
              ptr->unk_00 = true;
              ptr->unk_04 = *vec;
              ptr->unk_04.x += Rand_CenteredFloat(ptr->unk_00 + (this->unk_330 * 4000.0f));
+diff --git a/src/overlays/actors/ovl_En_Invadepoh/z_en_invadepoh.c b/src/overlays/actors/ovl_En_Invadepoh/z_en_invadepoh.c
+index fc4078e..14a1a48 100644
+--- a/src/overlays/actors/ovl_En_Invadepoh/z_en_invadepoh.c
++++ b/src/overlays/actors/ovl_En_Invadepoh/z_en_invadepoh.c
+@@ -1294,7 +1294,13 @@ s32 EnInvadepoh_LensFlareCheck(PlayState* play, Vec3f* pos) {
+         f32 screenPosY = PROJECTED_TO_SCREEN_Y(projectedPos, invW);
+         s32 wZ = (s32)(projectedPos.z * invW * ((G_MAXZ / 2) * 32)) + ((G_MAXZ / 2) * 32);
+ 
++#ifdef TARGET_HANDHELD
++        _Bool OotPspRenderer_DepthTest(s32 x, s32 y, f32 projectedZ); /* the port: the renderer's depth */
++
++        if (OotPspRenderer_DepthTest(screenPosX, screenPosY, projectedPos.z * invW)) {
++#else
+         if (wZ < SysCfb_GetZBufferInt(screenPosX, screenPosY)) {
++#endif
+             return true;
+         }
+     }
+diff --git a/src/overlays/actors/ovl_En_Invadepoh_Demo/z_en_invadepoh_demo.c b/src/overlays/actors/ovl_En_Invadepoh_Demo/z_en_invadepoh_demo.c
+index 7d1e4e7..a4d2968 100644
+--- a/src/overlays/actors/ovl_En_Invadepoh_Demo/z_en_invadepoh_demo.c
++++ b/src/overlays/actors/ovl_En_Invadepoh_Demo/z_en_invadepoh_demo.c
+@@ -579,7 +579,13 @@ s32 EnInvadepohDemo_Ufo_LensFlareCheck(PlayState* play, Vec3f* pos) {
+         f32 screenPosY = PROJECTED_TO_SCREEN_Y(projectedPos, invW);
+         s32 wZ = (s32)(projectedPos.z * invW * ((G_MAXZ / 2) * 32)) + ((G_MAXZ / 2) * 32);
+ 
++#ifdef TARGET_HANDHELD
++        _Bool OotPspRenderer_DepthTest(s32 x, s32 y, f32 projectedZ); /* the port: the renderer's depth */
++
++        if (OotPspRenderer_DepthTest(screenPosX, screenPosY, projectedPos.z * invW)) {
++#else
+         if (wZ < SysCfb_GetZBufferInt(screenPosX, screenPosY)) {
++#endif
+             return true;
+         }
+     }
 diff --git a/src/overlays/effects/ovl_Effect_Ss_Bubble/z_eff_ss_bubble.c b/src/overlays/effects/ovl_Effect_Ss_Bubble/z_eff_ss_bubble.c
 index fe0847c..3f77898 100644
 --- a/src/overlays/effects/ovl_Effect_Ss_Bubble/z_eff_ss_bubble.c

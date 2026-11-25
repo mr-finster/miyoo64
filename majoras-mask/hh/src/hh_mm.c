@@ -44,6 +44,7 @@
 void port_log(const char* fmt, ...);
 void port_log_always(const char* fmt, ...);
 const char* port_save_path(const char* name);
+const char* HhMm_FlashName(void); /* below: a test start's saves apart */
 uint32_t port_time_us(void);
 void OotPspRenderer_Init(void);
 void Graph_ThreadEntry(void* arg);
@@ -332,13 +333,105 @@ void __osSpSetStatus(u32 data) {
 }
 
 /* ---- pad manager (code/padmgr.c) ----------------------------------------------------------------- */
-static void HhPad_Read(Input* inputs) {
+/* Frame-exact pad recording for repeatable tests (cacuracaptors, MIT): MM_PAD_RECORD=<file> writes the pad the game
+ * reads on each of its frames (4 bytes: button, stick x, stick y), MM_PAD_PLAY=<file> gives the game those pads
+ * instead of the buttons, frame by frame, from the start of the process. With either, Play_Init seeds the random
+ * numbers with a fixed value (HhMm_RandSeed), so the same start (debug.cfg entrance=) plays the same game.
+ * The end of a replay is logged ("PADPLAY end") and the pad is released from then on. */
+static FILE* sPadRecFile;
+static u8* sPadPlay;
+static long sPadPlayN;
+static long sPadFrame;
+static int sPadMode = -1; /* -1 not looked at yet, 0 off, 1 record, 2 play */
+static OSContPad sPadLast;
+
+static void HhPad_Setup(void) {
+    const char* rec = getenv("MM_PAD_RECORD");
+    const char* play = getenv("MM_PAD_PLAY");
+
+    sPadMode = 0;
+    if (play != NULL && play[0] != '\0') {
+        FILE* f = fopen(play, "rb");
+
+        if (f != NULL) {
+            fseek(f, 0, SEEK_END);
+            sPadPlayN = ftell(f) / 4;
+            fseek(f, 0, SEEK_SET);
+            sPadPlay = (u8*)malloc(sPadPlayN * 4 + 4);
+            if (sPadPlay != NULL && fread(sPadPlay, 4, sPadPlayN, f) == (size_t)sPadPlayN) {
+                sPadMode = 2;
+                port_log_always("PADPLAY start: %ld frames from %s\n", sPadPlayN, play);
+            } else {
+                port_log_always("PADPLAY: cannot read %s\n", play);
+            }
+            fclose(f);
+        } else {
+            port_log_always("PADPLAY: cannot open %s\n", play);
+        }
+    } else if (rec != NULL && rec[0] != '\0') {
+        sPadRecFile = fopen(rec, "wb");
+        if (sPadRecFile != NULL) {
+            sPadMode = 1;
+            port_log_always("PADREC start: %s\n", rec);
+        } else {
+            port_log_always("PADREC: cannot open %s\n", rec);
+        }
+    }
+}
+
+u32 HhMm_RandSeed(u32 seed) { /* z_play.c Play_Init */
+    if (sPadMode < 0) {
+        HhPad_Setup();
+    }
+    return sPadMode > 0 ? 0x4D4D5044u : seed;
+}
+
+/* the pad of one game frame (gameRequest) or a look at the same frame's pad (the postman's timer etc.) */
+static void HhPad_Get(OSContPad* pad, s32 gameRequest) {
+    if (sPadMode < 0) {
+        HhPad_Setup();
+    }
+    if (!gameRequest && sPadMode > 0) {
+        *pad = sPadLast;
+        return;
+    }
+    if (sPadMode == 2) {
+        memset(pad, 0, sizeof(*pad));
+        if (sPadFrame < sPadPlayN) {
+            const u8* b = &sPadPlay[sPadFrame * 4];
+
+            pad->button = (u16)(b[0] | (b[1] << 8));
+            pad->stick_x = (s8)b[2];
+            pad->stick_y = (s8)b[3];
+        } else if (sPadFrame == sPadPlayN) {
+            port_log_always("PADPLAY end at frame %ld\n", sPadFrame);
+        }
+    } else {
+        osContStartReadData(NULL);
+        osContGetReadData(pad);
+        if (sPadMode == 1) {
+            u8 b[4];
+
+            b[0] = pad->button & 0xFF;
+            b[1] = pad->button >> 8;
+            b[2] = (u8)pad->stick_x;
+            b[3] = (u8)pad->stick_y;
+            fwrite(b, 4, 1, sPadRecFile);
+            if ((sPadFrame % 20) == 19) {
+                fflush(sPadRecFile);
+            }
+        }
+    }
+    sPadFrame++;
+    sPadLast = *pad;
+}
+
+static void HhPad_Read(Input* inputs, s32 gameRequest) {
     OSContPad pads[MAXCONTROLLERS];
     Input* input = &inputs[0];
 
     memset(pads, 0, sizeof(pads));
-    osContStartReadData(NULL);
-    osContGetReadData(pads);
+    HhPad_Get(&pads[0], gameRequest);
 
     input->prev = gPadMgr.inputs[0].cur;
     input->cur = pads[0];
@@ -355,15 +448,15 @@ static void HhPad_Read(Input* inputs) {
 }
 
 void PadMgr_GetInput(Input* inputs, s32 gameRequest) {
-    HhPad_Read(inputs);
+    HhPad_Read(inputs, gameRequest);
 }
 
 void PadMgr_GetInput2(Input* inputs, s32 gameRequest) {
-    HhPad_Read(inputs);
+    HhPad_Read(inputs, gameRequest);
 }
 
 void PadMgr_GetInputNoLock(Input* inputs, s32 gameRequest) {
-    HhPad_Read(inputs);
+    HhPad_Read(inputs, gameRequest);
 }
 
 u8 PadMgr_GetValidControllersMask(void) {
@@ -553,7 +646,7 @@ static void HhFlash_Check(void) {
             struct tm tmv;
             FILE* f;
             localtime_r(&now, &tmv);
-            snprintf(backup, sizeof(backup), "%s.bad-%04d%02d%02d-%02d%02d%02d", port_save_path("mm-flash.bin"),
+            snprintf(backup, sizeof(backup), "%s.bad-%04d%02d%02d-%02d%02d%02d", port_save_path(HhMm_FlashName()),
                      tmv.tm_year + 1900, tmv.tm_mon + 1, tmv.tm_mday, tmv.tm_hour, tmv.tm_min, tmv.tm_sec);
             f = fopen(backup, "wb");
             if (f != NULL) {
@@ -580,8 +673,8 @@ static void HhFlash_Load(void) {
     }
     sFlashLoaded = 1;
     memset(sFlash, 0xFF, sizeof(sFlash));
-    miyoo_sleepsave_tmp_fallback(port_save_path("mm-flash.bin"), HH_FLASH_SIZE); /* a rename cut in two */
-    f = fopen(port_save_path("mm-flash.bin"), "rb");
+    miyoo_sleepsave_tmp_fallback(port_save_path(HhMm_FlashName()), HH_FLASH_SIZE); /* a rename cut in two */
+    f = fopen(port_save_path(HhMm_FlashName()), "rb");
     if (f != NULL) {
         size_t n = fread(sFlash, 1, sizeof(sFlash), f);
 
@@ -598,7 +691,7 @@ static void HhFlash_Load(void) {
 static int HhFlash_Write(const u8* data) {
     char why[96];
 
-    if (!miyoo_sleepsave_write_file(port_save_path("mm-flash.bin"), data, HH_FLASH_SIZE, why, sizeof(why))) {
+    if (!miyoo_sleepsave_write_file(port_save_path(HhMm_FlashName()), data, HH_FLASH_SIZE, why, sizeof(why))) {
         port_log_always("mm: flash save failed (%s); the old file is kept\n", why);
         return 0;
     }
@@ -803,6 +896,10 @@ void HhMm_AudioInit(void) {
 void HhMm_Beat(void);
 void HhMm_FrameDone(void) {
     sFrames++;
+    {
+        extern void HhProf_Frame(void);
+        HhProf_Frame();
+    }
     HhMm_Beat();
     {   /* MM_TRACE_AT=<frame>: the renderer's per-command trace for the next frame (console.log) */
         static long sTraceAt = -2;
@@ -902,12 +999,58 @@ void HhMm_LogAlignment(const char* when) {
 }
 
 char** gHhMmArgv; /* hh_mm_convert.c: the first start starts the game again in a fresh process */
+/* A test start (debug.cfg entrance=, graph.c HhMm_TestBoot): straight into that place with the debug save. Its keys,
+ * read here into variables (debug.cfg holds only the option rows' otherwise):
+ *   entrance=<id>  MM_ENTRANCE: the place, scene << 9 | spawn << 4: South Clock Town 0xD800, North 0xD600, East 0xD200,
+ *                  West 0xD400, Laundry Pool 0xDA00, Termina Field 0x5400, Southern Swamp 0x8400, Woodfall 0x8600,
+ *                  Deku Palace 0x5000, Mountain Village (winter) 0x9A00, Great Bay Coast 0x6800, Romani Ranch 0x6400,
+ *                  Ikana Canyon 0x2000, Stock Pot Inn 0xBC00
+ *   time=<0..0xFFFF> MM_TIME: the clock (0x8000 noon, 0x4000 06:00, 0xC000 18:00)
+ *   day=<1..3>     MM_DAY
+ * A test start keeps its saves in mm-flash-debug.bin, apart from the real ones. Written for the Miyoo Mini port
+ * (cacuracaptors, MIT), after the decomp's map select (MapSelect_LoadGame). */
+static void HhMm_TestBootKeys(void) {
+    static const char* const keys[][2] = { { "entrance", "MM_ENTRANCE" }, { "time", "MM_TIME" }, { "day", "MM_DAY" },
+                                            { "prof", "OOT_PROF" } };
+    char line[256];
+    FILE* f = fopen(port_save_path("debug.cfg"), "r");
+
+    if (f == NULL) {
+        return;
+    }
+    while (fgets(line, sizeof(line), f) != NULL) {
+        char* eq = strchr(line, '=');
+        char* end;
+        size_t k;
+
+        if (eq == NULL) {
+            continue;
+        }
+        *eq = '\0';
+        end = eq + 1 + strcspn(eq + 1, "\r\n \t");
+        *end = '\0';
+        for (k = 0; k < sizeof(keys) / sizeof(keys[0]); k++) {
+            if (strcmp(line, keys[k][0]) == 0 && eq[1] != '\0') {
+                setenv(keys[k][1], eq + 1, 1);
+            }
+        }
+    }
+    fclose(f);
+}
+const char* HhMm_FlashName(void) {
+    return getenv("MM_ENTRANCE") != NULL ? "mm-flash-debug.bin" : "mm-flash.bin";
+}
 int main(int argc, char** argv) {
     gHhMmArgv = argv;
 #if defined(MIYOO)
     {   /* data/debug.cfg: the MENU > OPTIONS rows' keys (hh_options.c), each as its variable, before anything reads one */
         extern int miyoo_options_load(void);
         miyoo_options_load();
+        HhMm_TestBootKeys();
+        {
+            extern void HhProf_Init(void);
+            HhProf_Init(); /* hh_prof.c: OOT_PROF=1 (debug.cfg prof=1) */
+        }
     }
 #endif
     {   /* kit k1.6: nice -10 before any thread exists (all inherit it): the OS's helpers fit in the frame gaps */
