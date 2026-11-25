@@ -20,5 +20,6 @@
     "size": 67108864
   },
   "system": "PAPERMARIOPAL",
-  "minui_tag": "PM64PAL"
+  "minui_tag": "PM64PAL",
+  "cover": "cover-pal.png"
 }

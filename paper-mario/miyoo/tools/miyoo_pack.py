@@ -270,7 +270,15 @@ def main():
             '# for Onion on a Mini v4 / Mini Flip: the screen at 752x560 for this game (runtime.sh looks for this line)\n'
             'FullResolution=1\n') % (folder, title, folder), **kv)
         z.add('Roms/PORTS/Shortcuts/%s%s.port' % (cat + '/' if cat else '', title), port, exe=True)
-        z.add('Roms/PORTS/Imgs/%s.png' % title, boxart(icon_src))
+        cover = g.get('cover')
+        if cover is not None:
+            if not isinstance(cover, str) or os.path.basename(cover) != cover:
+                sys.exit('game.json cover: a file name relative to the game JSON')
+            cw, ch, rows = png_rgba(open(os.path.join(gdir, cover), 'rb').read())
+            cover_src = png_write(cw, ch, rows)
+        else:
+            cover_src = boxart(icon_src)
+        z.add('Roms/PORTS/Imgs/%s.png' % title, cover_src)
         z.mkdir('Roms/PORTS/Games')
 
     if 'minui' in layouts:
