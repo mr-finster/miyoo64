@@ -1,6 +1,6 @@
-# Paper Mario PAL 1.0.0 — release candidate notes
+# Paper Mario PAL 1.0.0 — release notes
 
-The planned release supports the European English, German, French and Spanish
+The release supports the European English, German, French and Spanish
 game and starts through Onion Apps or Ports. It uses `App/PaperMarioPAL/` and
 `App/PaperMarioPAL/data/`; future releases are intended to retain these paths.
 The user's own verified PAL ROM is required and is not distributed.
@@ -12,11 +12,16 @@ one-cycle render state and can produce darker or harder edges. Isolated
 texture-edge/coverage artefacts and other graphical differences can remain.
 See `docs/PAL-RENDERER-GFX003-M41.md` for the scope and evidence.
 
-The final guide-free release candidate still needs a reproducible clean build,
-release gates and hardware acceptance. No automatic save migration is provided;
-users may manually copy a backed-up regular in-game save, without automatically
-overwriting existing data. Savestates are tied to their build stamp; compatibility
-between builds is not promised. Manual in-game save migration still requires
-hardware verification.
+A clean ARM32 build and release gates passed, including binary/recipes pairing,
+build stamp and ROM/asset leak checks. Hardware testing on Miyoo Mini Plus
+confirmed Apps and Ports launch, their icons, languages, menus, regular save/load,
+savestates and many renderer and gameplay scenes. Texture-edge/coverage issues
+and some visual differences in Dry Dry Ruins remain. The overlay runtime host
+test remains blocked by eight unlinked asset symbols; test coverage is not complete.
+
+No automatic save migration is provided; users may manually copy a backed-up
+regular in-game save without overwriting existing data. Migration from older
+alpha versions has not been separately hardware verified. Savestates are tied to
+their build stamp; compatibility between builds is not promised.
 
 Paper Mario PAL 1.0 does not include the Universal Guide.

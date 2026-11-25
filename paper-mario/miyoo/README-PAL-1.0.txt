@@ -38,9 +38,12 @@ NOTES AND CREDITS
 -----------------
 The PAL work includes improvements to star pieces, texture sampling and
 caching, foliage edges, depth comparison, wall-fire combining and other game
-scenes. Some isolated texture-edge or coverage artefacts can remain. The final
-integrated release candidate still requires hardware acceptance and wider
-regression testing.
+scenes. A clean ARM32 build and release gates passed, including binary/recipes
+pairing, build stamp and ROM/asset leak checks. Miyoo Mini Plus hardware testing
+confirmed Apps and Ports launch, their icons, languages, menus, regular save/load,
+savestates and many renderer and gameplay scenes. Texture-edge/coverage artefacts
+and some visual differences in Dry Dry Ruins remain. The overlay runtime host
+test remains blocked by eight unlinked asset symbols; test coverage is not complete.
 Based on the miyoo64 project and Paper Mario decompilation contributors.
 Source: https://github.com/SunnyBoon/miyoo64
 Unofficial community software; Nintendo and Paper Mario belong to their owners.
