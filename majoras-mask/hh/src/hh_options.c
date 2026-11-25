@@ -17,6 +17,12 @@ static void FineAimApply(const char* value) {
     HhInput_FineAimReload();
 }
 
+static void Fps30Apply(const char* value) {
+    extern int port_fi_enabled; /* hh_interp.c; hh_sched.c's 30 fps ticks follow it from the next frame */
+
+    port_fi_enabled = value[0] == '1';
+}
+
 static void HudFilterApply(const char* value) {
     gfx_soft_hud_box = value[0] != '0';
 }
@@ -34,6 +40,8 @@ const struct miyoo_option miyoo_options[] = {
       .def = "1000", .when = MIYOO_OPT_NOW, .apply = FineAimApply,
       .help = "FINE AIM: WHEN A HELD D-PAD REACHES FULL SPEED" },
     { .label = "PICTURE" },
+    { .label = "30 FPS", .key = "fps30", .env = "OOT_FPS30", MIYOO_OPT_ONOFF, .def = "0", .when = MIYOO_OPT_NOW,
+      .apply = Fps30Apply, .help = "IN-BETWEEN FRAMES: SMOOTHER MOTION, THE SAME GAME SPEED" },
     { .label = "DIALOG TEXT", .key = "msgbox1to1", .env = "OOT_MSGBOX1TO1",
       MIYOO_OPT_VALUES({ "1", "N64 SIZE" }, { "0", "NARROW" }), .def = "1",
       .help = "THE LETTERS AT THE N64'S SIZE, OR THE OLD NARROWER BOX" },

@@ -130,6 +130,57 @@ index 4a866c2..062ba87 100644
  #define CMD_W(a) (a)
  
  #ifdef __GNUC__
+diff --git a/include/gfx.h b/include/gfx.h
+index eb9c680..3eba128 100644
+--- a/include/gfx.h
++++ b/include/gfx.h
+@@ -118,6 +118,38 @@ extern GfxMasterList D_0E000000;
+ 
+ // __gfxCtx shouldn't be used directly.
+ // Use the DISP macros defined above when writing to display buffers.
++#ifdef TARGET_HANDHELD
++/* the port: frame interpolation (hh/src/hh_interp.c, 30 fps); each OPEN_DISPS block is a child keyed by its place */
++void Port_FiOpenChild(const void* a, int b);
++void Port_FiCloseChild(void);
++void Port_FiStartRecord(void);
++void Port_FiStopRecord(const void* tag);
++void Port_FiRate(int rate);
++void Port_FiActorPosRot(void);
++void Port_FiPush(void);
++void Port_FiPop(void);
++void Port_FiMode(int mode);
++void Port_FiSetTRYXZ(float x, float y, float z, const short* rot, const float* cur);
++void Port_FiToMtx(const float* cur, void* dest);
++void Port_FiMtxF(const float* src, void* dest);
++void Port_FiSkip(int d);
++int Port_FiCameraEpoch(void);
++void Port_FiCameraCheck(const float* eye, const float* at, const float* up, int pauseMode);
++void Port_FiDontInterpolateChild(const void* key);
++void Port_FiDontInterpolateFrame(void);
++void Port_FiSkinVtx(const void* key, const void* buf, int count);
++void Port_FiTexScroll(const void* cmd);
++void Port_FiCmd(const void* cmd, int kind);
++#define OPEN_DISPS(gfxCtx)                  \
++    {                                       \
++        GraphicsContext* __gfxCtx = gfxCtx; \
++        s32 __dispPad = (Port_FiOpenChild(__FILE__, __LINE__), 0)
++
++#define CLOSE_DISPS(gfxCtx) \
++    Port_FiCloseChild();    \
++    }                       \
++    (void)0
++#else
+ #define OPEN_DISPS(gfxCtx)                  \
+     {                                       \
+         GraphicsContext* __gfxCtx = gfxCtx; \
+@@ -127,6 +159,7 @@ extern GfxMasterList D_0E000000;
+     (void)0;                \
+     }                       \
+     (void)0
++#endif
+ 
+ #define GRAPH_ALLOC(gfxCtx, size) ((void*)((gfxCtx)->polyOpa.d = (Gfx*)((u8*)(gfxCtx)->polyOpa.d - ALIGN16(size))))
+ 
 diff --git a/include/libc/stddef.h b/include/libc/stddef.h
 index 604352f..05eb4bd 100644
 --- a/include/libc/stddef.h
@@ -1168,14 +1219,165 @@ index 1fda136..7c7a268 100644
      return req->response;
  }
 diff --git a/src/code/sys_matrix.c b/src/code/sys_matrix.c
-index 4013e08..aec910f 100644
+index 4013e08..99d2430 100644
 --- a/src/code/sys_matrix.c
 +++ b/src/code/sys_matrix.c
-@@ -1157,6 +1157,13 @@ void Matrix_SetTranslateRotateYXZ(f32 x, f32 y, f32 z, Vec3s* rot) {
+@@ -89,6 +89,9 @@ void Matrix_Init(GameState* gameState) {
+  */
+ void Matrix_Push(void) {
+     MtxF* prev = sCurrentMatrix;
++#ifdef TARGET_HANDHELD
++    Port_FiPush();
++#endif
+ 
+     sCurrentMatrix++;
+     Matrix_MtxFCopy(sCurrentMatrix, prev);
+@@ -100,6 +103,9 @@ void Matrix_Push(void) {
+  * @remark original name: "Matrix_pull"
+  */
+ void Matrix_Pop(void) {
++#ifdef TARGET_HANDHELD
++    Port_FiPop();
++#endif
+     sCurrentMatrix--;
+ }
+ 
+@@ -122,6 +128,9 @@ void Matrix_Get(MtxF* dest) {
+  * @remark original name: "Matrix_put"
+  */
+ void Matrix_Put(MtxF* src) {
++#ifdef TARGET_HANDHELD
++    Port_FiMode(MTXMODE_NEW); /* a matrix of its own */
++#endif
+     Matrix_MtxFCopy(sCurrentMatrix, src);
+ }
+ 
+@@ -149,6 +158,9 @@ MtxF* Matrix_GetCurrent(void) {
+  * @remark original name: "Matrix_mult"
+  */
+ void Matrix_Mult(MtxF* mf, MatrixMode mode) {
++#ifdef TARGET_HANDHELD
++    Port_FiMode(mode);
++#endif
+     MtxF* cmf = Matrix_GetCurrent();
+ 
+     if (mode == MTXMODE_APPLY) {
+@@ -182,6 +194,9 @@ void Matrix_Mult(MtxF* mf, MatrixMode mode) {
+  * @remark original name: "Matrix_translate"
+  */
+ void Matrix_Translate(f32 x, f32 y, f32 z, MatrixMode mode) {
++#ifdef TARGET_HANDHELD
++    Port_FiMode(mode);
++#endif
+     MtxF* cmf = sCurrentMatrix;
+     f32 tempX;
+     f32 tempY;
+@@ -228,6 +243,9 @@ void Matrix_Translate(f32 x, f32 y, f32 z, MatrixMode mode) {
+  * @remark original name: "Matrix_scale"
+  */
+ void Matrix_Scale(f32 x, f32 y, f32 z, MatrixMode mode) {
++#ifdef TARGET_HANDHELD
++    Port_FiMode(mode);
++#endif
+     MtxF* cmf = sCurrentMatrix;
+ 
+     if (mode == MTXMODE_APPLY) {
+@@ -274,6 +292,9 @@ void Matrix_Scale(f32 x, f32 y, f32 z, MatrixMode mode) {
+  * @remark original name: "Matrix_RotateX"
+  */
+ void Matrix_RotateXS(s16 x, MatrixMode mode) {
++#ifdef TARGET_HANDHELD
++    Port_FiMode(mode);
++#endif
+     MtxF* cmf;
+     f32 sin;
+     f32 cos;
+@@ -364,6 +385,9 @@ void Matrix_RotateXS(s16 x, MatrixMode mode) {
+  * @remark original name may have been "Matrix_RotateX", but clashed with the previous function.
+  */
+ void Matrix_RotateXF(f32 x, MatrixMode mode) {
++#ifdef TARGET_HANDHELD
++    Port_FiMode(mode);
++#endif
+     MtxF* cmf;
+     f32 sin;
+     f32 cos;
+@@ -482,6 +506,9 @@ void Matrix_RotateXFApply(f32 x) {
+  * @param x rotation angle (radians).
+  */
+ void Matrix_RotateXFNew(f32 x) {
++#ifdef TARGET_HANDHELD
++    Port_FiMode(MTXMODE_NEW);
++#endif
+     MtxF* cmf = sCurrentMatrix;
+     s32 pad[2];
+     f32 sin;
+@@ -542,6 +569,9 @@ void Matrix_RotateXFNew(f32 x) {
+  * @remark original name: "Matrix_RotateY"
+  */
+ void Matrix_RotateYS(s16 y, MatrixMode mode) {
++#ifdef TARGET_HANDHELD
++    Port_FiMode(mode);
++#endif
+     MtxF* cmf;
+     f32 sin;
+     f32 cos;
+@@ -631,6 +661,9 @@ void Matrix_RotateYS(s16 y, MatrixMode mode) {
+  * @remark original name may have been "Matrix_RotateY", but clashed with the previous function.
+  */
+ void Matrix_RotateYF(f32 y, MatrixMode mode) {
++#ifdef TARGET_HANDHELD
++    Port_FiMode(mode);
++#endif
+     MtxF* cmf;
+     f32 sin;
+     f32 cos;
+@@ -722,6 +755,9 @@ void Matrix_RotateYF(f32 y, MatrixMode mode) {
+  * @remark original name: "Matrix_RotateZ"
+  */
+ void Matrix_RotateZS(s16 z, MatrixMode mode) {
++#ifdef TARGET_HANDHELD
++    Port_FiMode(mode);
++#endif
+     MtxF* cmf;
+     f32 sin;
+     f32 cos;
+@@ -813,6 +849,9 @@ void Matrix_RotateZS(s16 z, MatrixMode mode) {
+  * @remark original name may have been "Matrix_RotateZ", but clashed with the previous function.
+  */
+ void Matrix_RotateZF(f32 z, MatrixMode mode) {
++#ifdef TARGET_HANDHELD
++    Port_FiMode(mode);
++#endif
+     MtxF* cmf;
+     f32 sin;
+     f32 cos;
+@@ -894,6 +933,9 @@ void Matrix_RotateZF(f32 z, MatrixMode mode) {
+  * @remark original name: "Matrix_RotateXYZ", changed to reflect rotation order.
+  */
+ void Matrix_RotateZYX(s16 x, s16 y, s16 z, MatrixMode mode) {
++#ifdef TARGET_HANDHELD
++    Port_FiMode(mode);
++#endif
+     MtxF* cmf = sCurrentMatrix;
+     f32 temp1;
+     f32 temp2;
+@@ -1144,6 +1186,9 @@ void Matrix_SetTranslateRotateYXZ(f32 x, f32 y, f32 z, Vec3s* rot) {
+     } else {
+         cmf->yx = 0.0f;
+     }
++#ifdef TARGET_HANDHELD
++    Port_FiSetTRYXZ(x, y, z, &rot->x, &cmf->mf[0][0]);
++#endif
+ }
+ 
+ /**
+@@ -1157,6 +1202,14 @@ void Matrix_SetTranslateRotateYXZ(f32 x, f32 y, f32 z, Vec3s* rot) {
   * @remark original name: "_MtxF_to_Mtx"
   */
  Mtx* Matrix_MtxFToMtx(MtxF* src, Mtx* dest) {
 +#ifdef TARGET_HANDHELD
++    Port_FiMtxF(&src->mf[0][0], dest);
 +    // the port: the Mtx words as libultra writes them (the renderer reads words)
 +    guMtxF2L(src->mf, dest);
 +    if (1) {
@@ -1185,7 +1387,25 @@ index 4013e08..aec910f 100644
      s32 temp;
      u16* intPart = (u16*)&dest->m[0][0];
      u16* fracPart = (u16*)&dest->m[2][0];
-@@ -1480,6 +1487,13 @@ void Matrix_MtxFCopy(MtxF* dest, MtxF* src) {
+@@ -1241,7 +1294,17 @@ Mtx* Matrix_MtxFToMtx(MtxF* src, Mtx* dest) {
+  * @remark original name: "_Matrix_to_Mtx"
+  */
+ Mtx* Matrix_ToMtx(Mtx* dest) {
++#ifdef TARGET_HANDHELD
++    Mtx* portRet;
++
++    Port_FiToMtx(&sCurrentMatrix->mf[0][0], dest); /* the actor-relative form */
++    Port_FiSkip(1);
++    portRet = Matrix_MtxFToMtx(sCurrentMatrix, dest);
++    Port_FiSkip(-1);
++    return portRet;
++#else
+     return Matrix_MtxFToMtx(sCurrentMatrix, dest);
++#endif
+ }
+ 
+ /**
+@@ -1480,6 +1543,13 @@ void Matrix_MtxFCopy(MtxF* dest, MtxF* src) {
   * @remark original name: "Matrix_MtxtoMtxF"
   */
  void Matrix_MtxToMtxF(Mtx* src, MtxF* dest) {
@@ -1199,6 +1419,26 @@ index 4013e08..aec910f 100644
      u16* intPart = (u16*)&src->m[0][0];
      u16* fracPart = (u16*)&src->m[2][0];
  
+@@ -1752,6 +1822,9 @@ void Matrix_MtxFToZYXRot(MtxF* src, Vec3s* dest, s32 nonUniformScale) {
+  * @remark original name may have been "Matrix_RotateVector", but clashed with the next function.
+  */
+ void Matrix_RotateAxisF(f32 angle, Vec3f* axis, MatrixMode mode) {
++#ifdef TARGET_HANDHELD
++    Port_FiMode(mode);
++#endif
+     MtxF* cmf;
+     f32 sin;
+     f32 cos;
+@@ -1855,6 +1928,9 @@ void Matrix_RotateAxisF(f32 angle, Vec3f* axis, MatrixMode mode) {
+  * @remark original name: "Matrix_RotateVector"
+  */
+ void Matrix_RotateAxisS(s16 angle, Vec3f* axis, MatrixMode mode) {
++#ifdef TARGET_HANDHELD
++    Port_FiMode(mode);
++#endif
+     MtxF* cmf;
+     f32 cos;
+     f32 sin;
 diff --git a/src/code/z_DLF.c b/src/code/z_DLF.c
 index e71e199..369ce09 100644
 --- a/src/code/z_DLF.c
@@ -1217,7 +1457,7 @@ index e71e199..369ce09 100644
      }
  
 diff --git a/src/code/z_actor.c b/src/code/z_actor.c
-index a99b37f..eb9fe6f 100644
+index a99b37f..0eef616 100644
 --- a/src/code/z_actor.c
 +++ b/src/code/z_actor.c
 @@ -2517,6 +2517,12 @@ void Actor_InitContext(PlayState* play, ActorContext* actorCtx, ActorEntry* acto
@@ -1233,7 +1473,37 @@ index a99b37f..eb9fe6f 100644
  
      actorCtx->sceneFlags.chest = cycleFlags->chest;
      actorCtx->sceneFlags.switches[0] = cycleFlags->switch0;
-@@ -3429,6 +3435,12 @@ Actor* Actor_RemoveFromCategory(PlayState* play, ActorContext* actorCtx, Actor*
+@@ -2795,6 +2801,9 @@ void Actor_UpdateAll(PlayState* play, ActorContext* actorCtx) {
+ void Actor_Draw(PlayState* play, Actor* actor) {
+     Lights* light;
+ 
++#ifdef TARGET_HANDHELD
++    Port_FiOpenChild(actor, 0); /* this actor's matrices */
++#endif
+     OPEN_DISPS(play->state.gfxCtx);
+ 
+     light = LightContext_NewLights(&play->lightCtx, play->state.gfxCtx);
+@@ -2810,6 +2819,9 @@ void Actor_Draw(PlayState* play, Actor* actor) {
+                    play);
+     Lights_Draw(light, play->state.gfxCtx);
+ 
++#ifdef TARGET_HANDHELD
++    Port_FiActorPosRot(); /* the next matrix is the actor's own */
++#endif
+     if (actor->flags & ACTOR_FLAG_IGNORE_QUAKE) {
+         Matrix_SetTranslateRotateYXZ(actor->world.pos.x + play->mainCamera.quakeOffset.x,
+                                      actor->world.pos.y +
+@@ -2866,6 +2878,9 @@ void Actor_Draw(PlayState* play, Actor* actor) {
+     actor->isDrawn = true;
+ 
+     CLOSE_DISPS(play->state.gfxCtx);
++#ifdef TARGET_HANDHELD
++    Port_FiCloseChild();
++#endif
+ }
+ 
+ void Actor_UpdateFlaggedAudio(Actor* actor) {
+@@ -3429,6 +3444,12 @@ Actor* Actor_RemoveFromCategory(PlayState* play, ActorContext* actorCtx, Actor*
  void Actor_FreeOverlay(ActorOverlay* entry) {
      if (entry->numLoaded == 0) {
          PRINTF(T("アクタークライアントが０になりました\n", "Actor clients are now 0\n"));
@@ -1246,7 +1516,7 @@ index a99b37f..eb9fe6f 100644
  
          if (entry->loadedRamAddr != NULL) {
              if (entry->allocType & ALLOCTYPE_PERMANENT) {
-@@ -3462,6 +3474,12 @@ ActorProfile* Actor_LoadOverlay(ActorContext* actorCtx, s16 index) {
+@@ -3462,6 +3483,12 @@ ActorProfile* Actor_LoadOverlay(ActorContext* actorCtx, s16 index) {
      overlaySize = (uintptr_t)overlayEntry->vramEnd - (uintptr_t)overlayEntry->vramStart;
  
      if (overlayEntry->vramStart == NULL) {
@@ -1259,7 +1529,7 @@ index a99b37f..eb9fe6f 100644
          profile = overlayEntry->profile;
      } else {
          if (overlayEntry->loadedRamAddr == NULL) {
-@@ -3529,9 +3547,16 @@ Actor* Actor_SpawnAsChildAndCutscene(ActorContext* actorCtx, PlayState* play, s1
+@@ -3529,9 +3556,16 @@ Actor* Actor_SpawnAsChildAndCutscene(ActorContext* actorCtx, PlayState* play, s1
      }
  
      overlayEntry = &gActorOverlayTable[index];
@@ -1276,7 +1546,17 @@ index a99b37f..eb9fe6f 100644
  
      PRINTF(T("アクタークライアントは %d 個目です\n", "Actor client No. %d\n"), overlayEntry->numLoaded);
  
-@@ -3685,6 +3710,13 @@ Actor* Actor_Delete(ActorContext* actorCtx, Actor* actor, PlayState* play) {
+@@ -3585,6 +3619,9 @@ Actor* Actor_SpawnAsChildAndCutscene(ActorContext* actorCtx, PlayState* play, s1
+         uintptr_t prevSeg = gSegments[0x06];
+ 
+         Actor_Init(actor, play);
++#ifdef TARGET_HANDHELD
++        Port_FiDontInterpolateChild(actor); /* a new actor in a reused slot: no blend from the old one */
++#endif
+         gSegments[0x06] = prevSeg;
+     }
+ 
+@@ -3685,6 +3722,13 @@ Actor* Actor_Delete(ActorContext* actorCtx, Actor* actor, PlayState* play) {
  
      if (overlayEntry->vramStart == NULL) {
          PRINTF(T("オーバーレイではありません\n", "Not an overlay\n"));
@@ -1291,7 +1571,7 @@ index a99b37f..eb9fe6f 100644
          overlayEntry->numLoaded--;
          Actor_FreeOverlay(overlayEntry);
 diff --git a/src/code/z_effect_soft_sprite.c b/src/code/z_effect_soft_sprite.c
-index 614009c..93c462d 100644
+index 614009c..c2c1627 100644
 --- a/src/code/z_effect_soft_sprite.c
 +++ b/src/code/z_effect_soft_sprite.c
 @@ -27,6 +27,12 @@ void EffectSs_InitInfo(PlayState* play, s32 tableSize) {
@@ -1320,7 +1600,17 @@ index 614009c..93c462d 100644
  }
  
  EffectSs* EffectSs_GetTable(void) {
-@@ -182,6 +194,12 @@ void EffectSs_Spawn(PlayState* play, s32 type, s32 priority, void* initData) {
+@@ -161,6 +173,9 @@ void EffectSs_Insert(PlayState* play, EffectSs* effectSs) {
+         if (EffectSs_FindSlot(effectSs->priority, &index) == 0) {
+             sEffectSsInfo.searchStartIndex = index + 1;
+             sEffectSsInfo.table[index] = *effectSs;
++#ifdef TARGET_HANDHELD
++            Port_FiDontInterpolateChild(&sEffectSsInfo.table[index]); /* a new effect in a reused slot */
++#endif
+         }
+     }
+ }
+@@ -182,6 +197,12 @@ void EffectSs_Spawn(PlayState* play, s32 type, s32 priority, void* initData) {
      if (overlayEntry->vramStart == NULL) {
          PRINTF(T("EffectSoftSprite2_makeEffect():オーバーレイではありません。\n",
                   "EffectSoftSprite2_makeEffect(): Not an overlay.\n"));
@@ -1333,6 +1623,30 @@ index 614009c..93c462d 100644
          profile = overlayEntry->profile;
      } else {
          if (overlayEntry->loadedRamAddr == NULL) {
+@@ -210,6 +231,9 @@ void EffectSs_Spawn(PlayState* play, s32 type, s32 priority, void* initData) {
+     EffectSs_Delete(&sEffectSsInfo.table[index]);
+ 
+     sEffectSsInfo.table[index].type = type;
++#ifdef TARGET_HANDHELD
++    Port_FiDontInterpolateChild(&sEffectSsInfo.table[index]); /* a new effect in a reused slot */
++#endif
+     sEffectSsInfo.table[index].priority = priority;
+ 
+     if (profile->init(play, index, &sEffectSsInfo.table[index], initData) == 0) {
+@@ -255,7 +279,13 @@ void EffectSs_Draw(PlayState* play, s32 index) {
+     EffectSs* effectSs = &sEffectSsInfo.table[index];
+ 
+     if (effectSs->draw != NULL) {
++#ifdef TARGET_HANDHELD
++        Port_FiOpenChild(effectSs, 0);
++#endif
+         effectSs->draw(play, index, effectSs);
++#ifdef TARGET_HANDHELD
++        Port_FiCloseChild();
++#endif
+     }
+ }
+ 
 diff --git a/src/code/z_jpeg.c b/src/code/z_jpeg.c
 index 91a9900..deae8e0 100644
 --- a/src/code/z_jpeg.c
@@ -1396,8 +1710,56 @@ index 053a032..a919d31 100644
      if (ovl == NULL) {
          s32 i;
  
+diff --git a/src/code/z_lights.c b/src/code/z_lights.c
+index d7917a6..dc62e93 100644
+--- a/src/code/z_lights.c
++++ b/src/code/z_lights.c
+@@ -445,6 +445,9 @@ void Lights_DrawGlow(PlayState* play) {
+                 if (params->drawGlow) {
+                     f32 scale = SQ((f32)params->radius) * 2e-6f;
+ 
++#ifdef TARGET_HANDHELD
++                    Port_FiOpenChild(light->info, 0); /* port: this halo, wherever it is in the list */
++#endif
+                     gDPSetPrimColor(gfx++, 0, 0, params->color[0], params->color[1], params->color[2], 50);
+ 
+                     Matrix_Translate(params->x, params->y, params->z, MTXMODE_NEW);
+@@ -453,6 +456,9 @@ void Lights_DrawGlow(PlayState* play) {
+                     MATRIX_FINALIZE_AND_LOAD(gfx++, play->state.gfxCtx);
+ 
+                     gSPDisplayList(gfx++, gameplay_keep_DL_029CF0);
++#ifdef TARGET_HANDHELD
++                    Port_FiCloseChild();
++#endif
+                 }
+             }
+ 
+diff --git a/src/code/z_message.c b/src/code/z_message.c
+index 4cbd1b6..27a5249 100644
+--- a/src/code/z_message.c
++++ b/src/code/z_message.c
+@@ -3786,6 +3786,9 @@ void Message_DrawTextBox(PlayState* play, Gfx** gfxP) {
+ 
+     gDPSetPrimColor(gfx++, 0, 0, msgCtx->textboxColorRed, msgCtx->textboxColorGreen, msgCtx->textboxColorBlue,
+                     msgCtx->textboxColorAlphaCurrent);
++#ifdef TARGET_HANDHELD
++    Port_FiCmd(gfx - 1, 0); /* port: the box's fade */
++#endif
+ 
+     if (((u32)msgCtx->textBoxType == TEXTBOX_TYPE_BLACK) || (msgCtx->textBoxType == TEXTBOX_TYPE_BLUE_FADED) ||
+         (msgCtx->textBoxType == TEXTBOX_TYPE_DISPLAY_ALL) || (msgCtx->textBoxType == TEXTBOX_TYPE_BLUE) ||
+@@ -3815,6 +3818,9 @@ void Message_DrawTextBox(PlayState* play, Gfx** gfxP) {
+                             (msgCtx->textboxX + sTextboxWidth) << 2, (msgCtx->textboxY + sTextboxHeight) << 2,
+                             G_TX_RENDERTILE, 0, 0, sTextboxTexWidth, sTextboxTexHeight);
+     }
++#ifdef TARGET_HANDHELD
++    Port_FiCmd(gfx - 3, 1); /* port: the box's opening */
++#endif
+ 
+     // Draw treble clef
+     if (msgCtx->textBoxType == TEXTBOX_TYPE_OCARINA) {
 diff --git a/src/code/z_play.c b/src/code/z_play.c
-index dc076fc..7b43e95 100644
+index dc076fc..162a46f 100644
 --- a/src/code/z_play.c
 +++ b/src/code/z_play.c
 @@ -145,6 +145,12 @@ void Play_DisableMotionBlur(void) {
@@ -1475,6 +1837,21 @@ index dc076fc..7b43e95 100644
  
      if (!sp5C) {
          Play_UpdateWaterCamera(this, this->cameraPtrs[this->nextCamera]);
+@@ -1506,7 +1526,14 @@ void Play_Main(GameState* thisx) {
+         if (1) {
+             *CONTROLLER1(&this->state) = D_801F6C18;
+         }
++#ifdef TARGET_HANDHELD
++        Port_FiRate(R_UPDATE_RATE); /* the pause menu runs at 30 updates a second: nothing to interpolate */
++        Port_FiStartRecord();
++#endif
+         Play_Draw(this);
++#ifdef TARGET_HANDHELD
++        Port_FiStopRecord(gGfxMasterDL); /* the task's display list (graph.c: data_ptr) */
++#endif
+         *CONTROLLER1(&this->state) = input;
+     }
+ 
 diff --git a/src/code/z_player_lib.c b/src/code/z_player_lib.c
 index a90113c..55de6b2 100644
 --- a/src/code/z_player_lib.c
@@ -1489,10 +1866,52 @@ index a90113c..55de6b2 100644
              gDPSetEnvColor(&gfx[3], 150, 150, 150, 0);
              gSPDisplayList(&gfx[4], gEffBubbleDL);
 diff --git a/src/code/z_rcp.c b/src/code/z_rcp.c
-index f475016..116a048 100644
+index f475016..d79b0d0 100644
 --- a/src/code/z_rcp.c
 +++ b/src/code/z_rcp.c
-@@ -1531,7 +1531,21 @@ void func_8012CF0C(GraphicsContext* gfxCtx, s32 clearFb, s32 clearZb, u8 r, u8 g
+@@ -1368,6 +1368,9 @@ Gfx* Gfx_BranchTexScroll(Gfx** gfxP, u32 x, u32 y, s32 width, s32 height) {
+     gDPTileSync(&gfx[0]);
+     gDPSetTileSize(&gfx[1], 0, x, y, (x + ((width - 1) << 2)), (y + ((height - 1) << 2)));
+     gSPEndDisplayList(&gfx[2]);
++#ifdef TARGET_HANDHELD
++    Port_FiTexScroll(&gfx[1]);
++#endif
+ 
+     return gfx;
+ }
+@@ -1389,6 +1392,9 @@ Gfx* Gfx_TexScroll(GraphicsContext* gfxCtx, u32 x, u32 y, s32 width, s32 height)
+     gDPTileSync(&gfx[0]);
+     gDPSetTileSize(&gfx[1], 0, x, y, (x + ((width - 1) << 2)), (y + ((height - 1) << 2)));
+     gSPEndDisplayList(&gfx[2]);
++#ifdef TARGET_HANDHELD
++    Port_FiTexScroll(&gfx[1]);
++#endif
+ 
+     return gfx;
+ }
+@@ -1407,6 +1413,10 @@ Gfx* Gfx_TwoTexScroll(GraphicsContext* gfxCtx, s32 tile1, u32 x1, u32 y1, s32 wi
+     gDPTileSync(&gfx[2]);
+     gDPSetTileSize(&gfx[3], tile2, x2, y2, (x2 + ((width2 - 1) << 2)), (y2 + ((height2 - 1) << 2)));
+     gSPEndDisplayList(&gfx[4]);
++#ifdef TARGET_HANDHELD
++    Port_FiTexScroll(&gfx[1]);
++    Port_FiTexScroll(&gfx[3]);
++#endif
+ 
+     return gfx;
+ }
+@@ -1426,6 +1436,10 @@ Gfx* Gfx_TwoTexScrollEnvColor(GraphicsContext* gfxCtx, s32 tile1, u32 x1, u32 y1
+     gDPSetTileSize(&gfx[3], tile2, x2, y2, (x2 + ((width2 - 1) << 2)), (y2 + ((height2 - 1) << 2)));
+     gDPSetEnvColor(&gfx[4], r, g, b, a);
+     gSPEndDisplayList(&gfx[5]);
++#ifdef TARGET_HANDHELD
++    Port_FiTexScroll(&gfx[1]);
++    Port_FiTexScroll(&gfx[3]);
++#endif
+ 
+     return gfx;
+ }
+@@ -1531,7 +1545,21 @@ void func_8012CF0C(GraphicsContext* gfxCtx, s32 clearFb, s32 clearZb, u8 r, u8 g
          if (i == 0x0E) {
              gSPNoOp(&masterGfx[i]);
          } else {
@@ -1514,14 +1933,31 @@ index f475016..116a048 100644
          }
      }
      gSPEndDisplayList(&masterGfx[i]);
+diff --git a/src/code/z_skin.c b/src/code/z_skin.c
+index b3f3b57..9cef4b7 100644
+--- a/src/code/z_skin.c
++++ b/src/code/z_skin.c
+@@ -127,6 +127,9 @@ void Skin_ApplyLimbModifications(GraphicsContext* gfxCtx, Skin* skin, s32 limbIn
+                             vtxBuf, &spDC);
+     }
+ 
++#ifdef TARGET_HANDHELD
++    Port_FiSkinVtx(vtxEntry, vtxEntry->buf[vtxEntry->index], data->totalVtxCount); /* port: Epona and the other skins */
++#endif
+     gSPSegment(POLY_OPA_DISP++, 0x08, vtxEntry->buf[vtxEntry->index]);
+ 
+     vtxEntry->index = (vtxEntry->index == 0);
 diff --git a/src/code/z_skin_matrix.c b/src/code/z_skin_matrix.c
-index 211bc16..6a978a8 100644
+index 211bc16..4405cb7 100644
 --- a/src/code/z_skin_matrix.c
 +++ b/src/code/z_skin_matrix.c
-@@ -510,6 +510,13 @@ void SkinMatrix_Vec3sToVec3f(Vec3s* src, Vec3f* dest) {
+@@ -510,6 +510,16 @@ void SkinMatrix_Vec3sToVec3f(Vec3s* src, Vec3f* dest) {
  }
  
  void SkinMatrix_MtxFToMtx(MtxF* src, Mtx* dest) {
++#ifdef TARGET_HANDHELD
++    Port_FiMtxF(&src->mf[0][0], dest);
++#endif
 +#ifdef TARGET_HANDHELD
 +    // the port: the Mtx words as libultra writes them (the renderer reads words)
 +    guMtxF2L(src->mf, dest);
@@ -1532,6 +1968,47 @@ index 211bc16..6a978a8 100644
      s32 temp;
      u16* m1 = (u16*)&dest->m[0][0];
      u16* m2 = (u16*)&dest->m[2][0];
+diff --git a/src/code/z_view.c b/src/code/z_view.c
+index cd7ab80..6103669 100644
+--- a/src/code/z_view.c
++++ b/src/code/z_view.c
+@@ -360,6 +360,18 @@ s32 View_ApplyPerspective(View* view) {
+              view->up.z);
+ 
+     view->viewing = *viewing;
++#ifdef TARGET_HANDHELD
++    { /* frame interpolation: the camera */
++        MtxF portMf;
++
++        Port_FiCameraCheck(&view->eye.x, &view->at.x, &view->up.x, 0);
++        Port_FiOpenChild(NULL, Port_FiCameraEpoch());
++        guLookAtF(portMf.mf, view->eye.x, view->eye.y, view->eye.z, view->at.x, view->at.y, view->at.z, view->up.x,
++                  view->up.y, view->up.z);
++        Port_FiMtxF(&portMf.mf[0][0], viewing);
++        Port_FiCloseChild();
++    }
++#endif
+ 
+     gSPMatrix(POLY_OPA_DISP++, viewing, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_PROJECTION);
+     gSPMatrix(POLY_XLU_DISP++, viewing, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_PROJECTION);
+@@ -516,6 +528,17 @@ s32 View_ApplyPerspectiveToOverlay(View* view) {
+ s32 View_UpdateViewingMatrix(View* view) {
+     guLookAt(view->viewingPtr, view->eye.x, view->eye.y, view->eye.z, view->at.x, view->at.y, view->at.z, view->up.x,
+              view->up.y, view->up.z);
++#ifdef TARGET_HANDHELD
++    { /* frame interpolation: the view rewritten at the end of the frame (without it the in-between frames lag) */
++        MtxF portMf;
++
++        Port_FiOpenChild(NULL, Port_FiCameraEpoch());
++        guLookAtF(portMf.mf, view->eye.x, view->eye.y, view->eye.z, view->at.x, view->at.y, view->at.z, view->up.x,
++                  view->up.y, view->up.z);
++        Port_FiMtxF(&portMf.mf[0][0], view->viewingPtr);
++        Port_FiCloseChild();
++    }
++#endif
+ 
+     view->unkE0 = *view->viewingPtr;
+     view->viewingPtr = &view->unkE0;
 diff --git a/src/code/z_vismono.c b/src/code/z_vismono.c
 index ba15bcc..c5541b5 100644
 --- a/src/code/z_vismono.c
@@ -1555,6 +2032,30 @@ index ba15bcc..c5541b5 100644
      u16* tlut;
      Gfx* dList;
      Gfx* dListEnd;
+diff --git a/src/code/z_vr_box_draw.c b/src/code/z_vr_box_draw.c
+index a4066b7..bc606d9 100644
+--- a/src/code/z_vr_box_draw.c
++++ b/src/code/z_vr_box_draw.c
+@@ -21,6 +21,9 @@ void Skybox_SetColors(SkyboxContext* skyboxCtx, u8 primR, u8 primG, u8 primB, u8
+ }
+ 
+ void Skybox_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyboxId, s16 blend, f32 x, f32 y, f32 z) {
++#ifdef TARGET_HANDHELD
++    Port_FiOpenChild(NULL, Port_FiCameraEpoch());
++#endif
+     OPEN_DISPS(gfxCtx);
+ 
+     Gfx_SetupDL40_Opa(gfxCtx);
+@@ -70,6 +73,9 @@ void Skybox_Draw(SkyboxContext* skyboxCtx, GraphicsContext* gfxCtx, s16 skyboxId
+     gDPPipeSync(POLY_OPA_DISP++);
+ 
+     CLOSE_DISPS(gfxCtx);
++#ifdef TARGET_HANDHELD
++    Port_FiCloseChild();
++#endif
+ }
+ 
+ void Skybox_Update(SkyboxContext* skyboxCtx) {
 diff --git a/src/overlays/actors/ovl_En_Dg/z_en_dg.c b/src/overlays/actors/ovl_En_Dg/z_en_dg.c
 index 4a23870..ba8221f 100644
 --- a/src/overlays/actors/ovl_En_Dg/z_en_dg.c
@@ -1707,3 +2208,36 @@ index 0861675..23169ff 100644
      }
  
      this->life = ((s32)((Rand_ZeroOne() * (500.0f + KREG(64))) * 0.01f)) + KREG(65) + 10;
+diff --git a/src/overlays/kaleido_scope/ovl_kaleido_scope/z_kaleido_scope_NES.c b/src/overlays/kaleido_scope/ovl_kaleido_scope/z_kaleido_scope_NES.c
+index 4a5441c..d2ede6a 100644
+--- a/src/overlays/kaleido_scope/ovl_kaleido_scope/z_kaleido_scope_NES.c
++++ b/src/overlays/kaleido_scope/ovl_kaleido_scope/z_kaleido_scope_NES.c
+@@ -1464,6 +1464,9 @@ void KaleidoScope_UpdateSwitchPage(PlayState* play, Input* input) {
+ 
+         if (pauseCtx->switchPageTimer == 64) {
+             pauseCtx->switchPageTimer = 0;
++#ifdef TARGET_HANDHELD
++            Port_FiDontInterpolateFrame(); /* port: a new page, nothing to blend from */
++#endif
+             pauseCtx->pageIndex = sPageSwitchNextPageIndex[pauseCtx->nextPageMode];
+             pauseCtx->mainState = PAUSE_MAIN_STATE_IDLE;
+ 
+@@ -2795,12 +2798,18 @@ void KaleidoScope_UpdateOpening(PlayState* play) {
+             gSaveContext.buttonStatus[EQUIP_SLOT_A] = BTN_DISABLED;
+         }
+ 
++#ifdef TARGET_HANDHELD
++        Port_FiDontInterpolateFrame(); /* port: a new page, nothing to blend from */
++#endif
+         pauseCtx->pageIndex = sPageSwitchNextPageIndex[pauseCtx->nextPageMode];
+         pauseCtx->mainState = PAUSE_MAIN_STATE_IDLE;
+         pauseCtx->state++; // PAUSE_STATE_MAIN
+         pauseCtx->alpha = 255;
+         Interface_SetBButtonInterfaceDoAction(play, DO_ACTION_RETURN);
+     } else if (pauseCtx->switchPageTimer == 64) {
++#ifdef TARGET_HANDHELD
++        Port_FiDontInterpolateFrame(); /* port: a new page, nothing to blend from */
++#endif
+         pauseCtx->pageIndex = sPageSwitchNextPageIndex[pauseCtx->nextPageMode];
+         pauseCtx->nextPageMode = (pauseCtx->pageIndex * 2) + 1;
+     }

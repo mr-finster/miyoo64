@@ -15,3 +15,4 @@
 | `msgbox1to1` | `1` | restart | Dialog text at the N64's size, the box widened to fill the screen; `0` = the old layout (box and text squeezed to 0.92) |
 | `hudfilter` | `1` | at once | Smoothed HUD, sprites and text at 240; `0` = plain scaling |
 | `declick` | `1` | restart | The sound fades out and back in around the menu and a save-state load instead of stopping dead; `0` = the old hard cuts |
+| `fps30` | `0` | at once | 30 frames a second: the in-between frames drawn with everything that moves blended between the game's 20 updates a second (actors, the camera, effects, Epona, scrolling textures, the dialog box, the light halos), the game's speed unchanged; where the pictures don't fit it steps down (26.7, 25, 24, 23.3 fps) and then to 20. Each picture is held by the panel's vsyncs. `0` = 20 fps, as the N64 (`OOT_FPS30`) |
