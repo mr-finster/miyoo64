@@ -9,6 +9,14 @@
 
 | Key | Default | Applies | What it does |
 |---|---|---|---|
+| `controls` | `0` | at once | Controls: `0` = ORIGINAL, the N64's; `1` = MODERN, for Link and the Fierce Deity (Deku, Goron and Zora Link keep the N64's): X jumps and C-left moves to SELECT (and stays on START + left) with the automatic jump and ledge grab at edges off, A held after a roll runs faster and the roll or a landing goes straight into the run, rolls chained and steered, a little steering in the air. Each part also has its own key below, which wins over this one (`MM_CONTROLS`) |
+| `jumpbutton` | as `controls` | restart | `1` = X jumps and SELECT gives C-left (on the ground: the game's own jump off an edge, long when running) (`MM_JUMPBUTTON`) |
+| `autojump` | as `controls` | restart | `0` = running off an edge doesn't jump by itself (only with `jumpbutton=1`) (`MM_AUTOJUMP`) |
+| `ledgegrab` | as `controls` | restart | `0` = walking off an edge, Link falls instead of hanging on to it (ladders, vines and grabbing a ledge in mid-air stay) (`MM_LEDGEGRAB`) |
+| `sprint` | `100`, `150` with MODERN | restart | The run's speed in % after a roll with A still held (100 to 200; `100` = off); with it, a roll or a landing with A held goes straight into the run (`MM_SPRINT`) |
+| `betterroll` | as `controls` | restart | `1` = A again near a roll's end rolls again, and the d-pad steers a roll (`MM_BETTERROLL`) |
+| `airsteer` | as `controls` | restart | `1` = the d-pad steers a little in the air (at most 45 degrees either side) (`MM_AIRSTEER`) |
+| `jumpstrength` | `70` | restart | With jumpbutton: the jump's least speed x10 (standing, the game's edge jump barely leaves the ground) (`MM_JUMPSTRENGTH`) |
 | `fineaim` | `1` | at once | Fine aim: in first person and aiming, the d-pad starts at a small push of the stick and eases up to full tilt; `0` = full tilt at once (`MM_FINEAIM`) |
 | `fineaimpct` | `20` | at once | With fineaim: where the d-pad starts, in percent of full tilt (5 to 100), for the first 250 ms (`MM_FINEAIMPCT`) |
 | `fineaimms` | `1000` | at once | With fineaim: when the d-pad reaches full tilt, in ms (`MM_FINEAIMMS`) |

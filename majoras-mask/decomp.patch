@@ -2325,6 +2325,314 @@ index 7d1e4e7..a4d2968 100644
              return true;
          }
      }
+diff --git a/src/overlays/actors/ovl_player_actor/z_player.c b/src/overlays/actors/ovl_player_actor/z_player.c
+index 817ce0a..a6f8c82 100644
+--- a/src/overlays/actors/ovl_player_actor/z_player.c
++++ b/src/overlays/actors/ovl_player_actor/z_player.c
+@@ -512,6 +512,16 @@ Vec3f sInteractWallCheckResult;
+ f32 D_80862B3C;
+ FloorEffect sPlayerFloorEffect;
+ Input* sPlayerControlInput;
++
++#ifdef TARGET_HANDHELD
++/* MENU > OPTIONS > CONTROLS: MODERN (hh_controls.c, own code of cacuracaptors' Miyoo Mini port, MIT) */
++#include "hh_controls.h"
++static s32 sHhSprint;    /* MM_SPRINT: running faster now (HhCtl_SprintUpdate) */
++static s32 sHhManualAir; /* MM_JUMPBUTTON: frames since a button jump (HhCtl_Jump) */
++/* Modern is for Link himself and the Fierce Deity: Deku, Goron and Zora Link keep the N64's controls */
++#define HHCTL_FORM(p) (((p)->transformation == PLAYER_FORM_HUMAN) || ((p)->transformation == PLAYER_FORM_FIERCE_DEITY))
++static s32 HhCtl_RunOn(Player* this, PlayState* play);
++#endif
+ s32 sPlayerUseHeldItem;              // When true, the current held item is used. Is reset to false every frame.
+ s32 sPlayerHeldItemButtonIsHeldDown; // Indicates if the button for the current held item is held down.
+ AdjLightSettings D_80862B50;         // backup of lay->envCtx.adjLightSettings
+@@ -5132,6 +5142,11 @@ s32 Player_CalcSpeedAndYawFromControlStick(PlayState* play, Player* this, f32* o
+ 
+             *outSpeedTarget = (*outSpeedTarget * 0.14f) - (8.0f * floorPitchInfluence * floorPitchInfluence);
+             *outSpeedTarget = CLAMP(*outSpeedTarget, 0.0f, speedCap);
++#ifdef TARGET_HANDHELD
++            if (sHhSprint) {
++                *outSpeedTarget *= gHhCtlSprint / 100.0f; /* hh_controls.c MM_SPRINT (HhCtl_SprintUpdate) */
++            }
++#endif
+ 
+             //! FAKE
+             if (floorPitchInfluence) {}
+@@ -7124,6 +7139,12 @@ void func_80837134(PlayState* play, Player* this) {
+     }
+ 
+     temp_v0_2 = func_80836F10(play, this);
++#ifdef TARGET_HANDHELD
++    if ((temp_v0_2 == 0) && !(this->stateFlags2 & PLAYER_STATE2_80000) && !Player_CheckHostileLockOn(this) &&
++        !(this->stateFlags1 & PLAYER_STATE1_CARRYING_ACTOR) && HhCtl_RunOn(this, play)) {
++        return; /* MM_SPRINT: landed running, straight on */
++    }
++#endif
+     if (temp_v0_2 > 0) { // Player suffered damage because of this fall
+         func_80836A98(this, D_8085BE84[PLAYER_ANIMGROUP_landing][this->modelAnimType], play);
+         this->skelAnime.endFrame = 8.0f;
+@@ -7431,6 +7452,11 @@ s32 func_80837DEC(Player* this, PlayState* play) {
+                             }
+                         }
+ 
++#ifdef TARGET_HANDHELD
++                        if (!var_v1_2 && !gHhCtlLedgeGrab && HHCTL_FORM(this)) {
++                            return false; /* hh_controls.c MM_LEDGEGRAB=0: Link falls instead of hanging on */
++                        }
++#endif
+                         func_80837CEC(play, this, entityPoly, temp_fv0_2,
+                                       var_v1_2 ? &gPlayerAnim_link_normal_Fclimb_startB
+                                                : &gPlayerAnim_link_normal_fall);
+@@ -7538,7 +7564,12 @@ void func_8083827C(Player* this, PlayState* play) {
+             if (!(this->stateFlags1 & PLAYER_STATE1_8000000)) {
+                 if ((sPrevFloorProperty != FLOOR_PROPERTY_6) && (sPrevFloorProperty != FLOOR_PROPERTY_9) &&
+                     (sPlayerYDistToFloor > 20.0f) && (this->meleeWeaponState == PLAYER_MELEE_WEAPON_STATE_0)) {
+-                    if ((ABS_ALT(temp_t0) < 0x2000) && (this->speedXZ > 3.0f)) {
++                    if ((ABS_ALT(temp_t0) < 0x2000) && (this->speedXZ > 3.0f) &&
++#ifdef TARGET_HANDHELD
++                        /* hh_controls.c MM_AUTOJUMP */
++                        (gHhCtlAutoJump || !gHhCtlJumpButton || !HHCTL_FORM(this)) &&
++#endif
++                        true) {
+                         if (!(this->stateFlags1 & PLAYER_STATE1_CARRYING_ACTOR)) {
+                             if (((this->transformation == PLAYER_FORM_ZORA) &&
+                                  CHECK_BTN_ALL(sPlayerControlInput->cur.button, BTN_A)) ||
+@@ -12856,6 +12887,90 @@ void Player_UpdateCommon(Player* this, PlayState* play, Input* input) {
+ 
+ Vec3f D_8085D41C = { 0.0f, 0.0f, -30.0f };
+ 
++#ifdef TARGET_HANDHELD
++/* MM_JUMPBUTTON: the jump button (hh_input.c sets gHhCtlJumpHeld). On the ground, standing, walking or running
++ * (Z-targeting too), it does the game's own jump off an edge (running, the long jump; otherwise the short one), at
++ * least MM_JUMPSTRENGTH/10 high. Not swimming, climbing, hanging, carrying, shielding, riding, talking, in a
++ * cutscene, nor as Deku, Goron or Zora Link. sHhManualAir: frames since a button jump (0: not in one). */
++static void HhCtl_Jump(Player* this, PlayState* play) {
++    static s32 sPrev;
++    s32 held = gHhCtlJumpHeld;
++    s32 pressed = held && !sPrev;
++    PlayerActionFunc f = this->actionFunc;
++
++    if (sHhManualAir != 0) {
++        sHhManualAir++;
++        if ((sHhManualAir > 3) && (this->actor.bgCheckFlags & BGCHECKFLAG_GROUND)) {
++            sHhManualAir = 0;
++        }
++    }
++    sPrev = held;
++    if (!gHhCtlJumpButton || !HHCTL_FORM(this)) {
++        return;
++    }
++    if (!(this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) || Player_InCsMode(play) || (this->csAction != PLAYER_CSACTION_NONE) ||
++        (this->stateFlags1 & (PLAYER_STATE1_TALKING | PLAYER_STATE1_DEAD | PLAYER_STATE1_CARRYING_ACTOR |
++                              PLAYER_STATE1_200000 | PLAYER_STATE1_400000 | PLAYER_STATE1_800000 |
++                              PLAYER_STATE1_8000000 | PLAYER_STATE1_20000000)) ||
++        (this->stateFlags2 & PLAYER_STATE2_40000) || (this->actor.depthInWater > 10.0f)) {
++        return;
++    }
++    if ((f == Player_Action_2) || (f == Player_Action_3) || (f == Player_Action_Idle) || (f == Player_Action_5) ||
++        (f == Player_Action_6) || (f == Player_Action_7) || (f == Player_Action_8) || (f == Player_Action_9) ||
++        (f == Player_Action_TurnInPlace) || (f == Player_Action_13) || (f == Player_Action_14) ||
++        (f == Player_Action_15) || (f == Player_Action_16)) {
++        s16 yawDiff = this->yaw - this->actor.shape.rot.y;
++        PlayerAnimationHeader* anim;
++        f32 vel;
++        f32 minVel;
++
++        gHhCtlJumpOk = 6; /* hh_input.c: X jumps now, not C-left (lasts some reads of the buttons) */
++        if (!pressed) {
++            return;
++        }
++        anim = ((ABS_ALT(yawDiff) < 0x1000) && (this->speedXZ > 4.0f)) ? &gPlayerAnim_link_normal_run_jump
++                                                                        : &gPlayerAnim_link_normal_jump;
++        vel = (this->speedXZ > (IREG(66) / 100.0f)) ? (IREG(67) / 100.0f)
++                                                     : (IREG(68) / 100.0f) + ((IREG(69) * this->speedXZ) / 1000.0f);
++        minVel = gHhCtlJumpStrength / 10.0f; /* standing, the edge jump barely leaves the ground */
++
++        if (vel < minVel) {
++            vel = minVel;
++        }
++        func_80834D50(play, this, anim, vel, NA_SE_VO_LI_AUTO_JUMP);
++        this->av2.actionVar2 = 1;
++        sHhManualAir = 1;
++    }
++}
++
++/* MM_SPRINT: A rolls; still holding A after the roll, Link runs faster (the run's animation follows the speed).
++ * Letting go of A or stopping ends it; only another roll starts it again. */
++static void HhCtl_SprintUpdate(Player* this, PlayState* play) {
++    static s32 sArmed;
++
++    if ((gHhCtlSprint <= 100) || !HHCTL_FORM(this) || !CHECK_BTN_ALL(CONTROLLER1(&play->state)->cur.button, BTN_A) ||
++        Player_InCsMode(play) ||
++        (this->stateFlags1 & (PLAYER_STATE1_TALKING | PLAYER_STATE1_DEAD | PLAYER_STATE1_CARRYING_ACTOR |
++                              PLAYER_STATE1_200000 | PLAYER_STATE1_400000 | PLAYER_STATE1_800000 |
++                              PLAYER_STATE1_8000000 | PLAYER_STATE1_20000000)) ||
++        (this->stateFlags2 & PLAYER_STATE2_40000) || (this->focusActor != NULL)) {
++        sArmed = sHhSprint = false;
++        return;
++    }
++    if (this->actionFunc == Player_Action_26) {
++        sArmed = true;
++        sHhSprint = false;
++        return;
++    }
++    if (sArmed && (this->actor.bgCheckFlags & BGCHECKFLAG_GROUND)) {
++        sHhSprint = (this->speedXZ > 1.0f) || (sControlStickMagnitude > 20.0f);
++        if (!sHhSprint) {
++            sArmed = false;
++        }
++    }
++}
++#endif
++
+ void Player_Update(Actor* thisx, PlayState* play) {
+     static Vec3f sDogSpawnPos;
+     Player* this = (Player*)thisx;
+@@ -12911,6 +13026,10 @@ void Player_Update(Actor* thisx, PlayState* play) {
+         }
+     }
+ 
++#ifdef TARGET_HANDHELD
++    HhCtl_Jump(this, play);
++    HhCtl_SprintUpdate(this, play);
++#endif
+     Player_UpdateCommon(this, play, &input);
+     play->actorCtx.isOverrideInputOn = false;
+     bzero(&play->actorCtx.overrideInput, sizeof(Input));
+@@ -15158,6 +15277,30 @@ s32 func_8084C124(PlayState* play, Player* this) {
+     return false;
+ }
+ 
++#ifdef TARGET_HANDHELD
++/* MM_AIRSTEER: in the air (a jump or a fall) the d-pad turns Link little by little (~4 degrees a frame), at most
++ * 45 degrees either side of the way he left the ground: a nudge, not a turn in mid-air. Not while Z-targeting,
++ * nor in a backflip or side hop. */
++static void HhCtl_AirSteer(Player* this, PlayState* play, f32 speedTarget, s16 yawTarget) {
++    static s16 sBaseYaw;
++    static u32 sLastFrame;
++    s16 d;
++
++    if (play->gameplayFrames != sLastFrame + 1) {
++        sBaseYaw = this->actor.shape.rot.y; /* just left the ground: the way he set off */
++    }
++    sLastFrame = play->gameplayFrames;
++    if (!gHhCtlAirSteer || !HHCTL_FORM(this) || (speedTarget == 0.0f) || (this->focusActor != NULL) ||
++        Player_IsZTargeting(this) || (this->stateFlags2 & PLAYER_STATE2_80000)) {
++        return;
++    }
++    d = yawTarget - sBaseYaw;
++    d = CLAMP(d, -0x2000, 0x2000);
++    Math_ScaledStepToS(&this->actor.shape.rot.y, sBaseYaw + d, 0x300);
++    this->yaw = this->actor.shape.rot.y;
++}
++#endif
++
+ void Player_Action_25(Player* this, PlayState* play) {
+     f32 speedTarget;
+     s16 yawTarget;
+@@ -15199,6 +15342,9 @@ void Player_Action_25(Player* this, PlayState* play) {
+             }
+         } else {
+             func_8083CBC4(this, speedTarget, yawTarget, 1.0f, 0.05f, 0.1f, 0xC8);
++#ifdef TARGET_HANDHELD
++            HhCtl_AirSteer(this, play, speedTarget, yawTarget);
++#endif
+         }
+ 
+         Player_UpdateUpperBody(this, play);
+@@ -15234,6 +15380,12 @@ void Player_Action_25(Player* this, PlayState* play) {
+                                 func_8084C124(play, this);
+                             }
+                         } else if ((this->ledgeClimbType >= PLAYER_LEDGE_CLIMB_2) &&
++#ifdef TARGET_HANDHELD
++                                   /* a button jump grabs a ledge only within reach of the hands (the height he
++                                    * climbs from the ground): the game's heights were made for jumps off edges, and
++                                    * a jump at a tall wall would pull him up to its top */
++                                   !((sHhManualAir != 0) && (this->yDistToLedge > this->ageProperties->unk_14)) &&
++#endif
+                                    ((this->yDistToLedge < (150.0f * this->ageProperties->unk_08)) &&
+                                     (((this->actor.world.pos.y - this->actor.floorHeight) + this->yDistToLedge)) >
+                                         (70.0f * this->ageProperties->unk_08))) {
+@@ -15273,6 +15425,45 @@ AnimSfxEntry D_8085D61C[] = {
+     ANIMSFX(ANIMSFX_TYPE_FLOOR_LAND, 18, NA_SE_NONE, STOP),
+ };
+ 
++#ifdef TARGET_HANDHELD
++/* MM_SPRINT: still holding A and a direction, a roll (from its frame 15, where a roll may already turn into an
++ * attack) or a landing goes straight into the run, instead of getting up and standing for a frame first */
++static s32 HhCtl_RunOn(Player* this, PlayState* play) {
++    f32 speedTarget;
++    s16 yawTarget;
++
++    if ((gHhCtlSprint <= 100) || !HHCTL_FORM(this) || !CHECK_BTN_ALL(CONTROLLER1(&play->state)->cur.button, BTN_A) ||
++        (this->focusActor != NULL) || Player_IsZTargeting(this)) {
++        return false;
++    }
++    Player_GetMovementSpeedAndYaw(this, &speedTarget, &yawTarget, SPEED_MODE_CURVED, play);
++    if (speedTarget == 0.0f) {
++        return false;
++    }
++    func_8083A844(this, play, yawTarget);
++    return true;
++}
++
++/* MM_BETTERROLL: A again from the roll's frame 12 starts another roll, towards where the d-pad points */
++static s32 HhCtl_RollChain(Player* this, PlayState* play) {
++    f32 speedTarget;
++    s16 yawTarget;
++
++    if (!gHhCtlBetterRoll || !HHCTL_FORM(this) || (this->skelAnime.curFrame < 12.0f) ||
++        !CHECK_BTN_ALL(sPlayerControlInput->press.button, BTN_A) || (sPlayerFloorType == FLOOR_TYPE_7) ||
++        (this->focusActor != NULL) || Player_IsZTargeting(this)) {
++        return false;
++    }
++    Player_GetMovementSpeedAndYaw(this, &speedTarget, &yawTarget, SPEED_MODE_CURVED, play);
++    if (speedTarget == 0.0f) {
++        return false;
++    }
++    this->actor.shape.rot.y = this->yaw = yawTarget;
++    func_80836B3C(play, this, 0.0f);
++    return true;
++}
++#endif
++
+ // Player_Action_Rolling // Handles bonking too?
+ void Player_Action_26(Player* this, PlayState* play) {
+     s32 animFinished;
+@@ -15310,16 +15501,33 @@ void Player_Action_26(Player* this, PlayState* play) {
+             }
+         }
+     } else if (!func_80840A30(play, this, &this->speedXZ, 6.0f)) {
++#ifdef TARGET_HANDHELD
++        if (HhCtl_RollChain(this, play)) {
++            return;
++        }
++#endif
+         if ((this->skelAnime.curFrame < 15.0f) || !Player_ActionHandler_7(this, play)) {
+             f32 speedTarget;
+             s16 yawTarget;
+ 
++#ifdef TARGET_HANDHELD
++            if ((this->skelAnime.curFrame >= 15.0f) && HhCtl_RunOn(this, play)) {
++                return;
++            }
++#endif
+             if (this->skelAnime.curFrame >= 20.0f) {
+                 func_80836A5C(this, play);
+                 return;
+             }
+ 
+             Player_GetMovementSpeedAndYaw(this, &speedTarget, &yawTarget, SPEED_MODE_CURVED, play);
++#ifdef TARGET_HANDHELD
++            if (gHhCtlBetterRoll && HHCTL_FORM(this) && (speedTarget != 0.0f)) {
++                /* MM_BETTERROLL: the roll turns little by little (~4 degrees a frame) towards the d-pad */
++                Math_ScaledStepToS(&this->actor.shape.rot.y, yawTarget, 0x300);
++                this->yaw = this->actor.shape.rot.y;
++            }
++#endif
+             speedTarget *= 1.5f;
+ 
+             if ((speedTarget < 3.0f) ||
 diff --git a/src/overlays/effects/ovl_Effect_Ss_Bubble/z_eff_ss_bubble.c b/src/overlays/effects/ovl_Effect_Ss_Bubble/z_eff_ss_bubble.c
 index fe0847c..3f77898 100644
 --- a/src/overlays/effects/ovl_Effect_Ss_Bubble/z_eff_ss_bubble.c
