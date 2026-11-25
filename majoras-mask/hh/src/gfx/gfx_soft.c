@@ -2108,7 +2108,8 @@ cm_row_leanlz_m(const CmTri *T, uint32_t *fb, uint16_t *zp, int n, float zf, flo
  * a pixel such a draw wrote has z < 0xFFFF and is skipped, and an untouched one shows the sky; anything else (a blend,
  * an alpha test, a draw without z) flushes the sky first, as before. Majora's Mask's world is drawn mostly by rows
  * that do not mark (cm_row_leana, the tint rows, the scalar loops), so with the mask each of them flushed the sky and
- * drained the batch: the sky could not wait. Its coverage for OOT_CRACKFILL is kept as drawn in place (DsRows.cov).
+ * drained the batch: the sky could not wait. A draw reaching the far plane (its z clamped to the clear value) does not
+ * let it wait either, and the sky is no coverage for OOT_CRACKFILL (sSkyTag): the picture is the in-place sky's.
  * MM_SKYZ=0: the mask, as before (and Majora's Mask, without sky tags, keeps no sky either way). */
 static int sDsZ SAVESTATE_EXCLUDE = 1;
 static inline bool z_all_set(const uint16_t *zp, int n) { /* every z in zp[0..n) written (below the clear value) */
@@ -3369,8 +3370,11 @@ static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, b
 
 #if defined(HH_CM_NEON)
     { /* OOT_SKYDEFER: keep the sky's rows; anything but a marking row draws the kept sky first */
-        /* MM_SKYZ: any opaque z-tested draw writing z (its pixels get z < 0xFFFF) lets the sky wait */
-        const bool marking = sDsZ ? (ztest && dmask && !sUseAlpha && fbuf == sDsFB)
+        /* MM_SKYZ: any opaque z-tested draw writing z (its pixels get z < 0xFFFF) lets the sky wait -- but not one
+         * reaching the far plane: its pixels there are written with the clear value itself (clamped to 0xFFFF), and
+         * the sky would cover them at the flush (Termina Field's distant cliffs: a few blue pixels a frame) */
+        const bool marking = sDsZ ? (ztest && dmask && !sUseAlpha && fbuf == sDsFB &&
+                                     fmax3(z0, z1, z2) < 65533.0f / 65535.0f)
                                   : (cm_rows && cmt.lean && !cmt.alpha && sLeanZ && zbias == 0 && dmask && fbuf == sDsFB);
         const bool keep = sSkyDefer && sDsTag && cm_rows && (cmt.lean2 == 2 || cmt.lean2 == 5) && !sSkyPass && sDsAllow;
         if ((sDsN && !marking) || (keep && !sDsZ)) PEND_DRAIN(); /* MM_BATCHBAND: the flush draws, the keep changes the mask */
@@ -3384,7 +3388,8 @@ static int raster_tri(const SoftVtx *v0, const SoftVtx *v1, const SoftVtx *v2, b
                 if (sDsMask) memset(sDsMask, 0, (size_t)sz);
             }
             if (sDsMask || sDsZ) {
-                /* MM_SKYZ: the coverage it would have drawn in place (raster_tri's cov below, for a sky without z) */
+                /* MM_SKYZ: the coverage it would have drawn in place (raster_tri's cov below, for a sky without z;
+                 * none for the tagged sky, sSkyTag) */
                 uint8_t *const kcov = (sDsZ && sCov && fbuf == sCovTarget && sCovSz >= sW * sH && !sSkyTag && !sSkyPass && !ztest)
                                       ? sCov : NULL;
                 const DsRows R = { e0c, e0x, e0y, e1c, e1x, e1y, e2c, e2x, e2y, inv_area, w0dx, w1dx, w2dx,
@@ -4962,11 +4967,9 @@ static void sky_upscale(void) {
 }
 
 void gfx_scegu_set_sky_pass(bool on) {
-#if defined(HH_CM_NEON)
-    sSkyTag = on && !sDsZ; /* OOT_CRACKFILL: the sky is no coverage (MM_SKYZ: kept as Majora's Mask drew it untagged) */
-#else
-    sSkyTag = on; /* OOT_CRACKFILL: the sky is no coverage */
-#endif
+    /* OOT_CRACKFILL: the sky is no coverage, so a crack in the world in front of it is filled, as with the sky drawn in
+     * place (MM_SKYZ too: keeping the sky as coverage there left those cracks open, a few blue pixels a frame) */
+    sSkyTag = on;
 #if defined(HH_CM_NEON)
     sDsTag = on; /* OOT_SKYDEFER keeps the full-resolution sky's rows (the tags change no target or pixel then) */
 #endif
