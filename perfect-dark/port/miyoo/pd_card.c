@@ -424,11 +424,19 @@ static int card_check(const char *path, const char *where, const char *out, cons
         sha1_final(&s, hex);
         if (strcmp(hex, kRomSha1) != 0) {
             if (w >= 0) { close(w); remove(tmp); }
+#if PAL
             printf("[card] %s: a Perfect Dark ROM, but not the ROM version this port is built for (SHA-1 %s%s)\n", path,
                    hex, pass ? ", on the second read" : "");
             *why = "not the required Perfect Dark ROM dump";
             *say = pass ? "It could not be read the same twice." :
                    "It is the wrong version, damaged or modified.";
+#else
+            printf("[card] %s: a Perfect Dark ROM, but not the USA Rev 1 this port is built for (SHA-1 %s%s)\n", path,
+                   hex, pass ? ", on the second read" : "");
+            *why = "not the Perfect Dark (USA) (Rev 1) dump";
+            *say = pass ? "It could not be read the same twice." :
+                   hdr[0x3F] == 0 ? "It is the USA 1.0 (Rev 0) version." : "It is damaged or modified.";
+#endif
             break;
         }
         if (pass == 0) {
@@ -475,7 +483,11 @@ static int card_try(const char *path, const char *out)
         }
         return 0;
     }
+#if PAL
     printf("[card] %s: Perfect Dark ROM verified, saved as %s\n", path, out);
+#else
+    printf("[card] %s: Perfect Dark (USA) (Rev 1) verified, saved as %s\n", path, out);
+#endif
     return 1;
 }
 
@@ -650,7 +662,11 @@ static void card_work(void)
         card_done(copy);
     }
     /* the card */
+#if PAL
     printf("[card] first start: looking for your Perfect Dark ROM under %s\n", root);
+#else
+    printf("[card] first start: looking for your Perfect Dark (USA) ROM under %s\n", root);
+#endif
     sProg.l1 = kCardL1;
     sProg.l2 = kCardL2;
     card_send(MSG_PROGRESS, 0, "Looking on the SD card", kCardL1, kCardL2, "Looking for your ROM...", kFoot, NULL);
@@ -664,22 +680,32 @@ static void card_work(void)
         if (card_check(copy, "", NULL, &why, &say) <= 0) {
             printf("[card] rebuild: no dump on the card and %s: %s\n", copy, why);
             card_fail(PD_COPY, "The ROM copy failed its check.", say ? say : "It could not be read.",
+#if PAL
                       "Copy the matching ROM to the SD card.");
+#else
+                      "Copy your USA ROM to the SD card.");
+#endif
         }
         printf("[card] rebuild: no dump on the card; %s verified in place\n", copy);
         found = 1;
     }
     if (!found) {
+#if PAL
         printf("FATAL: no matching Perfect Dark ROM found. Copy your dump (.z64, .n64 or .v64) anywhere on the\n"
                "card (App/PerfectDark/, Roms/ and its folders, or up to two folders deep), and start again.\n");
         if (sReject != NULL)
             card_fail(sRejectName, "This Perfect Dark ROM can't be used.", sReject, "This port needs the matching ROM version.");
         if (sLocalReject != NULL)
             card_fail(sLocalName, "This ROM can't be used.", sLocalReject, "Use the matching ROM as rom.z64.");
-#if PAL
         card_fail(NULL, "No Perfect Dark PAL ROM found.",
                   "Put your PAL z64 ROM at", "Roms/N64/PerfectDarkPAL.z64");
 #else
+        printf("FATAL: no Perfect Dark (USA) (Rev 1) ROM found. Copy your dump (.z64, .n64 or .v64) anywhere on the\n"
+               "card (App/PerfectDark/, Roms/ and its folders, or up to two folders deep), and start again.\n");
+        if (sReject != NULL)
+            card_fail(sRejectName, "This Perfect Dark ROM can't be used.", sReject, "This port needs the USA Rev 1 ROM.");
+        if (sLocalReject != NULL)
+            card_fail(sLocalName, "This ROM can't be used.", sLocalReject, "Use the USA Rev 1 ROM as rom.z64.");
         card_fail(NULL, "No Perfect Dark ROM found.", MRF_NOT_FOUND_1, MRF_NOT_FOUND_2);
 #endif
     }
