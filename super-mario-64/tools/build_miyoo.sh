@@ -18,14 +18,21 @@ set -eu
 PERSONAL=${PERSONAL:-0}
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 PORT=$ROOT/port
-BUILD=$PORT/build/us_miyoo
+# VERSION=eu: the European (PAL) build (make PLAT=miyoo VERSION=eu), its ROM as port/baserom.eu.z64,
+# miyoo/game_pal.json, SuperMario64PAL-miyoo.zip. US is the default.
+VERSION=${VERSION:-us}
+case "$VERSION" in
+  us) GAME=$ROOT/miyoo/game.json; ZIPNAME=SuperMario64 ;;
+  eu) GAME=$ROOT/miyoo/game_pal.json; ZIPNAME=SuperMario64PAL ;;
+  *) echo "ERROR: VERSION=$VERSION (us or eu)"; exit 1 ;;
+esac
+BUILD=$PORT/build/${VERSION}_miyoo
 BIN=$BUILD/sm64
-OUT=${OUT:-$ROOT/SuperMario64-miyoo.zip}
+OUT=${OUT:-$ROOT/$ZIPNAME-miyoo.zip}
 [ "$PERSONAL" = 1 ] && OUT=${OUT%.zip}-PERSONAL.zip
-STAGE=${TMPDIR:-/tmp}/sm64_miyoo_stage
+STAGE=${TMPDIR:-/tmp}/sm64_miyoo_stage_$VERSION
 TC=${MIYOO_TOOLCHAIN:-/opt/miyoomini-toolchain}/usr/bin/arm-linux-gnueabihf
-ROM=$PORT/baserom.us.z64
-GAME=$ROOT/miyoo/game.json
+ROM=$PORT/baserom.$VERSION.z64
 rm -f "$OUT"
 test -x "$BIN" || { echo "ERROR: $BIN missing - build PLAT=miyoo first"; exit 1; }
 test -f "$BUILD/recipes.bin" || { echo "ERROR: $BUILD/recipes.bin missing"; exit 1; }
@@ -87,7 +94,7 @@ set -- "$GAME" --build "$STAGE" -o "$OUT" --check
 [ "$PERSONAL" = 1 ] && set -- "$@" --rom "$ROM"
 python3 "$ROOT/miyoo/tools/miyoo_pack.py" "$@"
 
-echo "--- the zip's listing: App/SuperMario64 holds exactly the game's files (rom.z64 only in a PERSONAL zip) ---"
+echo "--- the zip's listing: App/<folder> holds exactly the game's files (rom.z64 only in a PERSONAL zip) ---"
 python3 - "$OUT" "$GAME" "$PERSONAL" <<'EOF'
 import json, sys, zipfile
 z = zipfile.ZipFile(sys.argv[1]); game = json.load(open(sys.argv[2])); personal = sys.argv[3] == '1'

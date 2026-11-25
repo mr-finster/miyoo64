@@ -9,7 +9,7 @@ import fnmatch, os, subprocess, sys
 
 plat = sys.argv[1] if len(sys.argv) > 1 else 'miyoo'
 root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-port = os.path.join(root, 'port'); build = 'build/us_%s' % plat
+port = os.path.join(root, 'port'); build = 'build/%s_%s' % (os.environ.get('VERSION', 'us'), plat)  # VERSION=eu: the PAL build
 allow = []
 for l in open(os.path.join(root, 'tools/assets/untracked_includes.txt')):
     l = l.strip()

@@ -11,7 +11,7 @@ PLAT=${1:-miyoo}
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$ROOT/port" || exit 1
 bad=0; n=0
-list=$(make PLAT=$PLAT -s print-code-sources | grep -E "^[A-Za-z0-9_./-]+\.(c|s|cpp)$") || { echo "ERROR: make print-code-sources failed"; exit 1; }
+list=$(make PLAT=$PLAT VERSION=${VERSION:-us} -s print-code-sources | grep -E "^[A-Za-z0-9_./-]+\.(c|s|cpp)$") || { echo "ERROR: make print-code-sources failed"; exit 1; }
 for f in $list; do
     n=$((n + 1))
     if ! git -C "$ROOT" ls-files --error-unmatch "port/$f" >/dev/null 2>&1; then
