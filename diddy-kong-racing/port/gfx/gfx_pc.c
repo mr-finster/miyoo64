@@ -4173,12 +4173,12 @@ static bool gfx_raw_vp_valid;
 static uint32_t gfx_raw_sc[4];
 static bool gfx_raw_sc_valid;
 
-#if defined(DKR_M07B) && defined(DKR_PAL264) && defined(VERSION_pal_v80)
-/* Experimental PAL A/B: the original full-screen 1P viewport is shifted four
+#if defined(DKR_PAL_VIEWPORT_OFFSET) && defined(DKR_PAL264) && defined(VERSION_pal_v80)
+/* PAL viewport alignment: the original full-screen 1P viewport is shifted four
  * source pixels left. Match its complete positive-scale geometry; split and
  * custom boxes do not generally match. Identical full-screen special views and
  * HUD triangles using this viewport also move. No width or height is changed. */
-static bool gfx_m07b_fullscreen_viewport(const Vp_t *vp) {
+static bool gfx_pal_fullscreen_viewport(const Vp_t *vp) {
     return vp->vscale[0] == 640 && vp->vtrans[0] == 624 &&
            vp->vscale[1] == 580 && vp->vtrans[1] == 508;
 }
@@ -4189,8 +4189,8 @@ static void gfx_calc_and_set_viewport(const Vp_t *viewport) {
     float width = 2.0f * viewport->vscale[0] / 4.0f;
     float height = 2.0f * viewport->vscale[1] / 4.0f;
     float x = (viewport->vtrans[0] / 4.0f) - width / 2.0f;
-#if defined(DKR_M07B) && defined(DKR_PAL264) && defined(VERSION_pal_v80)
-    if (gfx_m07b_fullscreen_viewport(viewport)) x += 4.0f;
+#if defined(DKR_PAL_VIEWPORT_OFFSET) && defined(DKR_PAL264) && defined(VERSION_pal_v80)
+    if (gfx_pal_fullscreen_viewport(viewport)) x += 4.0f;
 #endif
 #if defined(TARGET_HANDHELD)
     /* Our software rasterizer is top-down (row 0 = top) and gfx_emit_vertex
