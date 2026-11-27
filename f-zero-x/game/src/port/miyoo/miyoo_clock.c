@@ -17,10 +17,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <linux/fb.h>
 
 #ifndef MIYOO_CLOCK_ENV
 #if defined(HH_ENV)
@@ -49,6 +51,10 @@ static const uint64_t kDivSrc = 432000000ull * 524288;
  * heaviest core. */
 #define MIYOO_CLOCK_PLUS 1800
 #define MIYOO_CLOCK_MINI 1500
+/* The Mini Flip reports as a Plus (model 354: Onion's deviceModel and the Plus's PMIC tool) but crashes at random at
+ * 1800 MHz (issue 55: Majora's Mask and Super Mario 64 on a Flip, steady at 1500); its panel is 752x560, the Plus's
+ * 640x480. The Mini v4 has that panel too but is a Mini (283), already at MIYOO_CLOCK_MINI. */
+#define MIYOO_CLOCK_FLIP 1500
 
 static int sSavedMHz SAVESTATE_EXCLUDE;         /* 0: nothing changed */
 static char sSavedGov[32] SAVESTATE_EXCLUDE;
@@ -65,7 +71,24 @@ static const char *sys(char *buf, size_t n, const char *path) {
 }
 static int fake_sys(void) { const char *r = getenv("MIYOO_SYSFS_ROOT"); return r && r[0]; }
 
-/* 283 Mini, 354 Mini Plus, 0 unknown (left alone). */
+/* /dev/fb0 is 752x560 (either way round): on a model 354 board, the Mini Flip. MIYOO_PANEL=<w>x<h> (tests) stands in
+ * for the panel. */
+static int flip_panel(void) {
+    const char *t = getenv("MIYOO_PANEL");
+    int w = 0, h = 0;
+    if (t && t[0]) {
+        if (sscanf(t, "%dx%d", &w, &h) != 2) return 0;
+    } else {
+        struct fb_var_screeninfo v;
+        int fd = open("/dev/fb0", O_RDONLY);
+        if (fd < 0) return 0;
+        if (ioctl(fd, FBIOGET_VSCREENINFO, &v) == 0) { w = (int) v.xres; h = (int) v.yres; }
+        close(fd);
+    }
+    return (w == 752 && h == 560) || (w == 560 && h == 752);
+}
+
+/* 283 Mini, 354 Mini Plus (and the Flip: flip_panel), 0 unknown (left alone). */
 static int model(void) {
     int id = 0;
     FILE *f = fopen("/tmp/deviceModel", "r");   /* Onion writes it at boot */
@@ -152,7 +175,8 @@ static int boost_to(int mhz) {
     const int id = model();
     const char *e = getenv(MIYOO_CLOCK_ENV);
     if (e && e[0]) mhz = atoi(e);
-    else if (mhz < 0) mhz = id == 354 ? MIYOO_CLOCK_PLUS : MIYOO_CLOCK_MINI;
+    const int flip = id == 354 && flip_panel();
+    if (!(e && e[0]) && mhz < 0) mhz = id == 354 ? (flip ? MIYOO_CLOCK_FLIP : MIYOO_CLOCK_PLUS) : MIYOO_CLOCK_MINI;
     if (mhz == 0) { MIYOO_CLOCK_LOG("clock: left alone (%s=0)\n", MIYOO_CLOCK_ENV); return 0; }
     if (!id && !fake_sys()) { MIYOO_CLOCK_LOG("clock: left alone (not a Mini / Mini Plus)\n"); return 0; }
     if (mhz < 400) mhz = 400;
@@ -176,7 +200,7 @@ static int boost_to(int mhz) {
     set_khz(p, (uint32_t) mhz * 1000);
     const int now = read_mhz(p);
     unmap_pll(p, fd);
-    MIYOO_CLOCK_LOG("clock: %d -> %d MHz (model %d; %s=<MHz> to change, 0 to leave it)\n", was, now, id, MIYOO_CLOCK_ENV);
+    MIYOO_CLOCK_LOG("clock: %d -> %d MHz (model %d%s; %s=<MHz> to change, 0 to leave it)\n", was, now, id, flip ? ", Mini Flip" : "", MIYOO_CLOCK_ENV);
     return now;
 }
 

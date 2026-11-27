@@ -103,7 +103,7 @@ does MENU).
 | Key | Default | Meaning |
 |---|---|---|
 | `threads=` | `2` | `1` draws on one core only (for an A/B on the device) |
-| `cpuclock=` | (the model's) | the CPU clock in MHz: 1500 on the Mini and 1800 on the Mini Plus by default; `0` leaves it as the OS set it |
+| `cpuclock=` | (the model's) | the CPU clock in MHz: 1500 on the Mini and the Mini Flip, 1800 on the Mini Plus by default; `0` leaves it as the OS set it |
 | `hwblit=` | `0` | experimental: `1` the Mini's 2D engine (MI_GFX) doubles and turns each frame onto the panel instead of the CPU, the same picture (only where a check at start finds its output identical to the CPU's, pixel for pixel); `2` its smooth scaler (a softer picture; also fills a Mini v4 / Flip panel). Anything the engine can't do leaves the CPU drawing, with one `hwblit:` line in `console.log` saying why |
 
 Environment variables for testing (set them in `launch.sh`): `SM64_THREADS=1|2` and

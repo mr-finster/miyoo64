@@ -106,7 +106,7 @@ The settings file is `App/StarFox64/sf64_display.cfg`, one `key=value` per line:
 |---|---|---|
 | `fill=` | `1` | `0` keeps the N64's 8-pixel black border |
 | `threads=` | `2` | `1` draws on one core only (for an A/B on the device) |
-| `cpuclock=` | (the model's) | the CPU clock in MHz: 1500 on the Mini and 1800 on the Mini Plus by default (the stock clock is 1200), `0` leaves it as the OS set it |
+| `cpuclock=` | (the model's) | the CPU clock in MHz: 1500 on the Mini and the Mini Flip, 1800 on the Mini Plus by default (the stock clock is 1200), `0` leaves it as the OS set it |
 | `reticle=` | `1` | `1`: crisp crosshairs; `0`: smoothed, as on the N64 |
 | `bomb=` | `1` | `1`: a lighter smart bomb (a smaller blue flash, one glow ring, half the splash sprays); `0`: the N64's full blast (slow) |
 | `fillrule=` | `1` | `1`: see-through effects draw each pixel once where two of their triangles meet, as on the N64; `0`: the old rule (a thin bright line along that edge) |

@@ -123,7 +123,7 @@ line (every switch is in [SETTINGS.md](SETTINGS.md)). The same as an environment
 |---|---|---|
 | `threads=1` / `SSB64_THREADS=1` | off | draw on one core only, for an A/B (the picture is the same either way) |
 | `SSB64_SPLIT=<px>` | `64` | the smallest triangle (pixels of area) both cores draw |
-| `cpuclock=` / `SSB64_CPUCLOCK` | the model's | the CPU clock in MHz while the game runs: 1500 on the Mini, 1800 on the Mini Plus; `0` leaves it as the OS set it. It goes back when the game quits. |
+| `cpuclock=` / `SSB64_CPUCLOCK` | the model's | the CPU clock in MHz while the game runs: 1500 on the Mini and the Mini Flip, 1800 on the Mini Plus; `0` leaves it as the OS set it. It goes back when the game quits. |
 | `SSB64_FILLBORDER=0` | `4` | the N64's black border around the picture (`1`: the stretch smoothed) |
 | `SSB64_ROTATE=0` | turned | draw the picture unturned, for an SDL that turns the panel itself (the MinUI launcher sets it) |
 | `SSB64_LOADPIC=0` | on | show the boot's first pictures before RESUME GAME's load |

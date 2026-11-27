@@ -104,7 +104,7 @@ line:
 |---|---|---|
 | `rotate180=` | `1` | `0` draws the picture unturned, for an SDL that turns the panel itself |
 | `threads=` | `2` | `1` draws on one core only, as before (for an A/B on the device) |
-| `cpuclock=` | (the model's) | the CPU clock in MHz: 1500 on the Mini and 1800 on the Mini Plus by default (the stock clock is 1200), `0` leaves it as the OS set it; put back when the game quits |
+| `cpuclock=` | (the model's) | the CPU clock in MHz: 1500 on the Mini and the Mini Flip, 1800 on the Mini Plus by default (the stock clock is 1200), `0` leaves it as the OS set it; put back when the game quits |
 | `fps=` | `30` | a firm 30 fps hold (since 1014b also in light scenes, which used to jump to 60 and back; `DKR_HOLD30=0`: the game's own rule again); `60` shows every frame as soon as it is drawn (see "Speed" below) |
 | `fillrule=` | `1` | `0` draws see-through effects with the old edge rule (a thin bright line where two triangles meet) |
 | `vdsoclock=` | `1` | `0` reads the clock through the kernel instead (the game is the same either way) |

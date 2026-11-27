@@ -84,7 +84,7 @@ In `App/HarvestMoon64/data/debug.cfg`, one `HM64_NAME=value` per line (or in `la
 | Setting | Default | What |
 |---|---|---|
 | `HM64_ROTATE` | 1 | `0` draws the picture unturned, for an SDL that turns the panel itself (the MinUI launcher sets it) |
-| `HM64_CPUCLOCK` | the model's | the CPU clock in MHz while the game runs: 1500 on the Mini, 1800 on the Mini Plus; `0` leaves it as the OS set it. The old clock comes back when the game quits |
+| `HM64_CPUCLOCK` | the model's | the CPU clock in MHz while the game runs: 1500 on the Mini and the Mini Flip, 1800 on the Mini Plus; `0` leaves it as the OS set it. The old clock comes back when the game quits |
 | `HM64_THREADS` | 2 | `1` draws on one core only |
 | `HM64_FLIPFILL` | 1 | `0` keeps the 2x picture with a border on a Mini v4 / Flip |
 | `HM64_SLEEPSAVE` | 1 | `0`: no auto save at a POWER press or when idle; `HM64_SLEEPSAVE_IDLE=<s>` sets the idle time (`0` no idle save) |

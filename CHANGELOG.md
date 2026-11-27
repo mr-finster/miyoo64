@@ -5,6 +5,16 @@ fixes are also on https://miyoo-n64.pages.dev (Changelog under each game).
 
 ## Next
 
+- All fifteen games: the Mini Flip runs at 1500 MHz instead of 1800 ([issue #55](https://github.com/mr-finster/miyoo64/issues/55)).
+  The Flip reports itself as a Mini Plus, so the games gave it the Plus's 1800 MHz, and on bomberman30's Flip
+  Majora's Mask and Super Mario 64 crashed at random places (two different crashes in Majora's Mask, through
+  pointers that made no sense, and Super Mario 64 stopping without a word). At 1500 MHz both ran for an hour
+  without one. The games now tell the Flip from the Plus by its 752x560 screen (the Plus's is 640x480; the Mini v4
+  has the Flip's screen but is a Mini, already at 1500). `cpuclock=` (or `<GAME>_CPUCLOCK` in launch.sh) still sets
+  any clock. Checked with the clock code run under the emulator for a Plus, a Flip (either way round), a Mini v4
+  and an override.
+
+
 - Super Smash Bros. 1.1.10: no more crash in the credits after beating Master Hand (issue 17). The highlight that
   follows a name you aim at kept reading that name after it had already been removed, and the game crashed. Now the
   highlight goes away with its name. Found from the reporter's log (the crash address names this spot in the 1.1.8

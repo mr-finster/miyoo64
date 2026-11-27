@@ -93,7 +93,7 @@ An optional settings file, `App/MarioKart64/mk64_display.cfg`, takes one `key=va
 |---|---|---|
 | `rotate180=` | `1` | `0` draws the picture unturned, for an SDL that turns the panel itself |
 | `threads=` | `2` | `1` draws on one core only, as before (for an A/B on the device) |
-| `cpuclock=` | (the model's) | the CPU clock in MHz: 1500 on the Mini and 1800 on the Mini Plus by default (the stock clock is 1200), `0` leaves it as the OS set it; put back when the game quits |
+| `cpuclock=` | (the model's) | the CPU clock in MHz: 1500 on the Mini and the Mini Flip, 1800 on the Mini Plus by default (the stock clock is 1200), `0` leaves it as the OS set it; put back when the game quits |
 | `unsquish3d=` | `1` | `1` draws the 3D at its true shape; `0` is the older squeezed view |
 | `hud=` | `1` | `1` draws the race HUD at its true shape; `0` is the older squeezed HUD |
 | `neon=` | on | `0` turns off the ARM NEON speed-ups (for troubleshooting only) |

@@ -65,7 +65,7 @@ SSB64, SM64, PD):
 | Variable | Effect |
 |---|---|
 | `<GAME>_WATCH` | Unset or `2`: put back what drifted (the default). `1`: only log the drift. `0`: no watch. |
-| `<GAME>_CPUCLOCK` | The clock in MHz (the default is 1500 on the Mini, 1800 on the Mini Plus). `0` leaves the clock alone; the watch then keeps only the governor. |
+| `<GAME>_CPUCLOCK` | The clock in MHz (the default is 1500 on the Mini and the Mini Flip, 1800 on the Mini Plus). `0` leaves the clock alone; the watch then keeps only the governor. |
 | `MIYOO_SYSFS_ROOT` | Tests: read and write every sysfs path under this folder (a fake tree), so the boost and the watch run off the device. The PLL is never touched off a Mini. |
 | `<GAME>_SLEEPSAVE` | Unset or `1`: the sleep save below (the default). `0`: off. |
 | `<GAME>_SLEEPSAVE_IDLE` | Seconds with no button before the idle save (default 50). `0`: no idle save. |

@@ -36,7 +36,7 @@ Optional: a text file `App/MarioKart64/mk64_display.cfg`, one `key=value` per li
 | Setting | Effect |
 |---|---|
 | `threads=1` | draw on one core only (default `2`) |
-| `cpuclock=<MHz>` | the CPU clock while the game runs (default 1500 on the Mini, 1800 on the Mini Plus; `0` leaves it alone) |
+| `cpuclock=<MHz>` | the CPU clock while the game runs (default 1500 on the Mini and the Mini Flip, 1800 on the Mini Plus; `0` leaves it alone) |
 | `rotate180=0` | the picture unturned, for an SDL that turns the panel itself |
 
 `MK64_*` environment variables in `launch.sh` override these; README_MIYOO.md lists them all, with the renderer keys (`unsquish3d=`, `hud=`, `neon=` ...).

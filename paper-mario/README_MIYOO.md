@@ -107,7 +107,7 @@ the Mini:
 | Setting | Default | What |
 |---|---|---|
 | `PM64_THREADS` | 2 | `1` draws on one core only, as before (for an A/B on the device) |
-| `PM64_CPUCLOCK` | (the model's) | the CPU clock in MHz: 1500 on the Mini and 1800 on the Mini Plus. `0` leaves it as the OS set it. The old clock comes back when the game quits |
+| `PM64_CPUCLOCK` | (the model's) | the CPU clock in MHz: 1500 on the Mini and the Mini Flip, 1800 on the Mini Plus. `0` leaves it as the OS set it. The old clock comes back when the game quits |
 | `PM64_ROTATE` | 1 | `0` draws the picture unturned, for an SDL that turns the panel itself (MinUI's launcher sets this) |
 | `PM64_STRETCH` | 1 | `0` keeps the N64's black frame around the field and battle scenes (the bordered picture of the first Miyoo build) |
 | `PM64_LOADPIC` | 1 | `0` shows the game's boot frames before a resumed auto save loads, as before |
