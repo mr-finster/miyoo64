@@ -236,7 +236,11 @@ static void compose_menu(int cur, int confirm) {
     const int common_scale = menu_unselected_scale(pw-56);
 #endif
     for (int i = 0; i < I_COUNT; i++) {
-        const int cy = py + 92 + i * (I_COUNT >= 7 ? 31 : I_COUNT >= 6 ? 35 : 44);
+#if defined(PM64) && defined(PM64_ROM_REGION_PAL)
+        const int cy = py + 92 + i * 31;
+#else
+        const int cy = py + 100 + i * 44;
+#endif
         if (i == cur) fill(sDraw, px + 20, cy - (I_COUNT>=7?14:18), pw - 40, I_COUNT>=7?28:36, 0xFF283038u);
         #if defined(PM64) && defined(PM64_ROM_REGION_PAL)
         {
@@ -275,11 +279,12 @@ static void compose_menu(int cur, int confirm) {
     if (cur == I_SAVE || cur == I_LOAD) {
         const int au = cur == I_LOAD && sAutoSel && AUTO_AVAILABLE();
         slot_label(buf, sizeof(buf), cur);
-        text_centered_fit(sDraw,info_y-12,2,pw-40,buf,C_TEXT);
 #if defined(PM64) && defined(PM64_ROM_REGION_PAL)
+        text_centered_fit(sDraw,info_y-12,2,pw-40,buf,C_TEXT);
         text_centered_fit(sDraw,info_y+14,2,pw-40,confirm?miyoo_i18n(MT_SURE):miyoo_i18n((au||savestate_slot_valid(sSlot))?MT_USED:MT_FREE),confirm?C_SEL:C_DIM);
 #else
-        text_centered_fit(sDraw,info_y+14,2,pw-40,confirm?"ARE YOU SURE? (A)":(au||savestate_slot_valid(sSlot))?"USED":"FREE",confirm?C_SEL:C_DIM);
+        text_centered(sDraw,info_y-12,2,buf,C_TEXT);
+        text_centered(sDraw,info_y+14,2,confirm?"ARE YOU SURE? (A)":(au||savestate_slot_valid(sSlot))?"USED":"FREE",confirm?C_SEL:C_DIM);
 #endif
 #if defined(PM64) && defined(PM64_ROM_REGION_PAL)
     } else if (cur == I_RESET && confirm) {
@@ -290,13 +295,13 @@ static void compose_menu(int cur, int confirm) {
 #if defined(PM64) && defined(PM64_ROM_REGION_PAL)
         text_centered_fit(sDraw,info_y,2,pw-40,miyoo_i18n(MT_SURE),C_SEL);
 #else
-        text_centered_fit(sDraw,info_y,2,pw-40,"ARE YOU SURE? (A)",C_SEL);
+        text_centered(sDraw,info_y,2,"ARE YOU SURE? (A)",C_SEL);
 #endif
     } else {
 #if defined(PM64) && defined(PM64_ROM_REGION_PAL)
         text_centered_fit(sDraw,info_y,2,pw-40,miyoo_i18n(MT_BACK_HINT),C_DIM);
 #else
-        text_centered_fit(sDraw,info_y,2,pw-40,"A: SELECT   B/MENU: BACK",C_DIM);
+        text_centered(sDraw,info_y,2,"A: SELECT   B/MENU: BACK",C_DIM);
 #endif
     }
     if (SDL_MUSTLOCK(sDraw)) SDL_UnlockSurface(sDraw);
@@ -407,6 +412,9 @@ void handheld_menu_run(struct SDL_Surface *screen_) {
             switch (ev.key.keysym.sym) {
             case SDLK_ESCAPE:
                 if (in_language) { in_language=0; dirty=1; }
+#if defined(PM64) && defined(PM64_ROM_REGION_PAL)
+                else if (confirm) { confirm=0; dirty=1; }
+#endif
                 else running = 0;
                 break;
             case SDLK_LCTRL: /* B */
@@ -523,7 +531,7 @@ int handheld_menu_resume_prompt(void) {
 #if defined(PM64) && defined(PM64_ROM_REGION_PAL)
                 text_centered_fit(sDraw,oy+240+i*60,3,SCREEN_W-32,miyoo_i18n(opt_ids[i]),i==opt?C_SEL:C_DIM);
 #else
-                text_centered_fit(sDraw,oy+240+i*60,3,SCREEN_W-32,opt_labels[i],i==opt?C_SEL:C_DIM);
+                text_centered(sDraw,oy+240+i*60,3,opt_labels[i],i==opt?C_SEL:C_DIM);
 #endif
             }
             if (confirm) {
@@ -604,6 +612,9 @@ void handheld_menu_test_dump(const char *dir) {
     for (int i=0; i<I_COUNT; i++) {
         compose_menu(i,0); snprintf(path,sizeof path,"%s/menu_%02d.ppm",dir,i); dump_ppm(sDraw,path);
     }
+    compose_menu(I_EXIT,1);
+    snprintf(path,sizeof path,"%s/menu_%02d_confirm.ppm",dir,I_EXIT);
+    dump_ppm(sDraw,path);
 #endif
     handheld_menu_notify("SAVED SLOT 1");
     miyoo_menu_overlay(sDraw);
@@ -616,8 +627,8 @@ void handheld_menu_test_dump(const char *dir) {
     text_centered_fit(sDraw,240,3,SCREEN_W-32,miyoo_i18n(MT_RESUME_GAME),C_SEL);
     text_centered_fit(sDraw,300,3,SCREEN_W-32,miyoo_i18n(MT_NEW_GAME),C_DIM);
 #else
-    text_centered_fit(sDraw,240,3,SCREEN_W-32,"RESUME GAME",C_SEL);
-    text_centered_fit(sDraw,300,3,SCREEN_W-32,"NEW GAME",C_DIM);
+    text_centered(sDraw,240,3,"RESUME GAME",C_SEL);
+    text_centered(sDraw,300,3,"NEW GAME",C_DIM);
 #endif
     snprintf(path, sizeof(path), "%s/resume_prompt.ppm", dir);
     dump_ppm(sDraw, path);

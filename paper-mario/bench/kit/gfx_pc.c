@@ -887,8 +887,13 @@ static void gfx_flush(void) {
 
 #ifdef PM64
 static bool pm_m41_edge(uint32_t omh, uint32_t oml) {
+#if defined(PM64_ROM_REGION_PAL)
     return (omh & (3U << G_MDSFT_CYCLETYPE)) == G_CYC_1CYCLE &&
         oml == (G_RM_AA_ZB_TEX_EDGE | G_RM_AA_ZB_TEX_EDGE2);
+#else
+    (void) omh; (void) oml;
+    return false;
+#endif
 }
 #endif
 

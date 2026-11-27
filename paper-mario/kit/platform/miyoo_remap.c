@@ -240,7 +240,9 @@ static int text_w(const char *t, int k) { return miyoo_utf8_width(t,k); }
 static int text_w(const char *t, int k) { return (int)strlen(t)*8*k; }
 #endif
 static void text_c(int cx, int cy, int k, const char *t, uint32_t c) {
+#if defined(PM64) && defined(PM64_ROM_REGION_PAL)
     if(text_w(t,k)>560 && k>1) k=1;
+#endif
     text(cx-text_w(t,k)/2,cy-4*k,k,t,c);
 }
 

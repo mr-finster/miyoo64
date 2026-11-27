@@ -7,7 +7,7 @@
     "pm64",
     "recipes.bin"
   ],
-  "icon": "icon-pal.png",
+  "icon": "icon.png",
   "readme": "README-PAL-1.0.txt",
   "env": "PM64",
   "data": "data",
@@ -20,6 +20,5 @@
     "size": 67108864
   },
   "system": "PAPERMARIOPAL",
-  "minui_tag": "PM64PAL",
-  "cover": "cover-pal.png"
+  "minui_tag": "PM64PAL"
 }

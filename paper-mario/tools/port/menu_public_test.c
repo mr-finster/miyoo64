@@ -37,7 +37,7 @@ int main(void){
  assert(I_COUNT==7 && ITEM[0]==MT_RESUME && ITEM[1]==MT_SAVE && ITEM[2]==MT_LOAD && ITEM[3]==MT_CONTROLS && ITEM[4]==MT_LANGUAGE && ITEM[5]==MT_RESET_GAME && ITEM[6]==MT_EXIT);
  for (int i=0;i<I_COUNT;i++) assert(ITEM[i]!=MT_DIAGNOSTIC);
  miyoo_i18n_choose(MIYOO_DE);
- assert(!strcmp(miyoo_i18n(MT_BACK_HINT),"A: BESTÄTIGEN   B/MENU: ZURÜCK"));
+ assert(!strcmp(miyoo_i18n(MT_BACK_HINT),"A: OK  B/MENU: ZURÜCK"));
  miyoo_i18n_choose(MIYOO_AUTO);
  assert(SDL_Init(SDL_INIT_VIDEO)==0);SDL_Surface *screen=SDL_SetVideoMode(640,480,32,SDL_SWSURFACE);assert(screen);handheld_menu_init(screen);
  run(screen,0,0,0);assert(!muted);
@@ -50,9 +50,31 @@ int main(void){
  assert(miyoo_i18n_manual()==MIYOO_DE);
  /* Back closes language screen without changing preference. */
  key(SDLK_DOWN);key(SDLK_DOWN);key(SDLK_DOWN);key(SDLK_DOWN);key(SDLK_SPACE);key(SDLK_LCTRL);key(SDLK_ESCAPE);handheld_menu_run(screen);assert(miyoo_i18n_manual()==MIYOO_DE);
+ /* Exercise every manual language and AUTO through the actual menu. */
+ for(int choice=0;choice<5;choice++) {
+   miyoo_i18n_choose(MIYOO_AUTO);
+   for(int i=0;i<4;i++) key(SDLK_DOWN);
+   key(SDLK_SPACE);
+   for(int i=0;i<choice;i++) key(SDLK_DOWN);
+   key(SDLK_SPACE); key(SDLK_ESCAPE); handheld_menu_run(screen);
+   assert(miyoo_i18n_manual()==(choice ? choice-1 : MIYOO_AUTO));
+ }
  key(SDLK_DOWN);key(SDLK_DOWN);key(SDLK_DOWN);key(SDLK_DOWN);key(SDLK_DOWN);key(SDLK_SPACE);key(SDLK_LCTRL);key(SDLK_ESCAPE);handheld_menu_run(screen);
  assert(!resets && !cancel_boot);
  run(screen,5,1,0);assert(resets==1 && cancel_boot==1 && !muted);
+ /* Confirm defaults to off: B and MENU both cancel an armed exit. */
+ for(int lang=MIYOO_EN;lang<=MIYOO_ES;lang++) {
+   miyoo_i18n_preview(lang);
+   assert(miyoo_text_w(miyoo_i18n(MT_BACK_HINT),2)<=380);
+   assert(miyoo_text_w(miyoo_i18n(MT_SURE),2)<=380);
+   for(int cancel=0;cancel<2;cancel++) {
+     for(int i=0;i<6;i++) key(SDLK_DOWN);
+     key(SDLK_SPACE); key(cancel ? SDLK_ESCAPE : SDLK_LCTRL);
+     key(SDLK_ESCAPE); handheld_menu_run(screen);
+     assert(exited==0 && !muted);
+   }
+ }
+ miyoo_i18n_preview(MIYOO_MANUAL_AUTO);
  run(screen,6,1,0);assert(exited==1 && muted);
  /* Compare the real composed non-selected rows with a same-scale reference,
   * for every selection. Language changes recompute the common scale. */

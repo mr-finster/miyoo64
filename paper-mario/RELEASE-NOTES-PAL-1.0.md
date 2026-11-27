@@ -12,12 +12,14 @@ one-cycle render state and can produce darker or harder edges. Isolated
 texture-edge/coverage artefacts and other graphical differences can remain.
 See `docs/PAL-RENDERER-GFX003-M41.md` for the scope and evidence.
 
-A clean ARM32 build and release gates passed, including binary/recipes pairing,
-build stamp and ROM/asset leak checks. Hardware testing on Miyoo Mini Plus
-confirmed Apps and Ports launch, their icons, languages, menus, regular save/load,
+A prior ARM32 release build passed release gates, including binary/recipes pairing,
+build stamp and ROM/asset leak checks. Hardware testing on Miyoo Mini Plus of that
+earlier build covered Apps and Ports launch, languages, menus, regular save/load,
 savestates and many renderer and gameplay scenes. Texture-edge/coverage issues
 and some visual differences in Dry Dry Ruins remain. The overlay runtime host
 test remains blocked by eight unlinked asset symbols; test coverage is not complete.
+The later review fixes and replacement artwork need their own release build, gates,
+and hardware validation; earlier results do not validate the new package.
 
 No automatic save migration is provided; users may manually copy a backed-up
 regular in-game save without overwriting existing data. Migration from older
