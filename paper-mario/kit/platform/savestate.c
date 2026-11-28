@@ -24,6 +24,9 @@
 #include <fcntl.h>
 #include "hh_game.h"
 #include "handheld_menu.h" /* the resume prompt, notify, power-off helpers (stubs off the handheld) */
+#if defined(MIYOO) && defined(PM64_ROM_REGION_PAL)
+#include "miyoo_i18n.h"
+#endif
 #if defined(HANDHELD) && defined(MIYOO)
 #include "miyoo_sleepsave.h" /* the resume state at a POWER press and when idle */
 #define SS_SLEEP_JOIN() miyoo_sleepsave_join()
@@ -601,7 +604,11 @@ static void power_save(void) {
     if (sBootPath[0]) {
         fprintf(stderr, "savestate: power off before the resume loaded; auto save kept\n");
     } else {
+#if defined(MIYOO) && defined(PM64_ROM_REGION_PAL)
+        handheld_menu_notify(miyoo_i18n(MT_SAVING));
+#else
         handheld_menu_notify("SAVING");
+#endif
         (void) do_save(QUICKSAVE_SLOT);
     }
     power_off_now(); /* a failed save must still finish the power-off */
@@ -636,10 +643,17 @@ static void sleep_save(int kind) {
  * had run, and even when it failed). */
 static void notify_result(int save, int slot, int ok) {
     char msg[32];
+#if defined(MIYOO) && defined(PM64_ROM_REGION_PAL)
+    if (!ok)                         snprintf(msg, sizeof(msg), "%s", miyoo_i18n(save ? MT_SAVE_FAILED : MT_LOAD_FAILED));
+    else if (save)                   snprintf(msg, sizeof(msg), miyoo_i18n(MT_SAVED_SLOT), slot);
+    else if (slot == QUICKSAVE_SLOT) snprintf(msg, sizeof(msg), "%s", miyoo_i18n(MT_LOADED_AUTO));
+    else                             snprintf(msg, sizeof(msg), miyoo_i18n(MT_LOADED_SLOT), slot);
+#else
     if (!ok)                         snprintf(msg, sizeof(msg), "%s", save ? "SAVE FAILED" : "LOAD FAILED");
     else if (save)                   snprintf(msg, sizeof(msg), "SAVED SLOT %d", slot);
     else if (slot == QUICKSAVE_SLOT) snprintf(msg, sizeof(msg), "LOADED AUTO SAVE");
     else                             snprintf(msg, sizeof(msg), "LOADED SLOT %d", slot);
+#endif
     handheld_menu_notify(msg);
     (void) msg; /* handheld_menu_notify is a no-op macro off the handheld */
 }
@@ -680,8 +694,13 @@ void savestate_check(void) {
          * the failure waits until its banner is up (exit() could beat the detached notify thread). */
         sExitSave = 0;
         if (!sBootPath[0]) {
+#if defined(MIYOO) && defined(PM64_ROM_REGION_PAL)
+            handheld_menu_notify(miyoo_i18n(MT_SAVING));
+            if (!do_save(QUICKSAVE_SLOT)) handheld_menu_notify_wait(miyoo_i18n(MT_SAVE_FAILED));
+#else
             handheld_menu_notify("SAVING");
             if (!do_save(QUICKSAVE_SLOT)) handheld_menu_notify_wait("SAVE FAILED");
+#endif
         }
         port_request_exit();
     }
@@ -773,3 +792,4 @@ void savestate_boot_prompt(void) {
 
 void savestate_request_save(int slot) { sRequest = slot; }
 void savestate_request_load(int slot) { sRequest = -slot; }
+void savestate_cancel_boot_load(void) { sBootPath[0] = 0; }

@@ -40,7 +40,7 @@ class BuildGeneratorTests(unittest.TestCase):
         for filename in ('game/port/port_host.c', 'game/port/port_test.c',
                          'bench/kit/gfx_pc.c', 'bench/kit/gfx_cc.c', 'bench/kit/gfx_soft.c'):
             self.write(filename, '/* synthetic source */\n')
-        for filename in ('savestate', 'miyoo_panel', 'miyoo_menu', 'miyoo_remap',
+        for filename in ('savestate', 'miyoo_panel', 'miyoo_menu', 'miyoo_remap', 'miyoo_i18n',
                          'miyoo_worker', 'miyoo_clock', 'miyoo_sleepsave'):
             self.write(f'kit/platform/{filename}.c', '/* synthetic source */\n')
         self.write('refs/papermario/src/effect_shims.yaml', '- shim_test_fn\n- shim_NULL\n')

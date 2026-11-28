@@ -77,3 +77,20 @@ build/
 !miyoo/game-pal.json
 !PAL_ALPHA.md
 !.gitattributes
+
+# PAL 1.0 source, package metadata, and focused regression tests
+!miyoo/game-pal-1.0.json
+!miyoo/README-PAL-1.0.txt
+!RELEASE-NOTES-PAL-1.0.md
+!docs/PAL-RENDERER-GFX003-M41.md
+!tools/port/miyoo_i18n_test.c
+!tools/port/miyoo_menu_layout_test.c
+!tools/port/port_early_language_test.c
+!tools/port/menu_public_test.c
+!tools/port/k4_state_soft.c
+!tools/port/k4_state_test.c
+!tools/port/k4_test.c
+!tools/port/m41_edge_test.c
+
+!miyoo/icon-pal.png
+!miyoo/cover-pal.png

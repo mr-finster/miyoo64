@@ -26,6 +26,12 @@
 #include <SDL/SDL.h>
 #include "miyoo_remap.h"
 #include "miyoo_font.h"
+#if defined(PM64) && defined(PM64_ROM_REGION_PAL)
+#include "miyoo_i18n.h"
+#define MENU_TEXT(id, fallback) miyoo_i18n(id)
+#else
+#define MENU_TEXT(id, fallback) (fallback)
+#endif
 
 /* The log lines go to stderr; a port whose release gate refuses a copied stderr in its executable (F-Zero X)
  * builds with MIYOO_REMAP_LOG=<its own logger>. */
@@ -211,17 +217,34 @@ static void tri(int cx, int cy, int s, int dir, uint32_t c) {
 }
 
 static void text(int x, int y, int k, const char *t, uint32_t c) {
-    for (; *t; t++, x += 8 * k) {
-        const unsigned ch = (unsigned char)*t;
-        if (ch < 0x20 || ch > 0x7E) continue;
-        const uint8_t *g = kMiyooFont[ch - 0x20];
+#if defined(PM64) && defined(PM64_ROM_REGION_PAL)
+    while (*t) {
+        unsigned ch=miyoo_utf8_next(&t); uint8_t glyph[8]; miyoo_glyph(ch,glyph);
         for (int gy = 0; gy < 8; gy++)
             for (int gx = 0; gx < 8; gx++)
-                if (g[gy] & (1u << gx)) rect(x + gx * k, y + gy * k, k, k, c);
+                if (glyph[gy] & (1u << gx)) rect(x + gx * k, y + gy * k, k, k, c);
+        x+=8*k;
     }
+#else
+    for (; *t; t++,x+=8*k) {
+        unsigned ch=(unsigned char)*t;
+        if(ch<0x20||ch>0x7E) continue;
+        const uint8_t *g=kMiyooFont[ch-0x20];
+        for(int gy=0;gy<8;gy++)for(int gx=0;gx<8;gx++)if(g[gy]&(1u<<gx))rect(x+gx*k,y+gy*k,k,k,c);
+    }
+#endif
 }
-static int text_w(const char *t, int k) { return (int)strlen(t) * 8 * k; }
-static void text_c(int cx, int cy, int k, const char *t, uint32_t c) { text(cx - text_w(t, k) / 2, cy - 4 * k, k, t, c); }
+#if defined(PM64) && defined(PM64_ROM_REGION_PAL)
+static int text_w(const char *t, int k) { return miyoo_utf8_width(t,k); }
+#else
+static int text_w(const char *t, int k) { return (int)strlen(t)*8*k; }
+#endif
+static void text_c(int cx, int cy, int k, const char *t, uint32_t c) {
+#if defined(PM64) && defined(PM64_ROM_REGION_PAL)
+    if(text_w(t,k)>560 && k>1) k=1;
+#endif
+    text(cx-text_w(t,k)/2,cy-4*k,k,t,c);
+}
 
 static const uint32_t C_TEXT = 0xECECEC, C_DIM = 0x808080, C_SEL = 0xFFC040, C_PANEL = 0x101418, C_EDGE = 0x505860,
                       C_BAR = 0x283038, C_WHITE = 0xFFFFFF, C_INK = 0x202020;
@@ -328,16 +351,16 @@ static void compose(SDL_Surface *draw, SDL_Surface *backdrop, int cur, int top, 
     const int pw = 600, ph = 448, px = (draw->w - pw) / 2, py = (draw->h - ph) / 2;
     rect(px - 2, py - 2, pw + 4, ph + 4, C_EDGE);
     rect(px, py, pw, ph, C_PANEL);
-    text_c(px + pw / 2, py + 26, 3, "CONTROLS", C_TEXT);
+    text_c(px + pw / 2, py + 26, 3, MENU_TEXT(MT_CONTROLS_TITLE,"CONTROLS"), C_TEXT);
     rect(px + 30, py + 48, pw - 60, 2, C_EDGE);
-    text(px + 30, py + 54, 1, "N64", C_DIM);
-    text(px + pw - 30 - text_w("MIYOO", 1), py + 54, 1, "MIYOO", C_DIM);
+    text(px + 30, py + 54, 1, MENU_TEXT(MT_N64,"N64"), C_DIM);
+    text(px + pw - 30 - text_w(MENU_TEXT(MT_MIYOO,"MIYOO"), 1), py + 54, 1, MENU_TEXT(MT_MIYOO,"MIYOO"), C_DIM);
     for (int v = 0; v < VIS && top + v < n; v++) {
         const int i = top + v, cy = py + 80 + v * ROW_H;
         const int sel = i == cur;
         if (sel) rect(px + 14, cy - 14, pw - 28, 28, C_BAR);
         if (i == miyoo_remap_nrows) {
-            text_c(px + pw / 2, cy + 1, 2, "RESET TO DEFAULT", sel ? C_SEL : C_TEXT);
+            text_c(px + pw / 2, cy + 1, 2, MENU_TEXT(MT_RESET_DEFAULT,"RESET TO DEFAULT"), sel ? C_SEL : C_TEXT);
             continue;
         }
         const struct miyoo_remap_row *r = &miyoo_remap_rows[i];
@@ -347,7 +370,7 @@ static void compose(SDL_Surface *draw, SDL_Surface *backdrop, int cur, int top, 
         if (r->what && r->n64 < MR_TEXT) text(px + 72 + 8 * 2 * 8, cy - 3, 1, r->what, C_DIM);
         int x = px + 396;
         if (sel && mode == M_LISTEN) {
-            if (blink) text(x, cy - 7, 2, "PRESS...", C_SEL);
+            if (blink) text(x, cy - 7, 2, MENU_TEXT(MT_PRESS,"PRESS..."), C_SEL);
             continue;
         }
         if (r->mod) {
@@ -366,20 +389,20 @@ static void compose(SDL_Surface *draw, SDL_Surface *backdrop, int cur, int top, 
     char buf[64];
     const int fy = py + ph - 24;
     if (mode == M_LISTEN) {
-        text_c(px + pw / 2, fy, 2, "PRESS THE NEW BUTTON  MENU: CANCEL", C_SEL);
+        text_c(px + pw / 2, fy, 2, MENU_TEXT(MT_PRESS_NEW,"PRESS THE NEW BUTTON  MENU: CANCEL"), C_SEL);
     } else if (mode == M_SWAP) {
         /* the row has no button to give back: the other row is left without one */
-        snprintf(buf, sizeof(buf), "%s %.10s? A: YES  B: NO", map_inv(row_out(&miyoo_remap_rows[cur])) ? "SWAP WITH" : "TAKE FROM",
-                 row_name(&miyoo_remap_rows[pend >> 8]));
+        snprintf(buf, sizeof(buf), "%s %.10s? %s", MENU_TEXT(map_inv(row_out(&miyoo_remap_rows[cur])) ? MT_SWAP_WITH : MT_TAKE_FROM,
+                 map_inv(row_out(&miyoo_remap_rows[cur])) ? "SWAP WITH" : "TAKE FROM"), row_name(&miyoo_remap_rows[pend >> 8]), MENU_TEXT(MT_YES_NO,"A: YES  B: NO"));
         text_c(px + pw / 2, fy, 2, buf, C_SEL);
     } else if (mode == M_RESET) {
-        text_c(px + pw / 2, fy, 2, "RESET ALL? A: YES  B: NO", C_SEL);
+        text_c(px + pw / 2, fy, 2, MENU_TEXT(MT_RESET_ALL,"RESET ALL? A: YES  B: NO"), C_SEL);
     } else if (cur == miyoo_remap_nrows) {
-        text_c(px + pw / 2, fy, 2, "A: RESET   B: BACK", C_DIM);
+        text_c(px + pw / 2, fy, 2, MENU_TEXT(MT_RESET_HINT,"A: RESET   B: BACK"), C_DIM);
     } else if (row_fixed(&miyoo_remap_rows[cur])) {
-        text_c(px + pw / 2, fy, 2, "FIXED   B: BACK", C_DIM);
+        text_c(px + pw / 2, fy, 2, MENU_TEXT(MT_FIXED_BACK,"FIXED   B: BACK"), C_DIM);
     } else {
-        text_c(px + pw / 2, fy, 2, "A: CHANGE   B: BACK", C_DIM);
+        text_c(px + pw / 2, fy, 2, MENU_TEXT(MT_CHANGE_BACK,"A: CHANGE   B: BACK"), C_DIM);
     }
     if (SDL_MUSTLOCK(draw)) SDL_UnlockSurface(draw);
 }

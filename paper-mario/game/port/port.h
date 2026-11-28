@@ -20,6 +20,7 @@ typedef __UINTPTR_TYPE__ uintptr_t;
 /* the save chip (128 KB flash) as a file: port_rom.c */
 void port_flash_open(void);
 void port_flash_read(uint32_t offset, void *dst, uint32_t len);
+int port_flash_language(void); /* early PAL menu language from validated SaveGlobals; -1 if unavailable */
 void port_flash_write(uint32_t offset, const void *src, uint32_t len);
 void port_flash_erase(uint32_t offset, uint32_t len);
 
@@ -63,6 +64,8 @@ void port_audio_out_mark(void); /* once per retrace's fill: the queue's aim foll
 extern uint32_t port_audio_out_underruns;
 void port_audio_out_retrace(void);
 void port_audio_out_push(const int16_t *samples, int32_t frames);
+void port_audio_out_flush(void);
+void port_game_soft_reset_request(void);
 
 /* the log (stderr and, on the device, the log file) */
 void port_log(const char *fmt, ...) __attribute__((format(printf, 1, 2)));

@@ -199,6 +199,14 @@ def main():
     z.add(app + 'launch.sh', tpl('launch.sh', **kv), exe=True)
     z.add(app + 'config.json', tpl('app_config.json', **kv))
     z.add(app + 'icon.png', icon)
+    readme = g.get('readme')
+    if readme is not None:
+        if not isinstance(readme, str) or os.path.basename(readme) != readme:
+            sys.exit('game.json readme: a file name relative to the game JSON')
+        z.add(app + 'README.txt', open(os.path.join(gdir, readme), 'rb').read())
+    for directory in g.get('empty_dirs', []):
+        if directory != 'data': sys.exit('game.json empty_dirs: only data is supported')
+        z.mkdir(app + directory)
     # Onion on a Mini v4 / Mini Flip (752x560 panel, /tmp/new_res_available) switches the screen to 752x560
     # before an Apps launch only when App/<folder>/full_resolution exists, and puts 640x480 back after any
     # launch (Onion 07505ea runtime.sh:400-423, get_full_resolution_path :586-611). An empty marker; on a
@@ -262,7 +270,15 @@ def main():
             '# for Onion on a Mini v4 / Mini Flip: the screen at 752x560 for this game (runtime.sh looks for this line)\n'
             'FullResolution=1\n') % (folder, title, folder), **kv)
         z.add('Roms/PORTS/Shortcuts/%s%s.port' % (cat + '/' if cat else '', title), port, exe=True)
-        z.add('Roms/PORTS/Imgs/%s.png' % title, boxart(icon_src))
+        cover = g.get('cover')
+        if cover is not None:
+            if not isinstance(cover, str) or os.path.basename(cover) != cover:
+                sys.exit('game.json cover: a file name relative to the game JSON')
+            cw, ch, rows = png_rgba(open(os.path.join(gdir, cover), 'rb').read())
+            cover_src = png_write(cw, ch, rows)
+        else:
+            cover_src = boxart(icon_src)
+        z.add('Roms/PORTS/Imgs/%s.png' % title, cover_src)
         z.mkdir('Roms/PORTS/Games')
 
     if 'minui' in layouts:

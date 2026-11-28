@@ -60,6 +60,32 @@ def pair(binary,assets,recipes):
     assert len(values)==5 and stamp!=0
     return {'build_stamp':f'{stamp:08X}','cache_id':f'{cache:08X}','layout_id':f'{layout:08X}','recipe_crc':f'{crc:08X}','relocations':nrel,'literal_bytes':nlit},values
 
+APP = 'App/PaperMarioPAL/'
+PACKAGE_MODES = {
+    APP+'pm64': 0o755, APP+'recipes.bin': 0o644,
+    APP+'launch.sh': 0o755, APP+'config.json': 0o644,
+    APP+'icon.png': 0o644, APP+'README.txt': 0o644,
+    APP+'full_resolution': 0o644,
+    'Roms/PORTS/Shortcuts/Paper Mario PAL.port': 0o755,
+    'Roms/PORTS/Imgs/Paper Mario PAL.png': 0o644,
+}
+PACKAGE_DIRS = {APP+'data/', 'Roms/PORTS/Games/'}
+
+def validate_package(z):
+    rows = z.infolist()
+    paths = [r.filename for r in rows]
+    assert len(paths) == len(set(paths)), 'duplicate ZIP entries'
+    assert set(paths) == set(PACKAGE_MODES) | PACKAGE_DIRS, 'unexpected or missing package entries'
+    assert z.testzip() is None, 'corrupt ZIP entry'
+    for row in rows:
+        mode = row.external_attr >> 16
+        if row.filename in PACKAGE_DIRS:
+            assert row.is_dir() and stat.S_ISDIR(mode) and stat.S_IMODE(mode) == 0o755
+            assert row.file_size == 0
+        else:
+            assert not row.is_dir() and stat.S_ISREG(mode)
+            assert stat.S_IMODE(mode) == PACKAGE_MODES[row.filename]
+
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__)
     for name in ['zip','rom','assets','binary','decomp','graph-root','output']:p.add_argument('--'+name,required=True,type=Path)
@@ -79,15 +105,16 @@ def main(argv=None):
         for f in root.glob(pattern):git(root,'ls-files','--error-unmatch',str(f.relative_to(root)))
     for f in ['miyoo/tools/miyoo_pack.py','miyoo/icon.png','miyoo/game-pal.json','tools/port/gen_build.py','tools/port/rom_segments.py','tools/port/pal_build.py','tools/port/pal_release_gates.py']:git(root,'ls-files','--error-unmatch',f)
     with tempfile.TemporaryDirectory(prefix='pal-release-gate-') as tmp:
-        tmp=Path(tmp);prefix='App/PaperMarioPAL/';names=['pm64','recipes.bin','launch.sh','config.json','icon.png','full_resolution'];files={}
+        tmp=Path(tmp);files={}
         with zipfile.ZipFile(a.zip) as z:
-            assert z.testzip() is None and len(z.namelist())==6 and set(z.namelist())=={prefix+n for n in names}
+            validate_package(z)
             for row in z.infolist():
-                name=Path(row.filename).name;mode=row.external_attr>>16
-                assert stat.S_ISREG(mode) and stat.S_IMODE(mode)==(0o755 if name in ['pm64','launch.sh'] else 0o644)
+                if row.is_dir(): continue
                 b=z.read(row);assert not re.search(rb'xmpmeta|Photoshop|/Users/|/home/|/root/|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|AKIA[0-9A-Z]{16}',b)
                 assert not re.search(rb'PaperMarioPALTest|M143[469]|M14\.39',b)
-                files[name]=tmp/name;files[name].write_bytes(b)
+                dest=tmp/row.filename;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(b)
+                files[row.filename]=dest
+        files.update({name:files[APP+name] for name in ['pm64','recipes.bin','launch.sh','config.json','icon.png','full_resolution']})
         assert files['pm64'].read_bytes()==a.binary.read_bytes()
         launch=files['launch.sh'].read_text();assert 'export LD_LIBRARY_PATH="$DIR/lib:$LD_LIBRARY_PATH"' in launch
         assert 'export PM64_DATA="$DIR/data"' in launch and 'export HOME="$DIR"' in launch
@@ -100,7 +127,7 @@ def main(argv=None):
                 addr=int(fields[0],16)
                 if values['__data_start']<=addr<values['__assets_start'] and not values['__start_dontsave']<=addr<values['__stop_dontsave']:
                     assert fields[4].startswith(('stdin','stdout','stderr'))
-        subprocess.run(['python3','-B',str(root/'tools/assets/leak_scan.py'),'--rom',str(a.rom),'--assets',str(a.assets),'--budget-kb','48',*[str(files[n]) for n in names]],check=True)
+        subprocess.run(['python3','-B',str(root/'tools/assets/leak_scan.py'),'--rom',str(a.rom),'--assets',str(a.assets),'--budget-kb','48',*[str(files[n]) for n in PACKAGE_MODES]],check=True)
     result={'status':'PASS','source_provenance':'pinned decomp + exact tracked patch; generated graphs and tracked host/port/packaging sources','compiled_host_port_sources':len(compiled),'pair':meta,'hardware_tested':False,'publication_authorized':False}
     a.output.write_text(json.dumps(result,indent=2)+'\n');print('PAL release gates PASS; hardware and publication approval remain separate.')
 if __name__=='__main__':main()

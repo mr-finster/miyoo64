@@ -39,6 +39,22 @@ uint32_t port_audio_out_underruns; /* callbacks that ran dry (the PERF line) */
 static volatile int sMuted; /* the kit's menu: silence while it is open (and through EXIT GAME's save) */
 void port_audio_out_set_muted(int muted) { sMuted = muted; }
 
+/* Drop queued PCM before an in-process engine soft reset. */
+void port_audio_out_flush(void) {
+#ifdef PM64_SDL12
+    if (sOpen) SDL_LockAudio();
+#endif
+    sTail = sHead;
+#if defined(MIYOO)
+    sPrevL = sPrevR = 0;
+    sPhase = 0x10000;
+#endif
+    sMarkUs = sGapMaxUs = 0;
+#ifdef PM64_SDL12
+    if (sOpen) SDL_UnlockAudio();
+#endif
+}
+
 #ifdef PM64_SDL12
 static void callback(void *user, Uint8 *stream, int len) {
     (void) user;
